@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { URL } from "../assets/constant";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -19,7 +20,7 @@ export default function Payslips() {
   useEffect(() => {
     const fetchPayroll = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/employees/payroll");
+        const res = await fetch(`${URL}/api/employees/payroll`);
         const data = await res.json();
 
         if (Array.isArray(data)) {

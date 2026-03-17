@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { URL } from "../assets/constant";
 
 export default function Dashboard() {
   const currentMonth = new Date().toLocaleString("default", {
@@ -27,9 +28,13 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/employees/dashboard-summary",
-      );
+      const res = await fetch(`${URL}/api/employees/dashboard-summary`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+        },
+      });
       const data = await res.json();
 
       setPendingLeaveApprovals(data.pendingLeaves || []);
@@ -83,14 +88,11 @@ export default function Dashboard() {
   // Handles updating the database when Approve/Deny is clicked
   const handleUpdateLeaveStatus = async (id, newStatus) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/employees/leaves/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        },
-      );
+      const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
       if (res.ok) {
         // Visually show it was approved/denied in the modal without closing it

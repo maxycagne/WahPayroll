@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { URL } from "../assets/constant";
 
 const leaveTypes = [
   "Birthday Leave",
@@ -275,7 +276,7 @@ export default function Leave() {
 
   const fetchLeaves = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/employees/leaves");
+      const res = await fetch(`${URL}/api/employees/leaves`);
       const data = await res.json();
       setLeaves(Array.isArray(data) ? data : []);
       setLoading(false);
@@ -287,7 +288,7 @@ export default function Leave() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/employees");
+      const res = await fetch(`${URL}/api/employees`);
       const data = await res.json();
       if (Array.isArray(data)) {
         setEmployees(data);
@@ -306,14 +307,11 @@ export default function Leave() {
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/employees/leaves/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        },
-      );
+      const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
       if (res.ok) fetchLeaves();
     } catch (error) {
       console.error("Error updating status", error);
@@ -328,7 +326,7 @@ export default function Leave() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/employees/leaves", {
+      const res = await fetch(`${URL}/api/employees/leaves`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

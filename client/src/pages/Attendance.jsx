@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { URL } from "../assets/constant";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -19,7 +20,7 @@ export default function Attendance() {
 
   const fetchAttendance = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/employees/attendance");
+      const res = await fetch(`${URL}/api/employees/attendance`);
       const data = await res.json();
       if (Array.isArray(data)) {
         setAttendance(data);
@@ -48,7 +49,7 @@ export default function Attendance() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/employees/leave-balance/${adjModal.emp_id}`,
+        `${URL}/api/employees/leave-balance/${adjModal.emp_id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { URL } from "../assets/constant";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -27,7 +28,7 @@ export default function Payroll() {
   // Fetch Payroll Data
   const fetchPayroll = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/employees/payroll");
+      const res = await fetch(`${URL}/api/employees/payroll`);
       const data = await res.json();
       if (Array.isArray(data)) {
         setPayrollData(data);
@@ -66,21 +67,18 @@ export default function Payroll() {
     }
 
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/employees/salary-adjustment",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            emp_ids: empIdsToAdjust,
-            type:
-              adjustmentType.charAt(0).toUpperCase() + adjustmentType.slice(1),
-            amount: adjustmentAmount,
-            description: adjustmentReason,
-            date: `${period}-01`, // Use selected period as effective date
-          }),
-        },
-      );
+      const res = await fetch(`${URL}/api/employees/salary-adjustment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emp_ids: empIdsToAdjust,
+          type:
+            adjustmentType.charAt(0).toUpperCase() + adjustmentType.slice(1),
+          amount: adjustmentAmount,
+          description: adjustmentReason,
+          date: `${period}-01`, // Use selected period as effective date
+        }),
+      });
 
       if (res.ok) {
         alert(

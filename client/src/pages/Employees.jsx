@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { URL } from "../assets/constant";
 
 export default function Employees() {
   const [employees, setEmployees] = useState([]);
@@ -56,7 +57,7 @@ export default function Employees() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/api/employees", {
+      const res = await fetch(`${URL}/api/employees`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -92,12 +93,9 @@ export default function Employees() {
   const handleDelete = async (emp_id) => {
     if (window.confirm(`Are you sure you want to delete employee ${emp_id}?`)) {
       try {
-        const res = await fetch(
-          `http://localhost:5000/api/employees/${emp_id}`,
-          {
-            method: "DELETE",
-          },
-        );
+        const res = await fetch(`${URL}/api/employees/${emp_id}`, {
+          method: "DELETE",
+        });
         if (res.ok) {
           fetchEmployees(); // Refresh after deleting
         } else {
