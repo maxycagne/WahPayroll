@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { URL } from "../assets/constant";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function Employees() {
-  const [employees, setEmployees] = useState([]);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form State for new employee
   const [formData, setFormData] = useState({
     emp_id: "",
     first_name: "",
-    middle_initial: "", // <-- Added Middle Initial
+    middle_initial: "",
     last_name: "",
     designation: "",
     position: "",
@@ -28,110 +28,97 @@ export default function Employees() {
     "PGT Employee": "bg-orange-100 text-orange-800",
   };
 
-  const fetchEmployees = async () => {
-    try {
-      const res = await fetch(
-        "https://linsey-nonprinting-abusedly.ngrok-free.dev/api/employees",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
-          },
+  // --- TANSTACK QUERY: FETCH EMPLOYEES ---
+  const { data: employees = [], isLoading } = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => {
+      const res = await fetch(`${URL}/api/employees`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
         },
-      );
-      const data = await res.json();
+      });
+      if (!res.ok) throw new Error("Network response was not ok");
+      return res.json();
+    },
+  });
 
-      if (Array.isArray(data)) {
-        setEmployees(data);
-      } else {
-        setEmployees([]);
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching employees:", err);
-      setEmployees([]);
-      setLoading(false);
-    }
-  };
+  // --- TANSTACK MUTATION: ADD EMPLOYEE ---
+  const addEmployeeMutation = useMutation({
+    mutationFn: async (newEmployee) => {
+      const res = await fetch(`${URL}/api/employees`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEmployee),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      // Refresh the list automatically
+      queryClient.invalidateQueries(["employees"]);
+      setIsModalOpen(false);
+      resetForm();
+      alert("Employee added successfully!");
+    },
+    onError: (error) => {
+      console.error("Error adding employee:", error);
+      alert("Server error while adding employee.");
+    },
+  });
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
+  // --- TANSTACK MUTATION: DELETE EMPLOYEE ---
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: async (emp_id) => {
+      const res = await fetch(`${URL}/api/employees/${emp_id}`, {
+        method: "DELETE",
+        headers: { "ngrok-skip-browser-warning": "69420" },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["employees"]);
+    },
+  });
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${URL}/api/employees`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setIsModalOpen(false);
-        fetchEmployees(); // Refresh the table
-        setFormData({
-          emp_id: "",
-          first_name: "",
-          middle_initial: "", // Reset field
-          last_name: "",
-          designation: "",
-          position: "",
-          status: "Permanent",
-          email: "",
-          dob: "",
-          hired_date: "",
-        });
-        alert("Employee added successfully!");
-      } else {
-        alert(`Failed to add employee: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Error adding employee:", error);
-      alert("Server error while adding employee.");
-    }
+  const resetForm = () => {
+    setFormData({
+      emp_id: "",
+      first_name: "",
+      middle_initial: "",
+      last_name: "",
+      designation: "",
+      position: "",
+      status: "Permanent",
+      email: "",
+      dob: "",
+      hired_date: "",
+    });
   };
 
-  const handleDelete = async (emp_id) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    addEmployeeMutation.mutate(formData);
+  };
+
+  const handleDelete = (emp_id) => {
     if (window.confirm(`Are you sure you want to delete employee ${emp_id}?`)) {
-      try {
-        const res = await fetch(`${URL}/api/employees/${emp_id}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "69420",
-          },
-        });
-        if (res.ok) {
-          fetchEmployees(); // Refresh after deleting
-        } else {
-          alert("Failed to delete employee");
-        }
-      } catch (err) {
-        console.error(err);
-      }
+      deleteEmployeeMutation.mutate(emp_id);
     }
   };
 
   const filtered = employees.filter((emp) => {
     const s = searchTerm.toLowerCase();
-    // Include middle initial in search if it exists
     const mi = emp.middle_initial ? `${emp.middle_initial} ` : "";
     const fullName = `${emp.first_name} ${mi}${emp.last_name}`.toLowerCase();
     return emp.emp_id.toLowerCase().includes(s) || fullName.includes(s);
   });
 
-  if (loading)
+  if (isLoading)
     return <div className="p-6 text-black font-bold">Loading Employees...</div>;
 
   return (
@@ -148,7 +135,6 @@ export default function Employees() {
         </button>
       </div>
 
-      {/* Main Table Card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-gray-50/50">
           <input
@@ -214,9 +200,12 @@ export default function Employees() {
                   <td className="px-6 py-4 text-sm text-right">
                     <button
                       onClick={() => handleDelete(emp.emp_id)}
-                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer border-0 bg-transparent"
+                      disabled={deleteEmployeeMutation.isPending}
+                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer border-0 bg-transparent disabled:opacity-50"
                     >
-                      Delete
+                      {deleteEmployeeMutation.variables === emp.emp_id
+                        ? "Deleting..."
+                        : "Delete"}
                     </button>
                   </td>
                 </tr>
@@ -244,6 +233,7 @@ export default function Employees() {
 
             <form onSubmit={handleSubmit} className="p-6">
               <div className="grid grid-cols-2 gap-4">
+                {/* Inputs same as before */}
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">
                     Employee ID
@@ -253,7 +243,7 @@ export default function Employees() {
                     name="emp_id"
                     value={formData.emp_id}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                     placeholder="WAH-00X"
                   />
                 </div>
@@ -267,7 +257,7 @@ export default function Employees() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                     placeholder="name@wah.org"
                   />
                 </div>
@@ -280,19 +270,18 @@ export default function Employees() {
                     name="first_name"
                     value={formData.first_name}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">
-                    M.I. (Optional)
+                    M.I.
                   </label>
                   <input
                     name="middle_initial"
                     value={formData.middle_initial}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                    placeholder="e.g. A"
+                    className="border border-gray-300 rounded p-2 text-sm"
                     maxLength="5"
                   />
                 </div>
@@ -305,7 +294,7 @@ export default function Employees() {
                     name="last_name"
                     value={formData.last_name}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -317,8 +306,7 @@ export default function Employees() {
                     name="designation"
                     value={formData.designation}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                    placeholder="e.g. Manager"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -330,8 +318,7 @@ export default function Employees() {
                     name="position"
                     value={formData.position}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                    placeholder="e.g. IT Department"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -342,7 +329,7 @@ export default function Employees() {
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   >
                     <option>Permanent</option>
                     <option>Casual</option>
@@ -359,7 +346,7 @@ export default function Employees() {
                     name="dob"
                     value={formData.dob}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -371,7 +358,7 @@ export default function Employees() {
                     name="hired_date"
                     value={formData.hired_date}
                     onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 rounded p-2 text-sm"
                   />
                 </div>
               </div>
@@ -380,15 +367,18 @@ export default function Employees() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium cursor-pointer"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium cursor-pointer border-0"
+                  disabled={addEmployeeMutation.isPending}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 >
-                  Save Employee
+                  {addEmployeeMutation.isPending
+                    ? "Saving..."
+                    : "Save Employee"}
                 </button>
               </div>
             </form>

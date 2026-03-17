@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { URL } from "../assets/constant";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -9,72 +10,67 @@ const badgeClass = {
 };
 
 export default function Attendance() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [attendance, setAttendance] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Modal State for Admin Adjustment
   const [adjModal, setAdjModal] = useState(null);
   const [adjType, setAdjType] = useState("Subtract");
   const [adjDays, setAdjDays] = useState("");
 
-  const fetchAttendance = async () => {
-    try {
+  // --- TANSTACK QUERY: FETCH ATTENDANCE ---
+  const { data: attendance = [], isLoading } = useQuery({
+    queryKey: ["attendance"],
+    queryFn: async () => {
       const res = await fetch(`${URL}/api/employees/attendance`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+          "ngrok-skip-browser-warning": "69420",
         },
       });
+      if (!res.ok) throw new Error("Failed to fetch attendance");
+      return res.json();
+    },
+  });
 
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setAttendance(data);
-      } else {
-        setAttendance([]);
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error("Failed to fetch attendance:", err);
-      setAttendance([]);
-      setLoading(false);
-    }
-  };
+  // --- TANSTACK MUTATION: ADJUST BALANCE ---
+  const adjustBalanceMutation = useMutation({
+    mutationFn: async ({ empId, amount }) => {
+      const res = await fetch(`${URL}/api/employees/leave-balance/${empId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adjustment: amount }),
+      });
+      if (!res.ok) throw new Error("Failed to adjust leave balance");
+      return res.json();
+    },
+    onSuccess: () => {
+      // Refresh the table data automatically
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      alert(`Leave balance updated successfully!`);
+      closeModal();
+    },
+    onError: (error) => {
+      console.error("Error adjusting balance:", error);
+      alert("Failed to adjust leave balance.");
+    },
+  });
 
-  useEffect(() => {
-    fetchAttendance();
-  }, []);
-
-  // Handle Admin Balance Adjustment Submission
-  const handleAdjustSubmit = async (e) => {
+  const handleAdjustSubmit = (e) => {
     e.preventDefault();
-
-    // If Subtracting, turn the number into a negative value
     const amount =
       adjType === "Subtract" ? -Math.abs(adjDays) : Math.abs(adjDays);
 
-    try {
-      const res = await fetch(
-        `${URL}/api/employees/leave-balance/${adjModal.emp_id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ adjustment: amount }),
-        },
-      );
+    adjustBalanceMutation.mutate({
+      empId: adjModal.emp_id,
+      amount,
+    });
+  };
 
-      if (res.ok) {
-        alert(`Leave balance updated successfully!`);
-        setAdjModal(null);
-        setAdjDays("");
-        fetchAttendance(); // Refresh table to show new 27/27 balance
-      } else {
-        alert("Failed to adjust leave balance.");
-      }
-    } catch (error) {
-      console.error("Error adjusting balance:", error);
-    }
+  const closeModal = () => {
+    setAdjModal(null);
+    setAdjDays("");
   };
 
   const getLeaveHighlightColor = (remaining) => {
@@ -92,7 +88,7 @@ export default function Attendance() {
     );
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6 text-gray-900 font-bold">
         Loading Attendance Management...
@@ -155,12 +151,10 @@ export default function Attendance() {
                 </tr>
               ) : (
                 filtered.map((a) => {
-                  // Determine maximum allocation based on employment status
                   const maxAllocation =
                     a.emp_status === "Job Order" || a.emp_status === "Casual"
                       ? 12
                       : 27;
-
                   return (
                     <tr
                       key={a.emp_id}
@@ -215,8 +209,8 @@ export default function Attendance() {
                 Adjust Leave Balance
               </h2>
               <button
-                onClick={() => setAdjModal(null)}
-                className="text-white hover:text-gray-200 text-2xl leading-none border-0 bg-transparent cursor-pointer"
+                onClick={closeModal}
+                className="text-white hover:text-gray-200 text-2xl border-0 bg-transparent cursor-pointer"
               >
                 &times;
               </button>
@@ -243,7 +237,7 @@ export default function Attendance() {
                   <select
                     value={adjType}
                     onChange={(e) => setAdjType(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm"
                   >
                     <option value="Subtract">Subtract Days (Minus)</option>
                     <option value="Add">Add Days (Plus)</option>
@@ -261,7 +255,7 @@ export default function Attendance() {
                     required
                     value={adjDays}
                     onChange={(e) => setAdjDays(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm"
                     placeholder="e.g. 1 or 0.5"
                   />
                 </div>
@@ -270,16 +264,19 @@ export default function Attendance() {
               <div className="mt-7 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setAdjModal(null)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold cursor-pointer transition-colors"
+                  onClick={closeModal}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:opacity-90 text-sm font-semibold cursor-pointer border-0 transition-opacity"
+                  disabled={adjustBalanceMutation.isPending}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:opacity-90 text-sm font-semibold cursor-pointer border-0 disabled:opacity-50"
                 >
-                  Save Adjustment
+                  {adjustBalanceMutation.isPending
+                    ? "Saving..."
+                    : "Save Adjustment"}
                 </button>
               </div>
             </form>

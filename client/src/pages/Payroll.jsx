@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { URL } from "../assets/constant";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -13,118 +14,115 @@ const fmt = (n) => {
 };
 
 export default function Payroll() {
+  const queryClient = useQueryClient();
   const [period, setPeriod] = useState("2026-03");
-  const [payrollData, setPayrollData] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Modal & Form States
   const [adjustmentModal, setAdjustmentModal] = useState(null);
-  const [adjustmentType, setAdjustmentType] = useState("Increase"); // matches DB ENUM/Values
+  const [salarySettingsModal, setSalarySettingsModal] = useState(false);
+
+  const [adjustmentType, setAdjustmentType] = useState("Increase");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
   const [bulkAdjustmentMode, setBulkAdjustmentMode] = useState(false);
 
-  // Fetch Payroll Data
-  const fetchPayroll = async () => {
-    try {
-      const res = await fetch(`${URL}/api/employees/payroll`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-        },
+  // Salary Settings State
+  const [salaryForm, setSalaryForm] = useState({ position: "", amount: "" });
+
+  // --- QUERIES ---
+  const { data: payrollData = [], isLoading } = useQuery({
+    queryKey: ["payroll", period],
+    queryFn: async () => {
+      const res = await fetch(`${URL}/api/employees/payroll?period=${period}`, {
+        headers: { "ngrok-skip-browser-warning": "69420" },
       });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setPayrollData(data);
-      } else {
-        setPayrollData([]);
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching payroll:", err);
-      setPayrollData([]);
-      setLoading(false);
-    }
-  };
+      if (!res.ok) throw new Error("Failed to fetch payroll");
+      return res.json();
+    },
+  });
 
-  useEffect(() => {
-    fetchPayroll();
-  }, []);
+  // Extract unique positions for the salary settings modal
+  const positions = [...new Set(payrollData.map((p) => p.position))].filter(
+    Boolean,
+  );
 
-  // Handle saving the adjustment to the database
-  const handleAdjustment = async () => {
-    if (!adjustmentAmount || !adjustmentReason) {
-      alert("Please fill in all fields");
-      return;
-    }
-
-    let empIdsToAdjust = [];
-
-    if (bulkAdjustmentMode) {
-      if (selectedEmployees.size === 0) {
-        alert("Please select at least one employee");
-        return;
-      }
-      empIdsToAdjust = Array.from(selectedEmployees);
-    } else {
-      empIdsToAdjust = [adjustmentModal.emp_id];
-    }
-
-    try {
+  // --- MUTATIONS ---
+  const adjustmentMutation = useMutation({
+    mutationFn: async (payload) => {
       const res = await fetch(`${URL}/api/employees/salary-adjustment`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-        },
-        body: JSON.stringify({
-          emp_ids: empIdsToAdjust,
-          type:
-            adjustmentType.charAt(0).toUpperCase() + adjustmentType.slice(1),
-          amount: adjustmentAmount,
-          description: adjustmentReason,
-          date: `${period}-01`, // Use selected period as effective date
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error("Failed to save adjustments");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["payroll"]);
+      alert("Adjustments applied successfully!");
+      closeAdjustmentModal();
+    },
+  });
 
-      if (res.ok) {
-        alert(
-          `Successfully applied ${adjustmentType} to ${empIdsToAdjust.length} employee(s)!`,
-        );
-        setAdjustmentModal(null);
-        setAdjustmentAmount("");
-        setAdjustmentReason("");
-        setSelectedEmployees(new Set());
-        fetchPayroll(); // Refresh table if needed
-      } else {
-        alert("Failed to save adjustments.");
-      }
-    } catch (error) {
-      console.error("Error saving adjustment:", error);
-    }
+  const updateBaseSalaryMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await fetch(`${URL}/api/employees/update-base-salary`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to update base salary");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["payroll"]);
+      alert("Base salary updated for all employees in this position!");
+      setSalarySettingsModal(false);
+      setSalaryForm({ position: "", amount: "" });
+    },
+  });
+
+  // --- HANDLERS ---
+  const handleAdjustment = () => {
+    if (!adjustmentAmount || !adjustmentReason)
+      return alert("Fill in all fields");
+
+    const empIds = bulkAdjustmentMode
+      ? Array.from(selectedEmployees)
+      : [adjustmentModal.emp_id];
+    if (empIds.length === 0) return alert("No employees selected");
+
+    adjustmentMutation.mutate({
+      emp_ids: empIds,
+      type: adjustmentType,
+      amount: adjustmentAmount,
+      description: adjustmentReason,
+      date: `${period}-01`,
+    });
+  };
+
+  const handleBaseSalaryUpdate = (e) => {
+    e.preventDefault();
+    if (!salaryForm.position || !salaryForm.amount)
+      return alert("Fill in all fields");
+    updateBaseSalaryMutation.mutate(salaryForm);
+  };
+
+  const closeAdjustmentModal = () => {
+    setAdjustmentModal(null);
+    setAdjustmentAmount("");
+    setAdjustmentReason("");
+    setSelectedEmployees(new Set());
   };
 
   const toggleEmployeeSelection = (id) => {
     const newSelected = new Set(selectedEmployees);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
+    newSelected.has(id) ? newSelected.delete(id) : newSelected.add(id);
     setSelectedEmployees(newSelected);
   };
 
-  const toggleSelectAll = () => {
-    if (selectedEmployees.size === payrollData.length) {
-      setSelectedEmployees(new Set());
-    } else {
-      setSelectedEmployees(new Set(payrollData.map((p) => p.emp_id)));
-    }
-  };
-
-  if (loading)
+  if (isLoading)
     return (
       <div className="p-6 text-gray-900 font-bold">Loading Payroll Data...</div>
     );
@@ -142,12 +140,17 @@ export default function Payroll() {
               type="month"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
             />
           </label>
-          <button className="px-5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity">
-            Calculate All
+
+          <button
+            onClick={() => setSalarySettingsModal(true)}
+            className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            ⚙ Salary Settings
           </button>
+
           <button
             onClick={() => {
               setBulkAdjustmentMode(!bulkAdjustmentMode);
@@ -157,6 +160,7 @@ export default function Payroll() {
           >
             {bulkAdjustmentMode ? "✓ Adjust Multiple" : "Adjust Multiple"}
           </button>
+
           {bulkAdjustmentMode && selectedEmployees.size > 0 && (
             <button
               onClick={() =>
@@ -165,7 +169,7 @@ export default function Payroll() {
                   isBulk: true,
                 })
               }
-              className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold cursor-pointer hover:bg-green-700 transition-colors border-0"
+              className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold cursor-pointer hover:bg-green-700 border-0"
             >
               Adjust {selectedEmployees.size}
             </button>
@@ -179,15 +183,17 @@ export default function Payroll() {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 {bulkAdjustmentMode && (
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-center">
                     <input
                       type="checkbox"
-                      checked={
-                        selectedEmployees.size === payrollData.length &&
-                        payrollData.length > 0
+                      onChange={() =>
+                        setSelectedEmployees(
+                          selectedEmployees.size === payrollData.length
+                            ? new Set()
+                            : new Set(payrollData.map((p) => p.emp_id)),
+                        )
                       }
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 cursor-pointer"
+                      checked={selectedEmployees.size === payrollData.length}
                     />
                   </th>
                 )}
@@ -210,9 +216,6 @@ export default function Payroll() {
                   Incentives
                 </th>
                 <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                  Gross Pay
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                   Net Pay
                 </th>
                 {!bulkAdjustmentMode && (
@@ -226,7 +229,7 @@ export default function Payroll() {
               {payrollData.map((p) => (
                 <tr
                   key={p.emp_id}
-                  className={`hover:bg-gray-50 transition-colors duration-150 ${bulkAdjustmentMode && selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""}`}
+                  className={`hover:bg-gray-50 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""}`}
                 >
                   {bulkAdjustmentMode && (
                     <td className="px-6 py-3 text-center">
@@ -234,44 +237,29 @@ export default function Payroll() {
                         type="checkbox"
                         checked={selectedEmployees.has(p.emp_id)}
                         onChange={() => toggleEmployeeSelection(p.emp_id)}
-                        className="w-4 h-4 cursor-pointer"
                       />
                     </td>
                   )}
-                  <td className="px-6 py-3 text-sm text-gray-900">
-                    {p.emp_id}
-                  </td>
-                  <td className="px-6 py-3 text-sm font-semibold text-gray-700">
+                  <td className="px-6 py-3">{p.emp_id}</td>
+                  <td className="px-6 py-3 font-semibold">
                     {p.first_name} {p.last_name}
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-700 text-right">
-                    {fmt(p.basic_pay)}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-700 text-center">
-                    {Number(p.absences_count)}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-red-600 text-right">
+                  <td className="px-6 py-3 text-right">{fmt(p.basic_pay)}</td>
+                  <td className="px-6 py-3 text-center">{p.absences_count}</td>
+                  <td className="px-6 py-3 text-right text-red-600">
                     {fmt(p.absence_deductions)}
                   </td>
-                  <td className="px-6 py-3 text-sm text-green-600 text-right">
+                  <td className="px-6 py-3 text-right text-green-600">
                     {fmt(p.incentives)}
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-700 text-right">
-                    {fmt(p.gross_pay)}
-                  </td>
-                  <td className="px-6 py-3 text-sm font-bold text-purple-700 text-right bg-purple-50/30">
+                  <td className="px-6 py-3 text-right font-bold text-purple-700">
                     {fmt(p.net_pay)}
                   </td>
                   {!bulkAdjustmentMode && (
-                    <td className="px-6 py-3 text-sm">
+                    <td className="px-6 py-3">
                       <button
-                        onClick={() =>
-                          setAdjustmentModal({
-                            ...p,
-                            name: `${p.first_name} ${p.last_name}`,
-                          })
-                        }
-                        className="px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-semibold cursor-pointer hover:bg-purple-200 transition-colors border-0"
+                        onClick={() => setAdjustmentModal(p)}
+                        className="px-3 py-1 rounded bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer"
                       >
                         Adjust
                       </button>
@@ -280,121 +268,141 @@ export default function Payroll() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-gray-100 border-t-2 border-gray-300">
-                {bulkAdjustmentMode && <td className="px-6 py-3"></td>}
-                <td
-                  colSpan={bulkAdjustmentMode ? 6 : 7}
-                  className="px-6 py-4 text-right text-sm font-bold text-gray-900"
-                >
-                  Total Net Payroll
-                </td>
-                <td className="px-6 py-4 text-sm font-black text-purple-800 text-right">
-                  {fmt(
-                    payrollData.reduce((s, p) => s + Number(p.net_pay || 0), 0),
-                  )}
-                </td>
-                {!bulkAdjustmentMode && <td className="px-6 py-4"></td>}
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>
 
-      {/* Salary Adjustment Modal */}
+      {/* Salary Settings Modal (Base Salary Update) */}
+      {salarySettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-4 bg-gray-900 flex justify-between items-center text-white">
+              <h2 className="text-lg font-bold m-0">Update Position Salary</h2>
+              <button
+                onClick={() => setSalarySettingsModal(false)}
+                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleBaseSalaryUpdate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Select Position
+                </label>
+                <select
+                  required
+                  value={salaryForm.position}
+                  onChange={(e) =>
+                    setSalaryForm({ ...salaryForm, position: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Choose Position...</option>
+                  {positions.map((pos) => (
+                    <option key={pos} value={pos}>
+                      {pos}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  New Monthly Base Salary
+                </label>
+                <input
+                  required
+                  type="number"
+                  value={salaryForm.amount}
+                  onChange={(e) =>
+                    setSalaryForm({ ...salaryForm, amount: e.target.value })
+                  }
+                  placeholder="e.g. 25000"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSalarySettingsModal(false)}
+                  className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateBaseSalaryMutation.isPending}
+                  className="flex-1 py-2 bg-purple-600 text-white rounded-lg font-semibold"
+                >
+                  {updateBaseSalaryMutation.isPending
+                    ? "Updating..."
+                    : "Update All"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Adjustment Modal (Same UI as provided) */}
       {adjustmentModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50"
-          onClick={() => setAdjustmentModal(null)}
-        >
-          <div
-            className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-white p-0 shadow-lg rounded-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-purple-200 px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700">
-              <h2 className="m-0 text-lg font-semibold text-white">
-                {bulkAdjustmentMode
-                  ? "Adjust Multiple Employees"
-                  : "Adjust Salary"}
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold m-0">
+                {bulkAdjustmentMode ? "Bulk Adjustment" : "Adjust Salary"}
               </h2>
               <button
-                type="button"
-                onClick={() => setAdjustmentModal(null)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 text-white/80 hover:text-white transition-opacity cursor-pointer border-0 bg-transparent"
+                onClick={closeAdjustmentModal}
+                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
               >
-                <span className="text-2xl">×</span>
+                &times;
               </button>
             </div>
-
-            {/* Content */}
-            <div className="px-6 py-4">
-              <p className="m-0 text-sm font-semibold text-gray-900 mb-4">
+            <div className="p-6 space-y-4">
+              <p className="text-sm font-bold text-gray-700">
                 {bulkAdjustmentMode
-                  ? `Applying to ${selectedEmployees.size} employee(s)`
-                  : adjustmentModal.name}
+                  ? `${selectedEmployees.size} selected`
+                  : `${adjustmentModal.first_name} ${adjustmentModal.last_name}`}
               </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Adjustment Type
-                  </label>
-                  <select
-                    value={adjustmentType}
-                    onChange={(e) => setAdjustmentType(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-base text-gray-900 outline-none focus:ring-2 focus:ring-purple-600"
-                  >
-                    <option value="Increase">Increase (Salary Raise)</option>
-                    <option value="Bonus">Bonus</option>
-                    <option value="Decrease">Decrease</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Amount (₱)
-                  </label>
-                  <input
-                    type="number"
-                    value={adjustmentAmount}
-                    onChange={(e) => setAdjustmentAmount(e.target.value)}
-                    placeholder="Enter amount"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-base text-gray-900 outline-none focus:ring-2 focus:ring-purple-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Reason / Notes
-                  </label>
-                  <textarea
-                    value={adjustmentReason}
-                    onChange={(e) => setAdjustmentReason(e.target.value)}
-                    placeholder="Enter reason for adjustment"
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-base text-gray-900 outline-none focus:ring-2 focus:ring-purple-600"
-                  />
-                </div>
+              <select
+                value={adjustmentType}
+                onChange={(e) => setAdjustmentType(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+              >
+                <option value="Increase">Increase (Raise)</option>
+                <option value="Bonus">Bonus</option>
+                <option value="Decrease">Decrease</option>
+              </select>
+              <input
+                type="number"
+                value={adjustmentAmount}
+                onChange={(e) => setAdjustmentAmount(e.target.value)}
+                placeholder="Amount (₱)"
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+              />
+              <textarea
+                value={adjustmentReason}
+                onChange={(e) => setAdjustmentReason(e.target.value)}
+                placeholder="Reason..."
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+              />
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={closeAdjustmentModal}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdjustment}
+                  disabled={adjustmentMutation.isPending}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium"
+                >
+                  {adjustmentMutation.isPending ? "Applying..." : "Apply"}
+                </button>
               </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 bg-gray-50">
-              <button
-                type="button"
-                onClick={() => setAdjustmentModal(null)}
-                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAdjustment}
-                className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 shadow-sm hover:opacity-90 transition-opacity cursor-pointer border-0"
-              >
-                Apply Adjustment
-              </button>
             </div>
           </div>
         </div>

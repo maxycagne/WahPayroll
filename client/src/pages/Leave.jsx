@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { URL } from "../assets/constant";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const leaveTypes = [
   "Birthday Leave",
@@ -48,7 +49,7 @@ const badgeClass = {
   Pending: "bg-yellow-100 text-yellow-800",
 };
 
-// --- UPDATED CALENDAR COMPONENT ---
+// --- CALENDAR COMPONENT (UI UNCHANGED) ---
 function LeaveCalendar({ leaves }) {
   const [viewDate, setViewDate] = useState(new Date());
   const year = viewDate.getFullYear();
@@ -62,7 +63,6 @@ function LeaveCalendar({ leaves }) {
 
   const [selectedDate, setSelectedDate] = useState(null);
 
-  // Now color-coded by STATUS instead of Leave Type
   const statusColors = {
     Approved: {
       bg: "bg-green-50",
@@ -81,7 +81,6 @@ function LeaveCalendar({ leaves }) {
     },
   };
 
-  // We no longer filter out 'Denied' leaves so they show up on the calendar in Red
   function getLeavesForDate(dateStr) {
     return leaves.filter((l) => isInRange(dateStr, l.date_from, l.date_to));
   }
@@ -106,7 +105,6 @@ function LeaveCalendar({ leaves }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-      {/* Updated Legend */}
       <div className="mb-6 pb-6 border-b border-gray-200">
         <h4 className="m-0 text-sm font-semibold text-gray-900 mb-3">
           Leave Status Legend
@@ -156,7 +154,6 @@ function LeaveCalendar({ leaves }) {
           const dayLeaves = getLeavesForDate(dateStr);
           const isSelected = day === selectedDate;
 
-          // Get the status of the first leave on this day to color the cell
           const firstLeaveStatus =
             dayLeaves.length > 0 ? dayLeaves[0].status : null;
           const colorConfig = firstLeaveStatus
@@ -195,7 +192,6 @@ function LeaveCalendar({ leaves }) {
                     >
                       {leave.leave_type}
                     </span>
-                    {/* Explicitly Show Approve/Deny/Pending inside the cell */}
                     <span
                       className={`truncate font-bold text-[0.55rem] uppercase ${isSelected ? "text-white" : statusColors[leave.status]?.text}`}
                     >
@@ -256,14 +252,12 @@ function LeaveCalendar({ leaves }) {
   );
 }
 
-// --- MAIN PAGE COMPONENT ---
+// --- MAIN PAGE COMPONENT (REFACTORED WITH TANSTACK) ---
 export default function Leave() {
-  const [leaves, setLeaves] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [formError, setFormError] = useState("");
   const [formData, setFormData] = useState({
     emp_id: "",
     leaveType: "Birthday Leave",
@@ -272,140 +266,111 @@ export default function Leave() {
     reason: "",
     priority: "Low",
   });
-  const [formError, setFormError] = useState("");
 
-  const fetchLeaves = async () => {
-    try {
+  // --- QUERIES ---
+  const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
+    queryKey: ["leaves"],
+    queryFn: async () => {
       const res = await fetch(`${URL}/api/employees/leaves`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-        },
+        headers: { "ngrok-skip-browser-warning": "69420" },
       });
-      const data = await res.json();
-      setLeaves(Array.isArray(data) ? data : []);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+      if (!res.ok) throw new Error("Failed to fetch leaves");
+      return res.json();
+    },
+  });
 
-  const fetchEmployees = async () => {
-    try {
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => {
       const res = await fetch(`${URL}/api/employees`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-        },
+        headers: { "ngrok-skip-browser-warning": "69420" },
       });
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setEmployees(data);
-        if (data.length > 0)
-          setFormData((prev) => ({ ...prev, emp_id: data[0].emp_id }));
+      if (Array.isArray(data) && data.length > 0 && !formData.emp_id) {
+        setFormData((prev) => ({ ...prev, emp_id: data[0].emp_id }));
       }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+      return data;
+    },
+  });
 
-  useEffect(() => {
-    fetchLeaves();
-    fetchEmployees();
-  }, []);
-
-  const handleUpdateStatus = async (id, newStatus) => {
-    try {
+  // --- MUTATIONS ---
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
       const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status }),
       });
-      if (res.ok) fetchLeaves();
-    } catch (error) {
-      console.error("Error updating status", error);
-    }
+      if (!res.ok) throw new Error("Status update failed");
+    },
+    onSuccess: () => queryClient.invalidateQueries(["leaves"]),
+  });
+
+  const submitLeaveMutation = useMutation({
+    mutationFn: async (newLeave) => {
+      const res = await fetch(`${URL}/api/employees/leaves`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newLeave),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to submit leave");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["leaves"]);
+      alert("Leave application submitted successfully!");
+      setShowForm(false);
+      setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
+    },
+    onError: (err) => setFormError(err.message),
+  });
+
+  // --- HANDLERS ---
+  const handleUpdateStatus = (id, newStatus) => {
+    updateStatusMutation.mutate({ id, status: newStatus });
   };
 
-  const handleSubmitLeave = async (e) => {
+  const handleSubmitLeave = (e) => {
     e.preventDefault();
     if (!formData.emp_id || !formData.fromDate || !formData.toDate) {
       setFormError("Please fill all required fields.");
       return;
     }
 
-    try {
-      const res = await fetch(`${URL}/api/employees/leaves`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-        },
-        body: JSON.stringify({
-          emp_id: formData.emp_id,
-          leave_type: formData.leaveType,
-          date_from: formData.fromDate,
-          date_to: formData.toDate,
-          priority: formData.priority,
-          supervisor_remarks: formData.reason,
-        }),
-      });
-
-      if (res.ok) {
-        alert("Leave application submitted successfully!");
-        setShowForm(false);
-        fetchLeaves();
-        setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
-      } else {
-        const data = await res.json();
-        setFormError(data.message || "Failed to submit leave");
-      }
-    } catch (error) {
-      console.error(error);
-      setFormError("Server error occurred.");
-    }
+    submitLeaveMutation.mutate({
+      emp_id: formData.emp_id,
+      leave_type: formData.leaveType,
+      date_from: formData.fromDate,
+      date_to: formData.toDate,
+      priority: formData.priority,
+      supervisor_remarks: formData.reason,
+    });
   };
 
-  // --- Form Logic Helpers ---
   const handleLeaveTypeChange = (e) => {
     const newLeaveType = e.target.value;
-
-    // If Birthday Leave, auto copy the fromDate to toDate if it exists. Otherwise clear.
     const newToDate =
       newLeaveType === "Birthday Leave" && formData.fromDate
         ? formData.fromDate
         : "";
-
-    setFormData({
-      ...formData,
-      leaveType: newLeaveType,
-      toDate: newToDate,
-    });
+    setFormData({ ...formData, leaveType: newLeaveType, toDate: newToDate });
     setFormError("");
   };
 
   const handleFromDateChange = (e) => {
     const newFromDate = e.target.value;
-
-    // If Birthday Leave, toDate matches fromDate. Otherwise leave empty for user to pick.
     const newToDate =
       formData.leaveType === "Birthday Leave" ? newFromDate : "";
-
-    setFormData({
-      ...formData,
-      fromDate: newFromDate,
-      toDate: newToDate,
-    });
+    setFormData({ ...formData, fromDate: newFromDate, toDate: newToDate });
     setFormError("");
   };
 
   const handleToDateChange = (e) => {
     const toDate = e.target.value;
     const policy = leavePolicy[formData.leaveType];
-
     if (formData.fromDate && toDate) {
       const businessDays = calculateBusinessDays(
         new Date(formData.fromDate),
@@ -428,19 +393,14 @@ export default function Leave() {
     const startDate = new Date(formData.fromDate);
     let daysAdded = 0;
     const maxDays = policy.maxDays;
-
     while (daysAdded < maxDays) {
       startDate.setDate(startDate.getDate() + 1);
-      if (startDate.getDay() !== 0 && startDate.getDay() !== 6) {
-        daysAdded++;
-      }
+      if (startDate.getDay() !== 0 && startDate.getDay() !== 6) daysAdded++;
     }
     return startDate.toISOString().split("T")[0];
   };
 
-  const isToDateDisabled = formData.leaveType === "Birthday Leave";
-
-  if (loading)
+  if (isLoadingLeaves)
     return <div className="p-6 font-bold">Loading Leave Data...</div>;
 
   return (
@@ -544,18 +504,11 @@ export default function Leave() {
                 required
                 value={formData.toDate}
                 onChange={handleToDateChange}
-                disabled={isToDateDisabled}
+                disabled={formData.leaveType === "Birthday Leave"}
                 max={getMaxToDate()}
                 min={formData.fromDate}
-                className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${
-                  isToDateDisabled
-                    ? "bg-gray-100 cursor-not-allowed text-gray-500"
-                    : ""
-                }`}
+                className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
               />
-              {isToDateDisabled && (
-                <p className="text-xs text-gray-500">Auto-set to same day</p>
-              )}
             </div>
             <div className="flex flex-col gap-2 md:col-span-3">
               <label className="text-sm font-semibold text-gray-700">
@@ -591,25 +544,22 @@ export default function Leave() {
               <button
                 type="button"
                 className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
-                onClick={() => {
-                  setShowForm(false);
-                  setFormError("");
-                }}
+                onClick={() => setShowForm(false)}
               >
                 Cancel
               </button>
               <button
                 type="submit"
+                disabled={submitLeaveMutation.isPending}
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
               >
-                Submit
+                {submitLeaveMutation.isPending ? "Submitting..." : "Submit"}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Requests Table */}
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
         <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
           <h3 className="m-0 text-lg font-semibold text-gray-900">
