@@ -1,181 +1,386 @@
-import { useState } from 'react'
-
-const sampleEmployees = [
-  { id: 'WAH-002', name: 'Rose Ann Biag', designation: 'Manager', position: 'Manager', status: 'Permanent', email: 'roseann@wah.org', dob: '1990-07-22', hired: '2019-03-01' },
-  { id: 'WAH-003', name: 'Jhuvy Bondoc', designation: 'Supervising Partner', position: 'Finance and Operations', status: 'Permanent', email: 'jhuvy@wah.org', dob: '1992-11-05', hired: '2020-06-10' },
-  { id: 'WAH-004', name: 'Anna Katrina Yturralde', designation: 'Supervising Partner', position: 'Health Program', status: 'Permanent', email: 'anna@wah.org', dob: '1991-02-18', hired: '2020-06-10' },
-  { id: 'WAH-005', name: 'Meryll Jen Lee', designation: 'Assistant Partner', position: 'Finance & Operations', status: 'Casual', email: 'meryll@wah.org', dob: '1996-09-30', hired: '2021-01-12' },
-  { id: 'WAH-006', name: 'Jaline Latoga', designation: 'Admin & HR Partner', position: 'Operations', status: 'Permanent', email: 'jaline@wah.org', dob: '1994-03-14', hired: '2021-01-12' },
-  { id: 'WAH-007', name: 'Dominic Domantay', designation: 'Health Program Partner', position: 'Health Program', status: 'PGT Employee', email: 'dominic@wah.org', dob: '1997-08-25', hired: '2022-02-01' },
-  { id: 'WAH-008', name: 'Carla Shey Aguinaldo', designation: 'Health Program Partner', position: 'Health Program', status: 'PGT Employee', email: 'carla@wah.org', dob: '1998-12-01', hired: '2022-02-01' },
-  { id: 'WAH-009', name: 'Robert Michael Martinez', designation: 'Supervising Partner', position: 'Network & Systems', status: 'Permanent', email: 'robert@wah.org', dob: '1993-06-20', hired: '2020-08-15' },
-  { id: 'WAH-010', name: 'John Vincent Antonio', designation: 'Senior Partner', position: 'Platform Innovation', status: 'Permanent', email: 'john@wah.org', dob: '1995-01-10', hired: '2021-05-20' },
-]
-
-const positions = [
-  'Operations',
-  'Finance and Operations',
-  'Health Program',
-  'Platform Innovation',
-  'Network & Systems',
-]
-
-function getNextId(employees) {
-  const maxNum = employees.reduce((max, e) => {
-    const n = parseInt(e.id.replace('WAH-', ''), 10)
-    return n > max ? n : max
-  }, 0)
-  return 'WAH-' + String(maxNum + 1).padStart(3, '0')
-}
-
-const statusClasses = {
-  Permanent: 'bg-green-100 text-green-800',
-  Casual: 'bg-blue-100 text-blue-900',
-  'PGT Employee': 'bg-yellow-100 text-yellow-800',
-  'Job Order': 'bg-gray-200 text-gray-700',
-}
+import { useState, useEffect } from "react";
 
 export default function Employees() {
-  const [search, setSearch] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [firstName, setFirstName] = useState('')
+  const [employees, setEmployees] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const nextId = getNextId(sampleEmployees)
-  const autoPassword = nextId + firstName
+  // Form State for new employee
+  const [formData, setFormData] = useState({
+    emp_id: "",
+    first_name: "",
+    middle_initial: "", // <-- Added Middle Initial
+    last_name: "",
+    designation: "",
+    position: "",
+    status: "Permanent",
+    email: "",
+    dob: "",
+    hired_date: "",
+  });
 
-  const filtered = sampleEmployees.filter(
-    (e) =>
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      e.id.toLowerCase().includes(search.toLowerCase())
-  )
+  const statusClasses = {
+    Permanent: "bg-green-100 text-green-800",
+    Casual: "bg-blue-100 text-blue-800",
+    "Job Order": "bg-purple-100 text-purple-800",
+    "PGT Employee": "bg-orange-100 text-orange-800",
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/employees");
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        setEmployees(data);
+      } else {
+        setEmployees([]);
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching employees:", err);
+      setEmployees([]);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:5000/api/employees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setIsModalOpen(false);
+        fetchEmployees(); // Refresh the table
+        setFormData({
+          emp_id: "",
+          first_name: "",
+          middle_initial: "", // Reset field
+          last_name: "",
+          designation: "",
+          position: "",
+          status: "Permanent",
+          email: "",
+          dob: "",
+          hired_date: "",
+        });
+        alert("Employee added successfully!");
+      } else {
+        alert(`Failed to add employee: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error adding employee:", error);
+      alert("Server error while adding employee.");
+    }
+  };
+
+  const handleDelete = async (emp_id) => {
+    if (window.confirm(`Are you sure you want to delete employee ${emp_id}?`)) {
+      try {
+        const res = await fetch(
+          `http://localhost:5000/api/employees/${emp_id}`,
+          {
+            method: "DELETE",
+          },
+        );
+        if (res.ok) {
+          fetchEmployees(); // Refresh after deleting
+        } else {
+          alert("Failed to delete employee");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const filtered = employees.filter((emp) => {
+    const s = searchTerm.toLowerCase();
+    // Include middle initial in search if it exists
+    const mi = emp.middle_initial ? `${emp.middle_initial} ` : "";
+    const fullName = `${emp.first_name} ${mi}${emp.last_name}`.toLowerCase();
+    return emp.emp_id.toLowerCase().includes(s) || fullName.includes(s);
+  });
+
+  if (loading)
+    return <div className="p-6 text-black font-bold">Loading Employees...</div>;
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">Employee Management</h1>
-        <button className="px-5 py-2 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90 transition-opacity" onClick={() => setShowModal(true)}>
-          + Add Employee
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+          Employee Management
+        </h1>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="px-5 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-800 shadow-md hover:opacity-90 transition-opacity"
+        >
+          + Add New Employee
         </button>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg border border-gray-200" onClick={(e) => e.stopPropagation()}>
-            <div className="border-b border-purple-200 px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700">
-              <h3 className="m-0 text-xl font-semibold text-white">Add New Employee</h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Employee ID</label>
-                <input type="text" value={nextId} disabled className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none bg-gray-50 text-gray-500" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">First Name</label>
-                <input
-                  type="text"
-                  placeholder="First Name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Last Name</label>
-                <input type="text" placeholder="Last Name" className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">M.I.</label>
-                <input type="text" placeholder="M.I." className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Designation</label>
-                <input type="text" placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Position</label>
-                <select defaultValue="" className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                  <option value="" disabled>Select Position</option>
-                  {positions.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Status</label>
-                <select className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                  <option>Permanent</option>
-                  <option>Casual</option>
-                  <option>PGT Employee</option>
-                  <option>Job Order</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Email</label>
-                <input type="email" placeholder="Email" className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Date of Birth</label>
-                <input type="date" className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Hired Date</label>
-                <input type="date" className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-              </div>
-              <div className="flex flex-col gap-2 md:col-span-2">
-                <label className="text-sm font-semibold text-gray-700">Password</label>
-                <input type="text" value={autoPassword} disabled className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none bg-gray-50 text-gray-500" />
-              </div>
-            </div>
-            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end gap-3">
-              <button className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => { setShowModal(false); setFirstName('') }}>Cancel</button>
-              <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity">Save Employee</button>
-            </div>
-          </div>
+      {/* Main Table Card */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+          <input
+            type="text"
+            placeholder="Search by ID or Name..."
+            className="w-full max-w-md border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-      )}
 
-      <div className="mb-4">
-        <input
-          type="text"
-          className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          placeholder="Search by name or ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Employee ID</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Designation</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Position</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Hired Date</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Designation
+                </th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filtered.map((emp) => (
-                <tr key={emp.id} className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-3 text-sm text-gray-900">{emp.id}</td>
-                  <td className="px-6 py-3 text-sm text-gray-700">{emp.name}</td>
-                  <td className="px-6 py-3 text-sm text-gray-700">{emp.designation}</td>
-                  <td className="px-6 py-3 text-sm text-gray-700">{emp.position}</td>
-                  <td className="px-6 py-3 text-sm">
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusClasses[emp.status] || ''}`}>{emp.status}</span>
+                <tr
+                  key={emp.emp_id}
+                  className="hover:bg-gray-50 transition-colors duration-150"
+                >
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    {emp.emp_id}
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-700">{emp.email}</td>
-                  <td className="px-6 py-3 text-sm text-gray-700">{emp.hired}</td>
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700">
+                    {emp.first_name}{" "}
+                    {emp.middle_initial ? `${emp.middle_initial}. ` : ""}
+                    {emp.last_name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {emp.designation}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[emp.status] || "bg-gray-100 text-gray-800"}`}
+                    >
+                      {emp.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {emp.email}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-right">
+                    <button
+                      onClick={() => handleDelete(emp.emp_id)}
+                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer border-0 bg-transparent"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Add Employee Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-white text-lg font-bold m-0">
+                Add New Employee
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-white hover:text-gray-200 text-2xl leading-none border-0 bg-transparent cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Employee ID
+                  </label>
+                  <input
+                    required
+                    name="emp_id"
+                    value={formData.emp_id}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    placeholder="WAH-00X"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Email Address
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    placeholder="name@wah.org"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    First Name
+                  </label>
+                  <input
+                    required
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    M.I. (Optional)
+                  </label>
+                  <input
+                    name="middle_initial"
+                    value={formData.middle_initial}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    placeholder="e.g. A"
+                    maxLength="5"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Last Name
+                  </label>
+                  <input
+                    required
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Designation
+                  </label>
+                  <input
+                    required
+                    name="designation"
+                    value={formData.designation}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    placeholder="e.g. Manager"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Position
+                  </label>
+                  <input
+                    required
+                    name="position"
+                    value={formData.position}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    placeholder="e.g. IT Department"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  >
+                    <option>Permanent</option>
+                    <option>Casual</option>
+                    <option>Job Order</option>
+                    <option>PGT Employee</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    name="dob"
+                    value={formData.dob}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Hired Date
+                  </label>
+                  <input
+                    type="date"
+                    name="hired_date"
+                    value={formData.hired_date}
+                    onChange={handleInputChange}
+                    className="border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium cursor-pointer border-0"
+                >
+                  Save Employee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
