@@ -276,7 +276,13 @@ export default function Leave() {
 
   const fetchLeaves = async () => {
     try {
-      const res = await fetch(`${URL}/api/employees/leaves`);
+      const res = await fetch(`${URL}/api/employees/leaves`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+        },
+      });
       const data = await res.json();
       setLeaves(Array.isArray(data) ? data : []);
       setLoading(false);
@@ -288,7 +294,13 @@ export default function Leave() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch(`${URL}/api/employees`);
+      const res = await fetch(`${URL}/api/employees`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+        },
+      });
       const data = await res.json();
       if (Array.isArray(data)) {
         setEmployees(data);
@@ -328,7 +340,10 @@ export default function Leave() {
     try {
       const res = await fetch(`${URL}/api/employees/leaves`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+        },
         body: JSON.stringify({
           emp_id: formData.emp_id,
           leave_type: formData.leaveType,

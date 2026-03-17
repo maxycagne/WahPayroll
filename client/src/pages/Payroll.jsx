@@ -28,7 +28,13 @@ export default function Payroll() {
   // Fetch Payroll Data
   const fetchPayroll = async () => {
     try {
-      const res = await fetch(`${URL}/api/employees/payroll`);
+      const res = await fetch(`${URL}/api/employees/payroll`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+        },
+      });
       const data = await res.json();
       if (Array.isArray(data)) {
         setPayrollData(data);
@@ -69,7 +75,10 @@ export default function Payroll() {
     try {
       const res = await fetch(`${URL}/api/employees/salary-adjustment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+        },
         body: JSON.stringify({
           emp_ids: empIdsToAdjust,
           type:

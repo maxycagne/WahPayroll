@@ -30,7 +30,13 @@ export default function Employees() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/employees");
+      const res = await fetch("http://localhost:5000/api/employees", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+        },
+      });
       const data = await res.json();
 
       if (Array.isArray(data)) {
@@ -59,7 +65,10 @@ export default function Employees() {
     try {
       const res = await fetch(`${URL}/api/employees`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+        },
         body: JSON.stringify(formData),
       });
 
@@ -95,6 +104,10 @@ export default function Employees() {
       try {
         const res = await fetch(`${URL}/api/employees/${emp_id}`, {
           method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "69420",
+          },
         });
         if (res.ok) {
           fetchEmployees(); // Refresh after deleting

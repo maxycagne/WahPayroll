@@ -20,7 +20,14 @@ export default function Attendance() {
 
   const fetchAttendance = async () => {
     try {
-      const res = await fetch(`${URL}/api/employees/attendance`);
+      const res = await fetch(`${URL}/api/employees/attendance`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+        },
+      });
+
       const data = await res.json();
       if (Array.isArray(data)) {
         setAttendance(data);
