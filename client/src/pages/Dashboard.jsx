@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { URL } from "../assets/constant";
-
+import { useQuery } from "@tanstack/react-query";
 export default function Dashboard() {
   const currentMonth = new Date().toLocaleString("default", {
     month: "long",
@@ -16,69 +16,52 @@ export default function Dashboard() {
   const priorityOrder = { High: 0, Medium: 1, Low: 2 };
 
   // Database States
-  const [pendingLeaveApprovals, setPendingLeaveApprovals] = useState([]);
-  const [leaveEmployees, setLeaveEmployees] = useState([]);
-  const [absentEmployees, setAbsentEmployees] = useState([]);
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [employeeLeaveBalances, setEmployeeLeaveBalances] = useState([]);
 
-  const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
 
   const fetchDashboardData = async () => {
-    try {
-      const res = await fetch(`${URL}/api/employees/dashboard-summary`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
-        },
-      });
-      const data = await res.json();
+    const res = await fetch(`${URL}/api/employees/dashboard-summary`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+      },
+    });
+    const data = await res.json();
 
-      setPendingLeaveApprovals(data.pendingLeaves || []);
-      setLeaveEmployees(data.onLeave || []);
-      setAbsentEmployees(data.absents || []);
-      setEmployeeLeaveBalances(data.balances || []);
-      // Optional: Set recent activities if your backend returns them
-      setRecentActivities(data.recentActivities || []);
-      setLoading(false);
-    } catch (error) {
-      console.error("Dashboard fetch error:", error);
-      setLoading(false);
-    }
+    return data;
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
+  const dashboardQuery = useQuery({
+    queryKey: ["dashboardSummary"],
+    queryFn: fetchDashboardData,
+  });
   const cards = [
     {
       label: "Pending Leave Approval",
-      value: pendingLeaveApprovals.length,
+      value: dashboardQuery.data?.pendingLeaves?.length || 0,
       borderColor: "#5a1ea2",
       clickable: true,
       modalKey: "pending",
     },
     {
       label: "On Leave",
-      value: leaveEmployees.length,
+      value: dashboardQuery.data?.onLeave?.length || 0,
       borderColor: "#d4a017",
       clickable: true,
       modalKey: "leave",
     },
     {
       label: "Absent",
-      value: absentEmployees.length,
+      value: dashboardQuery.data?.absents?.length || 0,
       borderColor: "#c0392b",
       clickable: true,
       modalKey: "absent",
     },
     {
       label: "Recent Activity",
-      value: recentActivities.length,
+      value: dashboardQuery.data?.recentActivities?.length || 0,
       borderColor: "#0066cc",
       clickable: true,
       modalKey: "recent-activity",
@@ -113,7 +96,7 @@ export default function Dashboard() {
     setApprovedLeaves(new Set());
   };
 
-  if (loading)
+  if (dashboardQuery.isLoading)
     return (
       <div className="p-6 text-gray-900 font-bold">Loading Dashboard...</div>
     );
@@ -191,7 +174,7 @@ export default function Dashboard() {
             <div className="overflow-y-auto px-6 py-4 max-h-[60vh]">
               {activeModal === "pending" && (
                 <div className="space-y-3">
-                  {[...pendingLeaveApprovals]
+                  {[...(dashboardQuery.data.pendingLeaves || [])]
                     .sort(
                       (a, b) =>
                         priorityOrder[a.priority] - priorityOrder[b.priority],
@@ -260,7 +243,7 @@ export default function Dashboard() {
 
               {activeModal === "leave" && (
                 <div className="space-y-3">
-                  {leaveEmployees.map((employee, idx) => (
+                  {dashboardQuery.data?.onLeave?.map((employee, idx) => (
                     <div
                       key={idx}
                       className="flex items-start gap-4 rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-150"
@@ -283,7 +266,7 @@ export default function Dashboard() {
 
               {activeModal === "absent" && (
                 <div className="space-y-3">
-                  {absentEmployees.map((employee, idx) => (
+                  {dashboardQuery.data?.absents?.map((employee, idx) => (
                     <div
                       key={idx}
                       className="flex items-start gap-4 rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-150"
@@ -309,45 +292,49 @@ export default function Dashboard() {
 
               {activeModal === "recent-activity" && (
                 <div className="space-y-3">
-                  {recentActivities.map((activity, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-150"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="m-0 text-sm text-gray-500">
-                            {activity.date}
+                  {dashboardQuery.data?.recentActivities.map(
+                    (activity, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-150"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="m-0 text-sm text-gray-500">
+                              {activity.date}
+                            </p>
+                            <p className="m-0 text-sm font-semibold text-gray-900 mt-1">
+                              {activity.employee}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                              activity.status === "Pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : activity.status === "Approved"
+                                  ? "bg-green-100 text-green-800"
+                                  : activity.status === "Denied"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {activity.status}
+                          </span>
+                        </div>
+                        <div className="mt-2">
+                          <p className="m-0 text-xs font-medium text-gray-600">
+                            Activity Type:{" "}
+                            <span className="text-gray-900">
+                              {activity.type}
+                            </span>
                           </p>
-                          <p className="m-0 text-sm font-semibold text-gray-900 mt-1">
-                            {activity.employee}
+                          <p className="m-0 text-xs text-gray-700 mt-1">
+                            {activity.activity}
                           </p>
                         </div>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            activity.status === "Pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : activity.status === "Approved"
-                                ? "bg-green-100 text-green-800"
-                                : activity.status === "Denied"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {activity.status}
-                        </span>
                       </div>
-                      <div className="mt-2">
-                        <p className="m-0 text-xs font-medium text-gray-600">
-                          Activity Type:{" "}
-                          <span className="text-gray-900">{activity.type}</span>
-                        </p>
-                        <p className="m-0 text-xs text-gray-700 mt-1">
-                          {activity.activity}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               )}
             </div>
@@ -392,7 +379,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {employeeLeaveBalances.map((employee, idx) => (
+              {dashboardQuery.data.balances.map((employee, idx) => (
                 <tr
                   key={idx}
                   className="hover:bg-gray-50 transition-colors duration-150"
