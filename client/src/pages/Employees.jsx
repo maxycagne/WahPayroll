@@ -30,13 +30,16 @@ export default function Employees() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/employees", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+      const res = await fetch(
+        "https://linsey-nonprinting-abusedly.ngrok-free.dev/api/employees",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+          },
         },
-      });
+      );
       const data = await res.json();
 
       if (Array.isArray(data)) {
