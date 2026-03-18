@@ -1,1 +1,1 @@
-export const URL = "https://yummy-sides-act.loca.lt";
+export const URL = "https://plenty-masks-warn.loca.lt";
