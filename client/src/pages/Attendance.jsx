@@ -173,7 +173,7 @@ export default function Attendance() {
                         <span
                           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${getLeaveHighlightColor(a.leave_balance)}`}
                         >
-                          {Number(a.leave_balance)} / {maxAllocation}
+                          {Number(a.leave_balance)} / {a.leave_balance}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm">

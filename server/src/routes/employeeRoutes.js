@@ -12,6 +12,7 @@ import {
   deleteEmployee,
   fileLeave,
   adjustLeaveBalance,
+  updateBaseSalary,
 } from "../controllers/employeeController.js";
 
 const router = express.Router();
@@ -22,7 +23,7 @@ router.get("/dashboard-summary", getDashboardSummary);
 // Employees
 router.get("/", getAllEmployees);
 router.post("/", createEmployee);
-
+router.put("/base-salary/:id", updateBaseSalary);
 // Attendance & Leave
 router.get("/attendance", getAttendance);
 router.get("/leaves", getAllLeaves);
@@ -34,4 +35,5 @@ router.put("/leave-balance/:id", adjustLeaveBalance);
 // Payroll
 router.get("/payroll", getAllPayroll);
 router.delete("/employees/:id", deleteEmployee);
+router.delete("/:id", deleteEmployee);
 export default router;

@@ -61,8 +61,17 @@ export const createEmployee = async (req, res) => {
 export const deleteEmployee = async (req, res) => {
   const { id } = req.params;
   try {
-    // Because of 'ON DELETE CASCADE' in schema.sql, this safely removes their leaves, attendance, and payroll too
-    await pool.query("DELETE FROM employees WHERE emp_id = ?", [id]);
+    // This deletes the employee. If your DB has ON DELETE CASCADE set up,
+    // it will automatically delete their attendance and leaves too.
+    const [result] = await pool.query(
+      "DELETE FROM employees WHERE emp_id = ?",
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
     res.json({ message: "Employee deleted successfully" });
   } catch (error) {
     console.error("DB Error in deleteEmployee:", error);
@@ -119,6 +128,33 @@ export const getAttendance = async (req, res) => {
   } catch (error) {
     console.error("DB Error in getAttendance:", error);
     res.status(500).json({ message: "Error fetching attendance" });
+  }
+};
+
+// --- Update Base Salary by Position ---
+export const updateBaseSalary = async (req, res) => {
+  const { position, amount } = req.body;
+
+  if (!position || !amount) {
+    return res
+      .status(400)
+      .json({ message: "Position and amount are required." });
+  }
+
+  try {
+    // Update the basic pay for EVERY employee that has this specific position
+    const [result] = await pool.query(
+      "UPDATE employees SET basic_pay = ? WHERE position = ?",
+      [amount, position],
+    );
+
+    res.json({
+      message: "Base salaries updated successfully",
+      employeesAffected: result.affectedRows,
+    });
+  } catch (error) {
+    console.error("DB Error in updateBaseSalary:", error);
+    res.status(500).json({ message: "Error updating base salaries" });
   }
 };
 
