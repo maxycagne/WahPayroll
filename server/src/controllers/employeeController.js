@@ -122,6 +122,68 @@ export const getAttendance = async (req, res) => {
   }
 };
 
+// --- Get Monthly Attendance Summary for the Calendar ---
+export const getAttendanceCalendarSummary = async (req, res) => {
+  const { month, year } = req.query;
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT date, 
+             SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count
+      FROM attendance 
+      WHERE MONTH(date) = ? AND YEAR(date) = ?
+      GROUP BY date
+    `,
+      [month, year],
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getAttendanceCalendarSummary:", error);
+    res.status(500).json({ message: "Error fetching calendar summary" });
+  }
+};
+
+// --- Get Daily Attendance List for a Specific Date ---
+export const getDailyAttendance = async (req, res) => {
+  const { date } = req.query;
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status
+      FROM employees e
+      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = ?
+    `,
+      [date],
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getDailyAttendance:", error);
+    res.status(500).json({ message: "Error fetching daily attendance" });
+  }
+};
+
+// --- Save Bulk Attendance ---
+export const saveBulkAttendance = async (req, res) => {
+  const { date, records } = req.body;
+  try {
+    for (const record of records) {
+      await pool.query(
+        `
+        INSERT INTO attendance (emp_id, date, status) 
+        VALUES (?, ?, ?) 
+        ON DUPLICATE KEY UPDATE status = VALUES(status)
+      `,
+        [record.emp_id, date, record.status],
+      );
+    }
+    res.json({ message: "Attendance saved successfully" });
+  } catch (error) {
+    console.error("DB Error in saveBulkAttendance:", error);
+    res.status(500).json({ message: "Error saving attendance" });
+  }
+};
+
 // New function for Admins to manually adjust leave balances
 export const adjustLeaveBalance = async (req, res) => {
   const { id } = req.params;

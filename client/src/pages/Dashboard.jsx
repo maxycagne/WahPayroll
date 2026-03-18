@@ -26,6 +26,7 @@ export default function Dashboard() {
       headers: {
         "Content-Type": "application/json",
         "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
+        "bypass-tunnel-reminder": "true",
       },
     });
     const data = await res.json();

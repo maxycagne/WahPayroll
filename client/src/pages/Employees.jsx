@@ -37,6 +37,7 @@ export default function Employees() {
         headers: {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
         },
       });
       if (!res.ok) throw new Error("Network response was not ok");
@@ -72,7 +73,10 @@ export default function Employees() {
     mutationFn: async (emp_id) => {
       const res = await fetch(`${URL}/api/employees/${emp_id}`, {
         method: "DELETE",
-        headers: { "ngrok-skip-browser-warning": "69420" },
+        headers: {
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
       });
       if (!res.ok) throw new Error("Delete failed");
     },

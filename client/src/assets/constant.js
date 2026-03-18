@@ -1,1 +1,1 @@
-export const URL = "https://linsey-nonprinting-abusedly.ngrok-free.dev";
+export const URL = "https://yummy-sides-act.loca.lt";

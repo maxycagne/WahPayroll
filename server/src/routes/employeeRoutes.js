@@ -2,36 +2,46 @@ import express from "express";
 import {
   getAllEmployees,
   createEmployee,
+  deleteEmployee,
   getAllLeaves,
   updateLeaveStatus,
+  fileLeave,
   getAllPayroll,
   getAttendance,
+  adjustLeaveBalance,
   getDashboardSummary,
   getSalaryHistory,
   applySalaryAdjustment,
-  deleteEmployee,
-  fileLeave,
-  adjustLeaveBalance,
+  getAttendanceCalendarSummary, // <-- New
+  getDailyAttendance, // <-- New
+  saveBulkAttendance, // <-- New
 } from "../controllers/employeeController.js";
 
 const router = express.Router();
 
-// Dashboard
+// --- Dashboard ---
 router.get("/dashboard-summary", getDashboardSummary);
 
-// Employees
-router.get("/", getAllEmployees);
-router.post("/", createEmployee);
-
-// Attendance & Leave
+// --- Attendance & Calendar ---
 router.get("/attendance", getAttendance);
+router.put("/leave-balance/:id", adjustLeaveBalance);
+router.get("/attendance-summary", getAttendanceCalendarSummary); // Fixes the 404
+router.get("/attendance-daily", getDailyAttendance); // Fixes the 404
+router.post("/attendance-bulk", saveBulkAttendance); // Fixes the 404
+
+// --- Leaves ---
 router.get("/leaves", getAllLeaves);
 router.post("/leaves", fileLeave);
 router.put("/leaves/:id", updateLeaveStatus);
-router.get("/salary-history/:emp_id", getSalaryHistory);
-router.post("/salary-adjustment", applySalaryAdjustment);
-router.put("/leave-balance/:id", adjustLeaveBalance);
-// Payroll
+
+// --- Payroll & Salary ---
 router.get("/payroll", getAllPayroll);
-router.delete("/employees/:id", deleteEmployee);
+router.post("/salary-adjustment", applySalaryAdjustment);
+router.get("/salary-history/:emp_id", getSalaryHistory);
+
+// --- Employees ---
+router.get("/", getAllEmployees);
+router.post("/", createEmployee);
+router.delete("/:id", deleteEmployee);
+
 export default router;
