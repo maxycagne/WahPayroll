@@ -7,6 +7,7 @@ import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
+import HRDashboard from "./pages/HRDashboard";  
 // HR Pages
 import SalaryHistory from "./pages/SalaryHistory";
 import HRReports from "./pages/HRReports";
@@ -277,7 +278,7 @@ function App() {
               </>
             ) : (
               <>
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/dashboard" element={<HRDashboard />} />
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/leave" element={<Leave />} />
