@@ -1,5 +1,22 @@
 import { useState } from "react";
 
+const attendanceTypes = {
+  'Present': { abbr: 'P', color: 'bg-green-100 text-green-800' },
+  'Absent': { abbr: 'A', color: 'bg-red-100 text-red-800' },
+  'Week-Off / Weekends': { abbr: 'WO', color: 'bg-orange-100 text-orange-800' },
+  'Sick Leave': { abbr: 'SL', color: 'bg-blue-100 text-blue-800' },
+  'Un/Scheduled Leave': { abbr: 'V', color: 'bg-purple-100 text-purple-800' },
+  'Work From Home': { abbr: 'WFH', color: 'bg-indigo-100 text-indigo-800' },
+  'Quarantine': { abbr: 'Q', color: 'bg-pink-100 text-pink-800' },
+  'Holiday': { abbr: 'H', color: 'bg-yellow-100 text-yellow-800' },
+  'Birthday Leave': { abbr: 'BL', color: 'bg-pink-200 text-pink-900' },
+  'Late': { abbr: 'L', color: 'bg-yellow-200 text-yellow-900' },
+  'Field': { abbr: 'FLD', color: 'bg-orange-200 text-orange-900' },
+  'PGT Leave': { abbr: 'PGT', color: 'bg-green-200 text-green-900' },
+  'Maternity Leave': { abbr: 'ML', color: 'bg-cyan-100 text-cyan-800' },
+  'Team Building': { abbr: 'TB', color: 'bg-red-900 text-white' },
+};
+
 export default function HRDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
@@ -95,8 +112,8 @@ export default function HRDashboard() {
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-700">2026-03-18</td>
                 <td className="px-6 py-3 text-sm">
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                    Present
+                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${attendanceTypes['Present']?.color}`}>
+                    {attendanceTypes['Present']?.abbr} - Present
                   </span>
                 </td>
               </tr>
@@ -106,8 +123,8 @@ export default function HRDashboard() {
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-700">2026-03-18</td>
                 <td className="px-6 py-3 text-sm">
-                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
-                    On Leave
+                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${attendanceTypes['Holiday']?.color}`}>
+                    {attendanceTypes['Holiday']?.abbr} - Holiday
                   </span>
                 </td>
               </tr>
@@ -117,8 +134,8 @@ export default function HRDashboard() {
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-700">2026-03-18</td>
                 <td className="px-6 py-3 text-sm">
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                    Present
+                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${attendanceTypes['Present']?.color}`}>
+                    {attendanceTypes['Present']?.abbr} - Present
                   </span>
                 </td>
               </tr>
@@ -128,8 +145,8 @@ export default function HRDashboard() {
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-700">2026-03-18</td>
                 <td className="px-6 py-3 text-sm">
-                  <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                    Absent
+                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${attendanceTypes['Absent']?.color}`}>
+                    {attendanceTypes['Absent']?.abbr} - Absent
                   </span>
                 </td>
               </tr>
