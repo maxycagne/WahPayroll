@@ -1,44 +1,52 @@
 import pool from "../config/db.js";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
-  try {
-    const [users] = await pool.query(
-      `SELECT u.*, r.name as role_name 
-       FROM users u 
-       JOIN roles r ON u.role_id = r.id 
-       WHERE u.email = ?`,
-      [email],
-    );
 
-    if (users.length === 0) {
-      return res.status(401).json({ message: "Invalid credentials" });
+  try {
+    const [rows] = await pool.query("SELECT * FROM employees WHERE email = ?", [
+      email,
+    ]);
+
+    if (rows.length === 0) {
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const user = users[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const user = rows[0];
+
+    // Check password (handles both bcrypt hashes and our plain-text testing passwords)
+    let isMatch = false;
+    if (user.password.startsWith("$2b$") || user.password.startsWith("$2a$")) {
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      isMatch = password === user.password;
+    }
 
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // Generate JWT Token
     const token = jwt.sign(
-      { id: user.id, role: user.role_name },
-      process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "8h" },
+      { emp_id: user.emp_id, role: user.role },
+      process.env.JWT_SECRET || "super_secret_wah_key",
+      { expiresIn: "12h" },
     );
 
-    res.status(200).json({
+    // Send token and user data to frontend
+    res.json({
       token,
       user: {
-        id: user.id,
+        emp_id: user.emp_id,
+        name: `${user.first_name} ${user.last_name}`,
         email: user.email,
-        role: user.role_name,
+        role: user.role,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Login Error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
 };

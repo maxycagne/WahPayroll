@@ -106,7 +106,7 @@ const badgeClass = {
   Pending: "bg-yellow-100 text-yellow-800",
 };
 
-// --- CALENDAR COMPONENT (UI UNCHANGED) ---
+// --- CALENDAR COMPONENT ---
 function LeaveCalendar({ leaves }) {
   const [viewDate, setViewDate] = useState(new Date());
   const year = viewDate.getFullYear();
@@ -309,18 +309,24 @@ function LeaveCalendar({ leaves }) {
   );
 }
 
-// --- MAIN PAGE COMPONENT (REFACTORED WITH TANSTACK) ---
+// --- MAIN PAGE COMPONENT ---
 export default function Leave() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("leave"); // "leave" or "offset"
+
+  // Grab the currently logged-in user from localStorage
+  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showOffsetForm, setShowOffsetForm] = useState(false);
   const [formError, setFormError] = useState("");
   const [offsetFormError, setOffsetFormError] = useState("");
   const [offsets, setOffsets] = useState(sampleOffsets);
+
+  // Set the default emp_id to the logged in user
   const [formData, setFormData] = useState({
-    emp_id: "",
+    emp_id: currentUser?.emp_id || "",
     leaveType: "Birthday Leave",
     fromDate: "",
     toDate: "",
@@ -614,19 +620,53 @@ export default function Leave() {
             >
               {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
             </button>
+  
+          {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
+          {currentUser?.role !== "Admin" && (
             <button
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => {
-                setShowForm(!showForm);
-                if (showCalendar) setShowCalendar(false);
-              }}
-            >
-              {showForm ? "✕ Close" : "+ File Leave"}
-            </button>
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => {
+                  setShowForm(!showForm);
+                  if (showCalendar) setShowCalendar(false);
+                }}
+              >
+                {showForm ? "✕ Close" : "+ File Leave"}
+              </button>
+          )}
           </div>
 
           {showCalendar && <LeaveCalendar leaves={leaves} />}
 
+      {showForm && currentUser?.role !== "Admin" && (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
+          <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+            File a Leave Application
+          </h3>
+          {formError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {formError}
+            </div>
+          )}
+          <form
+            onSubmit={handleSubmitLeave}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            {/* LOCKED EMPLOYEE FIELD */}
+            <div className="flex flex-col gap-2 md:col-span-3">
+              <label className="text-sm font-semibold text-gray-700">
+                Filing Leave As
+              </label>
+              <input
+                type="text"
+                disabled
+                value={
+                  currentUser?.name
+                    ? `${currentUser.emp_id} - ${currentUser.name}`
+                    : "Loading..."
+                }
+                className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
+              />
+            </div>
           {showForm && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
               <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
@@ -782,10 +822,12 @@ export default function Leave() {
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
+                    {currentUser?.role !== "RankAndFile" && (
+                  <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
+              </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {leaves.map((l) => (
@@ -815,25 +857,27 @@ export default function Leave() {
                           {l.status}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-sm">
-                        {l.status === "Pending" && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleUpdateStatus(l.id, "Approved")}
-                              className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStatus(l.id, "Denied")}
-                              className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                            >
-                              Deny
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                      {currentUser?.role !== "RankAndFile" && (
+                    <td className="px-6 py-3 text-sm">
+                          {l.status === "Pending" && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateStatus(l.id, "Approved")}
+                                className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(l.id, "Denied")}
+                                className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                </tr>
                   ))}
                 </tbody>
               </table>
