@@ -58,6 +58,59 @@ export const createEmployee = async (req, res) => {
     res.status(500).json({ message: "Error adding employee" });
   }
 };
+
+export const updateEmployee = async (req, res) => {
+  const { id } = req.params;
+  const {
+    first_name,
+    last_name,
+    middle_initial,
+    designation,
+    position,
+    status,
+    email,
+    dob,
+    hired_date,
+  } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE employees
+       SET first_name = ?,
+           last_name = ?,
+           middle_initial = ?,
+           designation = ?,
+           position = ?,
+           status = ?,
+           email = ?,
+           dob = ?,
+           hired_date = ?
+       WHERE emp_id = ?`,
+      [
+        first_name,
+        last_name,
+        middle_initial || null,
+        designation,
+        position,
+        status,
+        email,
+        dob || null,
+        hired_date || null,
+        id,
+      ],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.json({ message: "Employee updated successfully" });
+  } catch (error) {
+    console.error("DB Error in updateEmployee:", error);
+    res.status(500).json({ message: "Error updating employee" });
+  }
+};
+
 export const deleteEmployee = async (req, res) => {
   const { id } = req.params;
   try {
