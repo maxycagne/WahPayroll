@@ -1,0 +1,103 @@
+import { useState } from "react";
+
+export default function Login({ role, onRoleChange, onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onLogin({ email, password });
+  };
+
+  return (
+    <div className="min-h-screen grid place-items-center p-7 bg-gradient-to-br from-[#50109a] to-wah-accent">
+      <div className="w-full max-w-[500px] bg-wah-card rounded-[14px] overflow-hidden shadow-lg">
+        <section className="px-12 py-16 flex flex-col items-center">
+          <img
+            className="w-[150px] h-[150px] object-contain mb-6"
+            src="/images/wah-logo.png"
+            alt="WAH logo"
+          />
+
+          <h1 className="m-0 max-w-[320px] text-center text-[clamp(1.6rem,2vw,1.8rem)] leading-[1.15] text-wah-text">
+            Welcome to Wireless Access For Health Payroll System
+          </h1>
+
+          <form
+            className="mt-[34px] w-full max-w-[340px] grid gap-3"
+            onSubmit={handleSubmit}
+          >
+            <div className="relative w-full h-14">
+              <input
+                required
+                id="email"
+                type="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="off"
+                className="peer w-full h-full border-[1.8px] border-wah-light rounded-[14px] bg-white px-4 pt-3 text-base text-[#1e2430] outline-none transition-colors duration-150 focus:border-wah-mid invalid:border-wah-light"
+              />
+              <label
+                htmlFor="email"
+                className="absolute left-3.5 top-1/2 text-wah-accent pointer-events-none -translate-y-1/2 transition-all duration-150 px-[0.2em] peer-focus:-translate-y-[160%] peer-focus:scale-[0.82] peer-focus:bg-wah-card peer-focus:text-wah-mid peer-valid:-translate-y-[160%] peer-valid:scale-[0.82] peer-valid:bg-wah-card peer-valid:text-wah-mid"
+              >
+                Email
+              </label>
+            </div>
+
+            <div className="relative w-full h-14">
+              <input
+                required
+                id="password"
+                type="password"
+                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="off"
+                className="peer w-full h-full border-[1.8px] border-wah-light rounded-[14px] bg-white px-4 pt-3 text-base text-[#1e2430] outline-none transition-colors duration-150 focus:border-wah-mid"
+              />
+              <label
+                htmlFor="password"
+                className="absolute left-3.5 top-1/2 text-wah-accent pointer-events-none -translate-y-1/2 transition-all duration-150 px-[0.2em] peer-focus:-translate-y-[160%] peer-focus:scale-[0.82] peer-focus:bg-wah-card peer-focus:text-wah-mid peer-valid:-translate-y-[160%] peer-valid:scale-[0.82] peer-valid:bg-wah-card peer-valid:text-wah-mid"
+              >
+                Password
+              </label>
+              <span
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-wah-mid text-sm"
+              >
+                ◉
+              </span>
+            </div>
+
+            <label className="mt-1 flex items-center gap-2 text-wah-text">
+              <input type="checkbox" className="w-4 h-4" />
+              Remember me
+            </label>
+
+            <div className="relative w-full h-14 border-[1.8px] border-wah-light rounded-[14px] bg-white">
+              <select
+                value={role}
+                onChange={(e) => onRoleChange(e.target.value)}
+                className="w-full h-full px-4 text-base text-[#1e2430] outline-none bg-transparent cursor-pointer"
+              >
+                <option value="Admin">Admin</option>
+                <option value="HR">HR</option>
+              </select>
+            </div>
+
+            <div className="mt-2.5 grid grid-cols-1 gap-2.5">
+              <button
+                type="submit"
+                className="h-12 rounded-xl border-0 text-white text-xl font-semibold cursor-pointer bg-gradient-to-r from-wah-primary to-wah-lighter"
+              >
+                Log in
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  );
+}

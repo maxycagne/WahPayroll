@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 const leaveTypes = [
   "Birthday Leave",
@@ -255,6 +257,7 @@ function LeaveCalendar({ leaves }) {
 // --- MAIN PAGE COMPONENT ---
 export default function Leave() {
   const queryClient = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
 
   // Grab the currently logged-in user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -295,7 +298,11 @@ export default function Leave() {
       });
       if (!res.ok) throw new Error("Status update failed");
     },
-    onSuccess: () => queryClient.invalidateQueries(["leaves"]),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["leaves"]);
+      showToast("Leave request updated.");
+    },
+    onError: () => showToast("Failed to update leave request.", "error"),
   });
 
   const submitLeaveMutation = useMutation({
@@ -315,11 +322,14 @@ export default function Leave() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["leaves"]);
-      alert("Leave application submitted successfully!");
+      showToast("Leave application submitted successfully.");
       setShowForm(false);
       setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
     },
-    onError: (err) => setFormError(err.message),
+    onError: (err) => {
+      setFormError(err.message);
+      showToast(err.message || "Failed to submit leave application.", "error");
+    },
   });
 
   // --- HANDLERS ---
@@ -645,6 +655,8 @@ export default function Leave() {
           </table>
         </div>
       </div>
+
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

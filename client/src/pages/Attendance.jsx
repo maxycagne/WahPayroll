@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -14,6 +16,7 @@ const badgeClass = {
 
 export default function Attendance() {
   const queryClient = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
   const [search, setSearch] = useState("");
 
   // Modals State
@@ -87,10 +90,11 @@ export default function Attendance() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
-      alert(`Leave balance updated!`);
+      showToast("Leave balance updated.");
       setAdjModal(null);
       setAdjDays("");
     },
+    onError: () => showToast("Failed to adjust leave balance.", "error"),
   });
 
   const saveDailyAttendanceMutation = useMutation({
@@ -107,9 +111,10 @@ export default function Attendance() {
     onSuccess: () => {
       queryClient.invalidateQueries(["attendance"]);
       queryClient.invalidateQueries(["attendance-calendar"]);
-      alert("Attendance saved successfully!");
+      showToast("Attendance saved successfully.");
       setDailyModalOpen(false);
     },
+    onError: () => showToast("Failed to save attendance.", "error"),
   });
 
   // --- HANDLERS ---
@@ -632,6 +637,8 @@ export default function Attendance() {
           </div>
         </div>
       )}
+
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

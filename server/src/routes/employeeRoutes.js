@@ -3,6 +3,7 @@ import {
   getAllEmployees,
   createEmployee,
   updateEmployee,
+  resetEmployeePassword,
   deleteEmployee,
   getAllLeaves,
   updateLeaveStatus,
@@ -104,6 +105,7 @@ router.get(
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
+router.put("/:id/reset-password", authorizeRoles("Admin"), resetEmployeePassword);
 router.delete("/:id", authorizeRoles("Admin"), deleteEmployee);
 
 export default router;

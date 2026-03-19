@@ -117,6 +117,37 @@ export const updateEmployee = async (req, res) => {
   }
 };
 
+export const resetEmployeePassword = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT emp_id, first_name FROM employees WHERE emp_id = ?",
+      [id],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const employee = rows[0];
+    const autoPassword = `${employee.emp_id}${(employee.first_name || "").replace(/\s+/g, "")}`;
+
+    await pool.query("UPDATE employees SET password = ? WHERE emp_id = ?", [
+      autoPassword,
+      id,
+    ]);
+
+    res.json({
+      message: "Password reset successfully",
+      autoPassword,
+    });
+  } catch (error) {
+    console.error("DB Error in resetEmployeePassword:", error);
+    res.status(500).json({ message: "Error resetting password" });
+  }
+};
+
 export const deleteEmployee = async (req, res) => {
   const { id } = req.params;
   try {
