@@ -9,6 +9,56 @@ const leaveTypes = [
   "PGT Leave",
 ];
 
+function isInRange(date, from, to) {
+  const d = new Date(date).setHours(0, 0, 0, 0);
+  const f = new Date(from).setHours(0, 0, 0, 0);
+  const t = new Date(to).setHours(0, 0, 0, 0);
+  return d >= f && d <= t;
+}
+
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function calculateBusinessDays(startDate, endDate) {
+  let count = 0;
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+
+  while (current <= end) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+// Offset Calculation Utilities
+function calculateEligibleOffsetDays(workingDays, weekendDays) {
+  const REQUIRED_WORKING_DAYS = 22;
+  if (workingDays >= REQUIRED_WORKING_DAYS && weekendDays > 0) {
+    const extra = workingDays - REQUIRED_WORKING_DAYS;
+    return Math.min(extra + weekendDays, 4); // Max 2-4 days
+  }
+  return 0;
+}
+
+const leavePolicy = {
+  "Birthday Leave": { maxDays: 1, excludeWeekends: true },
+  "Vacation Leave": { maxDays: 20, excludeWeekends: true },
+  "Sick Leave": { maxDays: 10, excludeWeekends: true },
+  "PGT Leave": { maxDays: 20, excludeWeekends: true },
+  "Job Order MAC Leave": { maxDays: 12, excludeWeekends: true },
+};
+
+const badgeClass = {
+  Approved: "bg-green-100 text-green-800",
+  Denied: "bg-red-100 text-red-800",
+  Pending: "bg-yellow-100 text-yellow-800",
+};
+
 // Sample offset data structure
 const sampleOffsets = [
   {
@@ -42,69 +92,6 @@ const sampleOffsets = [
     created_at: "2026-03-16",
   },
 ];
-
-function isInRange(date, from, to) {
-  const d = new Date(date).setHours(0, 0, 0, 0);
-  const f = new Date(from).setHours(0, 0, 0, 0);
-  const t = new Date(to).setHours(0, 0, 0, 0);
-  return d >= f && d <= t;
-}
-
-function getDaysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function calculateBusinessDays(startDate, endDate) {
-  let count = 0;
-  const current = new Date(startDate);
-  const end = new Date(endDate);
-
-  while (current <= end) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-// Offset Calculation Utilities
-function calculateWorkingDaysInMonth(year, month) {
-  let count = 0;
-  const daysInMonth = getDaysInMonth(year, month);
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month, d);
-    const dayOfWeek = date.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-  }
-  return count;
-}
-
-function calculateEligibleOffsetDays(workingDays, weekendDays) {
-  const REQUIRED_WORKING_DAYS = 22;
-  if (workingDays >= REQUIRED_WORKING_DAYS && weekendDays > 0) {
-    const extra = workingDays - REQUIRED_WORKING_DAYS;
-    return Math.min(extra + weekendDays, 4); // Max 2-4 days
-  }
-  return 0;
-}
-
-const leavePolicy = {
-  "Birthday Leave": { maxDays: 1, excludeWeekends: true },
-  "Vacation Leave": { maxDays: 20, excludeWeekends: true },
-  "Sick Leave": { maxDays: 10, excludeWeekends: true },
-  "PGT Leave": { maxDays: 20, excludeWeekends: true },
-  "Job Order MAC Leave": { maxDays: 12, excludeWeekends: true },
-};
-
-const badgeClass = {
-  Approved: "bg-green-100 text-green-800",
-  Denied: "bg-red-100 text-red-800",
-  Pending: "bg-yellow-100 text-yellow-800",
-};
 
 // --- CALENDAR COMPONENT ---
 function LeaveCalendar({ leaves }) {
@@ -312,10 +299,18 @@ function LeaveCalendar({ leaves }) {
 // --- MAIN PAGE COMPONENT ---
 export default function Leave() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("leave"); // "leave" or "offset"
+  const [activeTab, setActiveTab] = useState("leave");
 
   // Grab the currently logged-in user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+
+  // ROLE PERMISSIONS
+  // Only these 3 roles can file leaves/offsets
+  const canFile = ["Supervisor", "HR", "RankAndFile"].includes(
+    currentUser?.role,
+  );
+  // Only Admin and Supervisor can approve leaves/offsets
+  const canApprove = ["Admin", "Supervisor"].includes(currentUser?.role);
 
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -335,7 +330,7 @@ export default function Leave() {
   });
 
   const [offsetFormData, setOffsetFormData] = useState({
-    emp_id: "",
+    emp_id: currentUser?.emp_id || "",
     working_days: 22,
     weekend_days: 0,
     requested_days: 0,
@@ -367,10 +362,6 @@ export default function Leave() {
         },
       });
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0 && !formData.emp_id) {
-        setFormData((prev) => ({ ...prev, emp_id: data[0].emp_id }));
-        setOffsetFormData((prev) => ({ ...prev, emp_id: data[0].emp_id }));
-      }
       return data;
     },
   });
@@ -420,16 +411,29 @@ export default function Leave() {
 
   const submitOffsetMutation = useMutation({
     mutationFn: async (newOffset) => {
-      // Simulating API call - replace with actual endpoint
       return new Promise((resolve) => {
         setTimeout(() => resolve(newOffset), 500);
       });
     },
     onSuccess: (data) => {
-      setOffsets([...offsets, { ...data, id: Date.now(), status: "Pending", created_at: new Date().toISOString().split("T")[0] }]);
+      setOffsets([
+        ...offsets,
+        {
+          ...data,
+          id: Date.now(),
+          status: "Pending",
+          created_at: new Date().toISOString().split("T")[0],
+        },
+      ]);
       alert("Offset request submitted successfully!");
       setShowOffsetForm(false);
-      setOffsetFormData({ ...offsetFormData, working_days: 22, weekend_days: 0, requested_days: 0, remarks: "" });
+      setOffsetFormData({
+        ...offsetFormData,
+        working_days: 22,
+        weekend_days: 0,
+        requested_days: 0,
+        remarks: "",
+      });
       setOffsetFormError("");
     },
     onError: (err) => setOffsetFormError(err.message),
@@ -442,11 +446,19 @@ export default function Leave() {
       });
     },
     onSuccess: (data) => {
-      setOffsets(offsets.map(o => 
-        o.id === data.id 
-          ? { ...o, approved_days: data.approved_days, status: "Approved", remarks: data.remarks, supervisor: "sir pey" }
-          : o
-      ));
+      setOffsets(
+        offsets.map((o) =>
+          o.id === data.id
+            ? {
+                ...o,
+                approved_days: data.approved_days,
+                status: "Approved",
+                remarks: data.remarks,
+                supervisor: "sir pey",
+              }
+            : o,
+        ),
+      );
       alert("Offset approved!");
     },
   });
@@ -458,11 +470,18 @@ export default function Leave() {
       });
     },
     onSuccess: (data) => {
-      setOffsets(offsets.map(o => 
-        o.id === data.id 
-          ? { ...o, status: "Denied", remarks: data.remarks, supervisor: "sir pey" }
-          : o
-      ));
+      setOffsets(
+        offsets.map((o) =>
+          o.id === data.id
+            ? {
+                ...o,
+                status: "Denied",
+                remarks: data.remarks,
+                supervisor: "sir pey",
+              }
+            : o,
+        ),
+      );
       alert("Offset denied!");
     },
   });
@@ -475,21 +494,30 @@ export default function Leave() {
   const handleSubmitOffsetForm = (e) => {
     e.preventDefault();
     if (!offsetFormData.emp_id || offsetFormData.working_days < 22) {
-      setOffsetFormError("Employee ID required and minimum 22 working days needed to file offset.");
+      setOffsetFormError(
+        "Employee ID required and minimum 22 working days needed to file offset.",
+      );
       return;
     }
 
-    const eligible = calculateEligibleOffsetDays(offsetFormData.working_days, offsetFormData.weekend_days);
+    const eligible = calculateEligibleOffsetDays(
+      offsetFormData.working_days,
+      offsetFormData.weekend_days,
+    );
     if (offsetFormData.requested_days > eligible) {
-      setOffsetFormError(`Cannot request more than ${eligible} eligible offset day(s).`);
+      setOffsetFormError(
+        `Cannot request more than ${eligible} eligible offset day(s).`,
+      );
       return;
     }
 
-    const employee = employees.find(e => e.emp_id === offsetFormData.emp_id);
     submitOffsetMutation.mutate({
       emp_id: offsetFormData.emp_id,
-      employee_name: employee ? `${employee.first_name} ${employee.last_name}` : "Unknown",
-      month: new Date().toLocaleString("default", { month: "long", year: "numeric" }),
+      employee_name: currentUser?.name || "Unknown",
+      month: new Date().toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      }),
       working_days: offsetFormData.working_days,
       weekend_days: offsetFormData.weekend_days,
       eligible_offset: eligible,
@@ -620,10 +648,10 @@ export default function Leave() {
             >
               {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
             </button>
-  
-          {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
-          {currentUser?.role !== "Admin" && (
-            <button
+
+            {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
+            {canFile && (
+              <button
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => {
                   setShowForm(!showForm);
@@ -632,41 +660,41 @@ export default function Leave() {
               >
                 {showForm ? "✕ Close" : "+ File Leave"}
               </button>
-          )}
+            )}
           </div>
 
           {showCalendar && <LeaveCalendar leaves={leaves} />}
 
-      {showForm && currentUser?.role !== "Admin" && (
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-          <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
-            File a Leave Application
-          </h3>
-          {formError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              {formError}
-            </div>
-          )}
-          <form
-            onSubmit={handleSubmitLeave}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          >
-            {/* LOCKED EMPLOYEE FIELD */}
-            <div className="flex flex-col gap-2 md:col-span-3">
-              <label className="text-sm font-semibold text-gray-700">
-                Filing Leave As
-              </label>
-              <input
-                type="text"
-                disabled
-                value={
-                  currentUser?.name
-                    ? `${currentUser.emp_id} - ${currentUser.name}`
-                    : "Loading..."
-                }
-                className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
-              />
-            </div>
+          {showForm && canFile && (
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
+              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+                File a Leave Application
+              </h3>
+              {formError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {formError}
+                </div>
+              )}
+              <form
+                onSubmit={handleSubmitLeave}
+                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+              >
+                {/* LOCKED EMPLOYEE FIELD */}
+                <div className="flex flex-col gap-2 md:col-span-3">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Filing Leave As
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={
+                      currentUser?.name
+                        ? `${currentUser.emp_id} - ${currentUser.name}`
+                        : "Loading..."
+                    }
+                    className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
+                  />
+                </div>
 
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-semibold text-gray-700">
@@ -684,7 +712,8 @@ export default function Leave() {
                     ))}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Max: {leavePolicy[formData.leaveType]?.maxDays} business day(s)
+                    Max: {leavePolicy[formData.leaveType]?.maxDays} business
+                    day(s)
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -700,7 +729,9 @@ export default function Leave() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">To</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    To
+                  </label>
                   <input
                     type="date"
                     required
@@ -790,12 +821,12 @@ export default function Leave() {
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
-                    {currentUser?.role !== "RankAndFile" && (
-                  <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                    {canApprove && (
+                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
                         Actions
                       </th>
                     )}
-              </tr>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {leaves.map((l) => (
@@ -825,18 +856,22 @@ export default function Leave() {
                           {l.status}
                         </span>
                       </td>
-                      {currentUser?.role !== "RankAndFile" && (
-                    <td className="px-6 py-3 text-sm">
+                      {canApprove && (
+                        <td className="px-6 py-3 text-sm">
                           {l.status === "Pending" && (
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleUpdateStatus(l.id, "Approved")}
+                                onClick={() =>
+                                  handleUpdateStatus(l.id, "Approved")
+                                }
                                 className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
                               >
                                 Approve
                               </button>
                               <button
-                                onClick={() => handleUpdateStatus(l.id, "Denied")}
+                                onClick={() =>
+                                  handleUpdateStatus(l.id, "Denied")
+                                }
                                 className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
                               >
                                 Deny
@@ -845,7 +880,7 @@ export default function Leave() {
                           )}
                         </td>
                       )}
-                </tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -858,21 +893,25 @@ export default function Leave() {
       {activeTab === "offset" && (
         <>
           <div className="flex items-center justify-end mb-6">
-            <button
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setShowOffsetForm(!showOffsetForm)}
-            >
-              {showOffsetForm ? "✕ Close" : "+ File Offset Request"}
-            </button>
+            {canFile && (
+              <button
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setShowOffsetForm(!showOffsetForm)}
+              >
+                {showOffsetForm ? "✕ Close" : "+ File Offset Request"}
+              </button>
+            )}
           </div>
 
-          {showOffsetForm && (
+          {showOffsetForm && canFile && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
               <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
                 File an Offset Request
               </h3>
               <p className="text-sm text-gray-600 mb-4">
-                <strong>Note:</strong> Offset is eligible when you have worked 22+ working days and additional weekend days in a month. Requires supervisor approval.
+                <strong>Note:</strong> Offset is eligible when you have worked
+                22+ working days and additional weekend days in a month.
+                Requires supervisor approval.
               </p>
               {offsetFormError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -883,23 +922,21 @@ export default function Leave() {
                 onSubmit={handleSubmitOffsetForm}
                 className="grid grid-cols-1 md:grid-cols-2 gap-4"
               >
+                {/* LOCKED EMPLOYEE FIELD FOR OFFSET */}
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-sm font-semibold text-gray-700">
-                    Employee
+                    Filing Offset As
                   </label>
-                  <select
-                    value={offsetFormData.emp_id}
-                    onChange={(e) =>
-                      setOffsetFormData({ ...offsetFormData, emp_id: e.target.value })
+                  <input
+                    type="text"
+                    disabled
+                    value={
+                      currentUser?.name
+                        ? `${currentUser.emp_id} - ${currentUser.name}`
+                        : "Loading..."
                     }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    {employees.map((emp) => (
-                      <option key={emp.emp_id} value={emp.emp_id}>
-                        {emp.emp_id} - {emp.first_name} {emp.last_name}
-                      </option>
-                    ))}
-                  </select>
+                    className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
+                  />
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -913,11 +950,17 @@ export default function Leave() {
                     value={offsetFormData.working_days}
                     onChange={(e) => {
                       const val = parseInt(e.target.value) || 0;
-                      const eligible = calculateEligibleOffsetDays(val, offsetFormData.weekend_days);
+                      const eligible = calculateEligibleOffsetDays(
+                        val,
+                        offsetFormData.weekend_days,
+                      );
                       setOffsetFormData({
                         ...offsetFormData,
                         working_days: val,
-                        requested_days: Math.min(offsetFormData.requested_days, eligible),
+                        requested_days: Math.min(
+                          offsetFormData.requested_days,
+                          eligible,
+                        ),
                       });
                     }}
                     className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
@@ -935,11 +978,17 @@ export default function Leave() {
                     value={offsetFormData.weekend_days}
                     onChange={(e) => {
                       const val = parseInt(e.target.value) || 0;
-                      const eligible = calculateEligibleOffsetDays(offsetFormData.working_days, val);
+                      const eligible = calculateEligibleOffsetDays(
+                        offsetFormData.working_days,
+                        val,
+                      );
                       setOffsetFormData({
                         ...offsetFormData,
                         weekend_days: val,
-                        requested_days: Math.min(offsetFormData.requested_days, eligible),
+                        requested_days: Math.min(
+                          offsetFormData.requested_days,
+                          eligible,
+                        ),
                       });
                     }}
                     className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
@@ -949,10 +998,21 @@ export default function Leave() {
                 {offsetFormData.working_days >= 22 && (
                   <div className="md:col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm font-semibold text-blue-900 mb-2">
-                      Eligible Offset Days: <span className="text-lg">{calculateEligibleOffsetDays(offsetFormData.working_days, offsetFormData.weekend_days)}</span>
+                      Eligible Offset Days:{" "}
+                      <span className="text-lg">
+                        {calculateEligibleOffsetDays(
+                          offsetFormData.working_days,
+                          offsetFormData.weekend_days,
+                        )}
+                      </span>
                     </p>
                     <p className="text-xs text-blue-800">
-                      You can request up to {calculateEligibleOffsetDays(offsetFormData.working_days, offsetFormData.weekend_days)} day(s) of offset for next month.
+                      You can request up to{" "}
+                      {calculateEligibleOffsetDays(
+                        offsetFormData.working_days,
+                        offsetFormData.weekend_days,
+                      )}{" "}
+                      day(s) of offset for next month.
                     </p>
                   </div>
                 )}
@@ -964,7 +1024,10 @@ export default function Leave() {
                   <input
                     type="number"
                     min="0"
-                    max={calculateEligibleOffsetDays(offsetFormData.working_days, offsetFormData.weekend_days)}
+                    max={calculateEligibleOffsetDays(
+                      offsetFormData.working_days,
+                      offsetFormData.weekend_days,
+                    )}
                     value={offsetFormData.requested_days}
                     onChange={(e) =>
                       setOffsetFormData({
@@ -1007,7 +1070,9 @@ export default function Leave() {
                     disabled={submitOffsetMutation.isPending}
                     className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
                   >
-                    {submitOffsetMutation.isPending ? "Submitting..." : "Submit Request"}
+                    {submitOffsetMutation.isPending
+                      ? "Submitting..."
+                      : "Submit Request"}
                   </button>
                 </div>
               </form>
@@ -1048,9 +1113,11 @@ export default function Leave() {
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {canApprove && (
+                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1087,29 +1154,45 @@ export default function Leave() {
                           {offset.status}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-sm">
-                        {offset.status === "Pending" && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => approveOffsetMutation.mutate({ id: offset.id, approved_days: offset.requested_days, remarks: "Approved" })}
-                              className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => denyOffsetMutation.mutate({ id: offset.id, remarks: "Denied" })}
-                              className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                            >
-                              Deny
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                      {canApprove && (
+                        <td className="px-6 py-3 text-sm">
+                          {offset.status === "Pending" && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() =>
+                                  approveOffsetMutation.mutate({
+                                    id: offset.id,
+                                    approved_days: offset.requested_days,
+                                    remarks: "Approved",
+                                  })
+                                }
+                                className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  denyOffsetMutation.mutate({
+                                    id: offset.id,
+                                    remarks: "Denied",
+                                  })
+                                }
+                                className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {offsets.length === 0 && (
                     <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                      <td
+                        colSpan="9"
+                        className="px-6 py-12 text-center text-gray-500"
+                      >
                         No offset requests found.
                       </td>
                     </tr>
