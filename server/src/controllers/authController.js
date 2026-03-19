@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_wah_key";
+const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || "";
 
 const normalizeRole = (role) => {
   const value = String(role || "").trim().toLowerCase();
@@ -17,9 +18,16 @@ const normalizeRole = (role) => {
 
 const checkPassword = async (inputPassword, user) => {
   const stored = user?.password;
+  const role = normalizeRole(user?.role);
   const generatedFallback = `${user.emp_id || ""}${(user.first_name || "").replace(/\s+/g, "")}`;
 
   if (!stored) {
+    if (role === "Admin" && ADMIN_DEFAULT_PASSWORD) {
+      return (
+        inputPassword === ADMIN_DEFAULT_PASSWORD ||
+        inputPassword === generatedFallback
+      );
+    }
     return inputPassword === generatedFallback;
   }
 
@@ -27,7 +35,16 @@ const checkPassword = async (inputPassword, user) => {
     return bcrypt.compare(inputPassword, stored);
   }
 
-  // Reject legacy plain-text stored passwords; only the current auto-password pattern is valid.
+  // Keep Admin accessible with existing credentials while non-admins use the strict auto-password rule.
+  if (role === "Admin") {
+    return (
+      inputPassword === stored ||
+      (ADMIN_DEFAULT_PASSWORD && inputPassword === ADMIN_DEFAULT_PASSWORD) ||
+      inputPassword === generatedFallback
+    );
+  }
+
+  // Reject legacy plain-text stored passwords for non-admin users.
   return inputPassword === generatedFallback;
 };
 
