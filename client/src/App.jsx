@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./components/MainLayout";
+
 // Admin Pages
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
+
 // HR Pages
+import HRDashboard from "./pages/HRDashboard"; // <--- 1. IMPORT ADDED HERE
 import SalaryHistory from "./pages/SalaryHistory";
 import HRReports from "./pages/HRReports";
 
@@ -22,6 +25,7 @@ function App() {
     setView("main");
   };
   const queryClient = new QueryClient();
+
   if (view === "login") {
     return (
       <div className="min-h-screen grid place-items-center p-7 bg-gradient-to-br from-[#50109a] to-wah-accent">
@@ -111,6 +115,7 @@ function App() {
   }
 
   if (view === "register") {
+    // ... keeping your existing register view code untouched
     return (
       <div className="min-h-screen grid place-items-center p-7">
         <div className="w-full max-w-[860px] min-h-[640px] bg-wah-card rounded-[14px] overflow-hidden grid grid-cols-1">
@@ -120,16 +125,13 @@ function App() {
               src="/images/wah-logo.png"
               alt="WAH logo"
             />
-
             <h1 className="m-0 text-[clamp(1.5rem,2vw,1.8rem)] text-wah-text text-center">
               Create an Account
             </h1>
-
             <form className="mt-7 w-full max-w-[720px] grid gap-3.5">
               <h3 className="mt-2.5 mb-0 text-base font-bold text-wah-text">
                 User Information
               </h3>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div className="relative w-full h-14">
                   <input
@@ -156,7 +158,6 @@ function App() {
                   </label>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div className="relative w-full h-14">
                   <input
@@ -181,11 +182,9 @@ function App() {
                   </label>
                 </div>
               </div>
-
               <h3 className="mt-2.5 mb-0 text-base font-bold text-wah-text">
                 Account Credentials
               </h3>
-
               <div className="relative w-full h-14">
                 <input
                   required
@@ -198,7 +197,6 @@ function App() {
                   Email Address
                 </label>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div className="relative w-full h-14">
                   <input
@@ -225,7 +223,6 @@ function App() {
                   </label>
                 </div>
               </div>
-
               <div className="mt-2 grid grid-cols-1 gap-2.5">
                 <button
                   type="button"
@@ -234,7 +231,6 @@ function App() {
                   Register
                 </button>
               </div>
-
               <div className="flex flex-col gap-3 mt-3 text-center">
                 <a
                   href="#"
@@ -277,7 +273,8 @@ function App() {
               </>
             ) : (
               <>
-                <Route path="/dashboard" element={<Dashboard />} />
+                {/* 2. HRDashboard IS NOW PROPERLY ROUTED HERE */}
+                <Route path="/dashboard" element={<HRDashboard />} />
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/leave" element={<Leave />} />
