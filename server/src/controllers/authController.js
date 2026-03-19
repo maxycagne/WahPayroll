@@ -27,7 +27,8 @@ const checkPassword = async (inputPassword, user) => {
     return bcrypt.compare(inputPassword, stored);
   }
 
-  return inputPassword === stored || inputPassword === generatedFallback;
+  // Reject legacy plain-text stored passwords; only the current auto-password pattern is valid.
+  return inputPassword === generatedFallback;
 };
 
 export const login = async (req, res) => {
