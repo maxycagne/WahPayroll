@@ -74,7 +74,11 @@ export default function Dashboard() {
     try {
       const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
         body: JSON.stringify({ status: newStatus }),
       });
 

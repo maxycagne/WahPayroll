@@ -272,7 +272,10 @@ export default function Leave() {
     queryKey: ["leaves"],
     queryFn: async () => {
       const res = await fetch(`${URL}/api/employees/leaves`, {
-        headers: { "ngrok-skip-browser-warning": "69420" },
+        headers: {
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
       });
       if (!res.ok) throw new Error("Failed to fetch leaves");
       return res.json();
@@ -283,7 +286,10 @@ export default function Leave() {
     queryKey: ["employees"],
     queryFn: async () => {
       const res = await fetch(`${URL}/api/employees`, {
-        headers: { "ngrok-skip-browser-warning": "69420" },
+        headers: {
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
       });
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0 && !formData.emp_id) {
@@ -298,7 +304,11 @@ export default function Leave() {
     mutationFn: async ({ id, status }) => {
       const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error("Status update failed");
@@ -310,7 +320,11 @@ export default function Leave() {
     mutationFn: async (newLeave) => {
       const res = await fetch(`${URL}/api/employees/leaves`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
         body: JSON.stringify(newLeave),
       });
       if (!res.ok) {

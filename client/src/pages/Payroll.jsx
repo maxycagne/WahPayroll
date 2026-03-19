@@ -35,7 +35,10 @@ export default function Payroll() {
     queryKey: ["payroll", period],
     queryFn: async () => {
       const res = await fetch(`${URL}/api/employees/payroll?period=${period}`, {
-        headers: { "ngrok-skip-browser-warning": "69420" },
+        headers: {
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
       });
       if (!res.ok) throw new Error("Failed to fetch payroll");
       return res.json();
@@ -52,7 +55,11 @@ export default function Payroll() {
     mutationFn: async (payload) => {
       const res = await fetch(`${URL}/api/employees/salary-adjustment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to save adjustments");
@@ -69,7 +76,11 @@ export default function Payroll() {
     mutationFn: async (payload) => {
       const res = await fetch(`${URL}/api/employees/update-base-salary`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to update base salary");

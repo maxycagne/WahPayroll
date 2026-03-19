@@ -50,7 +50,11 @@ export default function Employees() {
     mutationFn: async (newEmployee) => {
       const res = await fetch(`${URL}/api/employees`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420",
+          "bypass-tunnel-reminder": "true",
+        },
         body: JSON.stringify(newEmployee),
       });
       return res.json();

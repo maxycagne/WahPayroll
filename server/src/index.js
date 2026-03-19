@@ -11,7 +11,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Updated CORS configuration to allow React and your custom headers
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Allow your React frontend
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "bypass-tunnel-reminder",
+      "ngrok-skip-browser-warning",
+    ],
+  }),
+);
 
 app.use(express.json());
 
