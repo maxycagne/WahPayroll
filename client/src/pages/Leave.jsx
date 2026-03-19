@@ -37,16 +37,6 @@ function calculateBusinessDays(startDate, endDate) {
   return count;
 }
 
-// Offset Calculation Utilities
-function calculateEligibleOffsetDays(workingDays, weekendDays) {
-  const REQUIRED_WORKING_DAYS = 22;
-  if (workingDays >= REQUIRED_WORKING_DAYS && weekendDays > 0) {
-    const extra = workingDays - REQUIRED_WORKING_DAYS;
-    return Math.min(extra + weekendDays, 4); // Max 2-4 days
-  }
-  return 0;
-}
-
 const leavePolicy = {
   "Birthday Leave": { maxDays: 1, excludeWeekends: true },
   "Vacation Leave": { maxDays: 20, excludeWeekends: true },
@@ -60,40 +50,6 @@ const badgeClass = {
   Denied: "bg-red-100 text-red-800",
   Pending: "bg-yellow-100 text-yellow-800",
 };
-
-// Sample offset data structure
-const sampleOffsets = [
-  {
-    id: 1,
-    emp_id: "WAH-001",
-    employee_name: "John Doe",
-    month: "March 2026",
-    working_days: 23,
-    weekend_days: 3,
-    eligible_offset: 1,
-    requested_days: 1,
-    approved_days: 1,
-    status: "Approved",
-    supervisor: "sir pey",
-    remarks: "Approved for 1 day offset",
-    created_at: "2026-03-15",
-  },
-  {
-    id: 2,
-    emp_id: "WAH-002",
-    employee_name: "Jane Smith",
-    month: "March 2026",
-    working_days: 25,
-    weekend_days: 4,
-    eligible_offset: 3,
-    requested_days: 2,
-    approved_days: 0,
-    status: "Pending",
-    supervisor: null,
-    remarks: "",
-    created_at: "2026-03-16",
-  },
-];
 
 // --- CALENDAR COMPONENT ---
 function LeaveCalendar({ leaves }) {
@@ -306,20 +262,9 @@ export default function Leave() {
   // Grab the currently logged-in user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
 
-  // ROLE PERMISSIONS
-  // Only these 3 roles can file leaves/offsets
-  const canFile = ["Supervisor", "HR", "RankAndFile"].includes(
-    currentUser?.role,
-  );
-  // Only Admin and Supervisor can approve leaves/offsets
-  const canApprove = ["Admin", "Supervisor"].includes(currentUser?.role);
-
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showOffsetForm, setShowOffsetForm] = useState(false);
   const [formError, setFormError] = useState("");
-  const [offsetFormError, setOffsetFormError] = useState("");
-  const [offsets, setOffsets] = useState(sampleOffsets);
 
   // Set the default emp_id to the logged in user
   const [formData, setFormData] = useState({
@@ -331,14 +276,6 @@ export default function Leave() {
     priority: "Low",
   });
 
-  const [offsetFormData, setOffsetFormData] = useState({
-    emp_id: currentUser?.emp_id || "",
-    working_days: 22,
-    weekend_days: 0,
-    requested_days: 0,
-    remarks: "",
-  });
-
   // --- QUERIES ---
   const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
     queryKey: ["leaves"],
@@ -346,20 +283,6 @@ export default function Leave() {
       const res = await apiFetch("/api/employees/leaves");
       if (!res.ok) throw new Error("Failed to fetch leaves");
       return res.json();
-    },
-  });
-
-  const { data: employees = [] } = useQuery({
-    queryKey: ["employees"],
-    queryFn: async () => {
-      const res = await fetch(`${URL}/api/employees`, {
-        headers: {
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-      });
-      const data = await res.json();
-      return data;
     },
   });
 
@@ -412,42 +335,6 @@ export default function Leave() {
   // --- HANDLERS ---
   const handleUpdateStatus = (id, newStatus) => {
     updateStatusMutation.mutate({ id, status: newStatus });
-  };
-
-  const handleSubmitOffsetForm = (e) => {
-    e.preventDefault();
-    if (!offsetFormData.emp_id || offsetFormData.working_days < 22) {
-      setOffsetFormError(
-        "Employee ID required and minimum 22 working days needed to file offset.",
-      );
-      return;
-    }
-
-    const eligible = calculateEligibleOffsetDays(
-      offsetFormData.working_days,
-      offsetFormData.weekend_days,
-    );
-    if (offsetFormData.requested_days > eligible) {
-      setOffsetFormError(
-        `Cannot request more than ${eligible} eligible offset day(s).`,
-      );
-      return;
-    }
-
-    submitOffsetMutation.mutate({
-      emp_id: offsetFormData.emp_id,
-      employee_name: currentUser?.name || "Unknown",
-      month: new Date().toLocaleString("default", {
-        month: "long",
-        year: "numeric",
-      }),
-      working_days: offsetFormData.working_days,
-      weekend_days: offsetFormData.weekend_days,
-      eligible_offset: eligible,
-      requested_days: offsetFormData.requested_days,
-      approved_days: 0,
-      remarks: offsetFormData.remarks,
-    });
   };
 
   const handleSubmitLeave = (e) => {
@@ -520,12 +407,6 @@ export default function Leave() {
   if (isLoadingLeaves)
     return <div className="p-6 font-bold">Loading Leave Data...</div>;
 
-  const offsetBadgeClass = {
-    Approved: "bg-green-100 text-green-800",
-    Denied: "bg-red-100 text-red-800",
-    Pending: "bg-yellow-100 text-yellow-800",
-  };
-
   return (
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
@@ -543,149 +424,147 @@ export default function Leave() {
             {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
           </button>
 
-            {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
-            {canFile && (
-              <button
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => {
-                  setShowForm(!showForm);
-                  if (showCalendar) setShowCalendar(false);
-                }}
-              >
-                {showForm ? "✕ Close" : "+ File Leave"}
-              </button>
-            )}
-          </div>
+          {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
+          {currentUser?.role !== "Admin" && (
+            <button
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => {
+                setShowForm(!showForm);
+                if (showCalendar) setShowCalendar(false);
+              }}
+            >
+              {showForm ? "✕ Close" : "+ File Leave"}
+            </button>
+          )}
+        </div>
+      </div>
 
-          {showCalendar && <LeaveCalendar leaves={leaves} />}
+      {showCalendar && <LeaveCalendar leaves={leaves} />}
 
-          {showForm && canFile && (
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
-                File a Leave Application
-              </h3>
-              {formError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {formError}
-                </div>
-              )}
-              <form
-                onSubmit={handleSubmitLeave}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
-              >
-                {/* LOCKED EMPLOYEE FIELD */}
-                <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Filing Leave As
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    value={
-                      currentUser?.name
-                        ? `${currentUser.emp_id} - ${currentUser.name}`
-                        : "Loading..."
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Leave Type
-                  </label>
-                  <select
-                    value={formData.leaveType}
-                    onChange={handleLeaveTypeChange}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    {leaveTypes.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Max: {leavePolicy[formData.leaveType]?.maxDays} business
-                    day(s)
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    From
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.fromDate}
-                    onChange={handleFromDateChange}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    To
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.toDate}
-                    onChange={handleToDateChange}
-                    disabled={formData.leaveType === "Birthday Leave"}
-                    max={getMaxToDate()}
-                    min={formData.fromDate}
-                    className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
-                  />
-                </div>
-                <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Priority
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) =>
-                      setFormData({ ...formData, priority: e.target.value })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Reason
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Reason for leave…"
-                    value={formData.reason}
-                    onChange={(e) =>
-                      setFormData({ ...formData, reason: e.target.value })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="mt-4 flex gap-3 justify-end md:col-span-3">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
-                    onClick={() => setShowForm(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitLeaveMutation.isPending}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
-                  >
-                    {submitLeaveMutation.isPending ? "Submitting..." : "Submit"}
-                  </button>
-                </div>
-              </form>
+      {showForm && currentUser?.role !== "Admin" && (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
+          <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+            File a Leave Application
+          </h3>
+          {formError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {formError}
             </div>
           )}
+          <form
+            onSubmit={handleSubmitLeave}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            {/* LOCKED EMPLOYEE FIELD */}
+            <div className="flex flex-col gap-2 md:col-span-3">
+              <label className="text-sm font-semibold text-gray-700">
+                Filing Leave As
+              </label>
+              <input
+                type="text"
+                disabled
+                value={
+                  currentUser?.name
+                    ? `${currentUser.emp_id} - ${currentUser.name}`
+                    : "Loading..."
+                }
+                className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Leave Type
+              </label>
+              <select
+                value={formData.leaveType}
+                onChange={handleLeaveTypeChange}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                {leaveTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Max: {leavePolicy[formData.leaveType]?.maxDays} business day(s)
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-gray-700">
+                From
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.fromDate}
+                onChange={handleFromDateChange}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-gray-700">To</label>
+              <input
+                type="date"
+                required
+                value={formData.toDate}
+                onChange={handleToDateChange}
+                disabled={formData.leaveType === "Birthday Leave"}
+                max={getMaxToDate()}
+                min={formData.fromDate}
+                className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+              />
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-3">
+              <label className="text-sm font-semibold text-gray-700">
+                Priority
+              </label>
+              <select
+                value={formData.priority}
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value })
+                }
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-3">
+              <label className="text-sm font-semibold text-gray-700">
+                Reason
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Reason for leave…"
+                value={formData.reason}
+                onChange={(e) =>
+                  setFormData({ ...formData, reason: e.target.value })
+                }
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div className="mt-4 flex gap-3 justify-end md:col-span-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowForm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitLeaveMutation.isPending}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+              >
+                {submitLeaveMutation.isPending ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
         <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
