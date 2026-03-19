@@ -24,12 +24,17 @@ export const createEmployee = async (req, res) => {
     email,
     dob,
     hired_date,
+    password,
   } = req.body;
+
+  const generatedAutoPassword = `${emp_id || ""}${(first_name || "").replace(/\s+/g, "")}`;
+  const employeePassword = password || generatedAutoPassword;
+
   try {
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, dob, hired_date) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, dob, hired_date, password) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -42,6 +47,7 @@ export const createEmployee = async (req, res) => {
         email,
         dob || null,
         hired_date || null,
+        employeePassword,
       ],
     );
 
