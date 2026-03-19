@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { URL } from "../assets/constant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 
 const designationMap = {
   Operations: [
@@ -54,9 +54,7 @@ export default function Employees() {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const res = await fetch(`${URL}/api/employees`, {
-        headers: { "ngrok-skip-browser-warning": "69420" },
-      });
+      const res = await apiFetch("/api/employees");
       return res.json();
     },
   });
@@ -66,7 +64,7 @@ export default function Employees() {
     mutationFn: (newData) => {
       // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
-      return fetch(`${URL}/api/employees`, {
+      return apiFetch("/api/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newData, password: autoPassword }),
@@ -81,7 +79,7 @@ export default function Employees() {
 
   const updateMutation = useMutation({
     mutationFn: async (updatedData) => {
-      const res = await fetch(`${URL}/api/employees/${updatedData.emp_id}`, {
+      const res = await apiFetch(`/api/employees/${updatedData.emp_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedData),
@@ -104,8 +102,7 @@ export default function Employees() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) =>
-      fetch(`${URL}/api/employees/${id}`, { method: "DELETE" }),
+    mutationFn: (id) => apiFetch(`/api/employees/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);

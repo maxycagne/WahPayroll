@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { URL } from "../assets/constant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -39,12 +39,7 @@ export default function Attendance() {
   const { data: attendance = [], isLoading } = useQuery({
     queryKey: ["attendance"],
     queryFn: async () => {
-      const res = await fetch(`${URL}/api/employees/attendance`, {
-        headers: {
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-      });
+      const res = await apiFetch("/api/employees/attendance");
       if (!res.ok) throw new Error("Failed to fetch attendance");
       return res.json();
     },
@@ -53,14 +48,8 @@ export default function Attendance() {
   const { data: calendarSummary = [] } = useQuery({
     queryKey: ["attendance-calendar", year, month],
     queryFn: async () => {
-      const res = await fetch(
-        `${URL}/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
-        {
-          headers: {
-            "ngrok-skip-browser-warning": "69420",
-            "bypass-tunnel-reminder": "true",
-          },
-        },
+      const res = await apiFetch(
+        `/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
       );
       return res.json();
     },
@@ -69,14 +58,8 @@ export default function Attendance() {
   const { data: dailyList = [], isLoading: dailyLoading } = useQuery({
     queryKey: ["attendance-daily", selectedDate],
     queryFn: async () => {
-      const res = await fetch(
-        `${URL}/api/employees/attendance-daily?date=${selectedDate}`,
-        {
-          headers: {
-            "ngrok-skip-browser-warning": "69420",
-            "bypass-tunnel-reminder": "true",
-          },
-        },
+      const res = await apiFetch(
+        `/api/employees/attendance-daily?date=${selectedDate}`,
       );
       const data = await res.json();
 
@@ -93,12 +76,10 @@ export default function Attendance() {
   // --- MUTATIONS ---
   const adjustBalanceMutation = useMutation({
     mutationFn: async ({ empId, amount }) => {
-      const res = await fetch(`${URL}/api/employees/leave-balance/${empId}`, {
+      const res = await apiFetch(`/api/employees/leave-balance/${empId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify({ adjustment: amount }),
       });
@@ -114,12 +95,10 @@ export default function Attendance() {
 
   const saveDailyAttendanceMutation = useMutation({
     mutationFn: async (records) => {
-      const res = await fetch(`${URL}/api/employees/attendance-bulk`, {
+      const res = await apiFetch("/api/employees/attendance-bulk", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify({ date: selectedDate, records }),
       });
