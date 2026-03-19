@@ -4,10 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
-  Absent: "bg-red-100 text-red-800",
-  "On Leave": "bg-yellow-100 text-yellow-800",
+  Late: "bg-amber-100 text-amber-800",
+  Undertime: "bg-rose-100 text-rose-800",
   "Half-Day": "bg-orange-100 text-orange-800",
-  Pending: "bg-gray-100 text-gray-500", // For unmarked
+  Absent: "bg-red-100 text-red-800",
+  "On Leave": "bg-purple-100 text-purple-800",
+  Pending: "bg-gray-100 text-gray-500",
 };
 
 export default function Attendance() {
@@ -27,9 +29,11 @@ export default function Attendance() {
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
 
-  // Daily Form State
+  // Daily Form & Bulk Action State
   const [dailySearch, setDailySearch] = useState("");
-  const [attendanceForm, setAttendanceForm] = useState({}); // { emp_id: 'Present', ... }
+  const [attendanceForm, setAttendanceForm] = useState({});
+  const [selectedEmployees, setSelectedEmployees] = useState(new Set());
+  const [bulkStatus, setBulkStatus] = useState("Present");
 
   // --- QUERIES ---
   const { data: attendance = [], isLoading } = useQuery({
@@ -76,7 +80,6 @@ export default function Attendance() {
       );
       const data = await res.json();
 
-      // Initialize form state with existing data
       const initialForm = {};
       data.forEach((emp) => {
         initialForm[emp.emp_id] = emp.attendance_status || "Pending";
@@ -134,7 +137,7 @@ export default function Attendance() {
   const handleDailySubmit = (e) => {
     e.preventDefault();
     const records = Object.entries(attendanceForm)
-      .filter(([_, status]) => status !== "Pending") // Only save marked ones
+      .filter(([_, status]) => status !== "Pending")
       .map(([emp_id, status]) => ({ emp_id, status }));
     saveDailyAttendanceMutation.mutate(records);
   };
@@ -149,6 +152,37 @@ export default function Attendance() {
     setAttendanceForm(updated);
   };
 
+  const filteredDaily = dailyList.filter((a) =>
+    `${a.first_name} ${a.last_name} ${a.emp_id}`
+      .toLowerCase()
+      .includes(dailySearch.toLowerCase()),
+  );
+
+  const toggleEmployeeSelection = (empId) => {
+    const newSelected = new Set(selectedEmployees);
+    if (newSelected.has(empId)) newSelected.delete(empId);
+    else newSelected.add(empId);
+    setSelectedEmployees(newSelected);
+  };
+
+  const toggleAllSelected = () => {
+    if (selectedEmployees.size === filteredDaily.length) {
+      setSelectedEmployees(new Set());
+    } else {
+      setSelectedEmployees(new Set(filteredDaily.map((e) => e.emp_id)));
+    }
+  };
+
+  const applyBulkStatus = () => {
+    if (selectedEmployees.size === 0) return;
+    const updated = { ...attendanceForm };
+    selectedEmployees.forEach((id) => {
+      updated[id] = bulkStatus;
+    });
+    setAttendanceForm(updated);
+    setSelectedEmployees(new Set());
+  };
+
   // --- UI HELPERS ---
   const getLeaveHighlightColor = (remaining) => {
     if (remaining <= 0) return "bg-red-100 text-red-800";
@@ -158,7 +192,6 @@ export default function Attendance() {
 
   const pad = (n) => (n < 10 ? "0" + n : "" + n);
 
-  // Calendar generation
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
   const cells = Array(firstDay)
@@ -171,12 +204,6 @@ export default function Attendance() {
     `${a.first_name} ${a.last_name} ${a.emp_id}`
       .toLowerCase()
       .includes(search.toLowerCase()),
-  );
-
-  const filteredDaily = dailyList.filter((a) =>
-    `${a.first_name} ${a.last_name} ${a.emp_id}`
-      .toLowerCase()
-      .includes(dailySearch.toLowerCase()),
   );
 
   if (isLoading)
@@ -236,7 +263,6 @@ export default function Attendance() {
                 today.getMonth() === month &&
                 today.getDate() === day;
 
-              // TIMEZONE FIX: Safely parse the database date back into year/month/day
               const dayData = calendarSummary.find((s) => {
                 const dbDate = new Date(s.date);
                 return (
@@ -252,6 +278,7 @@ export default function Attendance() {
                   onClick={() => {
                     setSelectedDate(dateStr);
                     setDailyModalOpen(true);
+                    setSelectedEmployees(new Set());
                   }}
                   className={`min-h-[80px] border rounded-lg p-2 flex flex-col items-start bg-white cursor-pointer hover:border-purple-500 hover:shadow-md transition-all ${isToday ? "border-purple-600 bg-purple-50" : "border-gray-200"}`}
                 >
@@ -261,14 +288,35 @@ export default function Attendance() {
                     {day}
                   </span>
                   {dayData && (
-                    <div className="mt-auto w-full space-y-1">
+                    <div className="mt-auto w-full space-y-0.5 flex flex-col gap-0.5">
+                      {/* NEW STATUSES ADDED HERE */}
                       {dayData.present_count > 0 && (
-                        <div className="text-[0.65rem] font-bold text-green-700 bg-green-50 rounded px-1 w-full text-left truncate">
+                        <div className="text-[0.6rem] font-bold text-green-700 bg-green-50 rounded px-1 w-full text-left truncate border border-green-100">
                           • {dayData.present_count} Present
                         </div>
                       )}
+                      {dayData.late_count > 0 && (
+                        <div className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 rounded px-1 w-full text-left truncate border border-amber-100">
+                          • {dayData.late_count} Late
+                        </div>
+                      )}
+                      {dayData.undertime_count > 0 && (
+                        <div className="text-[0.6rem] font-bold text-rose-700 bg-rose-50 rounded px-1 w-full text-left truncate border border-rose-100">
+                          • {dayData.undertime_count} Undertime
+                        </div>
+                      )}
+                      {dayData.halfday_count > 0 && (
+                        <div className="text-[0.6rem] font-bold text-orange-700 bg-orange-50 rounded px-1 w-full text-left truncate border border-orange-100">
+                          • {dayData.halfday_count} Half-Day
+                        </div>
+                      )}
+                      {dayData.leave_count > 0 && (
+                        <div className="text-[0.6rem] font-bold text-purple-700 bg-purple-50 rounded px-1 w-full text-left truncate border border-purple-100">
+                          • {dayData.leave_count} On Leave
+                        </div>
+                      )}
                       {dayData.absent_count > 0 && (
-                        <div className="text-[0.65rem] font-bold text-red-700 bg-red-50 rounded px-1 w-full text-left truncate">
+                        <div className="text-[0.6rem] font-bold text-red-700 bg-red-50 rounded px-1 w-full text-left truncate border border-red-100">
                           • {dayData.absent_count} Absent
                         </div>
                       )}
@@ -342,7 +390,7 @@ export default function Attendance() {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
+                      className={`inline-flex items-center border border-transparent rounded-full px-3 py-1 text-xs font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
                     >
                       {a.status || "No Data"}
                     </span>
@@ -369,7 +417,7 @@ export default function Attendance() {
           onClick={() => setDailyModalOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[85vh]"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-purple-700 px-6 py-4 flex justify-between items-center text-white shrink-0">
@@ -393,9 +441,36 @@ export default function Attendance() {
                   onChange={(e) => setDailySearch(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 w-64"
                 />
+              </div>
+
+              <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 flex flex-wrap items-center justify-between mb-4 shrink-0 gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-purple-800">
+                    Selected: {selectedEmployees.size}
+                  </span>
+                  <select
+                    value={bulkStatus}
+                    onChange={(e) => setBulkStatus(e.target.value)}
+                    className="px-3 py-1.5 rounded border border-gray-300 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                    <option value="Undertime">Undertime</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Half-Day">Half-Day</option>
+                    <option value="On Leave">On Leave</option>
+                  </select>
+                  <button
+                    onClick={applyBulkStatus}
+                    disabled={selectedEmployees.size === 0}
+                    className="px-4 py-1.5 bg-purple-600 text-white rounded text-sm font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer border-0 transition-opacity"
+                  >
+                    Apply to Selected
+                  </button>
+                </div>
                 <button
                   onClick={markAllPresent}
-                  className="px-4 py-2 bg-green-100 text-green-800 font-bold rounded-lg border border-green-200 hover:bg-green-200 cursor-pointer transition-colors"
+                  className="px-4 py-1.5 bg-green-100 text-green-800 font-bold text-sm rounded border border-green-200 hover:bg-green-200 cursor-pointer transition-colors"
                 >
                   ✓ Mark Unassigned as Present
                 </button>
@@ -405,6 +480,17 @@ export default function Attendance() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                     <tr>
+                      <th className="px-4 py-3 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedEmployees.size > 0 &&
+                            selectedEmployees.size === filteredDaily.length
+                          }
+                          onChange={toggleAllSelected}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </th>
                       <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
                         Employee
                       </th>
@@ -420,49 +506,64 @@ export default function Attendance() {
                     {dailyLoading ? (
                       <tr>
                         <td
-                          colSpan="3"
+                          colSpan="4"
                           className="p-4 text-center font-bold text-gray-500"
                         >
                           Loading List...
                         </td>
                       </tr>
                     ) : (
-                      filteredDaily.map((emp, index) => (
-                        <tr
-                          key={`${emp.emp_id}-${index}`}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-6 py-3">
-                            <p className="font-bold m-0 text-gray-900">
-                              {emp.first_name} {emp.last_name}
-                            </p>
-                            <p className="text-xs text-gray-500 m-0">
-                              {emp.emp_id}
-                            </p>
-                          </td>
-                          <td className="px-6 py-3 text-gray-600">
-                            {emp.emp_status}
-                          </td>
-                          <td className="px-6 py-3">
-                            <select
-                              value={attendanceForm[emp.emp_id] || "Pending"}
-                              onChange={(e) =>
-                                setAttendanceForm({
-                                  ...attendanceForm,
-                                  [emp.emp_id]: e.target.value,
-                                })
-                              }
-                              className={`border p-1.5 rounded outline-none font-semibold ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Pending}`}
-                            >
-                              <option value="Pending">-- Select --</option>
-                              <option value="Present">Present</option>
-                              <option value="Absent">Absent</option>
-                              <option value="Half-Day">Half-Day</option>
-                              <option value="On Leave">On Leave</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))
+                      filteredDaily.map((emp, index) => {
+                        const isChecked = selectedEmployees.has(emp.emp_id);
+                        return (
+                          <tr
+                            key={`${emp.emp_id}-${index}`}
+                            className={`hover:bg-gray-50 transition-colors ${isChecked ? "bg-purple-50" : ""}`}
+                          >
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() =>
+                                  toggleEmployeeSelection(emp.emp_id)
+                                }
+                                className="w-4 h-4 cursor-pointer"
+                              />
+                            </td>
+                            <td className="px-6 py-3">
+                              <p className="font-bold m-0 text-gray-900">
+                                {emp.first_name} {emp.last_name}
+                              </p>
+                              <p className="text-xs text-gray-500 m-0">
+                                {emp.emp_id}
+                              </p>
+                            </td>
+                            <td className="px-6 py-3 text-gray-600">
+                              {emp.emp_status}
+                            </td>
+                            <td className="px-6 py-3">
+                              <select
+                                value={attendanceForm[emp.emp_id] || "Pending"}
+                                onChange={(e) =>
+                                  setAttendanceForm({
+                                    ...attendanceForm,
+                                    [emp.emp_id]: e.target.value,
+                                  })
+                                }
+                                className={`border p-1.5 rounded outline-none font-semibold ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Pending}`}
+                              >
+                                <option value="Pending">-- Select --</option>
+                                <option value="Present">Present</option>
+                                <option value="Late">Late</option>
+                                <option value="Undertime">Undertime</option>
+                                <option value="Absent">Absent</option>
+                                <option value="Half-Day">Half-Day</option>
+                                <option value="On Leave">On Leave</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

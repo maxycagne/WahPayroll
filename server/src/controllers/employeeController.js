@@ -123,6 +123,7 @@ export const getAttendance = async (req, res) => {
 };
 
 // --- Get Monthly Attendance Summary for the Calendar ---
+// --- Get Monthly Attendance Summary for the Calendar ---
 export const getAttendanceCalendarSummary = async (req, res) => {
   const { month, year } = req.query;
   try {
@@ -130,7 +131,11 @@ export const getAttendanceCalendarSummary = async (req, res) => {
       `
       SELECT date, 
              SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count
+             SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
+             SUM(CASE WHEN status = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
+             SUM(CASE WHEN status = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
+             SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as leave_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
       GROUP BY date
