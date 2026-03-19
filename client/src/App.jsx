@@ -9,7 +9,6 @@ import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
-import HRDashboard from "./pages/HRDashboard";  
 // HR Pages
 import HRDashboard from "./pages/HRDashboard";
 import SalaryHistory from "./pages/SalaryHistory";

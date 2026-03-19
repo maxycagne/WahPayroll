@@ -667,38 +667,6 @@ export default function Leave() {
                 className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
               />
             </div>
-          {showForm && (
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
-                File a Leave Application
-              </h3>
-              {formError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {formError}
-                </div>
-              )}
-              <form
-                onSubmit={handleSubmitLeave}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
-              >
-                <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Employee
-                  </label>
-                  <select
-                    value={formData.emp_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, emp_id: e.target.value })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    {employees.map((emp) => (
-                      <option key={emp.emp_id} value={emp.emp_id}>
-                        {emp.emp_id} - {emp.first_name} {emp.last_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-semibold text-gray-700">
