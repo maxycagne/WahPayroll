@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -15,6 +17,7 @@ const fmt = (n) => {
 
 export default function Payroll() {
   const queryClient = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState("2026-03");
 
   // Modal & Form States
@@ -60,9 +63,10 @@ export default function Payroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["payroll"]);
-      alert("Adjustments applied successfully!");
+      showToast("Adjustments applied successfully.");
       closeAdjustmentModal();
     },
+    onError: () => showToast("Failed to apply adjustments.", "error"),
   });
 
   const updateBaseSalaryMutation = useMutation({
@@ -79,21 +83,23 @@ export default function Payroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["payroll"]);
-      alert("Base salary updated for all employees in this position!");
+      showToast("Base salary updated for selected position.");
       setSalarySettingsModal(false);
       setSalaryForm({ position: "", amount: "" });
     },
+    onError: () => showToast("Failed to update base salary.", "error"),
   });
 
   // --- HANDLERS ---
   const handleAdjustment = () => {
     if (!adjustmentAmount || !adjustmentReason)
-      return alert("Fill in all fields");
+      return showToast("Fill in all fields.", "error");
 
     const empIds = bulkAdjustmentMode
       ? Array.from(selectedEmployees)
       : [adjustmentModal.emp_id];
-    if (empIds.length === 0) return alert("No employees selected");
+    if (empIds.length === 0)
+      return showToast("No employees selected.", "error");
 
     adjustmentMutation.mutate({
       emp_ids: empIds,
@@ -107,7 +113,7 @@ export default function Payroll() {
   const handleBaseSalaryUpdate = (e) => {
     e.preventDefault();
     if (!salaryForm.position || !salaryForm.amount)
-      return alert("Fill in all fields");
+      return showToast("Fill in all fields.", "error");
     updateBaseSalaryMutation.mutate(salaryForm);
   };
 
@@ -409,6 +415,8 @@ export default function Payroll() {
           </div>
         </div>
       )}
+
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

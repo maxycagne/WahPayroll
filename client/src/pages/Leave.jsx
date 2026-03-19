@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 const leaveTypes = [
   "Birthday Leave",
@@ -299,7 +301,7 @@ function LeaveCalendar({ leaves }) {
 // --- MAIN PAGE COMPONENT ---
 export default function Leave() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("leave");
+  const { toast, showToast, clearToast } = useToast();
 
   // Grab the currently logged-in user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -373,7 +375,11 @@ export default function Leave() {
       });
       if (!res.ok) throw new Error("Status update failed");
     },
-    onSuccess: () => queryClient.invalidateQueries(["leaves"]),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["leaves"]);
+      showToast("Leave request updated.");
+    },
+    onError: () => showToast("Failed to update leave request.", "error"),
   });
 
   const submitLeaveMutation = useMutation({
@@ -393,87 +399,13 @@ export default function Leave() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["leaves"]);
-      alert("Leave application submitted successfully!");
+      showToast("Leave application submitted successfully.");
       setShowForm(false);
       setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
     },
-    onError: (err) => setFormError(err.message),
-  });
-
-  const submitOffsetMutation = useMutation({
-    mutationFn: async (newOffset) => {
-      return new Promise((resolve) => {
-        setTimeout(() => resolve(newOffset), 500);
-      });
-    },
-    onSuccess: (data) => {
-      setOffsets([
-        ...offsets,
-        {
-          ...data,
-          id: Date.now(),
-          status: "Pending",
-          created_at: new Date().toISOString().split("T")[0],
-        },
-      ]);
-      alert("Offset request submitted successfully!");
-      setShowOffsetForm(false);
-      setOffsetFormData({
-        ...offsetFormData,
-        working_days: 22,
-        weekend_days: 0,
-        requested_days: 0,
-        remarks: "",
-      });
-      setOffsetFormError("");
-    },
-    onError: (err) => setOffsetFormError(err.message),
-  });
-
-  const approveOffsetMutation = useMutation({
-    mutationFn: async ({ id, approved_days, remarks }) => {
-      return new Promise((resolve) => {
-        setTimeout(() => resolve({ id, approved_days, remarks }), 500);
-      });
-    },
-    onSuccess: (data) => {
-      setOffsets(
-        offsets.map((o) =>
-          o.id === data.id
-            ? {
-                ...o,
-                approved_days: data.approved_days,
-                status: "Approved",
-                remarks: data.remarks,
-                supervisor: "sir pey",
-              }
-            : o,
-        ),
-      );
-      alert("Offset approved!");
-    },
-  });
-
-  const denyOffsetMutation = useMutation({
-    mutationFn: async ({ id, remarks }) => {
-      return new Promise((resolve) => {
-        setTimeout(() => resolve({ id, remarks }), 500);
-      });
-    },
-    onSuccess: (data) => {
-      setOffsets(
-        offsets.map((o) =>
-          o.id === data.id
-            ? {
-                ...o,
-                status: "Denied",
-                remarks: data.remarks,
-                supervisor: "sir pey",
-              }
-            : o,
-        ),
-      );
-      alert("Offset denied!");
+    onError: (err) => {
+      setFormError(err.message);
+      showToast(err.message || "Failed to submit leave application.", "error");
     },
   });
 
@@ -598,47 +530,18 @@ export default function Leave() {
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          Leave & Offset Management
-        </h1>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 mb-6 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab("leave")}
-          className={`px-4 py-3 font-semibold text-sm border-b-2 transition-colors ${
-            activeTab === "leave"
-              ? "border-purple-600 text-purple-600"
-              : "border-transparent text-gray-600 hover:text-gray-900"
-          }`}
-        >
           Leave Applications
-        </button>
-        <button
-          onClick={() => setActiveTab("offset")}
-          className={`px-4 py-3 font-semibold text-sm border-b-2 transition-colors ${
-            activeTab === "offset"
-              ? "border-purple-600 text-purple-600"
-              : "border-transparent text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Offset Balance & Requests
-        </button>
-      </div>
-
-      {/* LEAVE TAB */}
-      {activeTab === "leave" && (
-        <>
-          <div className="flex items-center justify-end gap-3 mb-6">
-            <button
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50 transition-colors"
-              onClick={() => {
-                setShowCalendar(!showCalendar);
-                if (showForm) setShowForm(false);
-              }}
-            >
-              {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
-            </button>
+        </h1>
+        <div className="flex items-center gap-3">
+          <button
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={() => {
+              setShowCalendar(!showCalendar);
+              if (showForm) setShowForm(false);
+            }}
+          >
+            {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
+          </button>
 
             {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
             {canFile && (
@@ -784,416 +687,97 @@ export default function Leave() {
             </div>
           )}
 
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
-            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-              <h3 className="m-0 text-lg font-semibold text-gray-900">
-                All Leave Requests
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Employee
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Priority
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      From
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      To
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    {canApprove && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {leaves.map((l) => (
-                    <tr
-                      key={l.id}
-                      className="hover:bg-gray-50 transition-colors duration-150"
-                    >
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                        {l.first_name} {l.last_name}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {l.leave_type}
-                      </td>
-                      <td className="px-6 py-3 text-sm font-semibold text-gray-600">
-                        {l.priority}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {new Date(l.date_from).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {new Date(l.date_to).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${badgeClass[l.status] || "bg-gray-100 text-gray-800"}`}
-                        >
-                          {l.status}
-                        </span>
-                      </td>
-                      {canApprove && (
-                        <td className="px-6 py-3 text-sm">
-                          {l.status === "Pending" && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(l.id, "Approved")
-                                }
-                                className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(l.id, "Denied")
-                                }
-                                className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                              >
-                                Deny
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* OFFSET TAB */}
-      {activeTab === "offset" && (
-        <>
-          <div className="flex items-center justify-end mb-6">
-            {canFile && (
-              <button
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setShowOffsetForm(!showOffsetForm)}
-              >
-                {showOffsetForm ? "✕ Close" : "+ File Offset Request"}
-              </button>
-            )}
-          </div>
-
-          {showOffsetForm && canFile && (
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
-                File an Offset Request
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                <strong>Note:</strong> Offset is eligible when you have worked
-                22+ working days and additional weekend days in a month.
-                Requires supervisor approval.
-              </p>
-              {offsetFormError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {offsetFormError}
-                </div>
-              )}
-              <form
-                onSubmit={handleSubmitOffsetForm}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                {/* LOCKED EMPLOYEE FIELD FOR OFFSET */}
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Filing Offset As
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    value={
-                      currentUser?.name
-                        ? `${currentUser.emp_id} - ${currentUser.name}`
-                        : "Loading..."
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Working Days Completed
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="31"
-                    value={offsetFormData.working_days}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 0;
-                      const eligible = calculateEligibleOffsetDays(
-                        val,
-                        offsetFormData.weekend_days,
-                      );
-                      setOffsetFormData({
-                        ...offsetFormData,
-                        working_days: val,
-                        requested_days: Math.min(
-                          offsetFormData.requested_days,
-                          eligible,
-                        ),
-                      });
-                    }}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Weekend Days Worked
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="8"
-                    value={offsetFormData.weekend_days}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 0;
-                      const eligible = calculateEligibleOffsetDays(
-                        offsetFormData.working_days,
-                        val,
-                      );
-                      setOffsetFormData({
-                        ...offsetFormData,
-                        weekend_days: val,
-                        requested_days: Math.min(
-                          offsetFormData.requested_days,
-                          eligible,
-                        ),
-                      });
-                    }}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                {offsetFormData.working_days >= 22 && (
-                  <div className="md:col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm font-semibold text-blue-900 mb-2">
-                      Eligible Offset Days:{" "}
-                      <span className="text-lg">
-                        {calculateEligibleOffsetDays(
-                          offsetFormData.working_days,
-                          offsetFormData.weekend_days,
-                        )}
-                      </span>
-                    </p>
-                    <p className="text-xs text-blue-800">
-                      You can request up to{" "}
-                      {calculateEligibleOffsetDays(
-                        offsetFormData.working_days,
-                        offsetFormData.weekend_days,
-                      )}{" "}
-                      day(s) of offset for next month.
-                    </p>
-                  </div>
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
+        <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
+          <h3 className="m-0 text-lg font-semibold text-gray-900">
+            All Leave Requests
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                  Employee
+                </th>
+                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                  Priority
+                </th>
+                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                  From
+                </th>
+                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                  To
+                </th>
+                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                  Status
+                </th>
+                {currentUser?.role !== "RankAndFile" && (
+                  <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                    Actions
+                  </th>
                 )}
-
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Requested Offset Days
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={calculateEligibleOffsetDays(
-                      offsetFormData.working_days,
-                      offsetFormData.weekend_days,
-                    )}
-                    value={offsetFormData.requested_days}
-                    onChange={(e) =>
-                      setOffsetFormData({
-                        ...offsetFormData,
-                        requested_days: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Remarks
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Any additional notes…"
-                    value={offsetFormData.remarks}
-                    onChange={(e) =>
-                      setOffsetFormData({
-                        ...offsetFormData,
-                        remarks: e.target.value,
-                      })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div className="mt-4 flex gap-3 justify-end md:col-span-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
-                    onClick={() => setShowOffsetForm(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitOffsetMutation.isPending}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
-                  >
-                    {submitOffsetMutation.isPending
-                      ? "Submitting..."
-                      : "Submit Request"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-              <h3 className="m-0 text-lg font-semibold text-gray-900">
-                Offset Requests
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Employee
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Month
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Working Days
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Weekend Days
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Eligible
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Requested
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Approved
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    {canApprove && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {offsets.map((offset) => (
-                    <tr
-                      key={offset.id}
-                      className="hover:bg-gray-50 transition-colors duration-150"
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {leaves.map((l) => (
+                <tr
+                  key={l.id}
+                  className="hover:bg-gray-50 transition-colors duration-150"
+                >
+                  <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                    {l.first_name} {l.last_name}
+                  </td>
+                  <td className="px-6 py-3 text-sm text-gray-700">
+                    {l.leave_type}
+                  </td>
+                  <td className="px-6 py-3 text-sm font-semibold text-gray-600">
+                    {l.priority}
+                  </td>
+                  <td className="px-6 py-3 text-sm text-gray-700">
+                    {new Date(l.date_from).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-3 text-sm text-gray-700">
+                    {new Date(l.date_to).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-3 text-sm">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${badgeClass[l.status] || "bg-gray-100 text-gray-800"}`}
                     >
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                        {offset.employee_name}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {offset.month}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {offset.working_days}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {offset.weekend_days}
-                      </td>
-                      <td className="px-6 py-3 text-sm font-semibold text-gray-900">
-                        {offset.eligible_offset}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {offset.requested_days}
-                      </td>
-                      <td className="px-6 py-3 text-sm font-semibold text-gray-900">
-                        {offset.approved_days}
-                      </td>
-                      <td className="px-6 py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${offsetBadgeClass[offset.status] || "bg-gray-100 text-gray-800"}`}
-                        >
-                          {offset.status}
-                        </span>
-                      </td>
-                      {canApprove && (
-                        <td className="px-6 py-3 text-sm">
-                          {offset.status === "Pending" && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  approveOffsetMutation.mutate({
-                                    id: offset.id,
-                                    approved_days: offset.requested_days,
-                                    remarks: "Approved",
-                                  })
-                                }
-                                className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  denyOffsetMutation.mutate({
-                                    id: offset.id,
-                                    remarks: "Denied",
-                                  })
-                                }
-                                className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                              >
-                                Deny
-                              </button>
-                            </div>
-                          )}
-                        </td>
+                      {l.status}
+                    </span>
+                  </td>
+                  {currentUser?.role !== "RankAndFile" && (
+                    <td className="px-6 py-3 text-sm">
+                      {l.status === "Pending" && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdateStatus(l.id, "Approved")}
+                            className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(l.id, "Denied")}
+                            className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
+                          >
+                            Deny
+                          </button>
+                        </div>
                       )}
-                    </tr>
-                  ))}
-                  {offsets.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan="9"
-                        className="px-6 py-12 text-center text-gray-500"
-                      >
-                        No offset requests found.
-                      </td>
-                    </tr>
+                    </td>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

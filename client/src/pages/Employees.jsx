@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 const designationMap = {
   Operations: [
@@ -28,6 +30,8 @@ const designationMap = {
 
 export default function Employees() {
   const queryClient = useQueryClient();
+  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+  const canResetPassword = currentUser?.role === "Admin";
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
@@ -36,6 +40,8 @@ export default function Employees() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [resetConfirm, setResetConfirm] = useState(null);
+  const { toast, showToast, clearToast } = useToast();
 
   const [formData, setFormData] = useState({
     emp_id: "",
@@ -74,7 +80,9 @@ export default function Employees() {
       queryClient.invalidateQueries(["employees"]);
       setIsAddModalOpen(false);
       resetForm();
+      showToast("Employee added successfully.");
     },
+    onError: () => showToast("Failed to add employee.", "error"),
   });
 
   const updateMutation = useMutation({
@@ -95,9 +103,10 @@ export default function Employees() {
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setEditEmployee(null);
+      showToast("Employee updated successfully.");
     },
     onError: (error) => {
-      alert(error.message || "Update failed");
+      showToast(error.message || "Update failed", "error");
     },
   });
 
@@ -106,6 +115,36 @@ export default function Employees() {
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);
+      showToast("Employee deleted successfully.");
+    },
+    onError: () => showToast("Failed to delete employee.", "error"),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (emp) => {
+      const res = await apiFetch(
+        `/api/employees/${emp.emp_id}/reset-password`,
+        {
+          method: "PUT",
+        },
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to reset password");
+      }
+
+      return { ...data, emp };
+    },
+    onSuccess: ({ autoPassword, emp }) => {
+      setResetConfirm(null);
+      showToast(
+        `Password reset for ${emp.first_name} ${emp.last_name}: ${autoPassword}`,
+      );
+    },
+    onError: (error) => {
+      showToast(error.message || "Password reset failed", "error");
     },
   });
 
@@ -281,19 +320,17 @@ export default function Employees() {
                         >
                           Edit Info
                         </button>
-                        <button
-                          onClick={() => {
-                            /* Handle Reset Logic */ setActiveMenu(null);
-                            alert(
-                              "Password reset to: " +
-                                emp.emp_id +
-                                emp.first_name.replace(/\s+/g, ""),
-                            );
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                        >
-                          Reset Password
-                        </button>
+                        {canResetPassword && (
+                          <button
+                            onClick={() => {
+                              setActiveMenu(null);
+                              setResetConfirm(emp);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                          >
+                            Reset Password
+                          </button>
+                        )}
                         <hr className="my-1 border-gray-100" />
                         <button
                           onClick={() => {
@@ -402,6 +439,46 @@ export default function Employees() {
           </div>
         </div>
       )}
+
+      {/* Reset Password Confirmation */}
+      {resetConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-16 h-16 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              🔐
+            </div>
+            <h2 className="text-xl font-bold mb-2">Reset Password?</h2>
+            <p className="text-gray-600 mb-6">
+              Reset password for{" "}
+              <b>
+                {resetConfirm.first_name} {resetConfirm.last_name}
+              </b>
+              ?
+            </p>
+            <div className="text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-lg p-2 mb-5">
+              New password format: Employee ID + First Name
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setResetConfirm(null)}
+                disabled={resetPasswordMutation.isPending}
+                className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => resetPasswordMutation.mutate(resetConfirm)}
+                disabled={resetPasswordMutation.isPending}
+                className="flex-1 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50"
+              >
+                {resetPasswordMutation.isPending ? "Resetting..." : "Reset"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }
