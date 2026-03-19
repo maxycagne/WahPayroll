@@ -122,9 +122,12 @@ export default function Employees() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (emp) => {
-      const res = await apiFetch(`/api/employees/${emp.emp_id}/reset-password`, {
-        method: "PUT",
-      });
+      const res = await apiFetch(
+        `/api/employees/${emp.emp_id}/reset-password`,
+        {
+          method: "PUT",
+        },
+      );
 
       const data = await res.json().catch(() => ({}));
 
