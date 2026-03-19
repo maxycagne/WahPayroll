@@ -2,12 +2,41 @@ import { useState } from "react";
 import { URL } from "../assets/constant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+const designationMap = {
+  Operations: [
+    "Supervisor(Finance & Operations)",
+    "Assistant Finance & Operations Partner",
+    "Admin & Human Resources Partner",
+  ],
+  "Health Program Partners": [
+    "Supervisor(Health Program Partner)",
+    "Health Program Partner",
+    "Profiler",
+  ],
+  "Platform Innovation": [
+    "Supervisor(Platform Innovation)",
+    "Senior Platform Innovation Partner",
+    "Platform Innovation Partner",
+    "Data Analyst",
+    "Business Analyst/Quality Assurance",
+  ],
+  "Network & System": [
+    "Supervisor(Network & Systems)",
+    "Network & Systems Partner",
+  ],
+};
+
 export default function Employees() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterDesignation, setFilterDesignation] = useState("All");
+  const [activeMenu, setActiveMenu] = useState(null); // For Ellipsis
 
-  // Form State for new employee
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editEmployee, setEditEmployee] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
   const [formData, setFormData] = useState({
     emp_id: "",
     first_name: "",
@@ -21,79 +50,88 @@ export default function Employees() {
     hired_date: "",
   });
 
-  const statusClasses = {
-    Permanent: "bg-green-100 text-green-800",
-    Casual: "bg-blue-100 text-blue-800",
-    "Job Order": "bg-purple-100 text-purple-800",
-    "PGT Employee": "bg-orange-100 text-orange-800",
-  };
-
-  // --- TANSTACK QUERY: FETCH EMPLOYEES ---
+  // --- QUERIES ---
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
       const res = await fetch(`${URL}/api/employees`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
+        headers: { "ngrok-skip-browser-warning": "69420" },
       });
-      if (!res.ok) throw new Error("Network response was not ok");
       return res.json();
     },
   });
 
-  // --- TANSTACK MUTATION: ADD EMPLOYEE ---
-  const addEmployeeMutation = useMutation({
-    mutationFn: async (newEmployee) => {
-      const res = await fetch(`${URL}/api/employees`, {
+  // --- MUTATIONS ---
+  const addMutation = useMutation({
+    mutationFn: (newData) => {
+      // Auto Password Logic: ID + FirstName (No spaces)
+      const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
+      return fetch(`${URL}/api/employees`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-        body: JSON.stringify(newEmployee),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newData, password: autoPassword }),
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["employees"]);
+      setIsAddModalOpen(false);
+      resetForm();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updatedData) => {
+      const res = await fetch(`${URL}/api/employees/${updatedData.emp_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to update employee");
+      }
+
       return res.json();
     },
     onSuccess: () => {
-      // Refresh the list automatically
       queryClient.invalidateQueries(["employees"]);
-      setIsModalOpen(false);
-      resetForm();
-      alert("Employee added successfully!");
+      setEditEmployee(null);
     },
     onError: (error) => {
-      console.error("Error adding employee:", error);
-      alert("Server error while adding employee.");
+      alert(error.message || "Update failed");
     },
   });
 
-  // --- TANSTACK MUTATION: DELETE EMPLOYEE ---
-  const deleteEmployeeMutation = useMutation({
-    mutationFn: async (emp_id) => {
-      const res = await fetch(`${URL}/api/employees/${emp_id}`, {
-        method: "DELETE",
-        headers: {
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-      });
-      if (!res.ok) throw new Error("Delete failed");
-    },
+  const deleteMutation = useMutation({
+    mutationFn: (id) =>
+      fetch(`${URL}/api/employees/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
+      setDeleteConfirm(null);
     },
   });
 
+  // --- HANDLERS ---
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === "middle_initial") {
+      setFormData({
+        ...formData,
+        middle_initial: value.slice(0, 1).toUpperCase(),
+      });
+      return;
+    }
+
+    if (name === "designation") {
+      setFormData({ ...formData, designation: value, position: "" });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
-  const resetForm = () => {
+  const resetForm = () =>
     setFormData({
       emp_id: "",
       first_name: "",
@@ -106,293 +144,468 @@ export default function Employees() {
       dob: "",
       hired_date: "",
     });
-  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    addEmployeeMutation.mutate(formData);
-  };
-
-  const handleDelete = (emp_id) => {
-    if (window.confirm(`Are you sure you want to delete employee ${emp_id}?`)) {
-      deleteEmployeeMutation.mutate(emp_id);
-    }
-  };
-
-  const filtered = employees.filter((emp) => {
-    const s = searchTerm.toLowerCase();
-    const mi = emp.middle_initial ? `${emp.middle_initial} ` : "";
-    const fullName = `${emp.first_name} ${mi}${emp.last_name}`.toLowerCase();
-    return emp.emp_id.toLowerCase().includes(s) || fullName.includes(s);
+  const filteredEmployees = employees.filter((emp) => {
+    const fullName =
+      `${emp.first_name} ${emp.last_name} ${emp.emp_id}`.toLowerCase();
+    const matchesSearch = fullName.includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === "All" || emp.status === filterStatus;
+    const matchesDesignation =
+      filterDesignation === "All" || emp.designation === filterDesignation;
+    return matchesSearch && matchesStatus && matchesDesignation;
   });
 
   if (isLoading)
-    return <div className="p-6 text-black font-bold">Loading Employees...</div>;
+    return <div className="p-6 font-bold">Loading Employees...</div>;
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
           Employee Management
         </h1>
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-5 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-800 shadow-md hover:opacity-90 transition-opacity"
+          onClick={() => setIsAddModalOpen(true)}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
         >
-          + Add New Employee
+          + Add Employee
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-          <input
-            type="text"
-            placeholder="Search by ID or Name..."
-            className="w-full max-w-md border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Designation
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filtered.map((emp) => (
-                <tr
-                  key={emp.emp_id}
-                  className="hover:bg-gray-50 transition-colors duration-150"
-                >
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {emp.emp_id}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700">
-                    {emp.first_name}{" "}
-                    {emp.middle_initial ? `${emp.middle_initial}. ` : ""}
-                    {emp.last_name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {emp.designation}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[emp.status] || "bg-gray-100 text-gray-800"}`}
-                    >
-                      {emp.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {emp.email}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-right">
-                    <button
-                      onClick={() => handleDelete(emp.emp_id)}
-                      disabled={deleteEmployeeMutation.isPending}
-                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer border-0 bg-transparent disabled:opacity-50"
-                    >
-                      {deleteEmployeeMutation.variables === emp.emp_id
-                        ? "Deleting..."
-                        : "Delete"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <input
+          type="text"
+          placeholder="Search ID or Name..."
+          className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select
+          className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+          value={filterDesignation}
+          onChange={(e) => setFilterDesignation(e.target.value)}
+        >
+          <option value="All">All Designations</option>
+          {Object.keys(designationMap).map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+        <select
+          className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="All">All Status</option>
+          <option value="Permanent">Permanent</option>
+          <option value="Job Order">Job Order</option>
+          <option value="Casual">Casual</option>
+          <option value="PGT Employee">PGT Employee</option>
+        </select>
       </div>
 
-      {/* Add Employee Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex justify-between items-center">
-              <h2 className="text-white text-lg font-bold m-0">
-                Add New Employee
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-white hover:text-gray-200 text-2xl leading-none border-0 bg-transparent cursor-pointer"
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
+        <table className="w-full text-left text-sm border-collapse">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-6 py-3 font-bold text-gray-700">ID</th>
+              <th className="px-6 py-3 font-bold text-gray-700">Full Name</th>
+              <th className="px-6 py-3 font-bold text-gray-700">
+                Designation / Position
+              </th>
+              <th className="px-6 py-3 font-bold text-gray-700">
+                Email Address
+              </th>
+              <th className="px-6 py-3 font-bold text-gray-700">Status</th>
+              <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredEmployees.map((emp) => (
+              <tr
+                key={emp.emp_id}
+                className="hover:bg-gray-50 transition-colors"
               >
-                &times;
+                <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                <td className="px-6 py-4 font-semibold text-gray-800">
+                  {emp.last_name}, {emp.first_name}{" "}
+                  {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                </td>
+                <td className="px-6 py-4 text-gray-600">
+                  <div className="font-medium text-gray-900">
+                    {emp.designation}
+                  </div>
+                  <div className="text-xs opacity-75">{emp.position}</div>
+                </td>
+                <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                <td className="px-6 py-4">
+                  <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                    {emp.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-center relative">
+                  <button
+                    onClick={() =>
+                      setActiveMenu(
+                        activeMenu === emp.emp_id ? null : emp.emp_id,
+                      )
+                    }
+                    className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      fill="currentColor"
+                      viewBox="0 0 16 16"
+                    >
+                      <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                    </svg>
+                  </button>
+
+                  {/* Action Menu Dropdown */}
+                  {activeMenu === emp.emp_id && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setActiveMenu(null)}
+                      ></div>
+                      <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
+                        <button
+                          onClick={() => {
+                            setEditEmployee(emp);
+                            setActiveMenu(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                        >
+                          Edit Info
+                        </button>
+                        <button
+                          onClick={() => {
+                            /* Handle Reset Logic */ setActiveMenu(null);
+                            alert(
+                              "Password reset to: " +
+                                emp.emp_id +
+                                emp.first_name.replace(/\s+/g, ""),
+                            );
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                        >
+                          Reset Password
+                        </button>
+                        <hr className="my-1 border-gray-100" />
+                        <button
+                          onClick={() => {
+                            setDeleteConfirm(emp);
+                            setActiveMenu(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modals same as before but updated with logic */}
+      {isAddModalOpen && (
+        <EmployeeModal
+          title="Add New Employee"
+          data={formData}
+          onChange={handleInputChange}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            resetForm();
+          }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            addMutation.mutate(formData);
+          }}
+          isPending={addMutation.isPending}
+        />
+      )}
+
+      {editEmployee && (
+        <EmployeeModal
+          title="Edit Employee Information"
+          data={editEmployee}
+          isEdit={true}
+          onChange={(e) => {
+            const { name, value } = e.target;
+            if (name === "middle_initial") {
+              setEditEmployee({
+                ...editEmployee,
+                middle_initial: value.slice(0, 1).toUpperCase(),
+              });
+              return;
+            }
+
+            if (name === "designation") {
+              setEditEmployee({
+                ...editEmployee,
+                designation: value,
+                position: "",
+              });
+              return;
+            }
+
+            setEditEmployee({
+              ...editEmployee,
+              [name]: value,
+            });
+          }}
+          onClose={() => setEditEmployee(null)}
+          onSubmit={(e) => {
+            e.preventDefault();
+            updateMutation.mutate(editEmployee);
+          }}
+          isPending={updateMutation.isPending}
+        />
+      )}
+
+      {/* Delete Confirmation remains unchanged */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              ⚠️
+            </div>
+            <h2 className="text-xl font-bold mb-2">Are you sure?</h2>
+            <p className="text-gray-600 mb-6">
+              You are about to delete{" "}
+              <b>
+                {deleteConfirm.first_name} {deleteConfirm.last_name}
+              </b>
+              .
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteConfirm.emp_id)}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Inputs same as before */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Employee ID
-                  </label>
-                  <input
-                    required
-                    name="emp_id"
-                    value={formData.emp_id}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                    placeholder="WAH-00X"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Email Address
-                  </label>
-                  <input
-                    required
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                    placeholder="name@wah.org"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+function EmployeeModal({
+  title,
+  data,
+  onChange,
+  onClose,
+  onSubmit,
+  isPending,
+  isEdit = false,
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="bg-gray-900 px-6 py-4 flex justify-between items-center text-white">
+          <h2 className="text-lg font-bold m-0">{title}</h2>
+          <button
+            onClick={onClose}
+            className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+          >
+            &times;
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Employee ID
+              </label>
+              <input
+                name="emp_id"
+                value={data.emp_id}
+                onChange={onChange}
+                disabled={isEdit}
+                required
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Email Address
+              </label>
+              <input
+                name="email"
+                type="email"
+                value={data.email}
+                onChange={onChange}
+                required
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1 col-span-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-1 flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">
                     First Name
                   </label>
                   <input
-                    required
                     name="first_name"
-                    value={formData.first_name}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
+                    value={data.first_name}
+                    onChange={onChange}
+                    required
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                <div className="col-span-1 flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">
                     M.I.
                   </label>
                   <input
                     name="middle_initial"
-                    value={formData.middle_initial}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                    maxLength="5"
+                    value={data.middle_initial || ""}
+                    onChange={onChange}
+                    maxLength="1"
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                <div className="col-span-1 flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">
                     Last Name
                   </label>
                   <input
-                    required
                     name="last_name"
-                    value={formData.last_name}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Designation
-                  </label>
-                  <input
+                    value={data.last_name}
+                    onChange={onChange}
                     required
-                    name="designation"
-                    value={formData.designation}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Position
-                  </label>
-                  <input
-                    required
-                    name="position"
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                  >
-                    <option>Permanent</option>
-                    <option>Casual</option>
-                    <option>Job Order</option>
-                    <option>PGT Employee</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Date of Birth
-                  </label>
-                  <input
-                    type="date"
-                    name="dob"
-                    value={formData.dob}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Hired Date
-                  </label>
-                  <input
-                    type="date"
-                    name="hired_date"
-                    value={formData.hired_date}
-                    onChange={handleInputChange}
-                    className="border border-gray-300 rounded p-2 text-sm"
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={addEmployeeMutation.isPending}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {addEmployeeMutation.isPending
-                    ? "Saving..."
-                    : "Save Employee"}
-                </button>
-              </div>
-            </form>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Designation
+              </label>
+              <select
+                name="designation"
+                value={data.designation}
+                onChange={onChange}
+                required
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+              >
+                <option value="">Select Designation</option>
+                {Object.keys(designationMap).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Position
+              </label>
+              <select
+                name="position"
+                value={data.position}
+                onChange={onChange}
+                required
+                disabled={!data.designation}
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+              >
+                <option value="">Select Position</option>
+                {data.designation &&
+                  designationMap[data.designation].map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Emp. Status
+              </label>
+              <select
+                name="status"
+                value={data.status}
+                onChange={onChange}
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+              >
+                <option>Permanent</option>
+                <option>Job Order</option>
+                <option>Casual</option>
+                <option>PGT Employee</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Hired Date
+              </label>
+              <input
+                name="hired_date"
+                type="date"
+                value={data.hired_date?.split("T")[0]}
+                onChange={onChange}
+                required
+                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          {!isEdit && (
+            <div className="mt-4 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+              <p className="m-0 text-xs text-purple-700 font-semibold">
+                Auto-generated Password:{" "}
+                <span className="font-mono bg-white px-2 py-0.5 rounded border border-purple-200">
+                  {data.emp_id}
+                  {data.first_name.replace(/\s+/g, "") || "[FirstName]"}
+                </span>
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="px-8 py-2 bg-purple-600 text-white rounded-lg font-semibold"
+            >
+              {isPending
+                ? "Processing..."
+                : isEdit
+                  ? "Update Employee"
+                  : "Save Employee"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
