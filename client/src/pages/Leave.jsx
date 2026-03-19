@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { URL } from "../assets/constant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 
 const leaveTypes = [
   "Birthday Leave",
@@ -277,12 +277,7 @@ export default function Leave() {
   const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
-      const res = await fetch(`${URL}/api/employees/leaves`, {
-        headers: {
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-      });
+      const res = await apiFetch("/api/employees/leaves");
       if (!res.ok) throw new Error("Failed to fetch leaves");
       return res.json();
     },
@@ -291,12 +286,10 @@ export default function Leave() {
   // --- MUTATIONS ---
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
-      const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
+      const res = await apiFetch(`/api/employees/leaves/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify({ status }),
       });
@@ -307,12 +300,10 @@ export default function Leave() {
 
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
-      const res = await fetch(`${URL}/api/employees/leaves`, {
+      const res = await apiFetch("/api/employees/leaves", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify(newLeave),
       });

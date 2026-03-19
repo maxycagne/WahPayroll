@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { URL } from "../assets/constant";
+import { apiFetch } from "../lib/api";
 
 export default function SalaryHistory() {
   const [employees, setEmployees] = useState([]);
@@ -15,7 +15,7 @@ export default function SalaryHistory() {
 
   // 1. Fetch the list of employees on mount for the dropdown
   useEffect(() => {
-    fetch(`${URL}/api/employees`)
+    apiFetch("/api/employees")
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -35,7 +35,7 @@ export default function SalaryHistory() {
   useEffect(() => {
     if (!selectedEmployee) return;
 
-    fetch(`${URL}/api/employees/salary-history/${selectedEmployee}`)
+    apiFetch(`/api/employees/salary-history/${selectedEmployee}`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {

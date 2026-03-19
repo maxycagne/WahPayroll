@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { URL } from "../assets/constant";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 export default function Dashboard() {
   const currentMonth = new Date().toLocaleString("default", {
     month: "long",
@@ -21,12 +21,10 @@ export default function Dashboard() {
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
 
   const fetchDashboardData = async () => {
-    const res = await fetch(`${URL}/api/employees/dashboard-summary`, {
+    const res = await apiFetch("/api/employees/dashboard-summary", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "69420", // <--- THIS IS REQUIRED FOR NGROK TO WORK
-        "bypass-tunnel-reminder": "true",
       },
     });
     const data = await res.json();
@@ -72,12 +70,10 @@ export default function Dashboard() {
   // Handles updating the database when Approve/Deny is clicked
   const handleUpdateLeaveStatus = async (id, newStatus) => {
     try {
-      const res = await fetch(`${URL}/api/employees/leaves/${id}`, {
+      const res = await apiFetch(`/api/employees/leaves/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify({ status: newStatus }),
       });

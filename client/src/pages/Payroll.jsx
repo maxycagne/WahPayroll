@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { URL } from "../assets/constant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -34,12 +34,7 @@ export default function Payroll() {
   const { data: payrollData = [], isLoading } = useQuery({
     queryKey: ["payroll", period],
     queryFn: async () => {
-      const res = await fetch(`${URL}/api/employees/payroll?period=${period}`, {
-        headers: {
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-      });
+      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
       if (!res.ok) throw new Error("Failed to fetch payroll");
       return res.json();
     },
@@ -53,12 +48,10 @@ export default function Payroll() {
   // --- MUTATIONS ---
   const adjustmentMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await fetch(`${URL}/api/employees/salary-adjustment`, {
+      const res = await apiFetch("/api/employees/salary-adjustment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify(payload),
       });
@@ -74,12 +67,10 @@ export default function Payroll() {
 
   const updateBaseSalaryMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await fetch(`${URL}/api/employees/update-base-salary`, {
+      const res = await apiFetch("/api/employees/update-base-salary", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
         },
         body: JSON.stringify(payload),
       });

@@ -7,33 +7,36 @@ const navItems = {
     { to: '/attendance', icon: '☰', label: 'Attendance' },
     { to: '/leave', icon: '✉', label: 'Leave Applications' },
     { to: '/payroll', icon: '⊕', label: 'Salary / Payroll' },
+    { to: '/payroll-reports', icon: '⊟', label: 'Payroll Reports' },
+    { to: '/payslips', icon: '▤', label: 'Payslips' },
+  ],
+  Supervisor: [
+    { to: '/dashboard', icon: '⊞', label: 'Dashboard' },
+    { to: '/employees', icon: '⊚', label: 'Employees' },
+    { to: '/attendance', icon: '☰', label: 'Attendance' },
+    { to: '/leave', icon: '✉', label: 'Leave / Offset' },
+    { to: '/payroll', icon: '⊕', label: 'Salary / Payroll' },
+    { to: '/payroll-reports', icon: '⊟', label: 'Payroll Reports' },
+    { to: '/payslips', icon: '▤', label: 'Payslips' },
   ],
   HR: [
     { to: '/dashboard', icon: '⊞', label: 'Dashboard' },
     { to: '/employees', icon: '⊚', label: 'Employees' },
     { to: '/attendance', icon: '☰', label: 'Attendance' },
-    { to: '/leave', icon: '✉', label: 'Leave Applications' },
-    { to: '/salary-history', icon: '💰', label: 'Salary History' },
+    { to: '/leave', icon: '✉', label: 'Leave / Offset' },
+    { to: '/salary-history', icon: '◷', label: 'Salary History' },
     { to: '/reports', icon: '⊟', label: 'Reports' },
-  ],
-  Finance: [
-    { to: '/dashboard', icon: '⊞', label: 'Dashboard' },
-    { to: '/employees', icon: '⊚', label: 'Employees' },
-    { to: '/attendance', icon: '☰', label: 'Attendance' },
-    { to: '/leave', icon: '✉', label: 'Leave Applications' },
-    { to: '/payroll', icon: '⊕', label: 'Salary / Payroll' },
     { to: '/payslips', icon: '▤', label: 'Payslips' },
-    { to: '/reports', icon: '⊟', label: 'Reports' },
   ],
-  Employee: [
+  RankAndFile: [
     { to: '/dashboard', icon: '⊞', label: 'Dashboard' },
+    { to: '/leave', icon: '✉', label: 'Applications' },
     { to: '/payslips', icon: '▤', label: 'My Payslips' },
-    { to: '/leave', icon: '✉', label: 'Leave Application' },
   ],
-}
+};
 
 export default function Sidebar({ role, onLogout }) {
-  const items = navItems[role] || navItems.Employee
+  const items = navItems[role] || navItems.RankAndFile
 
   return (
     <aside className="bg-gradient-to-b from-wah-sidebar-start to-wah-mid text-white flex flex-col sticky top-[42px] h-[calc(100vh-42px)] overflow-y-auto">

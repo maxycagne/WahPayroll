@@ -328,6 +328,37 @@ export const applySalaryAdjustment = async (req, res) => {
     res.status(500).json({ message: "Error applying adjustment" });
   }
 };
+
+export const updateBaseSalaryByPosition = async (req, res) => {
+  const { position, amount } = req.body;
+
+  if (!position || amount === undefined || amount === null) {
+    return res
+      .status(400)
+      .json({ message: "Position and amount are required" });
+  }
+
+  try {
+    await pool.query("UPDATE employees SET base_salary = ? WHERE position = ?", [
+      amount,
+      position,
+    ]);
+
+    await pool.query(
+      `UPDATE payroll p
+       JOIN employees e ON p.emp_id = e.emp_id
+       SET p.basic_pay = ?
+       WHERE e.position = ?`,
+      [amount, position],
+    );
+
+    res.json({ message: "Base salary updated successfully" });
+  } catch (error) {
+    console.error("DB Error in updateBaseSalaryByPosition:", error);
+    res.status(500).json({ message: "Error updating base salary" });
+  }
+};
+
 // --- SALARY HISTORY ---
 export const getSalaryHistory = async (req, res) => {
   const { emp_id } = req.params;

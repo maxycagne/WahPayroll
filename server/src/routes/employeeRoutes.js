@@ -13,37 +13,97 @@ import {
   getDashboardSummary,
   getSalaryHistory,
   applySalaryAdjustment,
-  getAttendanceCalendarSummary, // <-- New
-  getDailyAttendance, // <-- New
-  saveBulkAttendance, // <-- New
+  updateBaseSalaryByPosition,
+  getAttendanceCalendarSummary,
+  getDailyAttendance,
+  saveBulkAttendance,
 } from "../controllers/employeeController.js";
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+router.use(authenticateToken);
+
 // --- Dashboard ---
-router.get("/dashboard-summary", getDashboardSummary);
+router.get(
+  "/dashboard-summary",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getDashboardSummary,
+);
 
 // --- Attendance & Calendar ---
-router.get("/attendance", getAttendance);
-router.put("/leave-balance/:id", adjustLeaveBalance);
-router.get("/attendance-summary", getAttendanceCalendarSummary); // Fixes the 404
-router.get("/attendance-daily", getDailyAttendance); // Fixes the 404
-router.post("/attendance-bulk", saveBulkAttendance); // Fixes the 404
+router.get(
+  "/attendance",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  getAttendance,
+);
+router.put(
+  "/leave-balance/:id",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  adjustLeaveBalance,
+);
+router.get(
+  "/attendance-summary",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  getAttendanceCalendarSummary,
+);
+router.get(
+  "/attendance-daily",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  getDailyAttendance,
+);
+router.post(
+  "/attendance-bulk",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  saveBulkAttendance,
+);
 
 // --- Leaves ---
-router.get("/leaves", getAllLeaves);
-router.post("/leaves", fileLeave);
-router.put("/leaves/:id", updateLeaveStatus);
+router.get(
+  "/leaves",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getAllLeaves,
+);
+router.post(
+  "/leaves",
+  authorizeRoles("Supervisor", "HR", "RankAndFile"),
+  fileLeave,
+);
+router.put(
+  "/leaves/:id",
+  authorizeRoles("Admin", "Supervisor"),
+  updateLeaveStatus,
+);
 
 // --- Payroll & Salary ---
-router.get("/payroll", getAllPayroll);
-router.post("/salary-adjustment", applySalaryAdjustment);
-router.get("/salary-history/:emp_id", getSalaryHistory);
+router.get(
+  "/payroll",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getAllPayroll,
+);
+router.post(
+  "/salary-adjustment",
+  authorizeRoles("Admin", "Supervisor"),
+  applySalaryAdjustment,
+);
+router.put(
+  "/update-base-salary",
+  authorizeRoles("Admin", "Supervisor"),
+  updateBaseSalaryByPosition,
+);
+router.get(
+  "/salary-history/:emp_id",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getSalaryHistory,
+);
 
 // --- Employees ---
-router.get("/", getAllEmployees);
-router.post("/", createEmployee);
-router.put("/:id", updateEmployee);
-router.delete("/:id", deleteEmployee);
+router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
+router.post("/", authorizeRoles("Admin", "HR"), createEmployee);
+router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
+router.delete("/:id", authorizeRoles("Admin"), deleteEmployee);
 
 export default router;
