@@ -721,6 +721,213 @@ export const deleteWorkweekConfigById = async (req, res) => {
   }
 };
 
+// --- OFFSET ENGINE ---
+const calculateMonthlyOffsetBalance = async (empId, year, month) => {
+  const periodStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const [attendanceRows] = await pool.query(
+    `
+      SELECT COUNT(*) as working_days
+      FROM attendance a
+      WHERE a.emp_id = ?
+        AND a.date BETWEEN ? AND ?
+        AND a.status IN ('Present', 'Late', 'Undertime', 'Field', 'Half-Day')
+    `,
+    [empId, periodStart, periodEnd],
+  );
+
+  const workingDaysCompleted = Number(attendanceRows[0]?.working_days || 0);
+  const baselineDays = 22;
+
+  const [prevBalanceRows] = await pool.query(
+    `
+      SELECT final_balance
+      FROM offset_ledger
+      WHERE emp_id = ?
+      ORDER BY period_year DESC, period_month DESC
+      LIMIT 1
+    `,
+    [empId],
+  );
+
+  const carriedOver = Number(prevBalanceRows[0]?.final_balance || 0);
+
+  let offsetEarned = 0;
+  let offsetUsed = 0;
+  let finalBalance = carriedOver;
+
+  if (workingDaysCompleted >= baselineDays) {
+    offsetEarned = workingDaysCompleted - baselineDays;
+    finalBalance = carriedOver + offsetEarned;
+  } else {
+    const deficit = baselineDays - workingDaysCompleted;
+    const availableOffsets = carriedOver;
+    offsetUsed = Math.min(deficit, availableOffsets);
+    finalBalance = carriedOver - offsetUsed;
+
+    if (offsetUsed < deficit) {
+      finalBalance = Math.max(0, finalBalance - (deficit - offsetUsed));
+    }
+  }
+
+  return {
+    workingDaysCompleted,
+    baselineDays,
+    offsetEarned: Number(offsetEarned.toFixed(2)),
+    offsetUsed: Number(offsetUsed.toFixed(2)),
+    carriedOver: Number(carriedOver.toFixed(2)),
+    finalBalance: Number(finalBalance.toFixed(2)),
+  };
+};
+
+export const getOffsetBalance = async (req, res) => {
+  const { emp_id } = req.params;
+  const { year, month } = req.query;
+
+  const queryYear = year ? Number(year) : new Date().getFullYear();
+  const queryMonth = month ? Number(month) : new Date().getMonth() + 1;
+
+  try {
+    const balance = await calculateMonthlyOffsetBalance(
+      emp_id,
+      queryYear,
+      queryMonth,
+    );
+    res.json(balance);
+  } catch (error) {
+    console.error("DB Error in getOffsetBalance:", error);
+    res.status(500).json({ message: "Error calculating offset balance" });
+  }
+};
+
+export const fileOffsetApplication = async (req, res) => {
+  const { emp_id, date_from, date_to, days_applied } = req.body;
+
+  if (!emp_id || !date_from || !date_to || days_applied === undefined) {
+    return res.status(400).json({
+      message: "emp_id, date_from, date_to, and days_applied are required",
+    });
+  }
+
+  try {
+    await pool.query(
+      `
+        INSERT INTO offset_applications (
+          emp_id,
+          date_from,
+          date_to,
+          days_applied,
+          status
+        ) VALUES (?, ?, ?, ?, 'Pending')
+      `,
+      [emp_id, date_from, date_to, days_applied],
+    );
+
+    res
+      .status(201)
+      .json({ message: "Offset application submitted successfully" });
+  } catch (error) {
+    console.error("DB Error in fileOffsetApplication:", error);
+    res.status(500).json({ message: "Error filing offset application" });
+  }
+};
+
+export const getOffsetApplications = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `
+        SELECT
+          oa.*,
+          e.first_name,
+          e.last_name,
+          sup.first_name as supervisor_first_name,
+          sup.last_name as supervisor_last_name
+        FROM offset_applications oa
+        JOIN employees e ON oa.emp_id = e.emp_id
+        LEFT JOIN employees sup ON oa.supervisor_emp_id = sup.emp_id
+        ORDER BY oa.created_at DESC
+      `,
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getOffsetApplications:", error);
+    res.status(500).json({ message: "Error fetching offset applications" });
+  }
+};
+
+export const updateOffsetApplicationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, approved_days, supervisor_remarks } = req.body;
+  const supervisorId = req.user?.emp_id;
+
+  if (!supervisorId) {
+    return res.status(401).json({ message: "Supervisor ID required" });
+  }
+
+  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existing] = await connection.query(
+      "SELECT * FROM offset_applications WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (existing.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Offset application not found" });
+    }
+
+    const application = existing[0];
+
+    if (status === "Partially Approved" && !approved_days) {
+      await connection.rollback();
+      return res
+        .status(400)
+        .json({ message: "approved_days required for partial approval" });
+    }
+
+    await connection.query(
+      `
+        UPDATE offset_applications
+        SET status = ?,
+            approved_days = ?,
+            supervisor_emp_id = ?,
+            supervisor_remarks = ?,
+            approved_at = ?
+        WHERE id = ?
+      `,
+      [
+        status,
+        status === "Partially Approved" ? approved_days : null,
+        supervisorId,
+        supervisor_remarks || null,
+        status === "Approved" || status === "Partially Approved"
+          ? new Date()
+          : null,
+        id,
+      ],
+    );
+
+    await connection.commit();
+    res.json({
+      message: `Offset application ${status.toLowerCase()} successfully`,
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in updateOffsetApplicationStatus:", error);
+    res.status(500).json({ message: "Error updating offset application" });
+  } finally {
+    connection.release();
+  }
+};
+
 export const applySalaryAdjustment = async (req, res) => {
   const { emp_ids, type, amount, description, date } = req.body;
   try {

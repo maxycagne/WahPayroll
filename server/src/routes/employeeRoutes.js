@@ -22,6 +22,10 @@ import {
   upsertWorkweekConfig,
   updateWorkweekConfigById,
   deleteWorkweekConfigById,
+  getOffsetBalance,
+  fileOffsetApplication,
+  getOffsetApplications,
+  updateOffsetApplicationStatus,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -86,6 +90,28 @@ router.delete(
   "/workweek-config/:id",
   authorizeRoles("Admin"),
   deleteWorkweekConfigById,
+);
+
+// --- Offset Management ---
+router.get(
+  "/offset-balance/:emp_id",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getOffsetBalance,
+);
+router.post(
+  "/offset-applications",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  fileOffsetApplication,
+);
+router.get(
+  "/offset-applications",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  getOffsetApplications,
+);
+router.put(
+  "/offset-applications/:id",
+  authorizeRoles("Admin", "Supervisor"),
+  updateOffsetApplicationStatus,
 );
 
 // --- Leaves ---

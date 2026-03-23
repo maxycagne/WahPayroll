@@ -262,9 +262,17 @@ export default function Leave() {
   // Grab the currently logged-in user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
 
+  const [activeTab, setActiveTab] = useState("leave");
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Offset form state
+  const [offsetForm, setOffsetForm] = useState({
+    date_from: "",
+    date_to: "",
+    days_applied: "",
+  });
 
   // Set the default emp_id to the logged in user
   const [formData, setFormData] = useState({
@@ -282,6 +290,28 @@ export default function Leave() {
     queryFn: async () => {
       const res = await apiFetch("/api/employees/leaves");
       if (!res.ok) throw new Error("Failed to fetch leaves");
+      return res.json();
+    },
+  });
+
+  const { data: offsetApplications = [], isLoading: isLoadingOffsets } =
+    useQuery({
+      queryKey: ["offset-applications"],
+      queryFn: async () => {
+        const res = await apiFetch("/api/employees/offset-applications");
+        if (!res.ok) throw new Error("Failed to fetch offset applications");
+        return res.json();
+      },
+    });
+
+  const { data: offsetBalance = {} } = useQuery({
+    queryKey: ["offset-balance", currentUser?.emp_id],
+    queryFn: async () => {
+      if (!currentUser?.emp_id) return {};
+      const res = await apiFetch(
+        `/api/employees/offset-balance/${currentUser.emp_id}`,
+      );
+      if (!res.ok) return {};
       return res.json();
     },
   });
@@ -330,6 +360,53 @@ export default function Leave() {
       setFormError(err.message);
       showToast(err.message || "Failed to submit leave application.", "error");
     },
+  });
+
+  const fileOffsetMutation = useMutation({
+    mutationFn: async (offsetData) => {
+      const res = await apiFetch("/api/employees/offset-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emp_id: currentUser?.emp_id,
+          ...offsetData,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to file offset");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["offset-applications"]);
+      showToast("Offset application filed successfully.");
+      setOffsetForm({ date_from: "", date_to: "", days_applied: "" });
+      setShowForm(false);
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to file offset.", "error"),
+  });
+
+  const updateOffsetStatusMutation = useMutation({
+    mutationFn: async ({ id, status, approved_days, remarks }) => {
+      const res = await apiFetch(`/api/employees/offset-applications/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          approved_days,
+          supervisor_remarks: remarks,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update offset");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["offset-applications"]);
+      showToast("Offset application updated.");
+    },
+    onError: () =>
+      showToast("Failed to update offset application.", "error"),
   });
 
   // --- HANDLERS ---
@@ -404,44 +481,74 @@ export default function Leave() {
     return startDate.toISOString().split("T")[0];
   };
 
-  if (isLoadingLeaves)
-    return <div className="p-6 font-bold">Loading Leave Data...</div>;
+  if (isLoadingLeaves || isLoadingOffsets)
+    return <div className="p-6 font-bold">Loading Data...</div>;
 
   return (
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          Leave Applications
+          Leave & Offset Applications
         </h1>
-        <div className="flex items-center gap-3">
-          <button
-            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50 transition-colors"
-            onClick={() => {
-              setShowCalendar(!showCalendar);
-              if (showForm) setShowForm(false);
-            }}
-          >
-            {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
-          </button>
-
-          {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
-          {currentUser?.role !== "Admin" && (
-            <button
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => {
-                setShowForm(!showForm);
-                if (showCalendar) setShowCalendar(false);
-              }}
-            >
-              {showForm ? "✕ Close" : "+ File Leave"}
-            </button>
-          )}
-        </div>
       </div>
 
-      {showCalendar && <LeaveCalendar leaves={leaves} />}
+      {/* TAB NAVIGATION */}
+      <div className="flex items-center gap-2 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("leave")}
+          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === "leave"
+              ? "border-purple-600 text-purple-600"
+              : "border-transparent text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          📋 Leave Applications
+        </button>
+        {currentUser?.role !== "Admin" && (
+          <button
+            onClick={() => setActiveTab("offset")}
+            className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === "offset"
+                ? "border-purple-600 text-purple-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            ⏱️ Offset / Overtime
+          </button>
+        )}
+      </div>
 
-      {showForm && currentUser?.role !== "Admin" && (
+      {/* LEAVE TAB */}
+      {activeTab === "leave" && (
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => {
+                setShowCalendar(!showCalendar);
+                if (showForm) setShowForm(false);
+              }}
+            >
+              {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
+            </button>
+
+            {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
+            {currentUser?.role !== "Admin" && (
+              <button
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => {
+                  setShowForm(!showForm);
+                  if (showCalendar) setShowCalendar(false);
+                }}
+              >
+                {showForm ? "✕ Close" : "+ File Leave"}
+              </button>
+            )}
+          </div>
+
+          {showCalendar && <LeaveCalendar leaves={leaves} />}
+
+          {showForm && currentUser?.role !== "Admin" && (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
           <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
             File a Leave Application
@@ -655,6 +762,247 @@ export default function Leave() {
           </table>
         </div>
       </div>
+      )} {/* END LEAVE TAB */}
+
+      {/* OFFSET TAB */}
+      {activeTab === "offset" && currentUser?.role !== "Admin" && (
+        <div>
+          <div className="mb-6 p-4 rounded-lg bg-indigo-50 border border-indigo-200">
+            <h3 className="m-0 mb-2 text-sm font-bold text-indigo-900">
+              Monthly Offset Balance
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div>
+                <p className="text-indigo-700 font-semibold">Working Days</p>
+                <p className="text-indigo-900 font-bold text-lg">
+                  {Number(offsetBalance.workingDaysCompleted || 0).toFixed(1)}
+                </p>
+              </div>
+              <div>
+                <p className="text-indigo-700 font-semibold">Baseline</p>
+                <p className="text-indigo-900 font-bold text-lg">
+                  {offsetBalance.baselineDays || 22}
+                </p>
+              </div>
+              <div>
+                <p className="text-indigo-700 font-semibold">Earned Offsets</p>
+                <p className="text-green-700 font-bold text-lg">
+                  +{Number(offsetBalance.offsetEarned || 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-indigo-700 font-semibold">End Balance</p>
+                <p className="text-purple-700 font-bold text-lg">
+                  {Number(offsetBalance.finalBalance || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+            >
+              {showForm ? "✕ Close" : "+ File Offset Request"}
+            </button>
+          </div>
+
+          {showForm && (
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
+              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+                File Offset / Overtime Request
+              </h3>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!offsetForm.date_from || !offsetForm.date_to || !offsetForm.days_applied) {
+                    showToast("Please fill all required fields.", "error");
+                    return;
+                  }
+                  fileOffsetMutation.mutate({
+                    date_from: offsetForm.date_from,
+                    date_to: offsetForm.date_to,
+                    days_applied: parseFloat(offsetForm.days_applied),
+                  });
+                }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+              >
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={offsetForm.date_from}
+                    onChange={(e) =>
+                      setOffsetForm({ ...offsetForm, date_from: e.target.value })
+                    }
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    To
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={offsetForm.date_to}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    onChange={(e) =>
+                      setOffsetForm({ ...offsetForm, date_to: e.target.value })
+                    }
+                    min={offsetForm.date_from}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Days Applied
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    required
+                    value={offsetForm.days_applied}
+                    onChange={(e) =>
+                      setOffsetForm({ ...offsetForm, days_applied: e.target.value })
+                    }
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="mt-4 flex gap-3 col-span-full">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={fileOffsetMutation.isPending}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+                  >
+                    {fileOffsetMutation.isPending ? "Filing..." : "File Request"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
+              <h3 className="m-0 text-lg font-semibold text-gray-900">
+                Offset Requests
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      Employee
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      From
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      To
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      Days
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      Status
+                    </th>
+                    {currentUser?.role === "Supervisor" && (
+                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                        Actions
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {offsetApplications.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                        No offset requests yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    offsetApplications.map((oa) => (
+                      <tr key={oa.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-3 font-medium text-gray-900">
+                          {oa.first_name} {oa.last_name}
+                        </td>
+                        <td className="px-6 py-3 text-gray-700">
+                          {new Date(oa.date_from).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-3 text-gray-700">
+                          {new Date(oa.date_to).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-3 font-semibold text-gray-700">
+                          {Number(oa.days_applied || 0).toFixed(2)}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                              oa.status === "Approved"
+                                ? "bg-green-100 text-green-800"
+                                : oa.status === "Denied"
+                                  ? "bg-red-100 text-red-800"
+                                  : oa.status === "Partially Approved"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {oa.status}
+                          </span>
+                        </td>
+                        {currentUser?.role === "Supervisor" && oa.status === "Pending" && (
+                          <td className="px-6 py-3 text-sm">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() =>
+                                  updateOffsetStatusMutation.mutate({
+                                    id: oa.id,
+                                    status: "Approved",
+                                    approved_days: null,
+                                    remarks: "",
+                                  })
+                                }
+                                className="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  updateOffsetStatusMutation.mutate({
+                                    id: oa.id,
+                                    status: "Denied",
+                                    approved_days: null,
+                                    remarks: "",
+                                  })
+                                }
+                                className="px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )} {/* END OFFSET TAB */}
 
       <Toast toast={toast} onClose={clearToast} />
     </div>
