@@ -83,7 +83,9 @@ function LoginScreen({ onLogin }) {
                 type="text"
                 name="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
+                onChange={(e) =>
+                  setUsername(e.target.value.replace(/\s+/g, ""))
+                }
                 autoComplete="off"
                 className="peer w-full h-full border-[1.8px] border-wah-light rounded-[14px] bg-white px-4 pt-3 text-base text-[#1e2430] outline-none transition-colors duration-150 focus:border-wah-mid"
               />
