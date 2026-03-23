@@ -8,7 +8,6 @@ const navItems = {
     { to: "/leave", icon: "✉", label: "Leave Applications" },
     { to: "/payroll", icon: "⊕", label: "Salary / Payroll" },
     { to: "/payroll-reports", icon: "⊟", label: "Payroll Reports" },
-    { to: "/payslips", icon: "▤", label: "Payslips" },
   ],
   Supervisor: [
     { to: "/dashboard", icon: "⊞", label: "Dashboard" },

@@ -282,7 +282,7 @@ function AppRoutes({ user, onLogout }) {
             element={
               <RoleProtectedRoute
                 user={user}
-                allowedRoles={["Admin", "Supervisor", "HR", "RankAndFile"]}
+                allowedRoles={["Supervisor", "HR", "RankAndFile"]}
               >
                 <Payslips />
               </RoleProtectedRoute>
