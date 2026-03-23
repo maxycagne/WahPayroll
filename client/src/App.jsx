@@ -7,7 +7,8 @@ import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
-// HR Pages
+
+// HR & Reports Pages
 import HRDashboard from "./pages/HRDashboard";
 import SalaryHistory from "./pages/SalaryHistory";
 import HRReports from "./pages/HRReports";
@@ -142,7 +143,9 @@ function RoleProtectedRoute({ user, allowedRoles, children }) {
   if (!user) return <Navigate to="/" replace />;
 
   if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    // If they go somewhere they aren't allowed, send them to their specific default dashboard
+    const defaultPath = user.role === "HR" ? "/hr-dashboard" : "/dashboard";
+    return <Navigate to={defaultPath} replace />;
   }
 
   return children;
@@ -154,7 +157,7 @@ function AppRoutes({ user, onLogout }) {
   const defaultPathByRole = {
     Admin: "/dashboard",
     Supervisor: "/dashboard",
-    HR: "/dashboard",
+    HR: "/hr-dashboard",
     RankAndFile: "/dashboard",
   };
 
@@ -162,8 +165,30 @@ function AppRoutes({ user, onLogout }) {
     <BrowserRouter>
       <Routes>
         <Route element={<MainLayout role={role} onLogout={onLogout} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* --- DASHBOARDS --- */}
+          <Route
+            path="/dashboard"
+            element={
+              <RoleProtectedRoute
+                user={user}
+                allowedRoles={["Admin", "Supervisor", "RankAndFile"]}
+              >
+                <Dashboard />
+              </RoleProtectedRoute>
+            }
+          />
 
+          {/* ADDED: Missing HR Dashboard Route */}
+          <Route
+            path="/hr-dashboard"
+            element={
+              <RoleProtectedRoute user={user} allowedRoles={["HR"]}>
+                <HRDashboard />
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* --- HR & ADMIN CORE PAGES --- */}
           <Route
             path="/employees"
             element={
@@ -188,14 +213,26 @@ function AppRoutes({ user, onLogout }) {
             }
           />
 
-          <Route path="/leave" element={<Leave />} />
+          {/* PROTECTED: Everyone needs access to Leave to file apps */}
+          <Route
+            path="/leave"
+            element={
+              <RoleProtectedRoute
+                user={user}
+                allowedRoles={["Admin", "Supervisor", "HR", "RankAndFile"]}
+              >
+                <Leave />
+              </RoleProtectedRoute>
+            }
+          />
 
+          {/* PROTECTED: Payroll is only for Admin and Supervisor */}
           <Route
             path="/payroll"
             element={
               <RoleProtectedRoute
                 user={user}
-                allowedRoles={["Admin", "Supervisor", "HR"]}
+                allowedRoles={["Admin", "Supervisor"]}
               >
                 <Payroll />
               </RoleProtectedRoute>
@@ -214,6 +251,7 @@ function AppRoutes({ user, onLogout }) {
             }
           />
 
+          {/* --- REPORTS --- */}
           <Route
             path="/reports"
             element={
@@ -238,6 +276,7 @@ function AppRoutes({ user, onLogout }) {
             }
           />
 
+          {/* --- EMPLOYEE SELF-SERVICE --- */}
           <Route
             path="/payslips"
             element={
@@ -250,6 +289,7 @@ function AppRoutes({ user, onLogout }) {
             }
           />
 
+          {/* Catch-all redirect */}
           <Route
             path="*"
             element={
@@ -317,7 +357,11 @@ export default function App() {
 
   if (isBootstrapping) {
     return (
-      <div className="p-6 font-bold text-gray-900">Initializing session...</div>
+      <div className="min-h-screen grid place-items-center bg-gray-50">
+        <div className="p-6 font-bold text-purple-700 animate-pulse text-xl">
+          Loading WAH System...
+        </div>
+      </div>
     );
   }
 
