@@ -18,6 +18,10 @@ import {
   getAttendanceCalendarSummary,
   getDailyAttendance,
   saveBulkAttendance,
+  getWorkweekConfigs,
+  upsertWorkweekConfig,
+  updateWorkweekConfigById,
+  deleteWorkweekConfigById,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -60,6 +64,28 @@ router.post(
   "/attendance-bulk",
   authorizeRoles("Admin", "Supervisor", "HR"),
   saveBulkAttendance,
+);
+
+// --- Workweek Configuration ---
+router.get(
+  "/workweek-config",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  getWorkweekConfigs,
+);
+router.post(
+  "/workweek-config",
+  authorizeRoles("Admin"),
+  upsertWorkweekConfig,
+);
+router.put(
+  "/workweek-config/:id",
+  authorizeRoles("Admin"),
+  updateWorkweekConfigById,
+);
+router.delete(
+  "/workweek-config/:id",
+  authorizeRoles("Admin"),
+  deleteWorkweekConfigById,
 );
 
 // --- Leaves ---

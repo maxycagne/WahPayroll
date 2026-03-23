@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
@@ -18,6 +18,21 @@ export default function Attendance() {
   const queryClient = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
   const [search, setSearch] = useState("");
+  const [workweekForm, setWorkweekForm] = useState({
+    workweek_type: "5-day",
+    effective_from: "",
+    effective_to: "",
+  });
+  const [editingWorkweekId, setEditingWorkweekId] = useState(null);
+
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("wah_user") || "null");
+    } catch {
+      return null;
+    }
+  }, []);
+  const isAdmin = currentUser?.role === "Admin";
 
   // Modals State
   const [adjModal, setAdjModal] = useState(null);
@@ -54,6 +69,15 @@ export default function Attendance() {
       const res = await apiFetch(
         `/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
       );
+      return res.json();
+    },
+  });
+
+  const { data: workweekConfigs = [] } = useQuery({
+    queryKey: ["workweek-config"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/workweek-config");
+      if (!res.ok) throw new Error("Failed to fetch workweek config");
       return res.json();
     },
   });
@@ -117,6 +141,84 @@ export default function Attendance() {
     onError: () => showToast("Failed to save attendance.", "error"),
   });
 
+  const saveWorkweekMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await apiFetch("/api/employees/workweek-config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to save workweek config");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      showToast("Workweek configuration saved.");
+      setWorkweekForm((prev) => ({
+        ...prev,
+        effective_from: "",
+        effective_to: "",
+      }));
+    },
+    onError: (err) => showToast(err.message || "Failed to save config.", "error"),
+  });
+
+  const updateWorkweekMutation = useMutation({
+    mutationFn: async ({ id, payload }) => {
+      const res = await apiFetch(`/api/employees/workweek-config/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update workweek config");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      showToast("Workweek configuration updated.");
+      setEditingWorkweekId(null);
+      setWorkweekForm({
+        workweek_type: "5-day",
+        effective_from: "",
+        effective_to: "",
+      });
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to update config.", "error"),
+  });
+
+  const deleteWorkweekMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await apiFetch(`/api/employees/workweek-config/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to delete workweek config");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      showToast("Workweek configuration deleted.");
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to delete config.", "error"),
+  });
+
   // --- HANDLERS ---
   const handleDailySubmit = (e) => {
     e.preventDefault();
@@ -167,6 +269,52 @@ export default function Attendance() {
     setSelectedEmployees(new Set());
   };
 
+  const handleWorkweekSubmit = (e) => {
+    e.preventDefault();
+    if (!workweekForm.effective_from) {
+      showToast("Effective from date is required.", "error");
+      return;
+    }
+
+    const payload = {
+      ...workweekForm,
+      effective_to: workweekForm.effective_to || null,
+    };
+
+    if (editingWorkweekId) {
+      updateWorkweekMutation.mutate({ id: editingWorkweekId, payload });
+      return;
+    }
+
+    saveWorkweekMutation.mutate(payload);
+  };
+
+  const handleEditWorkweek = (cfg) => {
+    setEditingWorkweekId(cfg.id);
+    setWorkweekForm({
+      workweek_type: cfg.workweek_type,
+      effective_from: String(cfg.effective_from).slice(0, 10),
+      effective_to: cfg.effective_to ? String(cfg.effective_to).slice(0, 10) : "",
+    });
+  };
+
+  const handleCancelEditWorkweek = () => {
+    setEditingWorkweekId(null);
+    setWorkweekForm({
+      workweek_type: "5-day",
+      effective_from: "",
+      effective_to: "",
+    });
+  };
+
+  const handleDeleteWorkweek = (cfg) => {
+    const confirmed = window.confirm(
+      `Delete ${cfg.workweek_type} rule effective ${String(cfg.effective_from).slice(0, 10)}?`,
+    );
+    if (!confirmed) return;
+    deleteWorkweekMutation.mutate(cfg.id);
+  };
+
   // --- UI HELPERS ---
   const getLeaveHighlightColor = (remaining) => {
     if (remaining <= 0) return "bg-red-100 text-red-800";
@@ -200,6 +348,149 @@ export default function Attendance() {
           Attendance Management
         </h1>
       </div>
+
+      {isAdmin && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-5 mb-6">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <h2 className="m-0 text-base font-bold text-indigo-900">
+              Workweek Configuration (Date-Effective)
+            </h2>
+            <span className="text-xs font-semibold text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full">
+              Admin Only
+            </span>
+          </div>
+
+          <form
+            className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end"
+            onSubmit={handleWorkweekSubmit}
+          >
+            <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 uppercase">
+              Workweek Type
+              <select
+                value={workweekForm.workweek_type}
+                onChange={(e) =>
+                  setWorkweekForm((prev) => ({
+                    ...prev,
+                    workweek_type: e.target.value,
+                  }))
+                }
+                className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="5-day">5-day (8h/day, 1.00 absence unit)</option>
+                <option value="4-day">4-day (10h/day, 1.25 absence unit)</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 uppercase">
+              Effective From
+              <input
+                required
+                type="date"
+                value={workweekForm.effective_from}
+                onChange={(e) =>
+                  setWorkweekForm((prev) => ({
+                    ...prev,
+                    effective_from: e.target.value,
+                  }))
+                }
+                className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 uppercase">
+              Effective To (Optional)
+              <input
+                type="date"
+                value={workweekForm.effective_to}
+                onChange={(e) =>
+                  setWorkweekForm((prev) => ({
+                    ...prev,
+                    effective_to: e.target.value,
+                  }))
+                }
+                className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={saveWorkweekMutation.isPending || updateWorkweekMutation.isPending}
+              className="h-10 px-4 rounded-lg border-0 bg-indigo-700 text-white text-sm font-bold cursor-pointer hover:bg-indigo-800 disabled:opacity-60"
+            >
+              {saveWorkweekMutation.isPending || updateWorkweekMutation.isPending
+                ? "Saving..."
+                : editingWorkweekId
+                  ? "Update Rule"
+                  : "Save Rule"}
+            </button>
+          </form>
+
+          {editingWorkweekId && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleCancelEditWorkweek}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md border border-indigo-300 text-indigo-800 bg-white hover:bg-indigo-50"
+              >
+                Cancel Editing
+              </button>
+            </div>
+          )}
+
+          <div className="mt-4 overflow-x-auto rounded-lg border border-indigo-100 bg-white">
+            <table className="w-full text-xs">
+              <thead className="bg-indigo-50 border-b border-indigo-100">
+                <tr>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Type</th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Effective From</th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Effective To</th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Hours/Day</th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Absence Unit</th>
+                  <th className="px-3 py-2 text-right font-bold text-indigo-900 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workweekConfigs.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-gray-500" colSpan={6}>
+                      No workweek rules yet. Default conversion is 1.00 if none applies.
+                    </td>
+                  </tr>
+                ) : (
+                  workweekConfigs.map((cfg) => (
+                    <tr key={cfg.id} className="border-b border-gray-100">
+                      <td className="px-3 py-2 font-semibold text-gray-800">{cfg.workweek_type}</td>
+                      <td className="px-3 py-2 text-gray-700">{String(cfg.effective_from).slice(0, 10)}</td>
+                      <td className="px-3 py-2 text-gray-700">{cfg.effective_to ? String(cfg.effective_to).slice(0, 10) : "Open-ended"}</td>
+                      <td className="px-3 py-2 text-gray-700">{Number(cfg.hours_per_day).toFixed(2)}</td>
+                      <td className="px-3 py-2 text-gray-700">{Number(cfg.absence_unit).toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="inline-flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleEditWorkweek(cfg)}
+                            className="px-2.5 py-1 text-[11px] font-bold rounded border border-indigo-200 bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteWorkweek(cfg)}
+                            disabled={deleteWorkweekMutation.isPending}
+                            className="px-2.5 py-1 text-[11px] font-bold rounded border border-rose-200 bg-rose-100 text-rose-800 hover:bg-rose-200 disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* --- INLINE CALENDAR VIEW --- */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">

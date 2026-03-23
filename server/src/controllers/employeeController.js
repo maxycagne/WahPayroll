@@ -18,6 +18,94 @@ const resolveRoleFromProfile = ({ designation, position }) => {
   return "RankAndFile";
 };
 
+const WORKWEEK_DEFAULTS = {
+  "5-day": { hoursPerDay: 8, absenceUnit: 1 },
+  "4-day": { hoursPerDay: 10, absenceUnit: 1.25 },
+};
+
+const normalizeWorkweekType = (type) => {
+  const normalized = String(type || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "5-day" || normalized === "5day") return "5-day";
+  if (normalized === "4-day" || normalized === "4day") return "4-day";
+  return null;
+};
+
+const ensureWorkweekConfigsTable = async (connection = pool) => {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS workweek_configs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      workweek_type ENUM('5-day', '4-day') NOT NULL,
+      effective_from DATE NOT NULL,
+      effective_to DATE NULL,
+      hours_per_day DECIMAL(4,2) NOT NULL,
+      absence_unit DECIMAL(4,2) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_effective_from (effective_from)
+    )
+  `);
+};
+
+const parsePeriodRange = (period) => {
+  const isValidPeriod = /^\d{4}-\d{2}$/.test(String(period || ""));
+  const base = isValidPeriod
+    ? new Date(`${period}-01T00:00:00`)
+    : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+  const year = base.getFullYear();
+  const month = base.getMonth();
+
+  const periodStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const periodEnd = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  return {
+    periodStart,
+    periodEnd,
+  };
+};
+
+const getConvertedAbsenceSummary = async (periodStart, periodEnd) => {
+  await ensureWorkweekConfigsTable();
+
+  const [rows] = await pool.query(
+    `
+      SELECT
+        a.emp_id,
+        COUNT(*) AS raw_absences,
+        SUM(
+          COALESCE(
+            (
+              SELECT wc.absence_unit
+              FROM workweek_configs wc
+              WHERE wc.effective_from <= a.date
+                AND (wc.effective_to IS NULL OR wc.effective_to >= a.date)
+              ORDER BY wc.effective_from DESC
+              LIMIT 1
+            ),
+            1
+          )
+        ) AS converted_absences
+      FROM attendance a
+      WHERE a.status = 'Absent'
+        AND a.date BETWEEN ? AND ?
+      GROUP BY a.emp_id
+    `,
+    [periodStart, periodEnd],
+  );
+
+  return rows.reduce((acc, row) => {
+    acc[row.emp_id] = {
+      rawAbsences: Number(row.raw_absences || 0),
+      convertedAbsences: Number(row.converted_absences || 0),
+    };
+    return acc;
+  }, {});
+};
+
 // --- EMPLOYEES ---
 export const getAllEmployees = async (req, res) => {
   try {
@@ -228,6 +316,7 @@ export const getAttendance = async (req, res) => {
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
       LEFT JOIN leave_balances lb ON e.emp_id = lb.emp_id
+      WHERE COALESCE(e.role, '') <> 'Admin'
     `);
     res.json(rows);
   } catch (error) {
@@ -272,6 +361,7 @@ export const getDailyAttendance = async (req, res) => {
       SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = ?
+      WHERE COALESCE(e.role, '') <> 'Admin'
     `,
       [date],
     );
@@ -287,6 +377,15 @@ export const saveBulkAttendance = async (req, res) => {
   const { date, records } = req.body;
   try {
     for (const record of records) {
+      const [eligibleRows] = await pool.query(
+        "SELECT emp_id FROM employees WHERE emp_id = ? AND COALESCE(role, '') <> 'Admin' LIMIT 1",
+        [record.emp_id],
+      );
+
+      if (eligibleRows.length === 0) {
+        continue;
+      }
+
       await pool.query(
         `
         INSERT INTO attendance (emp_id, date, status) 
@@ -353,15 +452,272 @@ export const updateLeaveStatus = async (req, res) => {
 // --- PAYROLL ---
 export const getAllPayroll = async (req, res) => {
   try {
+    const { period } = req.query;
+    const { periodStart, periodEnd } = parsePeriodRange(period);
+    const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
+      periodStart,
+      periodEnd,
+    );
+
     const [rows] = await pool.query(`
       SELECT p.*, e.first_name, e.last_name, e.designation, e.position 
       FROM payroll p 
       JOIN employees e ON p.emp_id = e.emp_id
     `);
-    res.json(rows);
+
+    const enrichedRows = rows.map((row) => {
+      const absenceSummary = absenceSummaryByEmployee[row.emp_id] || {
+        rawAbsences: 0,
+        convertedAbsences: 0,
+      };
+
+      const basicPay = Number(row.basic_pay || 0);
+      const incentives = Number(row.incentives || 0);
+      const absenceDeductions = Number(
+        ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
+      );
+      const netPay = Number((basicPay + incentives - absenceDeductions).toFixed(2));
+
+      return {
+        ...row,
+        absences_count: absenceSummary.rawAbsences,
+        converted_absences: Number(absenceSummary.convertedAbsences.toFixed(2)),
+        absence_deductions: absenceDeductions,
+        net_pay: netPay,
+      };
+    });
+
+    res.json(enrichedRows);
   } catch (error) {
     console.error("DB Error in getAllPayroll:", error);
     res.status(500).json({ message: "Error fetching payroll" });
+  }
+};
+
+export const getWorkweekConfigs = async (req, res) => {
+  try {
+    await ensureWorkweekConfigsTable();
+
+    const [rows] = await pool.query(
+      `
+        SELECT
+          id,
+          workweek_type,
+          effective_from,
+          effective_to,
+          hours_per_day,
+          absence_unit,
+          created_at,
+          updated_at
+        FROM workweek_configs
+        ORDER BY effective_from DESC
+      `,
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getWorkweekConfigs:", error);
+    res.status(500).json({ message: "Error fetching workweek configs" });
+  }
+};
+
+export const upsertWorkweekConfig = async (req, res) => {
+  const { workweek_type, effective_from, effective_to } = req.body;
+
+  const normalizedType = normalizeWorkweekType(workweek_type);
+
+  if (!normalizedType || !effective_from) {
+    return res.status(400).json({
+      message: "workweek_type and effective_from are required",
+    });
+  }
+
+  const newFrom = new Date(effective_from);
+  const newTo = effective_to ? new Date(effective_to) : null;
+
+  if (Number.isNaN(newFrom.getTime())) {
+    return res.status(400).json({ message: "Invalid effective_from date" });
+  }
+
+  if (newTo && Number.isNaN(newTo.getTime())) {
+    return res.status(400).json({ message: "Invalid effective_to date" });
+  }
+
+  if (newTo && newTo < newFrom) {
+    return res
+      .status(400)
+      .json({ message: "effective_to must be on or after effective_from" });
+  }
+
+  const { hoursPerDay, absenceUnit } = WORKWEEK_DEFAULTS[normalizedType];
+  const normalizedTo = effective_to || null;
+  const overlapEndDate = normalizedTo || "9999-12-31";
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await ensureWorkweekConfigsTable(connection);
+
+    const [overlaps] = await connection.query(
+      `
+        SELECT id
+        FROM workweek_configs
+        WHERE effective_from <> ?
+          AND effective_from <= ?
+          AND COALESCE(effective_to, '9999-12-31') >= ?
+        LIMIT 1
+      `,
+      [effective_from, overlapEndDate, effective_from],
+    );
+
+    if (overlaps.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        message:
+          "Workweek date range overlaps with an existing configuration",
+      });
+    }
+
+    await connection.query(
+      `
+        INSERT INTO workweek_configs (
+          workweek_type,
+          effective_from,
+          effective_to,
+          hours_per_day,
+          absence_unit
+        ) VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          workweek_type = VALUES(workweek_type),
+          effective_to = VALUES(effective_to),
+          hours_per_day = VALUES(hours_per_day),
+          absence_unit = VALUES(absence_unit)
+      `,
+      [normalizedType, effective_from, normalizedTo, hoursPerDay, absenceUnit],
+    );
+
+    await connection.commit();
+    res.json({ message: "Workweek configuration saved successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in upsertWorkweekConfig:", error);
+    res.status(500).json({ message: "Error saving workweek config" });
+  } finally {
+    connection.release();
+  }
+};
+
+export const updateWorkweekConfigById = async (req, res) => {
+  const { id } = req.params;
+  const { workweek_type, effective_from, effective_to } = req.body;
+
+  const normalizedType = normalizeWorkweekType(workweek_type);
+
+  if (!normalizedType || !effective_from) {
+    return res.status(400).json({
+      message: "workweek_type and effective_from are required",
+    });
+  }
+
+  const newFrom = new Date(effective_from);
+  const newTo = effective_to ? new Date(effective_to) : null;
+
+  if (Number.isNaN(newFrom.getTime())) {
+    return res.status(400).json({ message: "Invalid effective_from date" });
+  }
+
+  if (newTo && Number.isNaN(newTo.getTime())) {
+    return res.status(400).json({ message: "Invalid effective_to date" });
+  }
+
+  if (newTo && newTo < newFrom) {
+    return res
+      .status(400)
+      .json({ message: "effective_to must be on or after effective_from" });
+  }
+
+  const { hoursPerDay, absenceUnit } = WORKWEEK_DEFAULTS[normalizedType];
+  const normalizedTo = effective_to || null;
+  const overlapEndDate = normalizedTo || "9999-12-31";
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await ensureWorkweekConfigsTable(connection);
+
+    const [existing] = await connection.query(
+      "SELECT id FROM workweek_configs WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (existing.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Workweek config not found" });
+    }
+
+    const [overlaps] = await connection.query(
+      `
+        SELECT id
+        FROM workweek_configs
+        WHERE id <> ?
+          AND effective_from <= ?
+          AND COALESCE(effective_to, '9999-12-31') >= ?
+        LIMIT 1
+      `,
+      [id, overlapEndDate, effective_from],
+    );
+
+    if (overlaps.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        message:
+          "Workweek date range overlaps with an existing configuration",
+      });
+    }
+
+    await connection.query(
+      `
+        UPDATE workweek_configs
+        SET workweek_type = ?,
+            effective_from = ?,
+            effective_to = ?,
+            hours_per_day = ?,
+            absence_unit = ?
+        WHERE id = ?
+      `,
+      [normalizedType, effective_from, normalizedTo, hoursPerDay, absenceUnit, id],
+    );
+
+    await connection.commit();
+    res.json({ message: "Workweek configuration updated successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in updateWorkweekConfigById:", error);
+    res.status(500).json({ message: "Error updating workweek config" });
+  } finally {
+    connection.release();
+  }
+};
+
+export const deleteWorkweekConfigById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await ensureWorkweekConfigsTable();
+
+    const [result] = await pool.query(
+      "DELETE FROM workweek_configs WHERE id = ?",
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Workweek config not found" });
+    }
+
+    res.json({ message: "Workweek configuration deleted successfully" });
+  } catch (error) {
+    console.error("DB Error in deleteWorkweekConfigById:", error);
+    res.status(500).json({ message: "Error deleting workweek config" });
   }
 };
 
