@@ -49,22 +49,25 @@ const checkPassword = async (inputPassword, user) => {
 };
 
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
   try {
-    const [rows] = await pool.query("SELECT * FROM employees WHERE email = ?", [
-      email,
-    ]);
+    const [rows] = await pool.query(
+      `SELECT *
+       FROM employees
+       WHERE LOWER(REPLACE(first_name, ' ', '')) = LOWER(?)`,
+      [username],
+    );
 
     if (rows.length === 0) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Invalid username or password" });
     }
 
     const user = rows[0];
     const isMatch = await checkPassword(password, user);
 
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Invalid username or password" });
     }
 
     const role = normalizeRole(user.role);

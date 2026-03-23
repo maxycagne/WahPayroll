@@ -27,7 +27,7 @@ const safeParseUser = () => {
 };
 
 function LoginScreen({ onLogin }) {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -41,13 +41,13 @@ function LoginScreen({ onLogin }) {
       const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Invalid email or password");
+        throw new Error(data.message || "Invalid username or password");
       }
 
       onLogin(data.token, data.user);
@@ -79,19 +79,19 @@ function LoginScreen({ onLogin }) {
             <div className="relative w-full h-14">
               <input
                 required
-                id="email"
-                type="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                name="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
                 autoComplete="off"
                 className="peer w-full h-full border-[1.8px] border-wah-light rounded-[14px] bg-white px-4 pt-3 text-base text-[#1e2430] outline-none transition-colors duration-150 focus:border-wah-mid"
               />
               <label
-                htmlFor="email"
+                htmlFor="username"
                 className="absolute left-3.5 top-1/2 text-wah-accent pointer-events-none -translate-y-1/2 transition-all duration-150 px-[0.2em] peer-focus:-translate-y-[160%] peer-focus:scale-[0.82] peer-focus:bg-wah-card peer-focus:text-wah-mid peer-valid:-translate-y-[160%] peer-valid:scale-[0.82] peer-valid:bg-wah-card peer-valid:text-wah-mid"
               >
-                Email
+                Username
               </label>
             </div>
 
