@@ -405,8 +405,7 @@ export default function Leave() {
       queryClient.invalidateQueries(["offset-applications"]);
       showToast("Offset application updated.");
     },
-    onError: () =>
-      showToast("Failed to update offset application.", "error"),
+    onError: () => showToast("Failed to update offset application.", "error"),
   });
 
   // --- HANDLERS ---
@@ -491,7 +490,6 @@ export default function Leave() {
           Leave & Offset Applications
         </h1>
       </div>
-
       {/* TAB NAVIGATION */}
       <div className="flex items-center gap-2 mb-6 border-b border-gray-200">
         <button
@@ -517,7 +515,6 @@ export default function Leave() {
           </button>
         )}
       </div>
-
       {/* LEAVE TAB */}
       {activeTab === "leave" && (
         <div>
@@ -549,221 +546,229 @@ export default function Leave() {
           {showCalendar && <LeaveCalendar leaves={leaves} />}
 
           {showForm && currentUser?.role !== "Admin" && (
-        <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-          <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
-            File a Leave Application
-          </h3>
-          {formError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              {formError}
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
+              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+                File a Leave Application
+              </h3>
+              {formError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {formError}
+                </div>
+              )}
+              <form
+                onSubmit={handleSubmitLeave}
+                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+              >
+                {/* LOCKED EMPLOYEE FIELD */}
+                <div className="flex flex-col gap-2 md:col-span-3">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Filing Leave As
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={
+                      currentUser?.name
+                        ? `${currentUser.emp_id} - ${currentUser.name}`
+                        : "Loading..."
+                    }
+                    className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Leave Type
+                  </label>
+                  <select
+                    value={formData.leaveType}
+                    onChange={handleLeaveTypeChange}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {leaveTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Max: {leavePolicy[formData.leaveType]?.maxDays} business
+                    day(s)
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.fromDate}
+                    onChange={handleFromDateChange}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    To
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.toDate}
+                    onChange={handleToDateChange}
+                    disabled={formData.leaveType === "Birthday Leave"}
+                    max={getMaxToDate()}
+                    min={formData.fromDate}
+                    className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                  />
+                </div>
+                <div className="flex flex-col gap-2 md:col-span-3">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Priority
+                  </label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) =>
+                      setFormData({ ...formData, priority: e.target.value })
+                    }
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2 md:col-span-3">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Reason
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Reason for leave…"
+                    value={formData.reason}
+                    onChange={(e) =>
+                      setFormData({ ...formData, reason: e.target.value })
+                    }
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="mt-4 flex gap-3 justify-end md:col-span-3">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
+                    onClick={() => setShowForm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitLeaveMutation.isPending}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+                  >
+                    {submitLeaveMutation.isPending ? "Submitting..." : "Submit"}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
-          <form
-            onSubmit={handleSubmitLeave}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          >
-            {/* LOCKED EMPLOYEE FIELD */}
-            <div className="flex flex-col gap-2 md:col-span-3">
-              <label className="text-sm font-semibold text-gray-700">
-                Filing Leave As
-              </label>
-              <input
-                type="text"
-                disabled
-                value={
-                  currentUser?.name
-                    ? `${currentUser.emp_id} - ${currentUser.name}`
-                    : "Loading..."
-                }
-                className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
-              />
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">
-                Leave Type
-              </label>
-              <select
-                value={formData.leaveType}
-                onChange={handleLeaveTypeChange}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                {leaveTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Max: {leavePolicy[formData.leaveType]?.maxDays} business day(s)
-              </p>
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
+            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
+              <h3 className="m-0 text-lg font-semibold text-gray-900">
+                All Leave Requests
+              </h3>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">
-                From
-              </label>
-              <input
-                type="date"
-                required
-                value={formData.fromDate}
-                onChange={handleFromDateChange}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">To</label>
-              <input
-                type="date"
-                required
-                value={formData.toDate}
-                onChange={handleToDateChange}
-                disabled={formData.leaveType === "Birthday Leave"}
-                max={getMaxToDate()}
-                min={formData.fromDate}
-                className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
-              />
-            </div>
-            <div className="flex flex-col gap-2 md:col-span-3">
-              <label className="text-sm font-semibold text-gray-700">
-                Priority
-              </label>
-              <select
-                value={formData.priority}
-                onChange={(e) =>
-                  setFormData({ ...formData, priority: e.target.value })
-                }
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2 md:col-span-3">
-              <label className="text-sm font-semibold text-gray-700">
-                Reason
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Reason for leave…"
-                value={formData.reason}
-                onChange={(e) =>
-                  setFormData({ ...formData, reason: e.target.value })
-                }
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <div className="mt-4 flex gap-3 justify-end md:col-span-3">
-              <button
-                type="button"
-                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
-                onClick={() => setShowForm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitLeaveMutation.isPending}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
-              >
-                {submitLeaveMutation.isPending ? "Submitting..." : "Submit"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
-        <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-          <h3 className="m-0 text-lg font-semibold text-gray-900">
-            All Leave Requests
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                  Employee
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                  From
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                  To
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                  Status
-                </th>
-                {currentUser?.role !== "RankAndFile" && (
-                  <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {leaves.map((l) => (
-                <tr
-                  key={l.id}
-                  className="hover:bg-gray-50 transition-colors duration-150"
-                >
-                  <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                    {l.first_name} {l.last_name}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-700">
-                    {l.leave_type}
-                  </td>
-                  <td className="px-6 py-3 text-sm font-semibold text-gray-600">
-                    {l.priority}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-700">
-                    {new Date(l.date_from).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-700">
-                    {new Date(l.date_to).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-3 text-sm">
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${badgeClass[l.status] || "bg-gray-100 text-gray-800"}`}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                      Employee
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                      From
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                      To
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    {currentUser?.role !== "RankAndFile" && (
+                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {leaves.map((l) => (
+                    <tr
+                      key={l.id}
+                      className="hover:bg-gray-50 transition-colors duration-150"
                     >
-                      {l.status}
-                    </span>
-                  </td>
-                  {currentUser?.role !== "RankAndFile" && (
-                    <td className="px-6 py-3 text-sm">
-                      {l.status === "Pending" && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleUpdateStatus(l.id, "Approved")}
-                            className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(l.id, "Denied")}
-                            className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                          >
-                            Deny
-                          </button>
-                        </div>
+                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                        {l.first_name} {l.last_name}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        {l.leave_type}
+                      </td>
+                      <td className="px-6 py-3 text-sm font-semibold text-gray-600">
+                        {l.priority}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        {new Date(l.date_from).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        {new Date(l.date_to).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-3 text-sm">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${badgeClass[l.status] || "bg-gray-100 text-gray-800"}`}
+                        >
+                          {l.status}
+                        </span>
+                      </td>
+                      {currentUser?.role !== "RankAndFile" && (
+                        <td className="px-6 py-3 text-sm">
+                          {l.status === "Pending" && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(l.id, "Approved")
+                                }
+                                className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(l.id, "Denied")
+                                }
+                                className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          )}
+                        </td>
                       )}
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-      )} {/* END LEAVE TAB */}
-
+      )}{" "}
+      {/* END LEAVE TAB */}
       {/* OFFSET TAB */}
       {activeTab === "offset" && currentUser?.role !== "Admin" && (
         <div>
@@ -816,7 +821,11 @@ export default function Leave() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!offsetForm.date_from || !offsetForm.date_to || !offsetForm.days_applied) {
+                  if (
+                    !offsetForm.date_from ||
+                    !offsetForm.date_to ||
+                    !offsetForm.days_applied
+                  ) {
                     showToast("Please fill all required fields.", "error");
                     return;
                   }
@@ -837,7 +846,10 @@ export default function Leave() {
                     required
                     value={offsetForm.date_from}
                     onChange={(e) =>
-                      setOffsetForm({ ...offsetForm, date_from: e.target.value })
+                      setOffsetForm({
+                        ...offsetForm,
+                        date_from: e.target.value,
+                      })
                     }
                     className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
@@ -868,7 +880,10 @@ export default function Leave() {
                     required
                     value={offsetForm.days_applied}
                     onChange={(e) =>
-                      setOffsetForm({ ...offsetForm, days_applied: e.target.value })
+                      setOffsetForm({
+                        ...offsetForm,
+                        days_applied: e.target.value,
+                      })
                     }
                     className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
@@ -886,7 +901,9 @@ export default function Leave() {
                     disabled={fileOffsetMutation.isPending}
                     className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
                   >
-                    {fileOffsetMutation.isPending ? "Filing..." : "File Request"}
+                    {fileOffsetMutation.isPending
+                      ? "Filing..."
+                      : "File Request"}
                   </button>
                 </div>
               </form>
@@ -928,7 +945,10 @@ export default function Leave() {
                 <tbody className="divide-y divide-gray-200">
                   {offsetApplications.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                      <td
+                        colSpan="6"
+                        className="px-6 py-4 text-center text-gray-500"
+                      >
                         No offset requests yet.
                       </td>
                     </tr>
@@ -962,36 +982,38 @@ export default function Leave() {
                             {oa.status}
                           </span>
                         </td>
-                        {currentUser?.role === "Supervisor" && oa.status === "Pending" && (
+                        {currentUser?.role === "Supervisor" && (
                           <td className="px-6 py-3 text-sm">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  updateOffsetStatusMutation.mutate({
-                                    id: oa.id,
-                                    status: "Approved",
-                                    approved_days: null,
-                                    remarks: "",
-                                  })
-                                }
-                                className="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  updateOffsetStatusMutation.mutate({
-                                    id: oa.id,
-                                    status: "Denied",
-                                    approved_days: null,
-                                    remarks: "",
-                                  })
-                                }
-                                className="px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                              >
-                                Deny
-                              </button>
-                            </div>
+                            {oa.status === "Pending" && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    updateOffsetStatusMutation.mutate({
+                                      id: oa.id,
+                                      status: "Approved",
+                                      approved_days: null,
+                                      remarks: "",
+                                    })
+                                  }
+                                  className="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateOffsetStatusMutation.mutate({
+                                      id: oa.id,
+                                      status: "Denied",
+                                      approved_days: null,
+                                      remarks: "",
+                                    })
+                                  }
+                                  className="px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
+                                >
+                                  Deny
+                                </button>
+                              </div>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -1002,8 +1024,8 @@ export default function Leave() {
             </div>
           </div>
         </div>
-      )} {/* END OFFSET TAB */}
-
+      )}{" "}
+      {/* END OFFSET TAB */}
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );
