@@ -9,6 +9,7 @@ import {
   updateLeaveStatus,
   fileLeave,
   getAllPayroll,
+  generatePayroll, // <-- ADDED THIS IMPORT
   getAttendance,
   adjustLeaveBalance,
   getDashboardSummary,
@@ -76,11 +77,7 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR"),
   getWorkweekConfigs,
 );
-router.post(
-  "/workweek-config",
-  authorizeRoles("Admin"),
-  upsertWorkweekConfig,
-);
+router.post("/workweek-config", authorizeRoles("Admin"), upsertWorkweekConfig);
 router.put(
   "/workweek-config/:id",
   authorizeRoles("Admin"),
@@ -105,7 +102,7 @@ router.post(
 );
 router.get(
   "/offset-applications",
-  authorizeRoles("Admin", "Supervisor", "HR"),
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getOffsetApplications,
 );
 router.put(
@@ -132,10 +129,17 @@ router.put(
 );
 
 // --- Payroll & Salary ---
+
 router.get(
   "/payroll",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getAllPayroll,
+);
+// <-- ADDED THE NEW ROUTE HERE -->
+router.post(
+  "/generate-payroll",
+  authorizeRoles("Admin", "Supervisor"),
+  generatePayroll,
 );
 router.post(
   "/salary-adjustment",
@@ -157,7 +161,11 @@ router.get(
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
-router.put("/:id/reset-password", authorizeRoles("Admin"), resetEmployeePassword);
+router.put(
+  "/:id/reset-password",
+  authorizeRoles("Admin"),
+  resetEmployeePassword,
+);
 router.delete("/:id", authorizeRoles("Admin"), deleteEmployee);
 
 export default router;

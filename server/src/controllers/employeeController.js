@@ -1,8 +1,12 @@
 import pool from "../config/db.js";
 
 const resolveRoleFromProfile = ({ designation, position }) => {
-  const normalizedDesignation = String(designation || "").trim().toLowerCase();
-  const normalizedPosition = String(position || "").trim().toLowerCase();
+  const normalizedDesignation = String(designation || "")
+    .trim()
+    .toLowerCase();
+  const normalizedPosition = String(position || "")
+    .trim()
+    .toLowerCase();
 
   if (
     normalizedDesignation === "operations" &&
@@ -420,19 +424,31 @@ export const adjustLeaveBalance = async (req, res) => {
 
 export const getAllLeaves = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const userRole = req.user?.role;
+    const empId = req.user?.emp_id;
+
+    let query = `
       SELECT l.*, e.first_name, e.last_name 
       FROM leave_requests l 
       JOIN employees e ON l.emp_id = e.emp_id
-      ORDER BY l.id DESC
-    `);
+    `;
+    const queryParams = [];
+
+    // PRIVACY FIX: If regular employee, only show their own leaves
+    if (userRole === "RankAndFile") {
+      query += " WHERE l.emp_id = ?";
+      queryParams.push(empId);
+    }
+
+    query += " ORDER BY l.id DESC";
+
+    const [rows] = await pool.query(query, queryParams);
     res.json(rows);
   } catch (error) {
     console.error("DB Error in getAllLeaves:", error);
     res.status(500).json({ message: "Error fetching leaves" });
   }
 };
-
 export const updateLeaveStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -454,16 +470,20 @@ export const getAllPayroll = async (req, res) => {
   try {
     const { period } = req.query;
     const { periodStart, periodEnd } = parsePeriodRange(period);
+
     const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
       periodStart,
       periodEnd,
     );
 
-    const [rows] = await pool.query(`
-      SELECT p.*, e.first_name, e.last_name, e.designation, e.position 
-      FROM payroll p 
-      JOIN employees e ON p.emp_id = e.emp_id
-    `);
+    // FIX: Added the WHERE clause to only fetch payrolls for the selected month!
+    const [rows] = await pool.query(
+      `SELECT p.*, e.first_name, e.last_name, e.designation, e.position 
+       FROM payroll p 
+       JOIN employees e ON p.emp_id = e.emp_id
+       WHERE p.period_start = ?`,
+      [periodStart],
+    );
 
     const enrichedRows = rows.map((row) => {
       const absenceSummary = absenceSummaryByEmployee[row.emp_id] || {
@@ -476,7 +496,9 @@ export const getAllPayroll = async (req, res) => {
       const absenceDeductions = Number(
         ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
       );
-      const netPay = Number((basicPay + incentives - absenceDeductions).toFixed(2));
+      const netPay = Number(
+        (basicPay + incentives - absenceDeductions).toFixed(2),
+      );
 
       return {
         ...row,
@@ -573,8 +595,7 @@ export const upsertWorkweekConfig = async (req, res) => {
     if (overlaps.length > 0) {
       await connection.rollback();
       return res.status(409).json({
-        message:
-          "Workweek date range overlaps with an existing configuration",
+        message: "Workweek date range overlaps with an existing configuration",
       });
     }
 
@@ -670,8 +691,7 @@ export const updateWorkweekConfigById = async (req, res) => {
     if (overlaps.length > 0) {
       await connection.rollback();
       return res.status(409).json({
-        message:
-          "Workweek date range overlaps with an existing configuration",
+        message: "Workweek date range overlaps with an existing configuration",
       });
     }
 
@@ -685,7 +705,14 @@ export const updateWorkweekConfigById = async (req, res) => {
             absence_unit = ?
         WHERE id = ?
       `,
-      [normalizedType, effective_from, normalizedTo, hoursPerDay, absenceUnit, id],
+      [
+        normalizedType,
+        effective_from,
+        normalizedTo,
+        hoursPerDay,
+        absenceUnit,
+        id,
+      ],
     );
 
     await connection.commit();
@@ -836,20 +863,31 @@ export const fileOffsetApplication = async (req, res) => {
 
 export const getOffsetApplications = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `
-        SELECT
-          oa.*,
-          e.first_name,
-          e.last_name,
-          sup.first_name as supervisor_first_name,
-          sup.last_name as supervisor_last_name
-        FROM offset_applications oa
-        JOIN employees e ON oa.emp_id = e.emp_id
-        LEFT JOIN employees sup ON oa.supervisor_emp_id = sup.emp_id
-        ORDER BY oa.created_at DESC
-      `,
-    );
+    const userRole = req.user?.role;
+    const empId = req.user?.emp_id;
+
+    let query = `
+      SELECT
+        oa.*,
+        e.first_name,
+        e.last_name,
+        sup.first_name as supervisor_first_name,
+        sup.last_name as supervisor_last_name
+      FROM offset_applications oa
+      JOIN employees e ON oa.emp_id = e.emp_id
+      LEFT JOIN employees sup ON oa.supervisor_emp_id = sup.emp_id
+    `;
+    const queryParams = [];
+
+    // PRIVACY FIX: If regular employee, only show their own offsets
+    if (userRole === "RankAndFile") {
+      query += " WHERE oa.emp_id = ?";
+      queryParams.push(empId);
+    }
+
+    query += " ORDER BY oa.created_at DESC";
+
+    const [rows] = await pool.query(query, queryParams);
     res.json(rows);
   } catch (error) {
     console.error("DB Error in getOffsetApplications:", error);
@@ -866,7 +904,9 @@ export const updateOffsetApplicationStatus = async (req, res) => {
     return res.status(401).json({ message: "Supervisor ID required" });
   }
 
-  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
+  if (
+    !["Pending", "Approved", "Denied", "Partially Approved"].includes(status)
+  ) {
     return res.status(400).json({ message: "Invalid status" });
   }
 
@@ -953,6 +993,81 @@ export const applySalaryAdjustment = async (req, res) => {
   }
 };
 
+export const generatePayroll = async (req, res) => {
+  const { period } = req.body;
+  if (!period) return res.status(400).json({ message: "Period is required" });
+
+  try {
+    // 1. Get the exact start and end dates for the selected month
+    const { periodStart, periodEnd } = parsePeriodRange(period);
+
+    // 2. Fetch the calculated absences (incorporates the 1 vs 1.25 workweek logic)
+    const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
+      periodStart,
+      periodEnd,
+    );
+
+    // 3. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin)
+    const [employees] = await pool.query(
+      "SELECT emp_id, basic_pay FROM employees WHERE COALESCE(role, '') != 'Admin'",
+    );
+
+    // 4. Calculate and save the snapshot for each employee
+    for (const emp of employees) {
+      const basicPay = Number(emp.basic_pay || 0);
+
+      const absenceSummary = absenceSummaryByEmployee[emp.emp_id] || {
+        rawAbsences: 0,
+        convertedAbsences: 0,
+      };
+
+      // Formula: (Monthly Pay / 22 days) * converted absences
+      const absenceDeductions = Number(
+        ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
+      );
+
+      // Calculate total incentives (Bonus/Increases) given this month
+      const [incentiveRows] = await pool.query(
+        "SELECT SUM(amount) as total_incentives FROM salary_history WHERE emp_id = ? AND type IN ('Bonus', 'Increase') AND DATE_FORMAT(effective_date, '%Y-%m') = ?",
+        [emp.emp_id, period],
+      );
+      const incentives = Number(incentiveRows[0]?.total_incentives || 0);
+
+      // Calculate Gross and Net Pay
+      const grossPay = Number((basicPay + incentives).toFixed(2));
+      const netPay = Number((grossPay - absenceDeductions).toFixed(2));
+
+      // 5. Save the official snapshot to the payroll table
+      // EXACTLY matching your database columns from the screenshot
+      await pool.query(
+        `INSERT INTO payroll (emp_id, period_start, basic_pay, absences_count, absence_deductions, incentives, gross_pay, net_pay)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE 
+           basic_pay = VALUES(basic_pay),
+           absences_count = VALUES(absences_count),
+           absence_deductions = VALUES(absence_deductions),
+           incentives = VALUES(incentives),
+           gross_pay = VALUES(gross_pay),
+           net_pay = VALUES(net_pay)`,
+        [
+          emp.emp_id,
+          periodStart,
+          basicPay,
+          absenceSummary.rawAbsences,
+          absenceDeductions,
+          incentives,
+          grossPay,
+          netPay,
+        ],
+      );
+    }
+
+    res.json({ message: "Payroll generated successfully" });
+  } catch (error) {
+    console.error("DB Error in generatePayroll:", error);
+    res.status(500).json({ message: "Error generating payroll" });
+  }
+};
 export const updateBaseSalaryByPosition = async (req, res) => {
   const { position, amount } = req.body;
 
@@ -963,11 +1078,13 @@ export const updateBaseSalaryByPosition = async (req, res) => {
   }
 
   try {
-    await pool.query("UPDATE employees SET base_salary = ? WHERE position = ?", [
+    // 1. Fixed: Changed 'base_salary' to 'basic_pay' for the employees table
+    await pool.query("UPDATE employees SET basic_pay = ? WHERE position = ?", [
       amount,
       position,
     ]);
 
+    // 2. Update the payroll table as well
     await pool.query(
       `UPDATE payroll p
        JOIN employees e ON p.emp_id = e.emp_id
