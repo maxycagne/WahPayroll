@@ -182,12 +182,19 @@ export default function Employees() {
     });
 
   const filteredEmployees = employees.filter((emp) => {
+    // 1. Hide Admin accounts from the table completely
+    if (emp.role === "Admin") {
+      return false;
+    }
+
+    // 2. Existing filter logic
     const fullName =
       `${emp.first_name} ${emp.last_name} ${emp.emp_id}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "All" || emp.status === filterStatus;
     const matchesDesignation =
       filterDesignation === "All" || emp.designation === filterDesignation;
+
     return matchesSearch && matchesStatus && matchesDesignation;
   });
 
