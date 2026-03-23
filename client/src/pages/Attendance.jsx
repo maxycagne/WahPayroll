@@ -166,7 +166,8 @@ export default function Attendance() {
         effective_to: "",
       }));
     },
-    onError: (err) => showToast(err.message || "Failed to save config.", "error"),
+    onError: (err) =>
+      showToast(err.message || "Failed to save config.", "error"),
   });
 
   const updateWorkweekMutation = useMutation({
@@ -294,7 +295,9 @@ export default function Attendance() {
     setWorkweekForm({
       workweek_type: cfg.workweek_type,
       effective_from: String(cfg.effective_from).slice(0, 10),
-      effective_to: cfg.effective_to ? String(cfg.effective_to).slice(0, 10) : "",
+      effective_to: cfg.effective_to
+        ? String(cfg.effective_to).slice(0, 10)
+        : "",
     });
   };
 
@@ -377,7 +380,9 @@ export default function Attendance() {
                 className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="5-day">5-day (8h/day, 1.00 absence unit)</option>
-                <option value="4-day">4-day (10h/day, 1.25 absence unit)</option>
+                <option value="4-day">
+                  4-day (10h/day, 1.25 absence unit)
+                </option>
               </select>
             </label>
 
@@ -414,10 +419,14 @@ export default function Attendance() {
 
             <button
               type="submit"
-              disabled={saveWorkweekMutation.isPending || updateWorkweekMutation.isPending}
+              disabled={
+                saveWorkweekMutation.isPending ||
+                updateWorkweekMutation.isPending
+              }
               className="h-10 px-4 rounded-lg border-0 bg-indigo-700 text-white text-sm font-bold cursor-pointer hover:bg-indigo-800 disabled:opacity-60"
             >
-              {saveWorkweekMutation.isPending || updateWorkweekMutation.isPending
+              {saveWorkweekMutation.isPending ||
+              updateWorkweekMutation.isPending
                 ? "Saving..."
                 : editingWorkweekId
                   ? "Update Rule"
@@ -441,29 +450,54 @@ export default function Attendance() {
             <table className="w-full text-xs">
               <thead className="bg-indigo-50 border-b border-indigo-100">
                 <tr>
-                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Type</th>
-                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Effective From</th>
-                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Effective To</th>
-                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Hours/Day</th>
-                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">Absence Unit</th>
-                  <th className="px-3 py-2 text-right font-bold text-indigo-900 uppercase">Actions</th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">
+                    Type
+                  </th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">
+                    Effective From
+                  </th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">
+                    Effective To
+                  </th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">
+                    Hours/Day
+                  </th>
+                  <th className="px-3 py-2 text-left font-bold text-indigo-900 uppercase">
+                    Absence Unit
+                  </th>
+                  <th className="px-3 py-2 text-right font-bold text-indigo-900 uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {workweekConfigs.length === 0 ? (
                   <tr>
                     <td className="px-3 py-3 text-gray-500" colSpan={6}>
-                      No workweek rules yet. Default conversion is 1.00 if none applies.
+                      No workweek rules yet. Default conversion is 1.00 if none
+                      applies.
                     </td>
                   </tr>
                 ) : (
                   workweekConfigs.map((cfg) => (
                     <tr key={cfg.id} className="border-b border-gray-100">
-                      <td className="px-3 py-2 font-semibold text-gray-800">{cfg.workweek_type}</td>
-                      <td className="px-3 py-2 text-gray-700">{String(cfg.effective_from).slice(0, 10)}</td>
-                      <td className="px-3 py-2 text-gray-700">{cfg.effective_to ? String(cfg.effective_to).slice(0, 10) : "Open-ended"}</td>
-                      <td className="px-3 py-2 text-gray-700">{Number(cfg.hours_per_day).toFixed(2)}</td>
-                      <td className="px-3 py-2 text-gray-700">{Number(cfg.absence_unit).toFixed(2)}</td>
+                      <td className="px-3 py-2 font-semibold text-gray-800">
+                        {cfg.workweek_type}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {String(cfg.effective_from).slice(0, 10)}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {cfg.effective_to
+                          ? String(cfg.effective_to).slice(0, 10)
+                          : "Open-ended"}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {Number(cfg.hours_per_day).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {Number(cfg.absence_unit).toFixed(2)}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <div className="inline-flex gap-1.5">
                           <button

@@ -254,7 +254,9 @@ export default function Payroll() {
                   </td>
                   <td className="px-6 py-3 text-right">{fmt(p.basic_pay)}</td>
                   <td className="px-6 py-3 text-center">
-                    <div className="font-semibold text-gray-800">{p.absences_count}</div>
+                    <div className="font-semibold text-gray-800">
+                      {p.absences_count}
+                    </div>
                     <div className="text-[11px] text-gray-500">
                       Converted: {Number(p.converted_absences || 0).toFixed(2)}
                     </div>
