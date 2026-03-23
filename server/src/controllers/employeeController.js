@@ -1,5 +1,23 @@
 import pool from "../config/db.js";
 
+const resolveRoleFromProfile = ({ designation, position }) => {
+  const normalizedDesignation = String(designation || "").trim().toLowerCase();
+  const normalizedPosition = String(position || "").trim().toLowerCase();
+
+  if (
+    normalizedDesignation === "operations" &&
+    normalizedPosition === "admin & human resources partner"
+  ) {
+    return "HR";
+  }
+
+  if (normalizedPosition.startsWith("supervisor(")) {
+    return "Supervisor";
+  }
+
+  return "RankAndFile";
+};
+
 // --- EMPLOYEES ---
 export const getAllEmployees = async (req, res) => {
   try {
@@ -29,12 +47,13 @@ export const createEmployee = async (req, res) => {
 
   const generatedAutoPassword = `${emp_id || ""}${(first_name || "").replace(/\s+/g, "")}`;
   const employeePassword = password || generatedAutoPassword;
+  const employeeRole = resolveRoleFromProfile({ designation, position });
 
   try {
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, dob, hired_date, password) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, dob, hired_date, password, role) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -48,6 +67,7 @@ export const createEmployee = async (req, res) => {
         dob || null,
         hired_date || null,
         employeePassword,
+        employeeRole,
       ],
     );
 
@@ -79,6 +99,8 @@ export const updateEmployee = async (req, res) => {
     hired_date,
   } = req.body;
 
+  const employeeRole = resolveRoleFromProfile({ designation, position });
+
   try {
     const [result] = await pool.query(
       `UPDATE employees
@@ -90,7 +112,8 @@ export const updateEmployee = async (req, res) => {
            status = ?,
            email = ?,
            dob = ?,
-           hired_date = ?
+             hired_date = ?,
+           role = ?
        WHERE emp_id = ?`,
       [
         first_name,
@@ -102,6 +125,7 @@ export const updateEmployee = async (req, res) => {
         email,
         dob || null,
         hired_date || null,
+        employeeRole,
         id,
       ],
     );
