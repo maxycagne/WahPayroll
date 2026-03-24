@@ -89,6 +89,22 @@ CREATE TABLE IF NOT EXISTS resignations (
   FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  emp_id VARCHAR(50) NOT NULL,
+  notification_type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  reference_type VARCHAR(50),
+  reference_id INT,
+  status ENUM('Unread', 'Read') DEFAULT 'Unread',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  read_at TIMESTAMP NULL,
+  INDEX idx_notification_emp_status (emp_id, status),
+  INDEX idx_notification_created (created_at),
+  FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS offset_ledger (
   id INT AUTO_INCREMENT PRIMARY KEY,
   emp_id VARCHAR(50) NOT NULL,

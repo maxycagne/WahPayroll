@@ -31,7 +31,12 @@ import {
   getMyAttendance,
   updateMissingDocs,
   getMyResignations,
+  getResignations,
   fileResignation,
+  updateResignationStatus,
+  getMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -66,10 +71,36 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getMyResignations,
 );
+router.get(
+  "/resignations",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getResignations,
+);
 router.post(
   "/resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   fileResignation,
+);
+router.put(
+  "/resignations/:id",
+  authorizeRoles("Admin", "Supervisor"),
+  updateResignationStatus,
+);
+
+router.get(
+  "/notifications",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getMyNotifications,
+);
+router.put(
+  "/notifications/:id/read",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  markNotificationRead,
+);
+router.put(
+  "/notifications/read-all",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  markAllNotificationsRead,
 );
 router.put(
   "/leave-balance/:id",

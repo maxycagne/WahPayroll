@@ -53,7 +53,7 @@ const ensureWorkweekConfigsTable = async (connection = pool) => {
   `);
 };
 
-const ensureOffsetTables = async (connection = pool) => {
+const getEmpIdColumnDefinition = async (connection = pool) => {
   const [empIdMetaRows] = await connection.query(
     `
       SELECT
@@ -69,9 +69,13 @@ const ensureOffsetTables = async (connection = pool) => {
   );
 
   const empIdMeta = empIdMetaRows[0];
-  const empIdColumn = empIdMeta
+  return empIdMeta
     ? `${empIdMeta.COLUMN_TYPE}${empIdMeta.CHARACTER_SET_NAME ? ` CHARACTER SET ${empIdMeta.CHARACTER_SET_NAME}` : ""}${empIdMeta.COLLATION_NAME ? ` COLLATE ${empIdMeta.COLLATION_NAME}` : ""}`
     : "VARCHAR(50)";
+};
+
+const ensureOffsetTables = async (connection = pool) => {
+  const empIdColumn = await getEmpIdColumnDefinition(connection);
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS offset_ledger (
@@ -121,15 +125,17 @@ const ensureOffsetTables = async (connection = pool) => {
 };
 
 const ensureResignationsTable = async (connection = pool) => {
+  const empIdColumn = await getEmpIdColumnDefinition(connection);
+
   await connection.query(`
     CREATE TABLE IF NOT EXISTS resignations (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      emp_id VARCHAR(50) NOT NULL,
+      emp_id ${empIdColumn} NOT NULL,
       resignation_type VARCHAR(100) NOT NULL,
       effective_date DATE NOT NULL,
       reason TEXT,
       status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
-      reviewed_by VARCHAR(50) NULL,
+      reviewed_by ${empIdColumn} NULL,
       review_remarks TEXT,
       reviewed_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -140,6 +146,178 @@ const ensureResignationsTable = async (connection = pool) => {
       FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
     )
   `);
+};
+
+const ensureNotificationsTable = async (connection = pool) => {
+  const empIdColumn = await getEmpIdColumnDefinition(connection);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      emp_id ${empIdColumn} NOT NULL,
+      notification_type VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      reference_type VARCHAR(50),
+      reference_id INT,
+      status ENUM('Unread', 'Read') DEFAULT 'Unread',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      read_at TIMESTAMP NULL,
+      INDEX idx_notification_emp_status (emp_id, status),
+      INDEX idx_notification_created (created_at),
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+    )
+  `);
+};
+
+const normalizeRole = (role) => {
+  const value = String(role || "").trim().toLowerCase();
+  if (value === "admin") return "Admin";
+  if (value === "supervisor") return "Supervisor";
+  if (value === "hr") return "HR";
+  return "RankAndFile";
+};
+
+const getEmployeeProfile = async (connection, empId) => {
+  const [rows] = await connection.query(
+    `
+      SELECT emp_id, first_name, last_name, designation, COALESCE(role, 'RankAndFile') as role
+      FROM employees
+      WHERE emp_id = ?
+      LIMIT 1
+    `,
+    [empId],
+  );
+
+  if (rows.length === 0) return null;
+
+  return {
+    ...rows[0],
+    role: normalizeRole(rows[0].role),
+    designation: rows[0].designation || null,
+  };
+};
+
+const getSupervisorApproversForRequester = async (connection, requester) => {
+  if (!requester) return [];
+
+  if (requester.role === "Supervisor") {
+    const [rows] = await connection.query(
+      `
+        SELECT emp_id
+        FROM employees
+        WHERE COALESCE(role, '') = 'Supervisor'
+          AND emp_id <> ?
+      `,
+      [requester.emp_id],
+    );
+    return rows;
+  }
+
+  if (!requester.designation) return [];
+
+  const [rows] = await connection.query(
+    `
+      SELECT emp_id
+      FROM employees
+      WHERE COALESCE(role, '') = 'Supervisor'
+        AND designation = ?
+        AND emp_id <> ?
+    `,
+    [requester.designation, requester.emp_id],
+  );
+
+  return rows;
+};
+
+const canApproverReviewRequester = (approver, requester) => {
+  if (!approver || !requester) return false;
+
+  if (approver.role === "Admin") return true;
+  if (approver.role !== "Supervisor") return false;
+  if (approver.emp_id === requester.emp_id) return false;
+
+  if (requester.role === "Supervisor") return true;
+
+  if (requester.role === "RankAndFile" || requester.role === "HR") {
+    return !!requester.designation && approver.designation === requester.designation;
+  }
+
+  return false;
+};
+
+const createNotification = async (
+  connection,
+  {
+    empId,
+    notificationType,
+    title,
+    message,
+    referenceType = null,
+    referenceId = null,
+  },
+) => {
+  await ensureNotificationsTable(connection);
+
+  await connection.query(
+    `
+      INSERT INTO notifications (
+        emp_id,
+        notification_type,
+        title,
+        message,
+        reference_type,
+        reference_id,
+        status
+      ) VALUES (?, ?, ?, ?, ?, ?, 'Unread')
+    `,
+    [
+      empId,
+      notificationType,
+      title,
+      message,
+      referenceType,
+      referenceId,
+    ],
+  );
+};
+
+const notifyApproversForRequest = async (
+  connection,
+  { requester, moduleType, requestId },
+) => {
+  const approvers = await getSupervisorApproversForRequester(
+    connection,
+    requester,
+  );
+
+  if (approvers.length === 0) return;
+
+  const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
+
+  for (const approver of approvers) {
+    await createNotification(connection, {
+      empId: approver.emp_id,
+      notificationType: `${moduleType}_REQUEST`,
+      title: `${moduleType} Request Pending`,
+      message: `${requesterName} submitted a ${moduleType.toLowerCase()} request awaiting your review.`,
+      referenceType: moduleType,
+      referenceId: requestId,
+    });
+  }
+};
+
+const notifyRequesterForDecision = async (
+  connection,
+  { requesterEmpId, moduleType, status, approverName },
+) => {
+  await createNotification(connection, {
+    empId: requesterEmpId,
+    notificationType: `${moduleType}_STATUS`,
+    title: `${moduleType} Request ${status}`,
+    message: `Your ${moduleType.toLowerCase()} request was marked ${status.toLowerCase()} by ${approverName}.`,
+    referenceType: moduleType,
+  });
 };
 
 const parsePeriodRange = (period) => {
@@ -370,9 +548,35 @@ export const getDashboardSummary = async (req, res) => {
   try {
     await ensureResignationsTable();
 
-    const [pending] = await pool.query(
-      "SELECT l.*, e.first_name, e.last_name FROM leave_requests l JOIN employees e ON l.emp_id = e.emp_id WHERE l.status = 'Pending'",
-    );
+    const currentUser = await getEmployeeProfile(pool, req.user?.emp_id);
+    const isSupervisor = currentUser?.role === "Supervisor";
+
+    let pending = [];
+    if (isSupervisor) {
+      const [rows] = await pool.query(
+        `
+          SELECT l.*, e.first_name, e.last_name
+          FROM leave_requests l
+          JOIN employees e ON l.emp_id = e.emp_id
+          WHERE l.status = 'Pending'
+            AND (
+              (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
+              OR (
+                COALESCE(e.role, '') IN ('RankAndFile', 'HR')
+                AND e.designation = ?
+              )
+            )
+        `,
+        [currentUser.emp_id, currentUser.designation || ""],
+      );
+      pending = rows;
+    } else {
+      const [rows] = await pool.query(
+        "SELECT l.*, e.first_name, e.last_name FROM leave_requests l JOIN employees e ON l.emp_id = e.emp_id WHERE l.status = 'Pending'",
+      );
+      pending = rows;
+    }
+
     const [onLeave] = await pool.query(
       "SELECT e.first_name, e.last_name, l.leave_type FROM employees e JOIN leave_requests l ON e.emp_id = l.emp_id WHERE CURDATE() BETWEEN l.date_from AND l.date_to AND l.status = 'Approved'",
     );
@@ -386,10 +590,30 @@ export const getDashboardSummary = async (req, res) => {
     // Fetch REAL Resignations
     let resignations = [];
     try {
-      const [resigRows] = await pool.query(
-        "SELECT r.*, e.first_name, e.last_name FROM resignations r JOIN employees e ON r.emp_id = e.emp_id WHERE r.status = 'Pending Approval'",
-      );
-      resignations = resigRows;
+      if (isSupervisor) {
+        const [resigRows] = await pool.query(
+          `
+            SELECT r.*, e.first_name, e.last_name
+            FROM resignations r
+            JOIN employees e ON r.emp_id = e.emp_id
+            WHERE r.status = 'Pending Approval'
+              AND (
+                (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
+                OR (
+                  COALESCE(e.role, '') IN ('RankAndFile', 'HR')
+                  AND e.designation = ?
+                )
+              )
+          `,
+          [currentUser.emp_id, currentUser.designation || ""],
+        );
+        resignations = resigRows;
+      } else {
+        const [resigRows] = await pool.query(
+          "SELECT r.*, e.first_name, e.last_name FROM resignations r JOIN employees e ON r.emp_id = e.emp_id WHERE r.status = 'Pending Approval'",
+        );
+        resignations = resigRows;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -468,19 +692,273 @@ export const getMyResignations = async (req, res) => {
   }
 };
 
-export const fileResignation = async (req, res) => {
-  const { emp_id, resignation_type, effective_date, reason } = req.body;
+export const getResignations = async (req, res) => {
   try {
     await ensureResignationsTable();
 
-    await pool.query(
-      "INSERT INTO resignations (emp_id, resignation_type, effective_date, reason, status) VALUES (?, ?, ?, ?, 'Pending Approval')",
-      [emp_id, resignation_type, effective_date, reason],
-    );
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
+
+    let query = `
+      SELECT
+        r.*,
+        e.first_name,
+        e.last_name,
+        e.designation,
+        COALESCE(e.role, 'RankAndFile') as requester_role,
+        rv.first_name as reviewer_first_name,
+        rv.last_name as reviewer_last_name
+      FROM resignations r
+      JOIN employees e ON r.emp_id = e.emp_id
+      LEFT JOIN employees rv ON r.reviewed_by = rv.emp_id
+    `;
+
+    const params = [];
+
+    if (viewer.role === "RankAndFile" || viewer.role === "HR") {
+      query += " WHERE r.emp_id = ?";
+      params.push(viewer.emp_id);
+    } else if (viewer.role === "Supervisor") {
+      query += `
+        WHERE r.emp_id = ?
+           OR (
+             r.status = 'Pending Approval'
+             AND (
+               (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
+               OR (
+                 COALESCE(e.role, '') IN ('RankAndFile', 'HR')
+                 AND e.designation = ?
+               )
+             )
+           )
+      `;
+      params.push(viewer.emp_id, viewer.emp_id, viewer.designation || "");
+    }
+
+    query += " ORDER BY r.created_at DESC";
+
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getResignations:", error);
+    res.status(500).json({ message: "Error fetching resignations" });
+  }
+};
+
+export const fileResignation = async (req, res) => {
+  const { emp_id, resignation_type, effective_date, reason } = req.body;
+  try {
+    const requesterEmpId =
+      req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
+
+    if (!requesterEmpId || !resignation_type || !effective_date) {
+      return res.status(400).json({
+        message: "emp_id, resignation_type, and effective_date are required",
+      });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await ensureResignationsTable(connection);
+
+      const requester = await getEmployeeProfile(connection, requesterEmpId);
+      if (!requester) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Requester not found" });
+      }
+
+      const [result] = await connection.query(
+        "INSERT INTO resignations (emp_id, resignation_type, effective_date, reason, status) VALUES (?, ?, ?, ?, 'Pending Approval')",
+        [requesterEmpId, resignation_type, effective_date, reason || null],
+      );
+
+      await notifyApproversForRequest(connection, {
+        requester,
+        moduleType: "Resignation",
+        requestId: result.insertId,
+      });
+
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+
     res.status(201).json({ message: "Resignation filed successfully" });
   } catch (error) {
     console.error("DB Error in fileResignation:", error);
     res.status(500).json({ message: "Error filing resignation" });
+  }
+};
+
+export const updateResignationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, review_remarks } = req.body;
+
+  if (!["Pending Approval", "Approved", "Rejected"].includes(status)) {
+    return res.status(400).json({ message: "Invalid resignation status" });
+  }
+
+  const approverId = req.user?.emp_id;
+  if (!approverId) return res.status(401).json({ message: "Unauthorized" });
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await ensureResignationsTable(connection);
+
+    const approver = await getEmployeeProfile(connection, approverId);
+    if (!approver) {
+      await connection.rollback();
+      return res.status(401).json({ message: "Approver not found" });
+    }
+
+    const [rows] = await connection.query(
+      "SELECT * FROM resignations WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const requestRow = rows[0];
+    const requester = await getEmployeeProfile(connection, requestRow.emp_id);
+
+    if (!canApproverReviewRequester(approver, requester)) {
+      await connection.rollback();
+      return res.status(403).json({
+        message: "You are not allowed to approve this resignation request",
+      });
+    }
+
+    await connection.query(
+      `
+        UPDATE resignations
+        SET status = ?,
+            reviewed_by = ?,
+            review_remarks = ?,
+            reviewed_at = ?
+        WHERE id = ?
+      `,
+      [
+        status,
+        approver.emp_id,
+        review_remarks || null,
+        status === "Approved" || status === "Rejected" ? new Date() : null,
+        id,
+      ],
+    );
+
+    await notifyRequesterForDecision(connection, {
+      requesterEmpId: requestRow.emp_id,
+      moduleType: "Resignation",
+      status,
+      approverName: `${approver.first_name} ${approver.last_name}`.trim(),
+    });
+
+    await connection.commit();
+    res.json({ message: `Resignation request ${status.toLowerCase()}` });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in updateResignationStatus:", error);
+    res.status(500).json({ message: "Error updating resignation status" });
+  } finally {
+    connection.release();
+  }
+};
+
+export const getMyNotifications = async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const empId = req.user?.emp_id;
+    if (!empId) return res.status(401).json({ message: "Unauthorized" });
+
+    const [rows] = await pool.query(
+      `
+        SELECT
+          id,
+          notification_type,
+          title,
+          message,
+          reference_type,
+          reference_id,
+          status,
+          created_at,
+          read_at
+        FROM notifications
+        WHERE emp_id = ?
+        ORDER BY created_at DESC
+        LIMIT 100
+      `,
+      [empId],
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getMyNotifications:", error);
+    res.status(500).json({ message: "Error fetching notifications" });
+  }
+};
+
+export const markNotificationRead = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await ensureNotificationsTable();
+
+    const empId = req.user?.emp_id;
+    if (!empId) return res.status(401).json({ message: "Unauthorized" });
+
+    const [result] = await pool.query(
+      `
+        UPDATE notifications
+        SET status = 'Read',
+            read_at = COALESCE(read_at, NOW())
+        WHERE id = ?
+          AND emp_id = ?
+      `,
+      [id, empId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.json({ message: "Notification marked as read" });
+  } catch (error) {
+    console.error("DB Error in markNotificationRead:", error);
+    res.status(500).json({ message: "Error updating notification" });
+  }
+};
+
+export const markAllNotificationsRead = async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const empId = req.user?.emp_id;
+    if (!empId) return res.status(401).json({ message: "Unauthorized" });
+
+    await pool.query(
+      `
+        UPDATE notifications
+        SET status = 'Read',
+            read_at = COALESCE(read_at, NOW())
+        WHERE emp_id = ?
+          AND status = 'Unread'
+      `,
+      [empId],
+    );
+
+    res.json({ message: "All notifications marked as read" });
+  } catch (error) {
+    console.error("DB Error in markAllNotificationsRead:", error);
+    res.status(500).json({ message: "Error updating notifications" });
   }
 };
 
@@ -630,16 +1108,72 @@ export const getAllLeaves = async (req, res) => {
 };
 export const updateLeaveStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, supervisor_remarks } = req.body;
+
+  if (!["Pending", "Approved", "Denied"].includes(status)) {
+    return res.status(400).json({ message: "Invalid leave status" });
+  }
+
+  const approverId = req.user?.emp_id;
+  if (!approverId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const connection = await pool.getConnection();
   try {
-    await pool.query("UPDATE leave_requests SET status = ? WHERE id = ?", [
+    await connection.beginTransaction();
+
+    const approver = await getEmployeeProfile(connection, approverId);
+    if (!approver) {
+      await connection.rollback();
+      return res.status(401).json({ message: "Approver not found" });
+    }
+
+    const [rows] = await connection.query(
+      "SELECT id, emp_id FROM leave_requests WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    const leaveRequest = rows[0];
+    const requester = await getEmployeeProfile(connection, leaveRequest.emp_id);
+
+    if (!canApproverReviewRequester(approver, requester)) {
+      await connection.rollback();
+      return res.status(403).json({
+        message: "You are not allowed to approve this leave request",
+      });
+    }
+
+    await connection.query(
+      `
+        UPDATE leave_requests
+        SET status = ?,
+            supervisor_remarks = COALESCE(?, supervisor_remarks)
+        WHERE id = ?
+      `,
+      [status, supervisor_remarks || null, id],
+    );
+
+    await notifyRequesterForDecision(connection, {
+      requesterEmpId: leaveRequest.emp_id,
+      moduleType: "Leave",
       status,
-      id,
-    ]);
+      approverName: `${approver.first_name} ${approver.last_name}`.trim(),
+    });
+
+    await connection.commit();
     res.json({ message: `Leave ${status}` });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in updateLeaveStatus:", error);
     res.status(500).json({ message: "Error updating leave" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -1013,16 +1547,27 @@ export const getOffsetBalance = async (req, res) => {
 export const fileOffsetApplication = async (req, res) => {
   const { emp_id, date_from, date_to, days_applied } = req.body;
 
-  if (!emp_id || !date_from || !date_to || days_applied === undefined) {
+  const requesterEmpId =
+    req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
+
+  if (!requesterEmpId || !date_from || !date_to || days_applied === undefined) {
     return res.status(400).json({
       message: "emp_id, date_from, date_to, and days_applied are required",
     });
   }
 
+  const connection = await pool.getConnection();
   try {
-    await ensureOffsetTables();
+    await connection.beginTransaction();
+    await ensureOffsetTables(connection);
 
-    await pool.query(
+    const requester = await getEmployeeProfile(connection, requesterEmpId);
+    if (!requester) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Requester not found" });
+    }
+
+    const [result] = await connection.query(
       `
         INSERT INTO offset_applications (
           emp_id,
@@ -1032,15 +1577,26 @@ export const fileOffsetApplication = async (req, res) => {
           status
         ) VALUES (?, ?, ?, ?, 'Pending')
       `,
-      [emp_id, date_from, date_to, days_applied],
+      [requesterEmpId, date_from, date_to, days_applied],
     );
+
+    await notifyApproversForRequest(connection, {
+      requester,
+      moduleType: "Offset",
+      requestId: result.insertId,
+    });
+
+    await connection.commit();
 
     res
       .status(201)
       .json({ message: "Offset application submitted successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in fileOffsetApplication:", error);
     res.status(500).json({ message: "Error filing offset application" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -1112,6 +1668,16 @@ export const updateOffsetApplicationStatus = async (req, res) => {
 
     const application = existing[0];
 
+    const approver = await getEmployeeProfile(connection, supervisorId);
+    const requester = await getEmployeeProfile(connection, application.emp_id);
+
+    if (!canApproverReviewRequester(approver, requester)) {
+      await connection.rollback();
+      return res.status(403).json({
+        message: "You are not allowed to approve this offset request",
+      });
+    }
+
     if (status === "Partially Approved" && !approved_days) {
       await connection.rollback();
       return res
@@ -1140,6 +1706,13 @@ export const updateOffsetApplicationStatus = async (req, res) => {
         id,
       ],
     );
+
+    await notifyRequesterForDecision(connection, {
+      requesterEmpId: application.emp_id,
+      moduleType: "Offset",
+      status,
+      approverName: `${approver.first_name} ${approver.last_name}`.trim(),
+    });
 
     await connection.commit();
     res.json({
@@ -1310,12 +1883,40 @@ export const fileLeave = async (req, res) => {
     priority,
     supervisor_remarks,
   } = req.body;
+
+  const requesterEmpId =
+    req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
+
+  if (!requesterEmpId || !leave_type || !date_from || !date_to) {
+    return res.status(400).json({
+      message: "emp_id, leave_type, date_from, and date_to are required",
+    });
+  }
+
+  const connection = await pool.getConnection();
   try {
-    await pool.query(
-      `INSERT INTO leave_requests (emp_id, leave_type, date_from, date_to, priority, status, supervisor_remarks) 
-       VALUES (?, ?, ?, ?, ?, 'Pending', ?)`,
+    await connection.beginTransaction();
+
+    const requester = await getEmployeeProfile(connection, requesterEmpId);
+    if (!requester) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Requester not found" });
+    }
+
+    const [result] = await connection.query(
+      `
+        INSERT INTO leave_requests (
+          emp_id,
+          leave_type,
+          date_from,
+          date_to,
+          priority,
+          status,
+          supervisor_remarks
+        ) VALUES (?, ?, ?, ?, ?, 'Pending', ?)
+      `,
       [
-        emp_id,
+        requesterEmpId,
         leave_type,
         date_from,
         date_to,
@@ -1323,12 +1924,24 @@ export const fileLeave = async (req, res) => {
         supervisor_remarks || null,
       ],
     );
+
+    await notifyApproversForRequest(connection, {
+      requester,
+      moduleType: "Leave",
+      requestId: result.insertId,
+    });
+
+    await connection.commit();
+
     res
       .status(201)
       .json({ message: "Leave application submitted successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in fileLeave:", error);
     res.status(500).json({ message: "Error submitting leave application" });
+  } finally {
+    connection.release();
   }
 };
 
