@@ -1145,3 +1145,128 @@ export const fileLeave = async (req, res) => {
     res.status(500).json({ message: "Error submitting leave application" });
   }
 };
+
+// --- REPORTS ---
+// --- REPORTS ---
+export const getPayrollReports = async (req, res) => {
+  try {
+    // 1. Get total active employees (excluding Admin)
+    const [activeEmpRows] = await pool.query(
+      "SELECT COUNT(*) as active_count FROM employees WHERE status != 'Inactive' AND COALESCE(role, '') != 'Admin'",
+    );
+    const activeEmployees = activeEmpRows[0].active_count || 0;
+
+    // 2. Get Monthly Payroll Data
+    const [payrollRows] = await pool.query(`
+      SELECT 
+        DATE_FORMAT(period_start, '%Y-%m') as sort_month,
+        DATE_FORMAT(period_start, '%M %Y') as display_month,
+        SUM(incentives) as total_incentives, 
+        SUM(gross_pay) as total_gross,
+        SUM(absence_deductions) as total_deductions,
+        SUM(net_pay) as total_net
+      FROM payroll
+      GROUP BY period_start
+    `);
+
+    // 3. Get Monthly Attendance Data
+    const [attendanceRows] = await pool.query(`
+      SELECT 
+        DATE_FORMAT(date, '%Y-%m') as sort_month,
+        DATE_FORMAT(date, '%M %Y') as display_month,
+        SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
+        SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+        SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
+        SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as leave_count
+      FROM attendance
+      GROUP BY sort_month
+    `);
+
+    // 4. Merge Payroll and Attendance Data together by Month
+    const summaryMap = {};
+
+    payrollRows.forEach((row) => {
+      summaryMap[row.sort_month] = {
+        month: row.display_month,
+        sortMonth: row.sort_month,
+        totalIncentives: Number(row.total_incentives || 0),
+        totalGross: Number(row.total_gross || 0),
+        totalDeductions: Number(row.total_deductions || 0),
+        totalNet: Number(row.total_net || 0),
+        present: 0,
+        absent: 0,
+        late: 0,
+        onLeave: 0, // Default attendance
+      };
+    });
+
+    attendanceRows.forEach((row) => {
+      if (!summaryMap[row.sort_month]) {
+        summaryMap[row.sort_month] = {
+          month: row.display_month,
+          sortMonth: row.sort_month,
+          totalIncentives: 0,
+          totalGross: 0,
+          totalDeductions: 0,
+          totalNet: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          onLeave: 0,
+        };
+      }
+      summaryMap[row.sort_month].present = Number(row.present_count);
+      summaryMap[row.sort_month].absent = Number(row.absent_count);
+      summaryMap[row.sort_month].late = Number(row.late_count);
+      summaryMap[row.sort_month].onLeave = Number(row.leave_count);
+    });
+
+    // Convert to Array and Sort Newest to Oldest
+    const monthlySummary = Object.values(summaryMap)
+      .sort((a, b) => b.sortMonth.localeCompare(a.sortMonth))
+      .slice(0, 12); // Keep last 12 months
+
+    // Get latest data for Top Cards
+    const latestMonth = monthlySummary[0] || {
+      totalNet: 0,
+      totalDeductions: 0,
+      absent: 0,
+      month: "No Data",
+    };
+
+    res.json({
+      activeEmployees,
+      latestMonthName: latestMonth.month,
+      latestNet: latestMonth.totalNet,
+      latestDeductions: latestMonth.totalDeductions,
+      latestAbsences: latestMonth.absent,
+      monthlySummary,
+    });
+  } catch (error) {
+    console.error("DB Error in getPayrollReports:", error);
+    res.status(500).json({ message: "Error fetching payroll reports" });
+  }
+};
+
+// --- MY ATTENDANCE (For Employee Calendar) ---
+export const getMyAttendance = async (req, res) => {
+  try {
+    const empId = req.user?.emp_id;
+
+    if (!empId) {
+      return res
+        .status(400)
+        .json({ message: "Employee ID missing from token" });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT date, status FROM attendance WHERE emp_id = ? ORDER BY date DESC",
+      [empId],
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getMyAttendance:", error);
+    res.status(500).json({ message: "Error fetching personal attendance" });
+  }
+};
