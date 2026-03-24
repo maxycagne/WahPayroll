@@ -707,7 +707,7 @@ export default function Attendance() {
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                  className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Present}`}
+                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Present}`}
                               >
                                 <option value="Present">Present</option>
                                 <option value="Late">Late</option>
@@ -726,7 +726,7 @@ export default function Attendance() {
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                  className="border p-1 rounded outline-none font-semibold max-w-[90px] bg-white text-gray-700 text-xs"
+                                className="border p-1 rounded outline-none font-semibold max-w-[90px] bg-white text-gray-700 text-xs"
                               >
                                 <option value="">-- None --</option>
                                 <option value="Late">Late</option>
@@ -832,7 +832,9 @@ export default function Attendance() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden">
             <div className="bg-indigo-600 px-4 py-3 flex justify-between items-center text-white">
-              <h2 className="text-base font-bold m-0">Workweek Configuration</h2>
+              <h2 className="text-base font-bold m-0">
+                Workweek Configuration
+              </h2>
               <button
                 onClick={() => setWorkweekModalOpen(false)}
                 className="text-white text-xl bg-transparent border-0 cursor-pointer hover:text-gray-200"
@@ -952,7 +954,10 @@ export default function Attendance() {
                   <tbody>
                     {workweekConfigs.length === 0 ? (
                       <tr>
-                        <td className="px-3 py-2 text-gray-500 text-xs" colSpan={6}>
+                        <td
+                          className="px-3 py-2 text-gray-500 text-xs"
+                          colSpan={6}
+                        >
                           No rules configured.
                         </td>
                       </tr>
@@ -1022,4 +1027,3 @@ export default function Attendance() {
     </div>
   );
 }
-
