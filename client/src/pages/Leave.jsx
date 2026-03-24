@@ -51,8 +51,8 @@ const badgeClass = {
   Pending: "bg-yellow-100 text-yellow-800",
 };
 
-// --- CALENDAR COMPONENT ---
-function LeaveCalendar({ leaves }) {
+// --- CALENDAR COMPONENT (Updated for Single Employee View) ---
+function LeaveCalendar({ leaves, attendance }) {
   const [viewDate, setViewDate] = useState(new Date());
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -83,8 +83,24 @@ function LeaveCalendar({ leaves }) {
     },
   };
 
+  const attendanceColors = {
+    Present: "text-green-600 bg-green-50",
+    Absent: "text-red-600 bg-red-50",
+    Late: "text-orange-600 bg-orange-50",
+    Undertime: "text-orange-600 bg-orange-50",
+    "Half-Day": "text-purple-600 bg-purple-50",
+  };
+
   function getLeavesForDate(dateStr) {
     return leaves.filter((l) => isInRange(dateStr, l.date_from, l.date_to));
+  }
+
+  function getAttendanceForDate(dateStr) {
+    return attendance.find((a) => {
+      const d = new Date(a.date);
+      const formattedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      return formattedDate === dateStr;
+    });
   }
 
   function pad(n) {
@@ -106,35 +122,37 @@ function LeaveCalendar({ leaves }) {
     : [];
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-      <div className="mb-6 pb-6 border-b border-gray-200">
-        <h4 className="m-0 text-sm font-semibold text-gray-900 mb-3">
-          Leave Status Legend
-        </h4>
-        <div className="flex gap-6">
-          {Object.entries(statusColors).map(([status, colors]) => (
-            <div key={status} className="flex items-center gap-2">
-              <div
-                className={`w-3 h-3 rounded-full ${colors.border.split("border-l-")[1]}`}
-              ></div>
-              <span className="text-xs font-medium text-gray-700">
-                {status}
-              </span>
-            </div>
-          ))}
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-6">
+      <div className="mb-6 pb-6 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h4 className="m-0 text-sm font-semibold text-gray-900 mb-3">
+            Leave Status Legend
+          </h4>
+          <div className="flex gap-6">
+            {Object.entries(statusColors).map(([status, colors]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div
+                  className={`w-3 h-3 rounded-full ${colors.border.split("border-l-")[1]}`}
+                ></div>
+                <span className="text-xs font-medium text-gray-700">
+                  {status}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="flex items-center justify-between mb-5">
         <button
-          className="px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-sm cursor-pointer text-gray-700 hover:bg-gray-50"
+          className="px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
           onClick={prevMonth}
         >
           ◀ Previous
         </button>
-        <h3 className="m-0 text-lg font-semibold text-gray-900">{monthName}</h3>
+        <h3 className="m-0 text-xl font-bold text-gray-900">{monthName}</h3>
         <button
-          className="px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-sm cursor-pointer text-gray-700 hover:bg-gray-50"
+          className="px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
           onClick={nextMonth}
         >
           Next ▶
@@ -144,7 +162,7 @@ function LeaveCalendar({ leaves }) {
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div
             key={d}
-            className="text-center text-xs font-semibold text-gray-500 py-2"
+            className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 py-2 bg-gray-50 rounded-md"
           >
             {d}
           </div>
@@ -152,8 +170,10 @@ function LeaveCalendar({ leaves }) {
         {cells.map((day, i) => {
           if (day === null)
             return <div key={"e" + i} className="aspect-square" />;
+
           const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
           const dayLeaves = getLeavesForDate(dateStr);
+          const dayAtt = getAttendanceForDate(dateStr);
           const isSelected = day === selectedDate;
 
           const firstLeaveStatus =
@@ -166,81 +186,113 @@ function LeaveCalendar({ leaves }) {
             <button
               key={i}
               type="button"
-              className={`min-h-24 flex flex-col items-start justify-start rounded-lg cursor-pointer relative p-1.5 transition-all duration-150 text-[0.65rem] ${
+              className={`min-h-24 flex flex-col items-start justify-start rounded-lg cursor-pointer relative p-2 transition-all duration-150 ${
                 dayLeaves.length > 0 && !isSelected
                   ? colorConfig?.border + " " + colorConfig?.bg
                   : "border border-gray-200"
-              } ${isSelected ? "bg-purple-600 text-white border-purple-600" : "hover:border-gray-300"}`}
+              } ${isSelected ? "bg-purple-600 text-white border-purple-600 shadow-md transform scale-105 z-10" : "hover:border-purple-300 hover:bg-purple-50/30"}`}
               onClick={() => setSelectedDate(day === selectedDate ? null : day)}
             >
               <span
-                className={`font-bold text-xs ${isSelected ? "text-white" : "text-black"}`}
+                className={`font-bold text-sm mb-1 ${isSelected ? "text-white" : "text-gray-900"}`}
               >
                 {day}
               </span>
-              <div className="flex flex-col gap-1 mt-1 w-full">
-                {dayLeaves.slice(0, 2).map((leave) => (
+
+              <div className="flex flex-col gap-1.5 w-full mt-1">
+                {/* ATTENDANCE BADGE */}
+                {dayAtt && dayAtt.status !== "On Leave" && (
+                  <span
+                    className={`text-[0.60rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex w-fit ${isSelected ? "bg-white/20 text-white" : attendanceColors[dayAtt.status] || "text-gray-600 bg-gray-100"}`}
+                  >
+                    {dayAtt.status}
+                  </span>
+                )}
+
+                {/* LEAVE BADGES */}
+                {dayLeaves.map((leave) => (
                   <div
                     key={leave.id}
-                    className="flex flex-col gap-0.5 text-left"
+                    className="flex flex-col gap-0.5 text-left w-full"
                   >
                     <span
-                      className={`truncate font-semibold text-[0.6rem] ${isSelected ? "text-white" : "text-black"}`}
-                    >
-                      {leave.first_name} {leave.last_name}
-                    </span>
-                    <span
-                      className={`truncate text-[0.55rem] ${isSelected ? "text-gray-200" : "text-gray-600"}`}
+                      className={`truncate font-bold text-[0.65rem] leading-tight ${isSelected ? "text-white" : "text-gray-800"}`}
+                      title={leave.leave_type}
                     >
                       {leave.leave_type}
                     </span>
                     <span
-                      className={`truncate font-bold text-[0.55rem] uppercase ${isSelected ? "text-white" : statusColors[leave.status]?.text}`}
+                      className={`truncate font-semibold text-[0.60rem] uppercase ${isSelected ? "text-purple-200" : statusColors[leave.status]?.text}`}
                     >
                       • {leave.status}
                     </span>
                   </div>
                 ))}
-                {dayLeaves.length > 2 && (
-                  <span
-                    className={`text-[0.55rem] font-semibold ${isSelected ? "text-purple-200" : "text-purple-700"}`}
-                  >
-                    +{dayLeaves.length - 2} more
-                  </span>
-                )}
               </div>
             </button>
           );
         })}
       </div>
+
       {selectedDate && (
-        <div className="mt-5 pt-4 border-t border-gray-200">
-          <h4 className="m-0 mb-3 font-semibold text-gray-900">
-            Leaves on {monthName.split(" ")[0]} {selectedDate}, {year}
+        <div className="mt-6 pt-5 border-t border-gray-200 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <h4 className="m-0 mb-4 font-bold text-gray-900 text-lg">
+            Details for {monthName.split(" ")[0]} {selectedDate}, {year}
           </h4>
-          {selectedLeaves.length === 0 ? (
-            <p className="text-sm text-gray-500">No leaves on this date.</p>
+          {selectedLeaves.length === 0 &&
+          !getAttendanceForDate(
+            `${year}-${pad(month + 1)}-${pad(selectedDate)}`,
+          ) ? (
+            <p className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-100">
+              No leave or attendance records found for this date.
+            </p>
           ) : (
-            <ul className="list-none m-0 p-0 flex flex-col gap-2">
+            <ul className="list-none m-0 p-0 flex flex-col gap-3">
+              {/* Show Attendance if it exists */}
+              {getAttendanceForDate(
+                `${year}-${pad(month + 1)}-${pad(selectedDate)}`,
+              ) && (
+                <li className="flex items-center justify-between gap-3 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                  <div>
+                    <p className="m-0 font-bold text-gray-900 text-sm">
+                      Daily Attendance Record
+                    </p>
+                    <p className="m-0 text-xs text-gray-500 mt-1">System Log</p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wider ${attendanceColors[getAttendanceForDate(`${year}-${pad(month + 1)}-${pad(selectedDate)}`).status] || "bg-gray-200 text-gray-800"}`}
+                  >
+                    {
+                      getAttendanceForDate(
+                        `${year}-${pad(month + 1)}-${pad(selectedDate)}`,
+                      ).status
+                    }
+                  </span>
+                </li>
+              )}
+
+              {/* Show Leaves */}
               {selectedLeaves.map((l) => (
                 <li
                   key={l.id}
-                  className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between gap-3 p-4 bg-white border border-gray-200 shadow-sm rounded-xl"
                 >
                   <div>
-                    <p className="m-0 font-semibold text-gray-900 text-sm">
-                      {l.first_name} {l.last_name}
-                    </p>
-                    <p className="m-0 text-xs text-gray-600 mt-0.5">
+                    <p className="m-0 font-bold text-gray-900 text-sm">
                       {l.leave_type}
                     </p>
                     <p className="m-0 text-xs text-gray-500 mt-1">
                       {new Date(l.date_from).toLocaleDateString()} to{" "}
                       {new Date(l.date_to).toLocaleDateString()}
                     </p>
+                    {l.supervisor_remarks && (
+                      <p className="m-0 text-xs text-gray-600 mt-2 italic bg-gray-50 p-2 rounded-md border border-gray-100">
+                        "{l.supervisor_remarks}"
+                      </p>
+                    )}
                   </div>
                   <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${badgeClass[l.status] || "bg-gray-100"}`}
+                    className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wider ${badgeClass[l.status] || "bg-gray-100"}`}
                   >
                     {l.status}
                   </span>
@@ -259,22 +311,18 @@ export default function Leave() {
   const queryClient = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
 
-  // Grab the currently logged-in user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
 
   const [activeTab, setActiveTab] = useState("leave");
   const [showForm, setShowForm] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Offset form state
   const [offsetForm, setOffsetForm] = useState({
     date_from: "",
     date_to: "",
     days_applied: "",
   });
 
-  // Set the default emp_id to the logged in user
   const [formData, setFormData] = useState({
     emp_id: currentUser?.emp_id || "",
     leaveType: "Birthday Leave",
@@ -285,12 +333,33 @@ export default function Leave() {
   });
 
   // --- QUERIES ---
+  // 1. Fetch Leaves (Backend is already returning ONLY RankAndFile user's leaves)
   const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
       const res = await apiFetch("/api/employees/leaves");
       if (!res.ok) throw new Error("Failed to fetch leaves");
       return res.json();
+    },
+  });
+
+  // 2. Filter leaves to strictly the current user just in case
+  const myLeaves = leaves.filter((l) => l.emp_id === currentUser?.emp_id);
+
+  // 3. Fetch the current user's full attendance history for the calendar
+  const { data: myAttendance = [] } = useQuery({
+    queryKey: ["my-attendance", currentUser?.emp_id],
+    queryFn: async () => {
+      if (!currentUser?.emp_id) return [];
+      try {
+        // Now calling the dedicated, secure endpoint for personal history!
+        const res = await apiFetch(`/api/employees/my-attendance`);
+        if (!res.ok) return [];
+        return await res.json();
+      } catch (err) {
+        console.error("Failed to fetch attendance:", err);
+        return [];
+      }
     },
   });
 
@@ -317,24 +386,6 @@ export default function Leave() {
   });
 
   // --- MUTATIONS ---
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      const res = await apiFetch(`/api/employees/leaves/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("Status update failed");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(["leaves"]);
-      showToast("Leave request updated.");
-    },
-    onError: () => showToast("Failed to update leave request.", "error"),
-  });
-
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
       const res = await apiFetch("/api/employees/leaves", {
@@ -388,31 +439,7 @@ export default function Leave() {
       showToast(err.message || "Failed to file offset.", "error"),
   });
 
-  const updateOffsetStatusMutation = useMutation({
-    mutationFn: async ({ id, status, approved_days, remarks }) => {
-      const res = await apiFetch(`/api/employees/offset-applications/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          approved_days,
-          supervisor_remarks: remarks,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to update offset");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(["offset-applications"]);
-      showToast("Offset application updated.");
-    },
-    onError: () => showToast("Failed to update offset application.", "error"),
-  });
-
   // --- HANDLERS ---
-  const handleUpdateStatus = (id, newStatus) => {
-    updateStatusMutation.mutate({ id, status: newStatus });
-  };
-
   const handleSubmitLeave = (e) => {
     e.preventDefault();
     if (!formData.emp_id || !formData.fromDate || !formData.toDate) {
@@ -481,15 +508,18 @@ export default function Leave() {
   };
 
   if (isLoadingLeaves || isLoadingOffsets)
-    return <div className="p-6 font-bold">Loading Data...</div>;
+    return (
+      <div className="p-6 font-bold text-gray-800">Loading your data...</div>
+    );
 
   return (
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          Leave & Offset Applications
+          My Leave & Offsets
         </h1>
       </div>
+
       {/* TAB NAVIGATION */}
       <div className="flex items-center gap-2 mb-6 border-b border-gray-200">
         <button
@@ -500,7 +530,7 @@ export default function Leave() {
               : "border-transparent text-gray-600 hover:text-gray-900"
           }`}
         >
-          📋 Leave Applications
+          📅 My Calendar
         </button>
         {currentUser?.role !== "Admin" && (
           <button
@@ -515,75 +545,54 @@ export default function Leave() {
           </button>
         )}
       </div>
+
       {/* LEAVE TAB */}
       {activeTab === "leave" && (
         <div>
           <div className="flex items-center gap-3 mb-6">
             <button
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50 transition-colors"
-              onClick={() => {
-                setShowCalendar(!showCalendar);
-                if (showForm) setShowForm(false);
-              }}
+              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
+              onClick={() => setShowForm(!showForm)}
             >
-              {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
+              {showForm ? "✕ Cancel Request" : "+ File New Leave"}
             </button>
-
-            {/* RESTRICTED FILE LEAVE BUTTON - Hides for Admin */}
-            {currentUser?.role !== "Admin" && (
-              <button
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => {
-                  setShowForm(!showForm);
-                  if (showCalendar) setShowCalendar(false);
-                }}
-              >
-                {showForm ? "✕ Close" : "+ File Leave"}
-              </button>
-            )}
           </div>
 
-          {showCalendar && <LeaveCalendar leaves={leaves} />}
-
           {showForm && currentUser?.role !== "Admin" && (
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 className="m-0 mb-4 text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">
                 File a Leave Application
               </h3>
               {formError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {formError}
+                <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                  ⚠️ {formError}
                 </div>
               )}
               <form
                 onSubmit={handleSubmitLeave}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                className="grid grid-cols-1 md:grid-cols-3 gap-5"
               >
                 {/* LOCKED EMPLOYEE FIELD */}
                 <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Filing Leave As
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Filing As
                   </label>
                   <input
                     type="text"
                     disabled
-                    value={
-                      currentUser?.name
-                        ? `${currentUser.emp_id} - ${currentUser.name}`
-                        : "Loading..."
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
+                    value={`${currentUser.emp_id} - ${currentUser.name}`}
+                    className="px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-600 font-bold outline-none cursor-not-allowed"
                   />
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                     Leave Type
                   </label>
                   <select
                     value={formData.leaveType}
                     onChange={handleLeaveTypeChange}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                   >
                     {leaveTypes.map((t) => (
                       <option key={t} value={t}>
@@ -591,26 +600,26 @@ export default function Leave() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Max: {leavePolicy[formData.leaveType]?.maxDays} business
-                    day(s)
+                  <p className="text-[0.65rem] text-gray-500 font-semibold uppercase mt-1">
+                    Max allowed: {leavePolicy[formData.leaveType]?.maxDays}{" "}
+                    business day(s)
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    From
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    From Date
                   </label>
                   <input
                     type="date"
                     required
                     value={formData.fromDate}
                     onChange={handleFromDateChange}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    To
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    To Date
                   </label>
                   <input
                     type="date"
@@ -620,202 +629,114 @@ export default function Leave() {
                     disabled={formData.leaveType === "Birthday Leave"}
                     max={getMaxToDate()}
                     min={formData.fromDate}
-                    className={`px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                    className={`px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                   />
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Priority
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Priority Level
                   </label>
                   <select
                     value={formData.priority}
                     onChange={(e) =>
                       setFormData({ ...formData, priority: e.target.value })
                     }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
+                    <option value="Low">🟢 Low</option>
+                    <option value="Medium">🟡 Medium</option>
+                    <option value="High">🔴 High</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Reason
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Reason for Leave
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="Reason for leave…"
+                    placeholder="Please provide details..."
                     value={formData.reason}
                     onChange={(e) =>
                       setFormData({ ...formData, reason: e.target.value })
                     }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-3 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                   />
                 </div>
-                <div className="mt-4 flex gap-3 justify-end md:col-span-3">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
-                    onClick={() => setShowForm(false)}
-                  >
-                    Cancel
-                  </button>
+                <div className="mt-2 flex gap-3 justify-end md:col-span-3">
                   <button
                     type="submit"
                     disabled={submitLeaveMutation.isPending}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+                    className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 disabled:opacity-50 shadow-sm"
                   >
-                    {submitLeaveMutation.isPending ? "Submitting..." : "Submit"}
+                    {submitLeaveMutation.isPending
+                      ? "Submitting..."
+                      : "Submit Request"}
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mt-6">
-            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-              <h3 className="m-0 text-lg font-semibold text-gray-900">
-                All Leave Requests
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Employee
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Priority
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      From
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      To
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    {currentUser?.role !== "RankAndFile" && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {leaves.map((l) => (
-                    <tr
-                      key={l.id}
-                      className="hover:bg-gray-50 transition-colors duration-150"
-                    >
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                        {l.first_name} {l.last_name}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {l.leave_type}
-                      </td>
-                      <td className="px-6 py-3 text-sm font-semibold text-gray-600">
-                        {l.priority}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {new Date(l.date_from).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {new Date(l.date_to).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${badgeClass[l.status] || "bg-gray-100 text-gray-800"}`}
-                        >
-                          {l.status}
-                        </span>
-                      </td>
-                      {currentUser?.role !== "RankAndFile" && (
-                        <td className="px-6 py-3 text-sm">
-                          {l.status === "Pending" && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(l.id, "Approved")
-                                }
-                                className="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(l.id, "Denied")
-                                }
-                                className="px-3 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                              >
-                                Deny
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* PERMANENT CALENDAR VIEW */}
+          <LeaveCalendar leaves={myLeaves} attendance={myAttendance} />
         </div>
-      )}{" "}
-      {/* END LEAVE TAB */}
+      )}
+
       {/* OFFSET TAB */}
       {activeTab === "offset" && currentUser?.role !== "Admin" && (
         <div>
-          <div className="mb-6 p-4 rounded-lg bg-indigo-50 border border-indigo-200">
-            <h3 className="m-0 mb-2 text-sm font-bold text-indigo-900">
+          <div className="mb-6 p-5 rounded-xl bg-indigo-50 border border-indigo-100 shadow-sm">
+            <h3 className="m-0 mb-4 text-base font-bold text-indigo-900 border-b border-indigo-200 pb-2">
               Monthly Offset Balance
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div>
-                <p className="text-indigo-700 font-semibold">Working Days</p>
-                <p className="text-indigo-900 font-bold text-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
+                <p className="text-indigo-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+                  Working Days
+                </p>
+                <p className="text-indigo-900 font-black text-xl">
                   {Number(offsetBalance.workingDaysCompleted || 0).toFixed(1)}
                 </p>
               </div>
-              <div>
-                <p className="text-indigo-700 font-semibold">Baseline</p>
-                <p className="text-indigo-900 font-bold text-lg">
+              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
+                <p className="text-indigo-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+                  Baseline
+                </p>
+                <p className="text-indigo-900 font-black text-xl">
                   {offsetBalance.baselineDays || 22}
                 </p>
               </div>
-              <div>
-                <p className="text-indigo-700 font-semibold">Earned Offsets</p>
-                <p className="text-green-700 font-bold text-lg">
+              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
+                <p className="text-green-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+                  Earned Offsets
+                </p>
+                <p className="text-green-700 font-black text-xl">
                   +{Number(offsetBalance.offsetEarned || 0).toFixed(2)}
                 </p>
               </div>
-              <div>
-                <p className="text-indigo-700 font-semibold">End Balance</p>
-                <p className="text-purple-700 font-bold text-lg">
+              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
+                <p className="text-purple-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+                  End Balance
+                </p>
+                <p className="text-purple-700 font-black text-xl">
                   {Number(offsetBalance.finalBalance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 flex items-center gap-3">
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
             >
-              {showForm ? "✕ Close" : "+ File Offset Request"}
+              {showForm ? "✕ Cancel Request" : "+ File Offset Request"}
             </button>
           </div>
 
           {showForm && (
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 mb-6">
-              <h3 className="m-0 mb-4 text-lg font-semibold text-gray-900">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 className="m-0 mb-4 text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">
                 File Offset / Overtime Request
               </h3>
               <form
@@ -835,11 +756,11 @@ export default function Leave() {
                     days_applied: parseFloat(offsetForm.days_applied),
                   });
                 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                className="grid grid-cols-1 md:grid-cols-3 gap-5"
               >
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    From
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    From Date
                   </label>
                   <input
                     type="date"
@@ -851,18 +772,18 @@ export default function Leave() {
                         date_from: e.target.value,
                       })
                     }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    To
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    To Date
                   </label>
                   <input
                     type="date"
                     required
                     value={offsetForm.date_to}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                     onChange={(e) =>
                       setOffsetForm({ ...offsetForm, date_to: e.target.value })
                     }
@@ -870,7 +791,7 @@ export default function Leave() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                     Days Applied
                   </label>
                   <input
@@ -885,137 +806,88 @@ export default function Leave() {
                         days_applied: e.target.value,
                       })
                     }
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
-                <div className="mt-4 flex gap-3 col-span-full">
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
+                <div className="mt-2 flex gap-3 justify-end col-span-full">
                   <button
                     type="submit"
                     disabled={fileOffsetMutation.isPending}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90"
+                    className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 disabled:opacity-50 shadow-sm"
                   >
                     {fileOffsetMutation.isPending
                       ? "Filing..."
-                      : "File Request"}
+                      : "Submit Request"}
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-              <h3 className="m-0 text-lg font-semibold text-gray-900">
-                Offset Requests
+              <h3 className="m-0 text-lg font-bold text-gray-900">
+                My Offset History
               </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
-                      Employee
+                  <tr className="border-b border-gray-200 bg-white">
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                      From Date
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
-                      From
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                      To Date
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
-                      To
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-center">
                       Days
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">
                       Status
                     </th>
-                    {currentUser?.role === "Supervisor" && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
-                        Actions
-                      </th>
-                    )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-100">
                   {offsetApplications.length === 0 ? (
                     <tr>
                       <td
-                        colSpan="6"
-                        className="px-6 py-4 text-center text-gray-500"
+                        colSpan="4"
+                        className="px-6 py-10 text-center text-gray-500 font-medium"
                       >
-                        No offset requests yet.
+                        You haven't filed any offset requests yet.
                       </td>
                     </tr>
                   ) : (
                     offsetApplications.map((oa) => (
-                      <tr key={oa.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-3 font-medium text-gray-900">
-                          {oa.first_name} {oa.last_name}
-                        </td>
-                        <td className="px-6 py-3 text-gray-700">
+                      <tr
+                        key={oa.id}
+                        className="hover:bg-gray-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 text-gray-700 font-medium">
                           {new Date(oa.date_from).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-3 text-gray-700">
+                        <td className="px-6 py-4 text-gray-700 font-medium">
                           {new Date(oa.date_to).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-3 font-semibold text-gray-700">
+                        <td className="px-6 py-4 font-bold text-indigo-700 text-center">
                           {Number(oa.days_applied || 0).toFixed(2)}
                         </td>
-                        <td className="px-6 py-3">
+                        <td className="px-6 py-4 text-right">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                            className={`inline-flex items-center rounded-md px-3 py-1 text-[0.70rem] font-bold uppercase tracking-wider ${
                               oa.status === "Approved"
-                                ? "bg-green-100 text-green-800"
+                                ? "bg-green-100 text-green-700 border border-green-200"
                                 : oa.status === "Denied"
-                                  ? "bg-red-100 text-red-800"
+                                  ? "bg-red-100 text-red-700 border border-red-200"
                                   : oa.status === "Partially Approved"
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-yellow-100 text-yellow-800"
+                                    ? "bg-amber-100 text-amber-700 border border-amber-200"
+                                    : "bg-yellow-100 text-yellow-700 border border-yellow-200"
                             }`}
                           >
                             {oa.status}
                           </span>
                         </td>
-                        {currentUser?.role === "Supervisor" && (
-                          <td className="px-6 py-3 text-sm">
-                            {oa.status === "Pending" && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() =>
-                                    updateOffsetStatusMutation.mutate({
-                                      id: oa.id,
-                                      status: "Approved",
-                                      approved_days: null,
-                                      remarks: "",
-                                    })
-                                  }
-                                  className="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold cursor-pointer hover:bg-green-200 border-0"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateOffsetStatusMutation.mutate({
-                                      id: oa.id,
-                                      status: "Denied",
-                                      approved_days: null,
-                                      remarks: "",
-                                    })
-                                  }
-                                  className="px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-semibold cursor-pointer hover:bg-red-200 border-0"
-                                >
-                                  Deny
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        )}
                       </tr>
                     ))
                   )}
@@ -1024,8 +896,7 @@ export default function Leave() {
             </div>
           </div>
         </div>
-      )}{" "}
-      {/* END OFFSET TAB */}
+      )}
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );

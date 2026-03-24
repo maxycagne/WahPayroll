@@ -9,7 +9,7 @@ import {
   updateLeaveStatus,
   fileLeave,
   getAllPayroll,
-  generatePayroll, // <-- ADDED THIS IMPORT
+  generatePayroll,
   getAttendance,
   adjustLeaveBalance,
   getDashboardSummary,
@@ -27,6 +27,8 @@ import {
   fileOffsetApplication,
   getOffsetApplications,
   updateOffsetApplicationStatus,
+  getPayrollReports, // <-- THIS IS WHAT WAS MISSING!
+  getMyAttendance,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -45,6 +47,11 @@ router.get(
 );
 
 // --- Attendance & Calendar ---
+router.get(
+  "/my-attendance",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getMyAttendance,
+);
 router.get(
   "/attendance",
   authorizeRoles("Admin", "Supervisor", "HR"),
@@ -135,7 +142,6 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getAllPayroll,
 );
-// <-- ADDED THE NEW ROUTE HERE -->
 router.post(
   "/generate-payroll",
   authorizeRoles("Admin", "Supervisor"),
@@ -155,6 +161,12 @@ router.get(
   "/salary-history/:emp_id",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getSalaryHistory,
+);
+
+router.get(
+  "/payroll-reports",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  getPayrollReports,
 );
 
 // --- Employees ---

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 
 const fmt = (n) => {
@@ -13,82 +14,91 @@ const fmt = (n) => {
 };
 
 export default function Payslips() {
-  const [payrollData, setPayrollData] = useState([]);
-  const [selectedEmpId, setSelectedEmpId] = useState("");
-  const [loading, setLoading] = useState(true);
+  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+  const [period, setPeriod] = useState("2026-03");
 
-  useEffect(() => {
-    const fetchPayroll = async () => {
-      try {
-        const res = await apiFetch("/api/employees/payroll");
-        const data = await res.json();
+  const { data: payrollData = [], isLoading } = useQuery({
+    queryKey: ["payroll", period],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
+      if (!res.ok) throw new Error("Failed to fetch payroll");
+      return res.json();
+    },
+  });
 
-        if (Array.isArray(data)) {
-          setPayrollData(data);
-          if (data.length > 0) {
-            setSelectedEmpId(data[0].emp_id);
-          }
-        } else {
-          setPayrollData([]);
-        }
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching payroll for payslips:", err);
-        setLoading(false);
-      }
-    };
-
-    fetchPayroll();
-  }, []);
-
-  if (loading)
+  if (isLoading)
     return (
-      <div className="p-6 font-bold text-gray-900">Loading Payslips...</div>
+      <div className="p-6 font-bold text-gray-900">Loading your payslip...</div>
     );
 
-  if (payrollData.length === 0) {
-    return (
-      <div className="p-6 text-gray-600">
-        No payroll data available. Please generate payroll first.
-      </div>
-    );
-  }
-
-  // Find the selected employee's payroll record
-  const currentSlip =
-    payrollData.find((p) => p.emp_id === selectedEmpId) || payrollData[0];
+  const currentSlip = payrollData.find((p) => p.emp_id === currentUser.emp_id);
 
   return (
-    <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+    <div className="max-w-full relative">
+      {/* This style block specifically targets the browser's print dialog!
+        It removes the URL and Date headers/footers and forces background colors to print.
+      */}
+      <style>
+        {`
+          @media print {
+            @page { size: auto; margin: 15mm; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
+            /* Force hide any parent layouts like sidebars if they try to interfere */
+            aside, nav, header { display: none !important; }
+          }
+        `}
+      </style>
+
+      {/* TOP CONTROLS: Hidden during print */}
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6 print:hidden">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          Payslip Generation
+          My Payslips
         </h1>
 
         <div className="flex items-center gap-4">
-          <select
-            value={selectedEmpId}
-            onChange={(e) => setSelectedEmpId(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-          >
-            {payrollData.map((p) => (
-              <option key={p.emp_id} value={p.emp_id}>
-                {p.emp_id} - {p.first_name} {p.last_name}
-              </option>
-            ))}
-          </select>
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            Pay Period:
+            <input
+              type="month"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 font-normal bg-white"
+            />
+          </label>
 
           <button
-            className="px-[22px] py-2.5 rounded-[10px] border-0 text-white text-[0.95rem] font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90"
+            className="px-[22px] py-2.5 rounded-[10px] border-0 text-white text-[0.95rem] font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50"
             onClick={() => window.print()}
+            disabled={!currentSlip}
           >
             ⬇ Download PDF
           </button>
         </div>
       </div>
 
-      {currentSlip && (
-        <div className="bg-white rounded-xl p-8 border border-gray-200 shadow-sm max-w-[800px] print:border-none print:shadow-none">
+      {!currentSlip ? (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center text-gray-600 print:hidden">
+          <p className="text-lg font-semibold text-gray-800 mb-1">
+            No Payslip Found
+          </p>
+          <p className="text-sm">
+            Your payslip for{" "}
+            {new Date(period + "-01").toLocaleString("default", {
+              month: "long",
+              year: "numeric",
+            })}{" "}
+            has not been generated by HR yet.
+          </p>
+        </div>
+      ) : (
+        /* PAYSLIP CONTAINER
+          During print, we use 'print:fixed print:inset-0' to break this div out of the sidebar layout
+          and make it cover the entire printed page! 
+        */
+        <div
+          className="bg-white rounded-xl p-8 border border-gray-200 shadow-sm max-w-[800px] 
+                        print:fixed print:inset-0 print:z-[9999] print:max-w-full print:border-none print:shadow-none print:p-8"
+        >
           <div className="flex items-center gap-4 pb-4 border-b-2 border-purple-600 mb-5">
             <img
               src="/images/wah-logo.png"
@@ -102,60 +112,86 @@ export default function Payslips() {
               <p className="mt-0.5 mb-0 text-[0.9rem] text-gray-500">
                 Pay Period:{" "}
                 {new Date(
-                  currentSlip.period_start || Date.now(),
+                  currentSlip.period_start || `${period}-01`,
                 ).toLocaleString("default", { month: "long", year: "numeric" })}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-6 text-[0.92rem] text-gray-800">
+          <div className="grid grid-cols-2 gap-4 mb-8 text-[0.92rem] text-gray-800">
             <div>
-              <strong>Employee:</strong> {currentSlip.first_name}{" "}
-              {currentSlip.last_name}
+              <strong className="text-gray-500 block text-xs uppercase tracking-wider mb-1">
+                Employee Name
+              </strong>
+              <span className="font-semibold text-base">
+                {currentSlip.first_name} {currentSlip.last_name}
+              </span>
             </div>
             <div>
-              <strong>ID:</strong> {currentSlip.emp_id}
+              <strong className="text-gray-500 block text-xs uppercase tracking-wider mb-1">
+                Employee ID
+              </strong>
+              <span className="font-semibold text-base">
+                {currentSlip.emp_id}
+              </span>
             </div>
             <div>
-              <strong>Designation:</strong> {currentSlip.designation || "N/A"}
+              <strong className="text-gray-500 block text-xs uppercase tracking-wider mb-1">
+                Designation
+              </strong>
+              <span className="font-semibold text-base">
+                {currentSlip.designation || "N/A"}
+              </span>
             </div>
             <div>
-              <strong>Position:</strong> {currentSlip.position || "N/A"}
+              <strong className="text-gray-500 block text-xs uppercase tracking-wider mb-1">
+                Position
+              </strong>
+              <span className="font-semibold text-base">
+                {currentSlip.position || "N/A"}
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-7 mb-6">
+          <div className="grid grid-cols-2 gap-10 mb-8">
+            {/* EARNINGS */}
             <div>
-              <h4 className="m-0 mb-3 text-gray-900 border-b border-gray-200 pb-2">
+              <h4 className="m-0 mb-4 text-gray-900 border-b-2 border-gray-100 pb-2 font-bold uppercase tracking-wider text-sm">
                 Earnings
               </h4>
-              <div className="flex justify-between py-1.5 text-[0.9rem] text-gray-600">
+              <div className="flex justify-between py-2 text-[0.95rem] text-gray-700">
                 <span>Basic Pay</span>
-                <span>{fmt(currentSlip.basic_pay)}</span>
+                <span className="font-medium">
+                  {fmt(currentSlip.basic_pay)}
+                </span>
               </div>
-              <div className="flex justify-between py-1.5 text-[0.9rem] text-gray-600">
+              <div className="flex justify-between py-2 text-[0.95rem] text-gray-700">
                 <span>Incentives / Bonuses</span>
-                <span>{fmt(currentSlip.incentives)}</span>
+                <span className="font-medium text-green-600">
+                  +{fmt(currentSlip.incentives)}
+                </span>
               </div>
 
-              <div className="flex justify-between border-t border-gray-300 mt-2 pt-2.5 font-bold text-gray-900">
+              <div className="flex justify-between border-t border-gray-300 mt-3 pt-3 font-bold text-gray-900 text-[1.05rem]">
                 <span>Gross Pay</span>
                 <span>{fmt(currentSlip.gross_pay)}</span>
               </div>
             </div>
+
+            {/* DEDUCTIONS */}
             <div>
-              <h4 className="m-0 mb-3 text-gray-900 border-b border-gray-200 pb-2">
+              <h4 className="m-0 mb-4 text-gray-900 border-b-2 border-gray-100 pb-2 font-bold uppercase tracking-wider text-sm">
                 Deductions
               </h4>
-              <div className="flex justify-between py-1.5 text-[0.9rem] text-gray-600">
+              <div className="flex justify-between py-2 text-[0.95rem] text-gray-700">
                 <span>
                   Absences ({Number(currentSlip.absences_count || 0)} days)
                 </span>
-                <span className="text-red-600">
-                  {fmt(currentSlip.absence_deductions)}
+                <span className="font-medium text-red-600">
+                  -{fmt(currentSlip.absence_deductions)}
                 </span>
               </div>
-              <div className="flex justify-between border-t border-gray-300 mt-2 pt-2.5 font-bold text-gray-900">
+              <div className="flex justify-between border-t border-gray-300 mt-3 pt-3 font-bold text-gray-900 text-[1.05rem]">
                 <span>Total Deductions</span>
                 <span className="text-red-600">
                   {fmt(currentSlip.absence_deductions)}
@@ -164,9 +200,32 @@ export default function Payslips() {
             </div>
           </div>
 
-          <div className="flex justify-between px-5 py-4 rounded-[10px] bg-gradient-to-r from-purple-600 to-purple-800 text-white text-[1.3rem] font-bold">
-            <span>Net Pay</span>
-            <span>{fmt(currentSlip.net_pay)}</span>
+          {/* NET PAY */}
+          <div className="flex justify-between items-center px-6 py-5 rounded-[10px] bg-purple-600 text-white mt-10 print:bg-purple-600 print:text-white print:border-none">
+            <span className="text-[1.1rem] uppercase tracking-wider font-semibold">
+              Net Pay
+            </span>
+            <span className="text-[1.6rem] font-black">
+              {fmt(currentSlip.net_pay)}
+            </span>
+          </div>
+
+          {/* Footer Signature line for print only */}
+          <div className="hidden print:block mt-24">
+            <div className="flex justify-between">
+              <div className="w-64 text-center">
+                <div className="border-b border-gray-400 mb-2"></div>
+                <span className="text-xs text-gray-500 uppercase font-semibold">
+                  Employer Signature
+                </span>
+              </div>
+              <div className="w-64 text-center">
+                <div className="border-b border-gray-400 mb-2"></div>
+                <span className="text-xs text-gray-500 uppercase font-semibold">
+                  Employee Signature
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
