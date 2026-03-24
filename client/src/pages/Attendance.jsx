@@ -33,7 +33,8 @@ export default function Attendance() {
     }
   }, []);
   const isAdmin = currentUser?.role === "Admin";
-  const canConfigureWorkweek = currentUser?.role === "Admin" || currentUser?.role === "HR";
+  const canConfigureWorkweek =
+    currentUser?.role === "Admin" || currentUser?.role === "HR";
 
   // Modals State
   const [adjModal, setAdjModal] = useState(null);
