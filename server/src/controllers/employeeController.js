@@ -1233,27 +1233,27 @@ export const getPayrollReports = async (req, res) => {
     // 2. Get Monthly Payroll Data
     const [payrollRows] = await pool.query(`
       SELECT 
-        DATE_FORMAT(period_start, '%Y-%m') as sort_month,
-        DATE_FORMAT(period_start, '%M %Y') as display_month,
+        DATE_FORMAT(MIN(period_start), '%Y-%m') as sort_month,
+        DATE_FORMAT(MIN(period_start), '%M %Y') as display_month,
         SUM(incentives) as total_incentives, 
         SUM(gross_pay) as total_gross,
         SUM(absence_deductions) as total_deductions,
         SUM(net_pay) as total_net
       FROM payroll
-      GROUP BY period_start
+      GROUP BY YEAR(period_start), MONTH(period_start)
     `);
 
     // 3. Get Monthly Attendance Data
     const [attendanceRows] = await pool.query(`
       SELECT 
-        DATE_FORMAT(date, '%Y-%m') as sort_month,
-        DATE_FORMAT(date, '%M %Y') as display_month,
+        DATE_FORMAT(MIN(date), '%Y-%m') as sort_month,
+        DATE_FORMAT(MIN(date), '%M %Y') as display_month,
         SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
         SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
         SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
         SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as leave_count
       FROM attendance
-      GROUP BY sort_month
+      GROUP BY YEAR(date), MONTH(date)
     `);
 
     // 4. Merge Payroll and Attendance Data together by Month
