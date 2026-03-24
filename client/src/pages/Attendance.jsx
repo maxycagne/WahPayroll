@@ -357,8 +357,8 @@ export default function Attendance() {
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <h1 className="m-0 text-lg font-bold text-gray-900">
           Attendance Management
         </h1>
         {canConfigureWorkweek && (
@@ -373,20 +373,20 @@ export default function Attendance() {
 
       {/* --- INLINE CALENDAR VIEW --- */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-        <div className="bg-purple-700 px-6 py-4 text-white">
-          <h2 className="text-lg font-bold m-0">
+        <div className="bg-purple-700 px-4 py-2 text-white">
+          <h2 className="text-base font-bold m-0">
             Select Date to Take Attendance
           </h2>
         </div>
-        <div className="p-6 bg-gray-50">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-3 bg-gray-50">
+          <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => setViewDate(new Date(year, month - 1, 1))}
-              className="px-4 py-2 border rounded bg-white font-medium cursor-pointer hover:bg-gray-100 transition-colors"
+              className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
             >
               ◀ Prev
             </button>
-            <h3 className="m-0 text-xl font-bold">
+            <h3 className="m-0 text-base font-bold">
               {viewDate.toLocaleString("default", {
                 month: "long",
                 year: "numeric",
@@ -394,17 +394,17 @@ export default function Attendance() {
             </h3>
             <button
               onClick={() => setViewDate(new Date(year, month + 1, 1))}
-              className="px-4 py-2 border rounded bg-white font-medium cursor-pointer hover:bg-gray-100 transition-colors"
+              className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
             >
               Next ▶
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div
                 key={d}
-                className="text-center text-sm font-bold text-gray-500 py-2"
+                className="text-center text-xs font-bold text-gray-500 py-1"
               >
                 {d}
               </div>
@@ -434,10 +434,10 @@ export default function Attendance() {
                     setDailyModalOpen(true);
                     setSelectedEmployees(new Set());
                   }}
-                  className={`min-h-[80px] border rounded-lg p-2 flex flex-col items-start bg-white cursor-pointer hover:border-purple-500 hover:shadow-md transition-all ${isToday ? "border-purple-600 bg-purple-50" : "border-gray-200"}`}
+                  className={`min-h-[60px] border rounded p-1 flex flex-col items-start bg-white cursor-pointer hover:border-purple-500 hover:shadow-md transition-all ${isToday ? "border-purple-600 bg-purple-50" : "border-gray-200"}`}
                 >
                   <span
-                    className={`font-bold text-sm ${isToday ? "text-purple-700" : "text-gray-700"}`}
+                    className={`font-bold text-xs ${isToday ? "text-purple-700" : "text-gray-700"}`}
                   >
                     {day}
                   </span>
@@ -484,57 +484,57 @@ export default function Attendance() {
       </div>
 
       {/* --- ALL EMPLOYEES SUMMARY TABLE --- */}
-      <h2 className="m-0 text-lg font-bold text-gray-900 mb-4">
+      <h2 className="m-0 text-base font-bold text-gray-900 mb-2">
         Overall Attendance Overview
       </h2>
-      <div className="mb-4">
+      <div className="mb-2">
         <input
           type="text"
-          className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full max-w-[280px] px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-purple-500"
           placeholder="Search by name or ID…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-8">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-4">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase">
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
                   Employee ID
                 </th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase">
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
                   Name
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700 uppercase">
-                  Total Absences
+                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
+                  Absences
                 </th>
-                <th className="px-6 py-3 text-center font-semibold text-gray-700 uppercase">
-                  Leave Balance
+                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
+                  Balance
                 </th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase">
-                  Today's Status
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                  Status
                 </th>
-                <th className="px-6 py-3 text-right font-semibold text-gray-700 uppercase">
-                  Admin Actions
+                <th className="px-3 py-2 text-right font-semibold text-gray-700 uppercase text-[11px]">
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredMain.map((a, index) => (
                 <tr key={`${a.emp_id}-${index}`} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">{a.emp_id}</td>
-                  <td className="px-6 py-4 font-semibold">
+                  <td className="px-3 py-2 text-xs">{a.emp_id}</td>
+                  <td className="px-3 py-2 font-semibold text-xs">
                     {a.first_name} {a.last_name}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-3 py-2 text-center text-xs">
                     {a.total_absences || 0}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-3 py-2 text-center">
                     <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${getLeaveHighlightColor(a.leave_balance)}`}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${getLeaveHighlightColor(a.leave_balance)}`}
                     >
                       {Number(a.leave_balance)} /{" "}
                       {a.emp_status === "Job Order" || a.emp_status === "Casual"
@@ -542,17 +542,17 @@ export default function Attendance() {
                         : 27}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-2">
                     <span
-                      className={`inline-flex items-center border border-transparent rounded-full px-3 py-1 text-xs font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
+                      className={`inline-flex items-center border border-transparent rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
                     >
                       {a.status || "No Data"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => setAdjModal(a)}
-                      className="px-3 py-1.5 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer"
+                      className="px-2 py-1 rounded-md bg-purple-100 text-purple-700 text-[10px] font-bold border-0 cursor-pointer hover:bg-purple-200"
                     >
                       Adjust Balance
                     </button>
@@ -574,38 +574,38 @@ export default function Attendance() {
             className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-purple-700 px-6 py-4 flex justify-between items-center text-white shrink-0">
-              <h2 className="text-lg font-bold m-0">
+            <div className="bg-purple-700 px-4 py-3 flex justify-between items-center text-white shrink-0">
+              <h2 className="text-base font-bold m-0">
                 Attendance for {selectedDate}
               </h2>
               <button
                 onClick={() => setDailyModalOpen(false)}
-                className="text-white hover:text-gray-200 text-2xl border-0 bg-transparent cursor-pointer"
+                className="text-white hover:text-gray-200 text-xl border-0 bg-transparent cursor-pointer"
               >
                 &times;
               </button>
             </div>
 
-            <div className="p-6 flex-1 overflow-hidden flex flex-col">
-              <div className="flex justify-between items-center mb-4 shrink-0">
+            <div className="p-4 flex-1 overflow-hidden flex flex-col">
+              <div className="flex justify-between items-center mb-2 shrink-0">
                 <input
                   type="text"
                   placeholder="Search personnel..."
                   value={dailySearch}
                   onChange={(e) => setDailySearch(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 w-64"
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 w-56 text-sm"
                 />
               </div>
 
-              <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 flex flex-wrap items-center justify-between mb-4 shrink-0 gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-purple-800">
+              <div className="bg-purple-50 border border-purple-100 rounded-lg p-2 flex flex-wrap items-center justify-between mb-2 shrink-0 gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-purple-800">
                     Selected: {selectedEmployees.size}
                   </span>
                   <select
                     value={bulkStatus}
                     onChange={(e) => setBulkStatus(e.target.value)}
-                    className="px-3 py-1.5 rounded border border-gray-300 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-500"
+                    className="px-2 py-1 rounded border border-gray-300 text-xs font-medium outline-none focus:ring-2 focus:ring-purple-500"
                   >
                     <option value="Present">Present</option>
                     <option value="Late">Late</option>
@@ -617,24 +617,24 @@ export default function Attendance() {
                   <button
                     onClick={applyBulkStatus}
                     disabled={selectedEmployees.size === 0}
-                    className="px-4 py-1.5 bg-purple-600 text-white rounded text-sm font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer border-0 transition-opacity"
+                    className="px-3 py-1 bg-purple-600 text-white rounded text-xs font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer border-0 transition-opacity"
                   >
-                    Apply to Selected
+                    Apply
                   </button>
                 </div>
                 <button
                   onClick={markAllPresent}
-                  className="px-4 py-1.5 bg-green-100 text-green-800 font-bold text-sm rounded border border-green-200 hover:bg-green-200 cursor-pointer transition-colors"
+                  className="px-3 py-1 bg-green-100 text-green-800 font-bold text-xs rounded border border-green-200 hover:bg-green-200 cursor-pointer transition-colors"
                 >
                   ✓ Mark Unassigned as Present
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-xs text-left">
                   <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                     <tr>
-                      <th className="px-4 py-3 w-12 text-center">
+                      <th className="px-3 py-2 w-10 text-center">
                         <input
                           type="checkbox"
                           checked={
@@ -645,17 +645,17 @@ export default function Attendance() {
                           className="w-4 h-4 cursor-pointer"
                         />
                       </th>
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase text-sm">
+                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
                         Employee
                       </th>
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
                         Designation
                       </th>
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
+                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
                         Primary Status
                       </th>
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase">
-                        Secondary Status (Optional)
+                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
+                        Secondary (Opt.)
                       </th>
                     </tr>
                   </thead>
@@ -675,9 +675,9 @@ export default function Attendance() {
                         return (
                           <tr
                             key={`${emp.emp_id}-${index}`}
-                            className={`hover:bg-gray-50 transition-colors ${isChecked ? "bg-purple-50" : ""}`}
+                            className={`hover:bg-gray-50 transition-colors text-xs ${isChecked ? "bg-purple-50" : ""}`}
                           >
-                            <td className="px-4 py-3 text-center">
+                            <td className="px-3 py-2 text-center">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
@@ -687,18 +687,18 @@ export default function Attendance() {
                                 className="w-4 h-4 cursor-pointer"
                               />
                             </td>
-                            <td className="px-6 py-3">
-                              <p className="font-bold m-0 text-gray-900">
+                            <td className="px-3 py-2">
+                              <p className="font-bold m-0 text-gray-900 text-xs">
                                 {emp.first_name} {emp.last_name}
                               </p>
-                              <p className="text-xs text-gray-500 m-0">
+                              <p className="text-[10px] text-gray-500 m-0">
                                 {emp.emp_id}
                               </p>
                             </td>
-                            <td className="px-6 py-3 text-gray-600">
+                            <td className="px-3 py-2 text-gray-600 text-xs">
                               {emp.emp_status}
                             </td>
-                            <td className="px-6 py-3">
+                            <td className="px-3 py-2">
                               <select
                                 value={attendanceForm[emp.emp_id] || "Present"}
                                 onChange={(e) =>
@@ -707,7 +707,7 @@ export default function Attendance() {
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                className={`border p-1.5 rounded outline-none font-semibold max-w-[120px] ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Present}`}
+                                  className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Present}`}
                               >
                                 <option value="Present">Present</option>
                                 <option value="Late">Late</option>
@@ -717,7 +717,7 @@ export default function Attendance() {
                                 <option value="On Leave">On Leave</option>
                               </select>
                             </td>
-                            <td className="px-6 py-3">
+                            <td className="px-3 py-2">
                               <select
                                 value={secondaryStatusForm[emp.emp_id] || ""}
                                 onChange={(e) =>
@@ -726,7 +726,7 @@ export default function Attendance() {
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                className="border p-1.5 rounded outline-none font-semibold max-w-[120px] bg-white text-gray-700"
+                                  className="border p-1 rounded outline-none font-semibold max-w-[90px] bg-white text-gray-700 text-xs"
                               >
                                 <option value="">-- None --</option>
                                 <option value="Late">Late</option>
@@ -742,17 +742,17 @@ export default function Attendance() {
                 </table>
               </div>
 
-              <div className="mt-4 pt-4 border-t flex justify-end gap-3 shrink-0">
+              <div className="mt-3 pt-3 border-t flex justify-end gap-2 shrink-0">
                 <button
                   onClick={() => setDailyModalOpen(false)}
-                  className="px-5 py-2 border rounded-lg font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer"
+                  className="px-4 py-1.5 border rounded-lg font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer text-sm"
                 >
-                  Back to Calendar
+                  Back
                 </button>
                 <button
                   onClick={handleDailySubmit}
                   disabled={saveDailyAttendanceMutation.isPending}
-                  className="px-6 py-2 bg-purple-700 text-white rounded-lg font-bold hover:bg-purple-800 cursor-pointer border-0 disabled:opacity-50"
+                  className="px-4 py-1.5 bg-purple-700 text-white rounded-lg font-bold hover:bg-purple-800 cursor-pointer border-0 disabled:opacity-50 text-sm"
                 >
                   {saveDailyAttendanceMutation.isPending
                     ? "Saving..."
@@ -831,20 +831,20 @@ export default function Attendance() {
       {workweekModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden">
-            <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
-              <h2 className="text-lg font-bold m-0">Workweek Configuration</h2>
+            <div className="bg-indigo-600 px-4 py-3 flex justify-between items-center text-white">
+              <h2 className="text-base font-bold m-0">Workweek Configuration</h2>
               <button
                 onClick={() => setWorkweekModalOpen(false)}
-                className="text-white text-2xl bg-transparent border-0 cursor-pointer hover:text-gray-200"
+                className="text-white text-xl bg-transparent border-0 cursor-pointer hover:text-gray-200"
               >
                 &times;
               </button>
             </div>
 
-            <div className="p-6 max-h-[80vh] overflow-y-auto space-y-6">
+            <div className="p-4 max-h-[75vh] overflow-y-auto space-y-4">
               <div>
                 <form
-                  className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mb-6"
+                  className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end mb-4"
                   onSubmit={handleWorkweekSubmit}
                 >
                   <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 uppercase">
@@ -857,15 +857,15 @@ export default function Attendance() {
                           workweek_type: e.target.value,
                         }))
                       }
-                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-2 py-1.5 rounded-lg border border-gray-300 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="5-day">5-day (8h/day, 1.00 unit)</option>
-                      <option value="4-day">4-day (10h/day, 1.25 unit)</option>
+                      <option value="5-day">5-day (8h, 1.00)</option>
+                      <option value="4-day">4-day (10h, 1.25)</option>
                     </select>
                   </label>
 
                   <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 uppercase">
-                    Effective From
+                    From
                     <input
                       required
                       type="date"
@@ -876,12 +876,12 @@ export default function Attendance() {
                           effective_from: e.target.value,
                         }))
                       }
-                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-2 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </label>
 
                   <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 uppercase">
-                    Effective To (Optional)
+                    To (Opt.)
                     <input
                       type="date"
                       value={workweekForm.effective_to}
@@ -891,7 +891,7 @@ export default function Attendance() {
                           effective_to: e.target.value,
                         }))
                       }
-                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-2 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </label>
 
@@ -901,25 +901,25 @@ export default function Attendance() {
                       saveWorkweekMutation.isPending ||
                       updateWorkweekMutation.isPending
                     }
-                    className="h-10 px-4 rounded-lg border-0 bg-indigo-600 text-white text-sm font-bold cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
+                    className="h-9 px-3 rounded-lg border-0 bg-indigo-600 text-white text-xs font-bold cursor-pointer hover:bg-indigo-700 disabled:opacity-60"
                   >
                     {saveWorkweekMutation.isPending ||
                     updateWorkweekMutation.isPending
                       ? "Saving..."
                       : editingWorkweekId
-                        ? "Update Rule"
-                        : "Save Rule"}
+                        ? "Update"
+                        : "Save"}
                   </button>
                 </form>
 
                 {editingWorkweekId && (
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <button
                       type="button"
                       onClick={handleCancelEditWorkweek}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-md border border-indigo-300 text-indigo-800 bg-white hover:bg-indigo-50"
+                      className="px-3 py-1 text-xs font-semibold rounded-md border border-indigo-300 text-indigo-800 bg-white hover:bg-indigo-50"
                     >
-                      Cancel Editing
+                      Cancel
                     </button>
                   </div>
                 )}
@@ -929,22 +929,22 @@ export default function Attendance() {
                 <table className="w-full text-xs">
                   <thead className="bg-gray-100 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700 uppercase">
+                      <th className="px-3 py-2 text-left font-bold text-gray-700 uppercase text-[10px]">
                         Type
                       </th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700 uppercase">
-                        Effective From
+                      <th className="px-3 py-2 text-left font-bold text-gray-700 uppercase text-[10px]">
+                        From
                       </th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700 uppercase">
-                        Effective To
+                      <th className="px-3 py-2 text-left font-bold text-gray-700 uppercase text-[10px]">
+                        To
                       </th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700 uppercase">
-                        Hours/Day
+                      <th className="px-3 py-2 text-left font-bold text-gray-700 uppercase text-[10px]">
+                        Hrs/Day
                       </th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700 uppercase">
-                        Absence Unit
+                      <th className="px-3 py-2 text-left font-bold text-gray-700 uppercase text-[10px]">
+                        Unit
                       </th>
-                      <th className="px-4 py-3 text-right font-bold text-gray-700 uppercase">
+                      <th className="px-3 py-2 text-right font-bold text-gray-700 uppercase text-[10px]">
                         Actions
                       </th>
                     </tr>
@@ -952,9 +952,8 @@ export default function Attendance() {
                   <tbody>
                     {workweekConfigs.length === 0 ? (
                       <tr>
-                        <td className="px-4 py-3 text-gray-500" colSpan={6}>
-                          No workweek rules configured yet. Default absence unit
-                          is 1.00.
+                        <td className="px-3 py-2 text-gray-500 text-xs" colSpan={6}>
+                          No rules configured.
                         </td>
                       </tr>
                     ) : (
@@ -963,29 +962,29 @@ export default function Attendance() {
                           key={cfg.id}
                           className="border-b border-gray-200 hover:bg-gray-100"
                         >
-                          <td className="px-4 py-3 font-semibold text-gray-800">
+                          <td className="px-3 py-2 font-semibold text-gray-800 text-xs">
                             {cfg.workweek_type}
                           </td>
-                          <td className="px-4 py-3 text-gray-700">
+                          <td className="px-3 py-2 text-gray-700 text-xs">
                             {String(cfg.effective_from).slice(0, 10)}
                           </td>
-                          <td className="px-4 py-3 text-gray-700">
+                          <td className="px-3 py-2 text-gray-700 text-xs">
                             {cfg.effective_to
                               ? String(cfg.effective_to).slice(0, 10)
-                              : "Open-ended"}
+                              : "Open"}
                           </td>
-                          <td className="px-4 py-3 text-gray-700">
+                          <td className="px-3 py-2 text-gray-700 text-xs">
                             {Number(cfg.hours_per_day).toFixed(2)}
                           </td>
-                          <td className="px-4 py-3 text-gray-700">
+                          <td className="px-3 py-2 text-gray-700 text-xs">
                             {Number(cfg.absence_unit).toFixed(2)}
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="inline-flex gap-2">
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex gap-1">
                               <button
                                 type="button"
                                 onClick={() => handleEditWorkweek(cfg)}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded border border-indigo-200 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 cursor-pointer"
+                                className="px-2 py-0.5 text-[10px] font-bold rounded border border-indigo-200 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 cursor-pointer"
                               >
                                 Edit
                               </button>
@@ -993,9 +992,9 @@ export default function Attendance() {
                                 type="button"
                                 onClick={() => handleDeleteWorkweek(cfg)}
                                 disabled={deleteWorkweekMutation.isPending}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded border border-red-200 bg-red-100 text-red-800 hover:bg-red-200 disabled:opacity-60 cursor-pointer"
+                                className="px-2 py-0.5 text-[10px] font-bold rounded border border-red-200 bg-red-100 text-red-800 hover:bg-red-200 disabled:opacity-60 cursor-pointer"
                               >
-                                Delete
+                                Del
                               </button>
                             </div>
                           </td>
@@ -1007,7 +1006,7 @@ export default function Attendance() {
               </div>
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end">
               <button
                 onClick={() => setWorkweekModalOpen(false)}
                 className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-semibold text-sm cursor-pointer hover:bg-gray-100"
@@ -1023,3 +1022,4 @@ export default function Attendance() {
     </div>
   );
 }
+
