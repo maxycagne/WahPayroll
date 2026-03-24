@@ -11,6 +11,15 @@ const leaveTypes = [
   "PGT Leave",
 ];
 
+const resignationTypes = [
+  "Voluntary Resignation",
+  "Health Reasons",
+  "Relocation",
+  "Career Change",
+  "Further Education",
+  "Other",
+];
+
 function isInRange(date, from, to) {
   const d = new Date(date).setHours(0, 0, 0, 0);
   const f = new Date(from).setHours(0, 0, 0, 0);
@@ -49,9 +58,10 @@ const badgeClass = {
   Approved: "bg-green-100 text-green-800",
   Denied: "bg-red-100 text-red-800",
   Pending: "bg-yellow-100 text-yellow-800",
+  "Pending Approval": "bg-yellow-100 text-yellow-800",
 };
 
-// --- CALENDAR COMPONENT (Updated for Single Employee View) ---
+// --- CALENDAR COMPONENT ---
 function LeaveCalendar({ leaves, attendance }) {
   const [viewDate, setViewDate] = useState(new Date());
   const year = viewDate.getFullYear();
@@ -332,8 +342,14 @@ export default function Leave() {
     priority: "Low",
   });
 
+  // Resignation Form State
+  const [resignationForm, setResignationForm] = useState({
+    resignation_type: "Voluntary Resignation",
+    effective_date: "",
+    reason: "",
+  });
+
   // --- QUERIES ---
-  // 1. Fetch Leaves (Backend is already returning ONLY RankAndFile user's leaves)
   const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
@@ -343,16 +359,13 @@ export default function Leave() {
     },
   });
 
-  // 2. Filter leaves to strictly the current user just in case
   const myLeaves = leaves.filter((l) => l.emp_id === currentUser?.emp_id);
 
-  // 3. Fetch the current user's full attendance history for the calendar
   const { data: myAttendance = [] } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
       if (!currentUser?.emp_id) return [];
       try {
-        // Now calling the dedicated, secure endpoint for personal history!
         const res = await apiFetch(`/api/employees/my-attendance`);
         if (!res.ok) return [];
         return await res.json();
@@ -385,14 +398,24 @@ export default function Leave() {
     },
   });
 
+  // New Query: My Resignations
+  const { data: myResignations = [], isLoading: isLoadingResignations } =
+    useQuery({
+      queryKey: ["my-resignations", currentUser?.emp_id],
+      queryFn: async () => {
+        if (!currentUser?.emp_id) return [];
+        const res = await apiFetch(`/api/employees/my-resignations`);
+        if (!res.ok) return [];
+        return res.json();
+      },
+    });
+
   // --- MUTATIONS ---
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
       const res = await apiFetch("/api/employees/leaves", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newLeave),
       });
       if (!res.ok) {
@@ -437,6 +460,33 @@ export default function Leave() {
     },
     onError: (err) =>
       showToast(err.message || "Failed to file offset.", "error"),
+  });
+
+  // New Mutation: File Resignation
+  const fileResignationMutation = useMutation({
+    mutationFn: async (resignationData) => {
+      const res = await apiFetch("/api/employees/resignations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emp_id: currentUser?.emp_id,
+          ...resignationData,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to file resignation");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["my-resignations"]);
+      showToast("Resignation filed successfully.");
+      setResignationForm({
+        resignation_type: "Voluntary Resignation",
+        effective_date: "",
+        reason: "",
+      });
+      setShowForm(false);
+    },
+    onError: () => showToast("Error filing resignation.", "error"),
   });
 
   // --- HANDLERS ---
@@ -507,7 +557,14 @@ export default function Leave() {
     return startDate.toISOString().split("T")[0];
   };
 
-  if (isLoadingLeaves || isLoadingOffsets)
+  // Helper for changing tabs cleanly
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    setShowForm(false);
+    setFormError("");
+  };
+
+  if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations)
     return (
       <div className="p-6 font-bold text-gray-800">Loading your data...</div>
     );
@@ -516,14 +573,14 @@ export default function Leave() {
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          My Leave & Offsets
+          My Dashboard
         </h1>
       </div>
 
       {/* TAB NAVIGATION */}
       <div className="flex items-center gap-2 mb-6 border-b border-gray-200">
         <button
-          onClick={() => setActiveTab("leave")}
+          onClick={() => switchTab("leave")}
           className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
             activeTab === "leave"
               ? "border-purple-600 text-purple-600"
@@ -533,16 +590,28 @@ export default function Leave() {
           📅 My Calendar
         </button>
         {currentUser?.role !== "Admin" && (
-          <button
-            onClick={() => setActiveTab("offset")}
-            className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
-              activeTab === "offset"
-                ? "border-purple-600 text-purple-600"
-                : "border-transparent text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            ⏱️ Offset / Overtime
-          </button>
+          <>
+            <button
+              onClick={() => switchTab("offset")}
+              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                activeTab === "offset"
+                  ? "border-purple-600 text-purple-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              ⏱️ Offset / Overtime
+            </button>
+            <button
+              onClick={() => switchTab("resignation")}
+              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                activeTab === "resignation"
+                  ? "border-red-600 text-red-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              🚪 Resignation
+            </button>
+          </>
         )}
       </div>
 
@@ -897,6 +966,187 @@ export default function Leave() {
           </div>
         </div>
       )}
+
+      {/* RESIGNATION TAB */}
+      {activeTab === "resignation" && currentUser?.role !== "Admin" && (
+        <div>
+          <div className="mb-6 flex items-center gap-3">
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
+            >
+              {showForm ? "✕ Cancel" : "+ File Resignation"}
+            </button>
+          </div>
+
+          {showForm && (
+            <div className="rounded-xl border border-red-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 className="m-0 mb-4 text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">
+                File Notice of Resignation
+              </h3>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (
+                    !resignationForm.effective_date ||
+                    !resignationForm.reason
+                  ) {
+                    showToast("Please fill all required fields.", "error");
+                    return;
+                  }
+                  fileResignationMutation.mutate(resignationForm);
+                }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-5"
+              >
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Resignation Type
+                  </label>
+                  <select
+                    required
+                    value={resignationForm.resignation_type}
+                    onChange={(e) =>
+                      setResignationForm({
+                        ...resignationForm,
+                        resignation_type: e.target.value,
+                      })
+                    }
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                  >
+                    {resignationTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Effective Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={resignationForm.effective_date}
+                    onChange={(e) =>
+                      setResignationForm({
+                        ...resignationForm,
+                        effective_date: e.target.value,
+                      })
+                    }
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <p className="text-[0.65rem] text-gray-500 font-semibold uppercase mt-1">
+                    Typically 30 days from today.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Reason / Comments
+                  </label>
+                  <textarea
+                    rows="4"
+                    required
+                    placeholder="Please provide your reason for leaving..."
+                    value={resignationForm.reason}
+                    onChange={(e) =>
+                      setResignationForm({
+                        ...resignationForm,
+                        reason: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm resize-none"
+                  />
+                </div>
+                <div className="mt-2 flex gap-3 justify-end md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={fileResignationMutation.isPending}
+                    className="px-6 py-2.5 rounded-lg bg-red-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-red-700 disabled:opacity-50 shadow-sm"
+                  >
+                    {fileResignationMutation.isPending
+                      ? "Submitting..."
+                      : "Submit Resignation"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
+              <h3 className="m-0 text-lg font-bold text-gray-900">
+                My Resignation History
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-white">
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                      Date Filed
+                    </th>
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                      Effective Date
+                    </th>
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {myResignations.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="4"
+                        className="px-6 py-10 text-center text-gray-500 font-medium"
+                      >
+                        You have not filed a resignation.
+                      </td>
+                    </tr>
+                  ) : (
+                    myResignations.map((r) => (
+                      <tr
+                        key={r.id}
+                        className="hover:bg-gray-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 text-gray-700 font-medium">
+                          {new Date(r.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-gray-700 font-medium">
+                          {r.effective_date
+                            ? new Date(r.effective_date).toLocaleDateString()
+                            : "N/A"}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-gray-800">
+                          {r.resignation_type}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span
+                            className={`inline-flex items-center rounded-md px-3 py-1 text-[0.70rem] font-bold uppercase tracking-wider ${
+                              r.status === "Approved"
+                                ? "bg-green-100 text-green-700 border border-green-200"
+                                : r.status === "Denied"
+                                  ? "bg-red-100 text-red-700 border border-red-200"
+                                  : "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                            }`}
+                          >
+                            {r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );

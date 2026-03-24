@@ -27,8 +27,11 @@ import {
   fileOffsetApplication,
   getOffsetApplications,
   updateOffsetApplicationStatus,
-  getPayrollReports, // <-- THIS IS WHAT WAS MISSING!
+  getPayrollReports,
   getMyAttendance,
+  updateMissingDocs,
+  getMyResignations,
+  fileResignation,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -39,14 +42,14 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-// --- Dashboard ---
 router.get(
   "/dashboard-summary",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getDashboardSummary,
 );
 
-// --- Attendance & Calendar ---
+router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
+
 router.get(
   "/my-attendance",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -56,6 +59,17 @@ router.get(
   "/attendance",
   authorizeRoles("Admin", "Supervisor", "HR"),
   getAttendance,
+);
+
+router.get(
+  "/my-resignations",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getMyResignations,
+);
+router.post(
+  "/resignations",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  fileResignation,
 );
 router.put(
   "/leave-balance/:id",
@@ -78,7 +92,6 @@ router.post(
   saveBulkAttendance,
 );
 
-// --- Workweek Configuration ---
 router.get(
   "/workweek-config",
   authorizeRoles("Admin", "Supervisor", "HR"),
@@ -96,7 +109,6 @@ router.delete(
   deleteWorkweekConfigById,
 );
 
-// --- Offset Management ---
 router.get(
   "/offset-balance/:emp_id",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -118,7 +130,6 @@ router.put(
   updateOffsetApplicationStatus,
 );
 
-// --- Leaves ---
 router.get(
   "/leaves",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -134,8 +145,6 @@ router.put(
   authorizeRoles("Admin", "Supervisor"),
   updateLeaveStatus,
 );
-
-// --- Payroll & Salary ---
 
 router.get(
   "/payroll",
@@ -169,7 +178,6 @@ router.get(
   getPayrollReports,
 );
 
-// --- Employees ---
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
