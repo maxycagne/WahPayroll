@@ -353,22 +353,106 @@ export const getDashboardSummary = async (req, res) => {
       "SELECT e.first_name, e.last_name, l.leave_type FROM employees e JOIN leave_requests l ON e.emp_id = l.emp_id WHERE CURDATE() BETWEEN l.date_from AND l.date_to AND l.status = 'Approved'",
     );
     const [absents] = await pool.query(
-      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE())",
+      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE()) AND status != 'Inactive'",
     );
     const [balances] = await pool.query(
       "SELECT e.first_name, e.last_name, lb.leave_balance, lb.offset_credits FROM employees e JOIN leave_balances lb ON e.emp_id = lb.emp_id",
     );
+
+    // Fetch REAL Resignations
+    let resignations = [];
+    try {
+      const [resigRows] = await pool.query(
+        "SELECT r.*, e.first_name, e.last_name FROM resignations r JOIN employees e ON r.emp_id = e.emp_id WHERE r.status = 'Pending Approval'",
+      );
+      resignations = resigRows;
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Fetch Missing Documents for Dashboard
+    let missingDocs = [];
+    try {
+      const [docsRows] = await pool.query(`
+        SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date 
+        FROM employee_missing_docs m 
+        JOIN employees e ON m.emp_id = e.emp_id
+      `);
+      missingDocs = docsRows;
+    } catch (e) {
+      console.error(e);
+    }
 
     res.json({
       pendingLeaves: pending,
       onLeave: onLeave,
       absents: absents,
       balances: balances,
+      resignations: resignations,
+      missingDocs: missingDocs,
       recentActivities: [],
     });
   } catch (error) {
     console.error("DB Error in getDashboardSummary:", error);
     res.status(500).json({ message: "Error loading dashboard" });
+  }
+};
+
+// --- UPDATE MISSING DOCUMENTS ---
+export const updateMissingDocs = async (req, res) => {
+  const { emp_id, missing_docs } = req.body;
+
+  if (!emp_id)
+    return res.status(400).json({ message: "Employee ID is required" });
+
+  try {
+    if (!missing_docs || missing_docs.trim() === "") {
+      // If the HR clears the text box, it means all docs are submitted! Delete the record.
+      await pool.query("DELETE FROM employee_missing_docs WHERE emp_id = ?", [
+        emp_id,
+      ]);
+    } else {
+      // Insert or Update the missing documents
+      await pool.query(
+        "INSERT INTO employee_missing_docs (emp_id, missing_docs) VALUES (?, ?) ON DUPLICATE KEY UPDATE missing_docs = VALUES(missing_docs)",
+        [emp_id, missing_docs],
+      );
+    }
+    res.json({ message: "Employee documents updated successfully" });
+  } catch (error) {
+    console.error("DB Error in updateMissingDocs:", error);
+    res.status(500).json({ message: "Error updating missing documents" });
+  }
+};
+
+// --- RESIGNATIONS ---
+export const getMyResignations = async (req, res) => {
+  try {
+    const empId = req.user?.emp_id;
+    if (!empId) return res.status(400).json({ message: "Employee ID missing" });
+
+    const [rows] = await pool.query(
+      "SELECT * FROM resignations WHERE emp_id = ? ORDER BY created_at DESC",
+      [empId],
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getMyResignations:", error);
+    res.status(500).json({ message: "Error fetching resignations" });
+  }
+};
+
+export const fileResignation = async (req, res) => {
+  const { emp_id, resignation_type, effective_date, reason } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO resignations (emp_id, resignation_type, effective_date, reason, status) VALUES (?, ?, ?, ?, 'Pending Approval')",
+      [emp_id, resignation_type, effective_date, reason],
+    );
+    res.status(201).json({ message: "Resignation filed successfully" });
+  } catch (error) {
+    console.error("DB Error in fileResignation:", error);
+    res.status(500).json({ message: "Error filing resignation" });
   }
 };
 

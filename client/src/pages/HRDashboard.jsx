@@ -1,53 +1,99 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { URL } from "../assets/constant";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 
-const attendanceTypes = {
-  Present: { abbr: "P", color: "bg-green-100 text-green-800" },
-  Absent: { abbr: "A", color: "bg-red-100 text-red-800" },
-  "Week-Off / Weekends": { abbr: "WO", color: "bg-orange-100 text-orange-800" },
-  "Sick Leave": { abbr: "SL", color: "bg-blue-100 text-blue-800" },
-  "Un/Scheduled Leave": { abbr: "V", color: "bg-purple-100 text-purple-800" },
-  "Work From Home": { abbr: "WFH", color: "bg-indigo-100 text-indigo-800" },
-  Quarantine: { abbr: "Q", color: "bg-pink-100 text-pink-800" },
-  Holiday: { abbr: "H", color: "bg-yellow-100 text-yellow-800" },
-  "Birthday Leave": { abbr: "BL", color: "bg-pink-200 text-pink-900" },
-  Late: { abbr: "L", color: "bg-yellow-200 text-yellow-900" },
-  Field: { abbr: "FLD", color: "bg-orange-200 text-orange-900" },
-  "PGT Leave": { abbr: "PGT", color: "bg-green-200 text-green-900" },
-  "Maternity Leave": { abbr: "ML", color: "bg-cyan-100 text-cyan-800" },
-  "Team Building": { abbr: "TB", color: "bg-red-900 text-white" },
-};
+// --- MASTER LIST OF ONBOARDING DOCUMENTS ---
+const STANDARD_DOCUMENTS = [
+  "Resume / CV",
+  "NBI Clearance",
+  "Medical Certificate",
+  "SSS E-1 Form / ID",
+  "PhilHealth ID / MDR",
+  "Pag-IBIG MID No.",
+  "TIN / BIR Form 1902",
+  "Transcript of Records (TOR)",
+  "Diploma",
+  "Birth Certificate (PSA)",
+  "Marriage Certificate",
+  "Certificate of Employment (COE)",
+];
 
 export default function HRDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Modals state
   const [showModal, setShowModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
 
-  const [formData, setFormData] = useState({
-    employeeName: "",
-    designation: "",
-    dateEmployed: "",
-    requirementsMissing: "",
+  // Form & Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [docForm, setDocForm] = useState({
+    emp_id: "",
+    missing_docs: [], // <-- Now an array to hold selected checkboxes!
   });
 
-  // --- FETCH REAL DASHBOARD DATA ---
-  const { data: dashboardData, isLoading } = useQuery({
+  // --- FETCH DASHBOARD DATA ---
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: async () => {
-      const res = await fetch(`${URL}/api/employees/dashboard-summary`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "69420",
-          "bypass-tunnel-reminder": "true",
-        },
-      });
+      const res = await apiFetch("/api/employees/dashboard-summary");
       if (!res.ok) throw new Error("Failed to fetch dashboard data");
       return res.json();
     },
   });
+
+  // --- FETCH ALL EMPLOYEES (For the list) ---
+  const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees");
+      if (!res.ok) throw new Error("Failed to fetch employees");
+      return res.json();
+    },
+  });
+
+  // --- MUTATION FOR SAVING MISSING DOCS ---
+  const updateDocsMutation = useMutation({
+    mutationFn: async (data) => {
+      const res = await apiFetch("/api/employees/missing-docs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Join the array into a comma-separated string before sending to DB
+        body: JSON.stringify({
+          emp_id: data.emp_id,
+          missing_docs: data.missing_docs.join(", "),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update documents");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["dashboardSummary"]);
+      alert("Employee documents updated successfully!");
+      setDocForm({ emp_id: "", missing_docs: [] });
+      setSearchQuery("");
+      setShowModal(false);
+    },
+    onError: () => alert("Error updating documents"),
+  });
+
+  // --- FILTER & SEARCH EMPLOYEES LOGIC ---
+  const filteredEmployees = employeesData.filter((emp) => {
+    // Hide Admins
+    if (emp.role === "Admin") return false;
+
+    // Apply Search Query
+    const searchString =
+      `${emp.emp_id} ${emp.first_name} ${emp.last_name}`.toLowerCase();
+    return searchString.includes(searchQuery.toLowerCase());
+  });
+
+  // Find the currently selected employee to display their name nicely
+  const selectedEmployee = employeesData.find(
+    (e) => e.emp_id === docForm.emp_id,
+  );
 
   const stats = [
     {
@@ -58,10 +104,10 @@ export default function HRDashboard() {
     },
     {
       label: "Pending Resignation Approval",
-      value: 1,
+      value: dashboardData?.resignations?.length || 0,
       borderColor: "#1a8f3c",
       modalKey: "pending-resignation-approval",
-    }, // Placeholder value
+    },
     {
       label: "On Leave",
       value: dashboardData?.onLeave?.length || 0,
@@ -76,30 +122,50 @@ export default function HRDashboard() {
     },
   ];
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  // Auto-fill the checkboxes if the selected employee already has missing docs saved
+  useEffect(() => {
+    if (docForm.emp_id && dashboardData?.missingDocs) {
+      const existing = dashboardData.missingDocs.find(
+        (d) => d.emp_id === docForm.emp_id,
+      );
+      setDocForm((prev) => ({
+        ...prev,
+        // Convert the comma-separated string back into an array!
+        missing_docs:
+          existing && existing.missing_docs
+            ? existing.missing_docs.split(", ")
+            : [],
+      }));
+    }
+  }, [docForm.emp_id, dashboardData]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-    alert("New hire plan added successfully!");
-    setFormData({
-      employeeName: "",
-      designation: "",
-      dateEmployed: "",
-      requirementsMissing: "",
+  // Handle checking/unchecking a document
+  const handleCheckboxChange = (docName) => {
+    setDocForm((prev) => {
+      const isSelected = prev.missing_docs.includes(docName);
+      if (isSelected) {
+        // Remove it
+        return {
+          ...prev,
+          missing_docs: prev.missing_docs.filter((d) => d !== docName),
+        };
+      } else {
+        // Add it
+        return { ...prev, missing_docs: [...prev.missing_docs, docName] };
+      }
     });
-    setShowModal(false);
   };
 
-  if (isLoading) {
+  const handleSubmitDocs = (e) => {
+    e.preventDefault();
+    if (!docForm.emp_id)
+      return alert("Please select an employee from the list.");
+    updateDocsMutation.mutate(docForm);
+  };
+
+  if (isLoadingDashboard || isLoadingEmployees) {
     return (
-      <div className="p-6 text-white font-bold">Loading HR Dashboard...</div>
+      <div className="p-6 text-gray-900 font-bold">Loading HR Dashboard...</div>
     );
   }
 
@@ -202,39 +268,60 @@ export default function HRDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              <tr className="hover:bg-gray-50 transition-colors duration-150">
-                <td className="px-6 py-3 text-sm text-gray-900">2026-03-10</td>
-                <td className="px-6 py-3 text-sm text-gray-700">
-                  Robert Michael Martinez
-                </td>
-                <td className="px-6 py-3 text-sm text-gray-700">
-                  Voluntary Resignation
-                </td>
-                <td className="px-6 py-3 text-sm">
-                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
-                    Pending Approval
-                  </span>
-                </td>
-              </tr>
+              {!dashboardData?.resignations ||
+              dashboardData.resignations.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="4"
+                    className="px-6 py-6 text-center text-gray-500 font-medium"
+                  >
+                    No pending resignations.
+                  </td>
+                </tr>
+              ) : (
+                dashboardData.resignations.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-3 text-sm text-gray-900">
+                      {new Date(r.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-700">
+                      {r.first_name} {r.last_name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-700">
+                      {r.resignation_type}
+                    </td>
+                    <td className="px-6 py-3 text-sm">
+                      <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
+                        {r.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* New Hire Onboard Plan */}
-      <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      {/* Missing Documents Tracker */}
+      <section className="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
         <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <h3 className="m-0 text-lg font-semibold text-gray-900">
-            New Hire Onboard Plan
+            Missing Requirements Tracker
           </h3>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-4 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold cursor-pointer hover:bg-purple-700 transition-all duration-200 hover:shadow-md border-0 shadow-sm"
-            >
-              Add New Hire
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setDocForm({ emp_id: "", missing_docs: [] });
+              setSearchQuery("");
+              setShowModal(true);
+            }}
+            className="px-4 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold cursor-pointer hover:bg-purple-700 transition-all duration-200 hover:shadow-md border-0 shadow-sm"
+          >
+            Update Documents
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -247,48 +334,70 @@ export default function HRDashboard() {
                   Designation
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Date Employed
+                  Date Hired
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/3">
+                  Missing Documents
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Requirements Missing
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Action
+                  Last Updated
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              <tr className="hover:bg-gray-50 transition-colors duration-150">
-                <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                  Meryll Jen Lee
-                </td>
-                <td className="px-6 py-3 text-sm text-gray-700">
-                  Assistant Partner
-                </td>
-                <td className="px-6 py-3 text-sm text-gray-700">2026-01-12</td>
-                <td className="px-6 py-3 text-sm">
-                  <span className="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800">
-                    2
-                  </span>
-                </td>
-                <td className="px-6 py-3 text-sm">
-                  <button className="px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-semibold cursor-pointer hover:bg-purple-200 transition-all duration-200 border-0 shadow-sm">
-                    VIEW PLAN
-                  </button>
-                </td>
-              </tr>
+              {!dashboardData?.missingDocs ||
+              dashboardData.missingDocs.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="px-6 py-6 text-center text-gray-500 font-medium"
+                  >
+                    All employees have submitted their complete requirements! 🎉
+                  </td>
+                </tr>
+              ) : (
+                dashboardData.missingDocs.map((doc) => (
+                  <tr
+                    key={doc.emp_id}
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-3 text-sm font-bold text-gray-900">
+                      {doc.first_name} {doc.last_name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-700">
+                      {doc.designation || "N/A"}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-700">
+                      {doc.hired_date
+                        ? new Date(doc.hired_date).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-red-600 font-medium">
+                      {/* Render comma separated strings nicely with line breaks if multiple */}
+                      <ul className="list-disc pl-4 m-0 space-y-0.5">
+                        {doc.missing_docs.split(", ").map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-500">
+                      {new Date(doc.updated_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* Modal for Add New Hire */}
+      {/* --- MODAL: UPDATE MISSING DOCUMENTS WITH SEARCH --- */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[500px] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[600px] overflow-hidden">
             <div className="flex items-center justify-between bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
               <h2 className="m-0 text-lg font-semibold text-white">
-                Add New Hire
+                Update Employee Documents
               </h2>
               <button
                 onClick={() => setShowModal(false)}
@@ -297,63 +406,97 @@ export default function HRDashboard() {
                 ×
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Employee Name *
+
+            <form onSubmit={handleSubmitDocs} className="p-6 space-y-4">
+              {/* SEARCHABLE EMPLOYEE LIST */}
+              <div className="flex flex-col">
+                <label className="block text-sm font-semibold text-gray-700 mb-1 flex justify-between">
+                  <span>Select Employee *</span>
+                  {selectedEmployee && (
+                    <span className="text-purple-600 font-bold text-xs">
+                      Selected: {selectedEmployee.first_name}{" "}
+                      {selectedEmployee.last_name}
+                    </span>
+                  )}
                 </label>
+
+                {/* Search Input */}
                 <input
                   type="text"
-                  name="employeeName"
-                  value={formData.employeeName}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter employee name"
+                  placeholder="🔍 Search by name or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white border-b-0 text-sm"
                 />
+
+                {/* Scrollable Employee List Container */}
+                <div className="max-h-36 overflow-y-auto border border-gray-300 rounded-b-lg bg-gray-50">
+                  {filteredEmployees.length === 0 ? (
+                    <div className="p-3 text-sm text-gray-500 text-center">
+                      No employees found.
+                    </div>
+                  ) : (
+                    filteredEmployees.map((emp) => (
+                      <div
+                        key={emp.emp_id}
+                        onClick={() =>
+                          setDocForm({ ...docForm, emp_id: emp.emp_id })
+                        }
+                        className={`px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 transition-colors last:border-b-0 ${
+                          docForm.emp_id === emp.emp_id
+                            ? "bg-purple-100 text-purple-800 font-bold border-l-4 border-l-purple-600"
+                            : "hover:bg-gray-100 text-gray-700 border-l-4 border-l-transparent"
+                        }`}
+                      >
+                        <span className="text-gray-500 font-mono text-xs mr-2">
+                          {emp.emp_id}
+                        </span>
+                        {emp.first_name} {emp.last_name}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
+
+              {/* CHECKBOX GRID FOR DOCUMENTS */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Designation *
-                </label>
-                <input
-                  type="text"
-                  name="designation"
-                  value={formData.designation}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter designation"
-                />
+                <div className="flex justify-between items-end mb-2 mt-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Missing Documents
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    Select all that apply
+                  </span>
+                </div>
+
+                <div
+                  className={`grid grid-cols-2 gap-3 p-4 border rounded-lg ${!docForm.emp_id ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60" : "border-gray-300 bg-white"}`}
+                >
+                  {STANDARD_DOCUMENTS.map((docName) => {
+                    const isChecked = docForm.missing_docs.includes(docName);
+                    return (
+                      <label
+                        key={docName}
+                        className={`flex items-center gap-2 text-sm cursor-pointer select-none p-1 rounded transition-colors ${isChecked ? "text-purple-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={!docForm.emp_id}
+                          checked={isChecked}
+                          onChange={() => handleCheckboxChange(docName)}
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        {docName}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Uncheck all boxes to clear the employee from the missing
+                  documents tracker.
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Date Employed *
-                </label>
-                <input
-                  type="date"
-                  name="dateEmployed"
-                  value={formData.dateEmployed}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Requirements Missing *
-                </label>
-                <input
-                  type="number"
-                  name="requirementsMissing"
-                  value={formData.requirementsMissing}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter number"
-                  min="0"
-                />
-              </div>
+
               <div className="flex gap-3 pt-4 border-t border-gray-200 mt-6">
                 <button
                   type="button"
@@ -364,9 +507,10 @@ export default function HRDashboard() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 rounded-lg bg-purple-600 text-white font-semibold cursor-pointer hover:bg-purple-700 transition-colors border-0"
+                  disabled={updateDocsMutation.isPending || !docForm.emp_id}
+                  className="flex-1 px-4 py-2 rounded-lg bg-purple-600 text-white font-semibold cursor-pointer hover:bg-purple-700 transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save New Hire
+                  {updateDocsMutation.isPending ? "Saving..." : "Save Updates"}
                 </button>
               </div>
             </form>
@@ -376,7 +520,7 @@ export default function HRDashboard() {
 
       {/* --- DYNAMIC STAT CARD MODALS --- */}
 
-      {/* Pending Leave Approval Modal (Read Only for HR) */}
+      {/* Pending Leave Approval Modal */}
       {activeModal === "pending-leave-approval" && (
         <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[500px] overflow-hidden flex flex-col max-h-[80vh]">
@@ -530,7 +674,7 @@ export default function HRDashboard() {
         </div>
       )}
 
-      {/* Resignation Modal (Placeholder) */}
+      {/* Resignation Modal */}
       {activeModal === "pending-resignation-approval" && (
         <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[500px] overflow-hidden">
@@ -545,8 +689,34 @@ export default function HRDashboard() {
                 ×
               </button>
             </div>
-            <div className="p-6 text-center text-gray-500">
-              <p>Robert Michael Martinez - Pending Approval</p>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {!dashboardData?.resignations ||
+              dashboardData.resignations.length === 0 ? (
+                <p className="text-center text-gray-500 font-medium">
+                  No pending resignations.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {dashboardData.resignations.map((r, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50"
+                    >
+                      <div>
+                        <p className="m-0 font-bold text-gray-900 text-sm">
+                          {r.first_name} {r.last_name}
+                        </p>
+                        <p className="m-0 text-xs text-gray-500 mt-0.5">
+                          {r.resignation_type}
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800">
+                        {r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
