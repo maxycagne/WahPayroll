@@ -71,6 +71,24 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS resignations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  emp_id VARCHAR(50) NOT NULL,
+  resignation_type VARCHAR(100) NOT NULL,
+  effective_date DATE NOT NULL,
+  reason TEXT,
+  status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
+  reviewed_by VARCHAR(50),
+  review_remarks TEXT,
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_resignation_emp_status (emp_id, status),
+  INDEX idx_resignation_effective_date (effective_date),
+  FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS offset_ledger (
   id INT AUTO_INCREMENT PRIMARY KEY,
   emp_id VARCHAR(50) NOT NULL,

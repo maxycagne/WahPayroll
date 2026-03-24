@@ -120,6 +120,28 @@ const ensureOffsetTables = async (connection = pool) => {
   `);
 };
 
+const ensureResignationsTable = async (connection = pool) => {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS resignations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      emp_id VARCHAR(50) NOT NULL,
+      resignation_type VARCHAR(100) NOT NULL,
+      effective_date DATE NOT NULL,
+      reason TEXT,
+      status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
+      reviewed_by VARCHAR(50) NULL,
+      review_remarks TEXT,
+      reviewed_at TIMESTAMP NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_resignation_emp_status (emp_id, status),
+      INDEX idx_resignation_effective_date (effective_date),
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
+      FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
+    )
+  `);
+};
+
 const parsePeriodRange = (period) => {
   const isValidPeriod = /^\d{4}-\d{2}$/.test(String(period || ""));
   const base = isValidPeriod
@@ -346,6 +368,8 @@ export const deleteEmployee = async (req, res) => {
 // --- DASHBOARD ---
 export const getDashboardSummary = async (req, res) => {
   try {
+    await ensureResignationsTable();
+
     const [pending] = await pool.query(
       "SELECT l.*, e.first_name, e.last_name FROM leave_requests l JOIN employees e ON l.emp_id = e.emp_id WHERE l.status = 'Pending'",
     );
@@ -428,6 +452,8 @@ export const updateMissingDocs = async (req, res) => {
 // --- RESIGNATIONS ---
 export const getMyResignations = async (req, res) => {
   try {
+    await ensureResignationsTable();
+
     const empId = req.user?.emp_id;
     if (!empId) return res.status(400).json({ message: "Employee ID missing" });
 
@@ -445,6 +471,8 @@ export const getMyResignations = async (req, res) => {
 export const fileResignation = async (req, res) => {
   const { emp_id, resignation_type, effective_date, reason } = req.body;
   try {
+    await ensureResignationsTable();
+
     await pool.query(
       "INSERT INTO resignations (emp_id, resignation_type, effective_date, reason, status) VALUES (?, ?, ?, ?, 'Pending Approval')",
       [emp_id, resignation_type, effective_date, reason],
