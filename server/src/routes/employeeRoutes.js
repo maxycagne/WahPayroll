@@ -32,6 +32,7 @@ import {
   updateMissingDocs,
   getMyResignations,
   fileResignation,
+  updateResignationStatus,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -107,6 +108,12 @@ router.delete(
   "/workweek-config/:id",
   authorizeRoles("Admin"),
   deleteWorkweekConfigById,
+);
+
+router.put(
+  "/resignations/:id",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  updateResignationStatus,
 );
 
 router.get(

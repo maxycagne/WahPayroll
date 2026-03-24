@@ -556,6 +556,21 @@ export const saveBulkAttendance = async (req, res) => {
     res.status(500).json({ message: "Error saving attendance" });
   }
 };
+// --- UPDATE RESIGNATION STATUS ---
+export const updateResignationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    await pool.query("UPDATE resignations SET status = ? WHERE id = ?", [
+      status,
+      id,
+    ]);
+    res.json({ message: "Resignation updated successfully" });
+  } catch (error) {
+    console.error("DB Error in updateResignationStatus:", error);
+    res.status(500).json({ message: "Error updating resignation" });
+  }
+};
 
 // New function for Admins to manually adjust leave balances
 export const adjustLeaveBalance = async (req, res) => {
