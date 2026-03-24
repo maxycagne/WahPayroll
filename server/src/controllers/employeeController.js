@@ -171,7 +171,9 @@ const ensureNotificationsTable = async (connection = pool) => {
 };
 
 const normalizeRole = (role) => {
-  const value = String(role || "").trim().toLowerCase();
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
   if (value === "admin") return "Admin";
   if (value === "supervisor") return "Supervisor";
   if (value === "hr") return "HR";
@@ -240,7 +242,9 @@ const canApproverReviewRequester = (approver, requester) => {
   if (requester.role === "Supervisor") return true;
 
   if (requester.role === "RankAndFile" || requester.role === "HR") {
-    return !!requester.designation && approver.designation === requester.designation;
+    return (
+      !!requester.designation && approver.designation === requester.designation
+    );
   }
 
   return false;
@@ -271,14 +275,7 @@ const createNotification = async (
         status
       ) VALUES (?, ?, ?, ?, ?, ?, 'Unread')
     `,
-    [
-      empId,
-      notificationType,
-      title,
-      message,
-      referenceType,
-      referenceId,
-    ],
+    [empId, notificationType, title, message, referenceType, referenceId],
   );
 };
 
@@ -791,7 +788,9 @@ export const fileResignation = async (req, res) => {
   const { emp_id, resignation_type, effective_date, reason } = req.body;
   try {
     const requesterEmpId =
-      req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
+      req.user?.role === "Admin" && emp_id
+        ? emp_id
+        : req.user?.emp_id || emp_id;
 
     if (!requesterEmpId || !resignation_type || !effective_date) {
       return res.status(400).json({
@@ -833,84 +832,6 @@ export const fileResignation = async (req, res) => {
   } catch (error) {
     console.error("DB Error in fileResignation:", error);
     res.status(500).json({ message: "Error filing resignation" });
-  }
-};
-
-export const updateResignationStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status, review_remarks } = req.body;
-
-  if (!["Pending Approval", "Approved", "Rejected"].includes(status)) {
-    return res.status(400).json({ message: "Invalid resignation status" });
-  }
-
-  const approverId = req.user?.emp_id;
-  if (!approverId) return res.status(401).json({ message: "Unauthorized" });
-
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
-    await ensureResignationsTable(connection);
-
-    const approver = await getEmployeeProfile(connection, approverId);
-    if (!approver) {
-      await connection.rollback();
-      return res.status(401).json({ message: "Approver not found" });
-    }
-
-    const [rows] = await connection.query(
-      "SELECT * FROM resignations WHERE id = ? LIMIT 1",
-      [id],
-    );
-
-    if (rows.length === 0) {
-      await connection.rollback();
-      return res.status(404).json({ message: "Resignation request not found" });
-    }
-
-    const requestRow = rows[0];
-    const requester = await getEmployeeProfile(connection, requestRow.emp_id);
-
-    if (!canApproverReviewRequester(approver, requester)) {
-      await connection.rollback();
-      return res.status(403).json({
-        message: "You are not allowed to approve this resignation request",
-      });
-    }
-
-    await connection.query(
-      `
-        UPDATE resignations
-        SET status = ?,
-            reviewed_by = ?,
-            review_remarks = ?,
-            reviewed_at = ?
-        WHERE id = ?
-      `,
-      [
-        status,
-        approver.emp_id,
-        review_remarks || null,
-        status === "Approved" || status === "Rejected" ? new Date() : null,
-        id,
-      ],
-    );
-
-    await notifyRequesterForDecision(connection, {
-      requesterEmpId: requestRow.emp_id,
-      moduleType: "Resignation",
-      status,
-      approverName: `${approver.first_name} ${approver.last_name}`.trim(),
-    });
-
-    await connection.commit();
-    res.json({ message: `Resignation request ${status.toLowerCase()}` });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in updateResignationStatus:", error);
-    res.status(500).json({ message: "Error updating resignation status" });
-  } finally {
-    connection.release();
   }
 };
 
