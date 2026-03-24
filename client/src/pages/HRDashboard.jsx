@@ -79,6 +79,24 @@ export default function HRDashboard() {
     onError: () => alert("Error updating documents"),
   });
 
+  // --- MUTATION FOR APPROVING/DENYING RESIGNATIONS ---
+  const updateResignationMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const res = await apiFetch(`/api/employees/resignations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Failed to update resignation status");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["dashboardSummary"]);
+      alert("Resignation status updated successfully!");
+    },
+    onError: () => alert("Error updating resignation"),
+  });
+
   // --- FILTER & SEARCH EMPLOYEES LOGIC ---
   const filteredEmployees = employeesData.filter((emp) => {
     // Hide Admins
@@ -265,6 +283,9 @@ export default function HRDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -272,7 +293,7 @@ export default function HRDashboard() {
               dashboardData.resignations.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="4"
+                    colSpan="5"
                     className="px-6 py-6 text-center text-gray-500 font-medium"
                   >
                     No pending resignations.
@@ -288,15 +309,54 @@ export default function HRDashboard() {
                       {new Date(r.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-700">
-                      {r.first_name} {r.last_name}
+                      <div className="font-semibold text-gray-900">
+                        {r.first_name} {r.last_name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        ID: {r.emp_id}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-700">
-                      {r.resignation_type}
+                      <div>{r.resignation_type}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        Effective:{" "}
+                        {new Date(r.effective_date).toLocaleDateString()}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-sm">
                       <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
                         {r.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-3 text-sm">
+                      {r.status === "Pending Approval" && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              updateResignationMutation.mutate({
+                                id: r.id,
+                                status: "Approved",
+                              })
+                            }
+                            disabled={updateResignationMutation.isPending}
+                            className="px-3 py-1 rounded-md bg-green-100 text-green-700 text-xs font-bold cursor-pointer hover:bg-green-200 border-0 disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() =>
+                              updateResignationMutation.mutate({
+                                id: r.id,
+                                status: "Denied",
+                              })
+                            }
+                            disabled={updateResignationMutation.isPending}
+                            className="px-3 py-1 rounded-md bg-red-100 text-red-700 text-xs font-bold cursor-pointer hover:bg-red-200 border-0 disabled:opacity-50"
+                          >
+                            Deny
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -700,19 +760,51 @@ export default function HRDashboard() {
                   {dashboardData.resignations.map((r, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50"
+                      className="flex flex-col p-4 border border-gray-200 rounded-lg bg-gray-50 gap-3"
                     >
-                      <div>
-                        <p className="m-0 font-bold text-gray-900 text-sm">
-                          {r.first_name} {r.last_name}
-                        </p>
-                        <p className="m-0 text-xs text-gray-500 mt-0.5">
-                          {r.resignation_type}
-                        </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="m-0 font-bold text-gray-900 text-sm">
+                            {r.first_name} {r.last_name}
+                          </p>
+                          <p className="m-0 text-xs text-gray-500 mt-0.5">
+                            {r.resignation_type}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800">
+                          {r.status}
+                        </span>
                       </div>
-                      <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800">
-                        {r.status}
-                      </span>
+
+                      {/* Approve/Deny buttons in Modal */}
+                      {r.status === "Pending Approval" && (
+                        <div className="flex gap-2 pt-3 border-t border-gray-200 mt-1">
+                          <button
+                            onClick={() =>
+                              updateResignationMutation.mutate({
+                                id: r.id,
+                                status: "Approved",
+                              })
+                            }
+                            disabled={updateResignationMutation.isPending}
+                            className="flex-1 px-3 py-1.5 rounded-md bg-green-100 text-green-700 text-xs font-bold cursor-pointer hover:bg-green-200 border-0 disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() =>
+                              updateResignationMutation.mutate({
+                                id: r.id,
+                                status: "Denied",
+                              })
+                            }
+                            disabled={updateResignationMutation.isPending}
+                            className="flex-1 px-3 py-1.5 rounded-md bg-red-100 text-red-700 text-xs font-bold cursor-pointer hover:bg-red-200 border-0 disabled:opacity-50"
+                          >
+                            Deny
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
