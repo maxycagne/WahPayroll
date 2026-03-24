@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS employees (
   dob DATE,
   hired_date DATE,
   password VARCHAR(255),
-  base_salary DECIMAL(12,2),
+  basic_pay DECIMAL(12,2),
   role ENUM('Admin', 'Supervisor', 'HR', 'RankAndFile') DEFAULT 'RankAndFile',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -116,16 +116,17 @@ CREATE TABLE IF NOT EXISTS offset_applications (
 CREATE TABLE IF NOT EXISTS payroll (
   id INT AUTO_INCREMENT PRIMARY KEY,
   emp_id VARCHAR(50) NOT NULL,
-  period_year INT,
-  period_month INT,
+  period_start DATE NOT NULL,
   basic_pay DECIMAL(12,2),
   absences_count INT DEFAULT 0,
   absence_deductions DECIMAL(12,2) DEFAULT 0,
   incentives DECIMAL(12,2) DEFAULT 0,
+  gross_pay DECIMAL(12,2),
   net_pay DECIMAL(12,2),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_emp_period (emp_id, period_year, period_month),
+  UNIQUE KEY uniq_emp_period (emp_id, period_start),
+  INDEX idx_emp_period (emp_id, period_start),
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

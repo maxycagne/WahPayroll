@@ -53,6 +53,73 @@ const ensureWorkweekConfigsTable = async (connection = pool) => {
   `);
 };
 
+const ensureOffsetTables = async (connection = pool) => {
+  const [empIdMetaRows] = await connection.query(
+    `
+      SELECT
+        COLUMN_TYPE,
+        CHARACTER_SET_NAME,
+        COLLATION_NAME
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'employees'
+        AND COLUMN_NAME = 'emp_id'
+      LIMIT 1
+    `,
+  );
+
+  const empIdMeta = empIdMetaRows[0];
+  const empIdColumn = empIdMeta
+    ? `${empIdMeta.COLUMN_TYPE}${empIdMeta.CHARACTER_SET_NAME ? ` CHARACTER SET ${empIdMeta.CHARACTER_SET_NAME}` : ""}${empIdMeta.COLLATION_NAME ? ` COLLATE ${empIdMeta.COLLATION_NAME}` : ""}`
+    : "VARCHAR(50)";
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS offset_ledger (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      emp_id ${empIdColumn} NOT NULL,
+      period_year INT NOT NULL,
+      period_month INT NOT NULL,
+      working_days_completed INT,
+      baseline_days INT DEFAULT 22,
+      offset_earned DECIMAL(5,2) DEFAULT 0,
+      offset_used DECIMAL(5,2) DEFAULT 0,
+      carried_over DECIMAL(5,2) DEFAULT 0,
+      final_balance DECIMAL(5,2) DEFAULT 0,
+      status ENUM('Draft', 'Pending', 'Approved', 'Rejected') DEFAULT 'Draft',
+      supervisor_emp_id ${empIdColumn},
+      supervisor_remarks TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      approved_at TIMESTAMP NULL,
+      INDEX idx_emp_period (emp_id, period_year, period_month),
+      INDEX idx_status (status),
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
+      FOREIGN KEY (supervisor_emp_id) REFERENCES employees(emp_id) ON DELETE SET NULL
+    )
+  `);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS offset_applications (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      emp_id ${empIdColumn} NOT NULL,
+      date_from DATE NOT NULL,
+      date_to DATE NOT NULL,
+      days_applied DECIMAL(5,2) NOT NULL,
+      status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
+      approved_days DECIMAL(5,2),
+      supervisor_emp_id ${empIdColumn},
+      supervisor_remarks TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      approved_at TIMESTAMP NULL,
+      INDEX idx_emp_status (emp_id, status),
+      INDEX idx_date_range (date_from, date_to),
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
+      FOREIGN KEY (supervisor_emp_id) REFERENCES employees(emp_id) ON DELETE SET NULL
+    )
+  `);
+};
+
 const parsePeriodRange = (period) => {
   const isValidPeriod = /^\d{4}-\d{2}$/.test(String(period || ""));
   const base = isValidPeriod
@@ -750,6 +817,8 @@ export const deleteWorkweekConfigById = async (req, res) => {
 
 // --- OFFSET ENGINE ---
 const calculateMonthlyOffsetBalance = async (empId, year, month) => {
+  await ensureOffsetTables();
+
   const periodStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
@@ -839,6 +908,8 @@ export const fileOffsetApplication = async (req, res) => {
   }
 
   try {
+    await ensureOffsetTables();
+
     await pool.query(
       `
         INSERT INTO offset_applications (
@@ -863,6 +934,8 @@ export const fileOffsetApplication = async (req, res) => {
 
 export const getOffsetApplications = async (req, res) => {
   try {
+    await ensureOffsetTables();
+
     const userRole = req.user?.role;
     const empId = req.user?.emp_id;
 
@@ -913,6 +986,7 @@ export const updateOffsetApplicationStatus = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    await ensureOffsetTables(connection);
 
     const [existing] = await connection.query(
       "SELECT * FROM offset_applications WHERE id = ? LIMIT 1",
