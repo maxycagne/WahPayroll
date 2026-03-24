@@ -95,7 +95,9 @@ export default function MainLayout({ role, onLogout }) {
           {openNotifications && (
             <div className="absolute right-0 top-10 w-96 max-w-[90vw] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-30">
               <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="m-0 text-sm font-bold text-gray-900">Notifications</h3>
+                <h3 className="m-0 text-sm font-bold text-gray-900">
+                  Notifications
+                </h3>
                 <button
                   type="button"
                   onClick={() => markAllReadMutation.mutate()}
@@ -107,7 +109,9 @@ export default function MainLayout({ role, onLogout }) {
 
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <p className="m-0 px-4 py-4 text-sm text-gray-500">No notifications yet.</p>
+                  <p className="m-0 px-4 py-4 text-sm text-gray-500">
+                    No notifications yet.
+                  </p>
                 ) : (
                   notifications.map((item) => (
                     <button
@@ -116,8 +120,12 @@ export default function MainLayout({ role, onLogout }) {
                       onClick={() => handleNotificationClick(item)}
                       className={`w-full text-left border-0 bg-transparent px-4 py-3 cursor-pointer hover:bg-gray-50 ${item.status === "Unread" ? "bg-purple-50/40" : ""}`}
                     >
-                      <p className="m-0 text-sm font-semibold text-gray-900">{item.title}</p>
-                      <p className="m-0 text-xs text-gray-600 mt-1">{item.message}</p>
+                      <p className="m-0 text-sm font-semibold text-gray-900">
+                        {item.title}
+                      </p>
+                      <p className="m-0 text-xs text-gray-600 mt-1">
+                        {item.message}
+                      </p>
                       <p className="m-0 text-[11px] text-gray-400 mt-1">
                         {new Date(item.created_at).toLocaleString()}
                       </p>
