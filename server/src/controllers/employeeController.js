@@ -343,6 +343,48 @@ export const deleteEmployee = async (req, res) => {
   }
 };
 
+export const updateResignationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    await pool.query("UPDATE resignations SET status = ? WHERE id = ?", [
+      status,
+      id,
+    ]);
+    res.json({ message: "Resignation updated successfully" });
+  } catch (error) {
+    console.error("DB Error in updateResignationStatus:", error);
+    res.status(500).json({ message: "Error updating resignation" });
+  }
+};
+
+export const getAllResignations = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        r.id AS res_id, 
+        r.emp_id, 
+        r.resignation_type, 
+        r.effective_date, 
+        r.reason, 
+        r.status, 
+        r.created_at,
+        e.first_name, 
+        e.last_name
+      FROM resignations r 
+      JOIN employees e ON r.emp_id = e.emp_id 
+      ORDER BY r.created_at DESC
+    `);
+
+    console.log("Success! Found rows:", rows.length);
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error("DETAILED SQL ERROR:", error.message);
+    // This will send the EXACT error to your browser console
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 // --- DASHBOARD ---
 export const getDashboardSummary = async (req, res) => {
   try {
@@ -554,21 +596,6 @@ export const saveBulkAttendance = async (req, res) => {
   } catch (error) {
     console.error("DB Error in saveBulkAttendance:", error);
     res.status(500).json({ message: "Error saving attendance" });
-  }
-};
-// --- UPDATE RESIGNATION STATUS ---
-export const updateResignationStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  try {
-    await pool.query("UPDATE resignations SET status = ? WHERE id = ?", [
-      status,
-      id,
-    ]);
-    res.json({ message: "Resignation updated successfully" });
-  } catch (error) {
-    console.error("DB Error in updateResignationStatus:", error);
-    res.status(500).json({ message: "Error updating resignation" });
   }
 };
 

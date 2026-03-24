@@ -18,6 +18,7 @@ import {
   updateBaseSalaryByPosition,
   getAttendanceCalendarSummary,
   getDailyAttendance,
+  getAllResignations,
   saveBulkAttendance,
   getWorkweekConfigs,
   upsertWorkweekConfig,
@@ -62,6 +63,7 @@ router.get(
   getAttendance,
 );
 
+router.get("/all-resignations", getAllResignations);
 router.get(
   "/my-resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),

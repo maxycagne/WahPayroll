@@ -398,18 +398,21 @@ export default function Leave() {
     },
   });
 
-  // New Query: My Resignations
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery({
-      queryKey: ["my-resignations", currentUser?.emp_id],
+      queryKey: ["all-resignations"],
       queryFn: async () => {
-        if (!currentUser?.emp_id) return [];
-        const res = await apiFetch(`/api/employees/my-resignations`);
-        if (!res.ok) return [];
-        return res.json();
+        const res = await apiFetch(`/api/employees/all-resignations`);
+        const result = await res.json();
+
+        if (!res.ok) {
+          // This will now print the REAL SQL error (e.g., "Table 'resignations' doesn't exist")
+          console.error("REAL BACKEND ERROR:", result.message);
+          return [];
+        }
+        return result;
       },
     });
-
   // --- MUTATIONS ---
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
