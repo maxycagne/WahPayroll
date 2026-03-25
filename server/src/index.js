@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import "./config/db.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(
   cors({
     origin: "http://localhost:5173", // Allow your React frontend
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -25,7 +27,7 @@ app.use(
 );
 
 app.use(express.json());
-
+app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 
