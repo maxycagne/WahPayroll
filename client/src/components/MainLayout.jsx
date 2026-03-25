@@ -3,18 +3,18 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "./Sidebar";
 import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
 
-export default function MainLayout({ role, onLogout }) {
+const STORAGE_TOKEN_KEY = "wah_token";
+const STORAGE_USER_KEY = "wah_user";
+
+export default function MainLayout({ role }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [openNotifications, setOpenNotifications] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
 
-  const handleLogoutConfirm = () => {
-    setShowLogoutConfirmation(false);
-    onLogout();
-  };
-
+  // --- NOTIFICATIONS LOGIC ---
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
@@ -70,6 +70,23 @@ export default function MainLayout({ role, onLogout }) {
 
     navigate(`/leave?${params.toString()}`);
     setOpenNotifications(false);
+  };
+
+  const processLogout = async () => {
+    try {
+      await axiosInterceptor.post("/api/auth/logout");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      localStorage.removeItem(STORAGE_TOKEN_KEY);
+      localStorage.removeItem(STORAGE_USER_KEY);
+      window.location.href = "/";
+    }
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirmation(false);
+    processLogout();
   };
 
   return (
@@ -147,7 +164,9 @@ export default function MainLayout({ role, onLogout }) {
           </span>
         </div>
       </header>
+
       <div className="grid grid-cols-[200px_1fr] flex-1">
+        {/* We pass a function to the Sidebar to open the logout modal instead of logging out instantly */}
         <Sidebar role={role} onLogout={() => setShowLogoutConfirmation(true)} />
         <main className="flex-1 p-5 overflow-y-auto">
           <Outlet />

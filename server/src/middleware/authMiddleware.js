@@ -4,9 +4,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "super_secret_wah_key";
 
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : null;
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (!token) {
     return res.status(401).json({ message: "Unauthorized: missing token" });
