@@ -104,11 +104,8 @@ router.put(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   markAllNotificationsRead,
 );
-router.put(
-  "/leave-balance/:id",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  adjustLeaveBalance,
-);
+router.put("/leave-balance/:id", authorizeRoles("HR"), adjustLeaveBalance);
+
 router.get(
   "/attendance-summary",
   authorizeRoles("Admin", "Supervisor", "HR"),
@@ -119,11 +116,7 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR"),
   getDailyAttendance,
 );
-router.post(
-  "/attendance-bulk",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  saveBulkAttendance,
-);
+router.post("/attendance-bulk", authorizeRoles("HR"), saveBulkAttendance);
 
 router.get(
   "/workweek-config",

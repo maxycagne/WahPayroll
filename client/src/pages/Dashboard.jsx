@@ -1,25 +1,291 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-export default function Dashboard() {
-  const currentMonth = new Date().toLocaleString("default", {
-    month: "long",
-    year: "numeric",
+
+// ==========================================
+// 1. RANK & FILE (EMPLOYEE) DASHBOARD
+// ==========================================
+function EmployeeDashboard({ currentUser }) {
+  const navigate = useNavigate();
+
+  // Fetch Dashboard Summary (For Balances & Missing Docs)
+  const { data: dashboardData, isLoading: dashLoading } = useQuery({
+    queryKey: ["dashboardSummary"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/dashboard-summary");
+      if (!res.ok) throw new Error("Failed to fetch dashboard data");
+      return res.json();
+    },
   });
 
-  const priorityClass = {
-    High: "bg-red-100 text-red-800",
-    Medium: "bg-yellow-100 text-yellow-800",
-    Low: "bg-blue-100 text-blue-800",
+  // Fetch Personal Attendance
+  const { data: myAttendance = [], isLoading: attLoading } = useQuery({
+    queryKey: ["my-attendance", currentUser?.emp_id],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/employees/my-attendance`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // Fetch Personal Leaves
+  const { data: myLeaves = [] } = useQuery({
+    queryKey: ["leaves"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/leaves");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // Fetch Personal Offsets
+  const { data: myOffsets = [] } = useQuery({
+    queryKey: ["offset-applications"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/offset-applications");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  if (dashLoading || attLoading) {
+    return (
+      <div className="p-6 font-bold text-gray-800">Loading My Dashboard...</div>
+    );
+  }
+
+  // Find user's specific data from the summary
+  const myBalanceRecord = dashboardData?.balances?.find(
+    (b) => String(b.emp_id) === String(currentUser.emp_id),
+  );
+  const myMissingDocsRecord = dashboardData?.missingDocs?.find(
+    (d) => String(d.emp_id) === String(currentUser.emp_id),
+  );
+
+  // Compile Pending Requests
+  // Compile Pending Requests (FIXED: Added fallbacks so it never says "Invalid Date")
+  const pendingRequests = [
+    ...myLeaves
+      .filter((l) => l.status === "Pending")
+      .map((l) => ({
+        id: `l-${l.id}`,
+        type: "Leave",
+        title: l.leave_type,
+        date: l.created_at || l.date_from || new Date().toISOString(), // Fallback to date_from
+      })),
+    ...myOffsets
+      .filter((o) => o.status === "Pending")
+      .map((o) => ({
+        id: `o-${o.id}`,
+        type: "Offset",
+        title: `${Number(o.days_applied)} Days Applied`,
+        date: o.created_at || o.date_from || new Date().toISOString(), // Fallback to date_from
+      })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const badgeClass = {
+    Present: "bg-green-100 text-green-800",
+    Late: "bg-amber-100 text-amber-800",
+    Undertime: "bg-rose-100 text-rose-800",
+    "Half-Day": "bg-orange-100 text-orange-800",
+    Absent: "bg-red-100 text-red-800",
+    "On Leave": "bg-purple-100 text-purple-800",
   };
+  console.log("My Logs:", currentUser?.first_name);
 
-  const priorityOrder = { High: 0, Medium: 1, Low: 2 };
+  return (
+    <div className="max-w-full space-y-6">
+      <div>
+        <h1 className="m-0 text-[1.5rem] font-bold text-gray-900">
+          Welcome back, {currentUser?.first_name || "Employee"}!
+        </h1>
+        <p className="m-0 text-sm text-gray-500 mt-1">
+          Here is what is happening with your account today.
+        </p>
+      </div>
+      {/* ALERT: Missing Documents */}
+      {myMissingDocsRecord && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 shadow-sm">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <h3 className="m-0 text-sm font-bold text-red-800 mb-1">
+              Action Required: Missing Documents
+            </h3>
+            <p className="m-0 text-xs text-red-700">
+              HR has flagged your profile for missing requirements:{" "}
+              <span className="font-bold">
+                {myMissingDocsRecord.missing_docs}
+              </span>
+              . Please submit these as soon as possible.
+            </p>
+          </div>
+        </div>
+      )}
+      {/* STAT CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-t-4 border-t-green-500 flex flex-col justify-between">
+          <p className="m-0 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+            Leave Balance
+          </p>
+          <div className="flex items-baseline gap-2">
+            <h2 className="m-0 text-4xl font-black text-gray-900">
+              {myBalanceRecord?.leave_balance || 0}
+            </h2>
+            <span className="text-sm font-medium text-gray-500">
+              Days Remaining
+            </span>
+          </div>
+        </div>
 
-  // Database States
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-t-4 border-t-purple-500 flex flex-col justify-between">
+          <p className="m-0 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+            Offset Credits
+          </p>
+          <div className="flex items-baseline gap-2">
+            <h2 className="m-0 text-4xl font-black text-gray-900">
+              {myBalanceRecord?.offset_credits || 0}
+            </h2>
+            <span className="text-sm font-medium text-gray-500">
+              Earned Credits
+            </span>
+          </div>
+        </div>
 
+        {/* QUICK ACTIONS */}
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => navigate("/leave")}
+            className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 flex items-center gap-3 px-4 cursor-pointer transition-colors"
+          >
+            <span className="text-xl">📅</span>
+            <span className="text-sm font-bold text-gray-800">
+              File a Leave Request
+            </span>
+          </button>
+          <button
+            onClick={() => navigate("/leave")}
+            className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 flex items-center gap-3 px-4 cursor-pointer transition-colors"
+          >
+            <span className="text-xl">⏱️</span>
+            <span className="text-sm font-bold text-gray-800">
+              File an Offset
+            </span>
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* RECENT ATTENDANCE */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+          <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
+            <h3 className="m-0 text-sm font-bold text-gray-900">
+              Recent Attendance (Last 5 Days)
+            </h3>
+          </div>
+          <div className="flex-1 p-5">
+            {myAttendance.length === 0 ? (
+              <p className="text-sm text-gray-500 italic text-center py-4">
+                No recent attendance records found.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {myAttendance.slice(0, 5).map((log, idx) => {
+                  // Fallback for compound statuses like "Present, Late"
+                  const primaryStatus =
+                    log.status?.split(",")[0]?.trim() || "Pending";
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                    >
+                      <div>
+                        <p className="m-0 text-sm font-semibold text-gray-800">
+                          {new Date(log.date).toLocaleDateString(undefined, {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClass[primaryStatus] || badgeClass["Pending"]}`}
+                      >
+                        {log.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <button
+              onClick={() => navigate("/attendance")}
+              className="w-full mt-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-600 border border-gray-200 transition-colors cursor-pointer"
+            >
+              View Full Calendar
+            </button>
+          </div>
+        </div>
+
+        {/* PENDING REQUESTS TRACKER */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+          <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 flex justify-between items-center">
+            <h3 className="m-0 text-sm font-bold text-gray-900">
+              My Pending Requests
+            </h3>
+            <span className="bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+              {pendingRequests.length} Pending
+            </span>
+          </div>
+          <div className="flex-1 p-5 overflow-y-auto max-h-[300px]">
+            {pendingRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <span className="text-3xl mb-2">🎉</span>
+                <p className="m-0 text-sm font-semibold text-gray-700">
+                  You are all caught up!
+                </p>
+                <p className="m-0 text-xs text-gray-500 mt-1">
+                  No pending requests waiting for approval.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50"
+                  >
+                    <div className="mt-1">
+                      {req.type === "Leave" ? "📅" : "⏱️"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="m-0 text-sm font-bold text-gray-900">
+                        {req.type} Request
+                      </p>
+                      <p className="m-0 text-xs text-gray-600">{req.title}</p>
+                      <p className="m-0 text-[10px] text-gray-400 mt-1">
+                        Filed on {new Date(req.date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                      Pending
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 2. ADMIN / HR / SUPERVISOR DASHBOARD
+// ==========================================
+function AdminDashboard({ currentUser }) {
   const [activeModal, setActiveModal] = useState(null);
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
-  const [confirmAction, setConfirmAction] = useState(null);
 
   const fetchDashboardData = async () => {
     const res = await apiFetch("/api/employees/dashboard-summary", {
@@ -28,15 +294,14 @@ export default function Dashboard() {
         "Content-Type": "application/json",
       },
     });
-    const data = await res.json();
-
-    return data;
+    return await res.json();
   };
 
   const dashboardQuery = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: fetchDashboardData,
   });
+
   const cards = [
     {
       label: "Pending Leave Approval",
@@ -68,7 +333,14 @@ export default function Dashboard() {
     },
   ];
 
-  // Handles updating the database when Approve/Deny is clicked
+  const priorityClass = {
+    High: "bg-red-100 text-red-800",
+    Medium: "bg-yellow-100 text-yellow-800",
+    Low: "bg-blue-100 text-blue-800",
+  };
+
+  const priorityOrder = { High: 0, Medium: 1, Low: 2 };
+
   const handleUpdateLeaveStatus = async (id, newStatus) => {
     try {
       const res = await apiFetch(`/api/employees/leaves/${id}`, {
@@ -80,10 +352,9 @@ export default function Dashboard() {
       });
 
       if (res.ok) {
-        // Visually show it was approved/denied in the modal without closing it
         setApprovedLeaves(new Set([...approvedLeaves, id]));
-        // Refresh dashboard numbers in the background
-        fetchDashboardData();
+        // Note: For a true refresh, use queryClient.invalidateQueries(["dashboardSummary"])
+        // if you import useQueryClient. Otherwise, this visual state handles it.
       } else {
         alert("Failed to update leave request");
       }
@@ -94,7 +365,6 @@ export default function Dashboard() {
 
   const closeModal = () => {
     setActiveModal(null);
-    // Clear the visual "Approved" badges when modal closes so it's fresh next time
     setApprovedLeaves(new Set());
   };
 
@@ -212,7 +482,12 @@ export default function Dashboard() {
                             <>
                               <button
                                 type="button"
-                                onClick={() => setConfirmAction({ type: 'approve', id: employee.id, name: `${employee.first_name} ${employee.last_name}` })}
+                                onClick={() =>
+                                  handleUpdateLeaveStatus(
+                                    employee.id,
+                                    "Approved",
+                                  )
+                                }
                                 className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 transition-colors duration-150"
                               >
                                 Approve
@@ -349,93 +624,27 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Confirmation Modal */}
-      {confirmAction && confirmAction.type === "approve" && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
-            <h2 className="m-0 text-lg font-semibold text-gray-900 mb-2">
-              Confirm Approval
-            </h2>
-            <p className="m-0 text-sm text-gray-600 mb-6">
-              Are you sure you want to approve the leave request for <span className="font-semibold">{confirmAction.name}</span>?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setConfirmAction(null)}
-                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-colors duration-150"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleUpdateLeaveStatus(confirmAction.id, "Approved");
-                  setConfirmAction(null);
-                }}
-                className="inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-colors duration-150"
-              >
-                Approve
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Leave Balance Summary */}
-      <section className="mt-8 rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="m-0 text-lg font-semibold text-gray-900">
-            Leave Balance Summary
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Employee Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Base Leave Allocation
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Remaining Balance
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Offset Credits
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {dashboardQuery.data.balances.map((employee, idx) => (
-                <tr
-                  key={idx}
-                  className="hover:bg-gray-50 transition-colors duration-150"
-                >
-                  <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                    {employee.first_name} {employee.last_name}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-700">
-                    {employee.status === "Job Order" ? "12 Days" : "27 Days"}
-                  </td>
-                  <td className="px-6 py-3 text-sm">
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                      {employee.leave_balance} Days
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-sm">
-                    <span className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-800">
-                      {employee.offset_credits} Credits
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
+}
+
+// ==========================================
+// 3. MAIN EXPORT HANDLER
+// ==========================================
+export default function Dashboard() {
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("wah_user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+
+  // Show personalized dashboard for regular employees
+  if (currentUser?.role === "RankAndFile") {
+    return <EmployeeDashboard currentUser={currentUser} />;
+  }
+
+  // Show Admin view for Admin/HR/Supervisor
+  return <AdminDashboard currentUser={currentUser} />;
 }

@@ -577,7 +577,6 @@ export const getAllResignations = async (req, res) => {
       ORDER BY r.created_at DESC
     `);
 
-    console.log("Success! Found rows:", rows.length);
     return res.status(200).json(rows);
   } catch (error) {
     console.error("DETAILED SQL ERROR:", error.message);
