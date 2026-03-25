@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import Toast from "../components/Toast";
 
 // --- MASTER LIST OF ONBOARDING DOCUMENTS ---
 const STANDARD_DOCUMENTS = [
@@ -26,6 +27,10 @@ export default function HRDashboard() {
   // Modals state
   const [showModal, setShowModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+
+  // Toast notification state
+  const [toast, setToast] = useState(null);
 
   // Form & Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,6 +38,12 @@ export default function HRDashboard() {
     emp_id: "",
     missing_docs: [], // <-- Now an array to hold selected checkboxes!
   });
+
+  // Toast notification helper
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // --- FETCH DASHBOARD DATA ---
   const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery({
@@ -71,12 +82,13 @@ export default function HRDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["dashboardSummary"]);
-      alert("Employee documents updated successfully!");
+      showToast("Employee documents updated successfully!", "success");
       setDocForm({ emp_id: "", missing_docs: [] });
       setSearchQuery("");
       setShowModal(false);
     },
-    onError: () => alert("Error updating documents"),
+    onError: (error) =>
+      showToast(error.message || "Error updating documents", "error"),
   });
 
   // --- MUTATION FOR APPROVING/DENYING RESIGNATIONS ---
@@ -92,9 +104,10 @@ export default function HRDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["dashboardSummary"]);
-      alert("Resignation status updated successfully!");
+      showToast("Resignation status updated successfully!", "success");
     },
-    onError: () => alert("Error updating resignation"),
+    onError: (error) =>
+      showToast(error.message || "Error updating resignation", "error"),
   });
 
   // --- FILTER & SEARCH EMPLOYEES LOGIC ---
@@ -178,7 +191,35 @@ export default function HRDashboard() {
     e.preventDefault();
     if (!docForm.emp_id)
       return alert("Please select an employee from the list.");
-    updateDocsMutation.mutate(docForm);
+
+    // Show confirmation modal instead of directly mutating
+    setConfirmAction({
+      type: "updateDocuments",
+      emp_id: docForm.emp_id,
+      missing_docs: docForm.missing_docs,
+      employee_name: `${selectedEmployee.first_name} ${selectedEmployee.last_name}`,
+    });
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmAction) return;
+
+    if (confirmAction.type === "resignation") {
+      setConfirmAction(null);
+      updateResignationMutation.mutate({
+        id: confirmAction.id,
+        status: confirmAction.status,
+      });
+    } else if (confirmAction.type === "updateDocuments") {
+      setConfirmAction(null);
+      setShowModal(false);
+      updateDocsMutation.mutate({
+        emp_id: confirmAction.emp_id,
+        missing_docs: confirmAction.missing_docs,
+      });
+    } else {
+      setConfirmAction(null);
+    }
   };
 
   if (isLoadingDashboard || isLoadingEmployees) {
@@ -189,6 +230,9 @@ export default function HRDashboard() {
 
   return (
     <div className="max-w-full">
+      {/* Toast Notification */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
       <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 mb-6">
         HR Dashboard
       </h1>
@@ -226,13 +270,15 @@ export default function HRDashboard() {
         <h2 className="m-0 text-lg font-semibold text-gray-900 mb-4">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <button
             onClick={() => navigate("/employees")}
             className="p-6 rounded-lg border-2 border-dashed border-purple-300 bg-purple-50 text-center hover:bg-purple-100 transition-colors cursor-pointer"
           >
             <p className="m-0 text-2xl mb-2">👥</p>
-            <p className="m-0 font-semibold text-gray-900">View Employees</p>
+            <p className="m-0 font-semibold text-gray-900 whitespace-nowrap">
+              View Employees
+            </p>
             <p className="m-0 text-xs text-gray-600 mt-1">
               Manage employee records
             </p>
@@ -242,7 +288,9 @@ export default function HRDashboard() {
             className="p-6 rounded-lg border-2 border-dashed border-green-300 bg-green-50 text-center hover:bg-green-100 transition-colors cursor-pointer"
           >
             <p className="m-0 text-2xl mb-2">📋</p>
-            <p className="m-0 font-semibold text-gray-900">Attendance</p>
+            <p className="m-0 font-semibold text-gray-900 whitespace-nowrap">
+              Attendance
+            </p>
             <p className="m-0 text-xs text-gray-600 mt-1">
               View & manage attendance
             </p>
@@ -252,7 +300,9 @@ export default function HRDashboard() {
             className="p-6 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 text-center hover:bg-amber-100 transition-colors cursor-pointer"
           >
             <p className="m-0 text-2xl mb-2">📅</p>
-            <p className="m-0 font-semibold text-gray-900">Leave Requests</p>
+            <p className="m-0 font-semibold text-gray-900 whitespace-nowrap">
+              Leave Requests
+            </p>
             <p className="m-0 text-xs text-gray-600 mt-1">
               Process employee leave
             </p>
@@ -675,9 +725,11 @@ export default function HRDashboard() {
                         <div className="flex gap-2 pt-3 border-t border-gray-200 mt-1">
                           <button
                             onClick={() =>
-                              updateResignationMutation.mutate({
+                              setConfirmAction({
+                                type: "resignation",
                                 id: r.id,
                                 status: "Approved",
+                                name: `${r.first_name} ${r.last_name}`,
                               })
                             }
                             disabled={updateResignationMutation.isPending}
@@ -687,9 +739,11 @@ export default function HRDashboard() {
                           </button>
                           <button
                             onClick={() =>
-                              updateResignationMutation.mutate({
+                              setConfirmAction({
+                                type: "resignation",
                                 id: r.id,
                                 status: "Denied",
+                                name: `${r.first_name} ${r.last_name}`,
                               })
                             }
                             disabled={updateResignationMutation.isPending}
@@ -703,6 +757,71 @@ export default function HRDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CONFIRMATION MODAL --- */}
+      {confirmAction && (
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-[60] backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[400px] overflow-hidden">
+            <div className="flex items-center justify-between bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+              <h2 className="m-0 text-lg font-semibold text-white">
+                Confirm Action
+              </h2>
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="bg-transparent border-0 text-2xl cursor-pointer text-white/80 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="m-0 text-gray-700">
+                {confirmAction.type === "resignation" &&
+                  `Are you sure you want to ${confirmAction.status === "approve" ? "approve" : "reject"} this resignation from ${confirmAction.name}?`}
+                {confirmAction.type === "updateDocuments" && (
+                  <>
+                    <span>
+                      Are you sure you want to update the missing requirement
+                    </span>
+                    <span className="block font-semibold text-purple-600 mt-2">
+                      {confirmAction.missing_docs &&
+                      confirmAction.missing_docs.length > 0
+                        ? confirmAction.missing_docs.join(", ")
+                        : "to clear all requirements"}
+                    </span>
+                    <span className="block mt-2">
+                      for{" "}
+                      <span className="font-semibold text-purple-600">
+                        {confirmAction.employee_name}
+                      </span>
+                      ?
+                    </span>
+                  </>
+                )}
+              </p>
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-pointer hover:bg-gray-200 transition-colors border-0"
+                >
+                  {confirmAction.type === "updateDocuments" ? "No" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleConfirmAction}
+                  className={`flex-1 px-4 py-2 rounded-lg text-white font-semibold cursor-pointer transition-all border-0 ${
+                    confirmAction.type === "resignation" &&
+                    confirmAction.status === "Rejected"
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  {confirmAction.type === "updateDocuments" ? "Yes" : "Confirm"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

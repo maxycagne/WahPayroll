@@ -223,12 +223,12 @@ export default function Payroll() {
     );
 
   return (
-    <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+    <div>
+      <div className="flex items-center justify-between gap-4 mb-6 flex-nowrap">
+        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 whitespace-nowrap flex-shrink-0">
           Salary / Payroll
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
           <label className="flex items-center gap-2 text-sm text-gray-600 mr-2">
             Period:
             <input
