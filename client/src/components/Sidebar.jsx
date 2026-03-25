@@ -59,7 +59,7 @@ export default function Sidebar({ role, onLogout }) {
             <span className="text-[1.1rem] w-[22px] text-center">
               {item.icon}
             </span>
-            {item.label}
+            <span className="whitespace-nowrap">{item.label}</span>
           </NavLink>
         ))}
       </nav>

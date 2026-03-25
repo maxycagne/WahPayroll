@@ -3,9 +3,15 @@ import { useState } from "react";
 export default function Login({ role, onRoleChange, onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmLogin = () => {
+    setShowConfirmation(false);
     onLogin({ username, password });
   };
 
@@ -100,6 +106,43 @@ export default function Login({ role, onRoleChange, onLogin }) {
           </form>
         </section>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[400px] overflow-hidden">
+            <div className="flex items-center justify-between bg-gradient-to-r from-wah-primary to-wah-lighter px-6 py-4">
+              <h2 className="m-0 text-lg font-semibold text-white">Confirm Login</h2>
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="bg-transparent border-0 text-2xl cursor-pointer text-white/80 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="m-0 text-gray-700">
+                Are you sure you want to log in as <strong>{role}</strong> with username <strong>{username}</strong>?
+              </p>
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmation(false)}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-pointer hover:bg-gray-200 transition-colors border-0"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmLogin}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-wah-primary to-wah-lighter text-white font-semibold cursor-pointer hover:shadow-md transition-all border-0"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
