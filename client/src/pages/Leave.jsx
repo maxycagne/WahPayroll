@@ -326,6 +326,7 @@ export default function Leave() {
   const [activeTab, setActiveTab] = useState("leave");
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const [offsetForm, setOffsetForm] = useState({
     date_from: "",
@@ -500,13 +501,12 @@ export default function Leave() {
       return;
     }
 
-    submitLeaveMutation.mutate({
-      emp_id: formData.emp_id,
-      leave_type: formData.leaveType,
-      date_from: formData.fromDate,
-      date_to: formData.toDate,
-      priority: formData.priority,
-      supervisor_remarks: formData.reason,
+    // Show confirmation modal instead of directly submitting
+    setConfirmAction({
+      type: "leave",
+      leaveType: formData.leaveType,
+      fromDate: formData.fromDate,
+      toDate: formData.toDate,
     });
   };
 
@@ -736,6 +736,17 @@ export default function Leave() {
                 </div>
                 <div className="mt-2 flex gap-3 justify-end md:col-span-3">
                   <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
+                      setFormError("");
+                    }}
+                    className="px-6 py-2.5 rounded-lg bg-gray-200 border-0 text-gray-700 text-sm font-bold cursor-pointer hover:bg-gray-300 shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
                     type="submit"
                     disabled={submitLeaveMutation.isPending}
                     className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 disabled:opacity-50 shadow-sm"
@@ -746,6 +757,60 @@ export default function Leave() {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* Confirmation Modal */}
+          {confirmAction && confirmAction.type === "leave" && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                <h2 className="m-0 text-lg font-semibold text-gray-900 mb-4">
+                  Confirm Leave Application
+                </h2>
+                <div className="mb-6 space-y-3 text-sm">
+                  <div>
+                    <p className="m-0 text-gray-600 font-medium">Leave Type:</p>
+                    <p className="m-0 text-gray-900 font-semibold">{confirmAction.leaveType}</p>
+                  </div>
+                  <div>
+                    <p className="m-0 text-gray-600 font-medium">From Date:</p>
+                    <p className="m-0 text-gray-900 font-semibold">{new Date(confirmAction.fromDate).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="m-0 text-gray-600 font-medium">To Date:</p>
+                    <p className="m-0 text-gray-900 font-semibold">{new Date(confirmAction.toDate).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <p className="m-0 text-sm text-gray-600 mb-6">
+                  Are you sure you want to submit this leave application?
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmAction(null)}
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium cursor-pointer hover:bg-gray-50 shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      submitLeaveMutation.mutate({
+                        emp_id: formData.emp_id,
+                        leave_type: formData.leaveType,
+                        date_from: formData.fromDate,
+                        date_to: formData.toDate,
+                        priority: formData.priority,
+                        supervisor_remarks: formData.reason,
+                      });
+                      setConfirmAction(null);
+                    }}
+                    className="px-4 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-medium cursor-pointer hover:bg-green-700 shadow-sm"
+                  >
+                    Submit Application
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

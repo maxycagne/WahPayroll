@@ -19,6 +19,7 @@ export default function Dashboard() {
 
   const [activeModal, setActiveModal] = useState(null);
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const fetchDashboardData = async () => {
     const res = await apiFetch("/api/employees/dashboard-summary", {
@@ -211,12 +212,7 @@ export default function Dashboard() {
                             <>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleUpdateLeaveStatus(
-                                    employee.id,
-                                    "Approved",
-                                  )
-                                }
+                                onClick={() => setConfirmAction({ type: 'approve', id: employee.id, name: `${employee.first_name} ${employee.last_name}` })}
                                 className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 transition-colors duration-150"
                               >
                                 Approve
@@ -348,6 +344,39 @@ export default function Dashboard() {
                 className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-colors duration-150"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmAction && confirmAction.type === "approve" && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+            <h2 className="m-0 text-lg font-semibold text-gray-900 mb-2">
+              Confirm Approval
+            </h2>
+            <p className="m-0 text-sm text-gray-600 mb-6">
+              Are you sure you want to approve the leave request for <span className="font-semibold">{confirmAction.name}</span>?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-colors duration-150"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleUpdateLeaveStatus(confirmAction.id, "Approved");
+                  setConfirmAction(null);
+                }}
+                className="inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-colors duration-150"
+              >
+                Approve
               </button>
             </div>
           </div>
