@@ -12,6 +12,7 @@ const badgeClass = {
   Absent: "bg-red-100 text-red-800",
   "On Leave": "bg-purple-100 text-purple-800",
   Pending: "bg-gray-100 text-gray-500",
+  "": "bg-gray-100 text-gray-500", // Fallback styling for None
 };
 
 export default function Attendance() {
@@ -97,7 +98,8 @@ export default function Attendance() {
       const initialForm = {};
       const initialSecondary = {};
       data.forEach((emp) => {
-        initialForm[emp.emp_id] = emp.attendance_status || "Present";
+        // CHANGED: Now defaults to "" (None) instead of "Present"
+        initialForm[emp.emp_id] = emp.attendance_status || "";
         initialSecondary[emp.emp_id] = "";
       });
       setAttendanceForm(initialForm);
@@ -231,7 +233,8 @@ export default function Attendance() {
   const handleDailySubmit = (e) => {
     e.preventDefault();
     const records = Object.entries(attendanceForm)
-      .filter(([_, status]) => status !== "Pending")
+      // CHANGED: Filter out empty ("none") and "Pending" statuses so they don't get saved
+      .filter(([_, status]) => status !== "" && status !== "Pending")
       .map(([emp_id, status]) => {
         const secondary = secondaryStatusForm[emp_id];
         const finalStatus = secondary ? `${status}, ${secondary}` : status;
@@ -243,7 +246,8 @@ export default function Attendance() {
   const markAllPresent = () => {
     const updated = { ...attendanceForm };
     dailyList.forEach((emp) => {
-      if (updated[emp.emp_id] === "Pending") {
+      // CHANGED: Check for "" (none) as well as "Pending"
+      if (!updated[emp.emp_id] || updated[emp.emp_id] === "Pending") {
         updated[emp.emp_id] = "Present";
       }
     });
@@ -607,6 +611,7 @@ export default function Attendance() {
                     onChange={(e) => setBulkStatus(e.target.value)}
                     className="px-2 py-1 rounded border border-gray-300 text-xs font-medium outline-none focus:ring-2 focus:ring-purple-500"
                   >
+                    <option value="">-- Select --</option>
                     <option value="Present">Present</option>
                     <option value="Late">Late</option>
                     <option value="Undertime">Undertime</option>
@@ -663,7 +668,7 @@ export default function Attendance() {
                     {dailyLoading ? (
                       <tr>
                         <td
-                          colSpan="4"
+                          colSpan="5"
                           className="p-4 text-center font-bold text-gray-500"
                         >
                           Loading List...
@@ -700,15 +705,18 @@ export default function Attendance() {
                             </td>
                             <td className="px-3 py-2">
                               <select
-                                value={attendanceForm[emp.emp_id] || "Present"}
+                                // CHANGED: Default is now ""
+                                value={attendanceForm[emp.emp_id] || ""}
                                 onChange={(e) =>
                                   setAttendanceForm({
                                     ...attendanceForm,
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Present}`}
+                                // CHANGED: Pull fallback style correctly from badgeClass
+                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass[""]}`}
                               >
+                                <option value="">-- None --</option>
                                 <option value="Present">Present</option>
                                 <option value="Late">Late</option>
                                 <option value="Undertime">Undertime</option>
