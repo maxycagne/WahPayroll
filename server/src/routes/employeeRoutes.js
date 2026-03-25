@@ -218,7 +218,7 @@ router.get(
 );
 
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
-router.post("/", authorizeRoles("Admin", "HR"), createEmployee);
+router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
 router.put(
   "/:id/reset-password",
