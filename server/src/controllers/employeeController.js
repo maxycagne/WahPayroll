@@ -1351,42 +1351,72 @@ export const updateLeaveStatus = async (req, res) => {
 export const getAllPayroll = async (req, res) => {
   try {
     const { period } = req.query;
-    const { periodStart, periodEnd } = parsePeriodRange(period);
-
-    const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
-      periodStart,
-      periodEnd,
-    );
+    const { periodStart } = parsePeriodRange(period);
 
     // FIX: Added the WHERE clause to only fetch payrolls for the selected month!
     const [rows] = await pool.query(
-      `SELECT p.*, e.first_name, e.last_name, e.designation, e.position 
-       FROM payroll p 
+      `SELECT
+         p.*,
+         e.first_name,
+         e.last_name,
+         e.designation,
+         e.position,
+         adj.adjustment_reasons,
+         adj.incentive_reasons,
+         adj.deduction_reasons
+       FROM payroll p
        JOIN employees e ON p.emp_id = e.emp_id
+       LEFT JOIN (
+         SELECT
+           emp_id,
+           GROUP_CONCAT(
+             CASE
+               WHEN type IN ('Bonus', 'Increase') THEN CONCAT(type, ': ', COALESCE(description, 'No reason provided'))
+               ELSE NULL
+             END
+             ORDER BY effective_date DESC, id DESC
+             SEPARATOR ' | '
+           ) AS incentive_reasons,
+           GROUP_CONCAT(
+             CASE
+               WHEN type = 'Decrease' THEN CONCAT(
+                 COALESCE(NULLIF(TRIM(description), ''), 'No reason provided'),
+                 ' = ₱',
+                 FORMAT(ABS(amount), 2)
+               )
+               ELSE NULL
+             END
+             ORDER BY effective_date DESC, id DESC
+             SEPARATOR ' | '
+           ) AS deduction_reasons,
+           GROUP_CONCAT(
+             CONCAT(type, ': ', COALESCE(description, 'No reason provided'))
+             ORDER BY effective_date DESC, id DESC
+             SEPARATOR ' | '
+           ) AS adjustment_reasons
+         FROM salary_history
+         WHERE DATE_FORMAT(effective_date, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
+         GROUP BY emp_id
+       ) adj ON adj.emp_id = p.emp_id
        WHERE p.period_start = ?`,
-      [periodStart],
+      [periodStart, periodStart],
     );
 
     const enrichedRows = rows.map((row) => {
-      const absenceSummary = absenceSummaryByEmployee[row.emp_id] || {
-        rawAbsences: 0,
-        convertedAbsences: 0,
-      };
-
       const basicPay = Number(row.basic_pay || 0);
       const incentives = Number(row.incentives || 0);
-      const absenceDeductions = Number(
-        ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
-      );
+      const totalDeductions = Number(row.absence_deductions || 0);
       const netPay = Number(
-        (basicPay + incentives - absenceDeductions).toFixed(2),
+        (basicPay + incentives - totalDeductions).toFixed(2),
       );
 
       return {
         ...row,
-        absences_count: absenceSummary.rawAbsences,
-        converted_absences: Number(absenceSummary.convertedAbsences.toFixed(2)),
-        absence_deductions: absenceDeductions,
+        absences_count: 0,
+        converted_absences: 0,
+        absence_deductions: totalDeductions,
+        baseline_absence_deductions: 0,
+        adjustment_deductions: totalDeductions,
         net_pay: netPay,
       };
     });
@@ -1918,28 +1948,154 @@ export const updateOffsetApplicationStatus = async (req, res) => {
   }
 };
 
+const normalizeAdjustmentType = (rawType) => {
+  const normalized = String(rawType || "")
+    .trim()
+    .toLowerCase();
+
+  if (["decrease", "deduction", "deductions"].includes(normalized)) {
+    return "Decrease";
+  }
+
+  if (["increase", "incentive", "incentives", "raise"].includes(normalized)) {
+    return "Increase";
+  }
+
+  if (["bonus"].includes(normalized)) {
+    return "Bonus";
+  }
+
+  return null;
+};
+
+const recomputePayrollForEmployeesPeriod = async (
+  connection,
+  empIds,
+  period,
+) => {
+  if (!Array.isArray(empIds) || empIds.length === 0) return;
+
+  const uniqueEmpIds = Array.from(new Set(empIds));
+  const placeholders = uniqueEmpIds.map(() => "?").join(", ");
+  const { periodStart } = parsePeriodRange(period);
+
+  const [adjustmentTotals] = await connection.query(
+    `SELECT
+       emp_id,
+       COALESCE(
+         SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END),
+         0
+       ) AS total_incentives,
+       COALESCE(
+         SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END),
+         0
+       ) AS total_deductions
+     FROM salary_history
+     WHERE DATE_FORMAT(effective_date, '%Y-%m') = ?
+       AND emp_id IN (${placeholders})
+     GROUP BY emp_id`,
+    [period, ...uniqueEmpIds],
+  );
+
+  const totalsByEmp = new Map(
+    adjustmentTotals.map((row) => [
+      row.emp_id,
+      {
+        incentives: Number(row.total_incentives || 0),
+        deductions: Number(row.total_deductions || 0),
+      },
+    ]),
+  );
+
+  const [payrollRows] = await connection.query(
+    `SELECT emp_id
+     FROM payroll
+     WHERE period_start = ?
+       AND emp_id IN (${placeholders})`,
+    [periodStart, ...uniqueEmpIds],
+  );
+
+  for (const row of payrollRows) {
+    const totals = totalsByEmp.get(row.emp_id) || { incentives: 0, deductions: 0 };
+
+    await connection.query(
+      `UPDATE payroll
+       SET incentives = ?,
+           absence_deductions = ?,
+           gross_pay = ROUND(basic_pay + ?, 2),
+           net_pay = ROUND((basic_pay + ?) - ?, 2)
+       WHERE period_start = ?
+         AND emp_id = ?`,
+      [
+        totals.incentives,
+        totals.deductions,
+        totals.incentives,
+        totals.incentives,
+        totals.deductions,
+        periodStart,
+        row.emp_id,
+      ],
+    );
+  }
+};
+
 export const applySalaryAdjustment = async (req, res) => {
   const { emp_ids, type, amount, description, date } = req.body;
+
+  if (!Array.isArray(emp_ids) || emp_ids.length === 0) {
+    return res.status(400).json({ message: "At least one employee is required" });
+  }
+
+  if (!type || amount === undefined || amount === null || !date) {
+    return res.status(400).json({ message: "type, amount, and date are required" });
+  }
+
+  const normalizedType = normalizeAdjustmentType(type);
+  if (!normalizedType) {
+    return res.status(400).json({ message: "Invalid adjustment type" });
+  }
+
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ message: "Amount must be greater than 0" });
+  }
+
+  const period = String(date).slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(period)) {
+    return res.status(400).json({ message: "Invalid adjustment date" });
+  }
+
+  const connection = await pool.getConnection();
+
   try {
+    await connection.beginTransaction();
+
     // Loop through each selected employee ID and save the record
     for (const emp_id of emp_ids) {
-      await pool.query(
+      await connection.query(
         `INSERT INTO salary_history (emp_id, effective_date, type, amount, description, remarks) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
           emp_id,
           date,
-          type,
-          amount,
-          description,
+          normalizedType,
+          numericAmount,
+          description || null,
           "Added via Payroll Bulk Adjustment",
         ],
       );
     }
+
+    await recomputePayrollForEmployeesPeriod(connection, emp_ids, period);
+
+    await connection.commit();
     res.json({ message: "Adjustments applied successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in applySalaryAdjustment:", error);
     res.status(500).json({ message: "Error applying adjustment" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -1947,49 +2103,56 @@ export const generatePayroll = async (req, res) => {
   const { period } = req.body;
   if (!period) return res.status(400).json({ message: "Period is required" });
 
+  const connection = await pool.getConnection();
+
   try {
+    await connection.beginTransaction();
+
     // 1. Get the exact start and end dates for the selected month
-    const { periodStart, periodEnd } = parsePeriodRange(period);
+    const { periodStart } = parsePeriodRange(period);
 
-    // 2. Fetch the calculated absences (incorporates the 1 vs 1.25 workweek logic)
-    const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
+    // Keep payroll generation idempotent by replacing the selected period snapshot.
+    await connection.query("DELETE FROM payroll WHERE period_start = ?", [
       periodStart,
-      periodEnd,
-    );
+    ]);
 
-    // 3. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin)
-    const [employees] = await pool.query(
+    // 2. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin)
+    const [employees] = await connection.query(
       "SELECT emp_id, basic_pay FROM employees WHERE COALESCE(role, '') != 'Admin'",
     );
 
-    // 4. Calculate and save the snapshot for each employee
+    // 3. Calculate and save the snapshot for each employee
     for (const emp of employees) {
       const basicPay = Number(emp.basic_pay || 0);
 
-      const absenceSummary = absenceSummaryByEmployee[emp.emp_id] || {
-        rawAbsences: 0,
-        convertedAbsences: 0,
-      };
-
-      // Formula: (Monthly Pay / 22 days) * converted absences
-      const absenceDeductions = Number(
-        ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
-      );
-
-      // Calculate total incentives (Bonus/Increases) given this month
-      const [incentiveRows] = await pool.query(
-        "SELECT SUM(amount) as total_incentives FROM salary_history WHERE emp_id = ? AND type IN ('Bonus', 'Increase') AND DATE_FORMAT(effective_date, '%Y-%m') = ?",
+      const [adjustmentRows] = await connection.query(
+        `SELECT
+           COALESCE(
+             SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END),
+             0
+           ) as total_incentives,
+           COALESCE(
+             SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END),
+             0
+           ) as total_adjustment_deductions
+         FROM salary_history
+         WHERE emp_id = ?
+           AND DATE_FORMAT(effective_date, '%Y-%m') = ?`,
         [emp.emp_id, period],
       );
-      const incentives = Number(incentiveRows[0]?.total_incentives || 0);
+      const incentives = Number(adjustmentRows[0]?.total_incentives || 0);
+      const adjustmentDeductions = Number(
+        adjustmentRows[0]?.total_adjustment_deductions || 0,
+      );
+      const totalDeductions = Number(adjustmentDeductions.toFixed(2));
 
       // Calculate Gross and Net Pay
       const grossPay = Number((basicPay + incentives).toFixed(2));
-      const netPay = Number((grossPay - absenceDeductions).toFixed(2));
+      const netPay = Number((grossPay - totalDeductions).toFixed(2));
 
-      // 5. Save the official snapshot to the payroll table
+      // 4. Save the official snapshot to the payroll table
       // EXACTLY matching your database columns from the screenshot
-      await pool.query(
+      await connection.query(
         `INSERT INTO payroll (emp_id, period_start, basic_pay, absences_count, absence_deductions, incentives, gross_pay, net_pay)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE 
@@ -2003,8 +2166,8 @@ export const generatePayroll = async (req, res) => {
           emp.emp_id,
           periodStart,
           basicPay,
-          absenceSummary.rawAbsences,
-          absenceDeductions,
+          0,
+          totalDeductions,
           incentives,
           grossPay,
           netPay,
@@ -2012,10 +2175,14 @@ export const generatePayroll = async (req, res) => {
       );
     }
 
+    await connection.commit();
     res.json({ message: "Payroll generated successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in generatePayroll:", error);
     res.status(500).json({ message: "Error generating payroll" });
+  } finally {
+    connection.release();
   }
 };
 export const updateBaseSalaryByPosition = async (req, res) => {
@@ -2053,15 +2220,141 @@ export const updateBaseSalaryByPosition = async (req, res) => {
 // --- SALARY HISTORY ---
 export const getSalaryHistory = async (req, res) => {
   const { emp_id } = req.params;
+  const { period } = req.query;
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM salary_history WHERE emp_id = ? ORDER BY effective_date DESC",
-      [emp_id],
-    );
+    let rows;
+
+    if (period && /^\d{4}-\d{2}$/.test(String(period))) {
+      [rows] = await pool.query(
+        `SELECT *
+         FROM salary_history
+         WHERE emp_id = ?
+           AND DATE_FORMAT(effective_date, '%Y-%m') = ?
+         ORDER BY effective_date DESC, id DESC`,
+        [emp_id, period],
+      );
+    } else {
+      [rows] = await pool.query(
+        `SELECT *
+         FROM salary_history
+         WHERE emp_id = ?
+         ORDER BY effective_date DESC, id DESC`,
+        [emp_id],
+      );
+    }
+
     res.json(rows);
   } catch (error) {
     console.error("DB Error in getSalaryHistory:", error);
     res.status(500).json({ message: "Error fetching salary history" });
+  }
+};
+
+export const updateSalaryHistoryEntry = async (req, res) => {
+  const { id } = req.params;
+  const { type, amount, description } = req.body;
+
+  const normalizedType = normalizeAdjustmentType(type);
+  if (!normalizedType) {
+    return res.status(400).json({ message: "Invalid adjustment type" });
+  }
+
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ message: "Amount must be greater than 0" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query(
+      `SELECT
+         id,
+         emp_id,
+         DATE_FORMAT(effective_date, '%Y-%m') AS period_key
+       FROM salary_history
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+
+    if (existingRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Adjustment record not found" });
+    }
+
+    const existing = existingRows[0];
+    const period = existing.period_key;
+
+    if (!period) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Invalid adjustment period" });
+    }
+
+    await connection.query(
+      `UPDATE salary_history
+       SET type = ?, amount = ?, description = ?
+       WHERE id = ?`,
+      [normalizedType, numericAmount, description || null, id],
+    );
+
+    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+
+    await connection.commit();
+    res.json({ message: "Adjustment updated successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in updateSalaryHistoryEntry:", error);
+    res.status(500).json({ message: "Error updating adjustment" });
+  } finally {
+    connection.release();
+  }
+};
+
+export const deleteSalaryHistoryEntry = async (req, res) => {
+  const { id } = req.params;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query(
+      `SELECT
+         id,
+         emp_id,
+         DATE_FORMAT(effective_date, '%Y-%m') AS period_key
+       FROM salary_history
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+
+    if (existingRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Adjustment record not found" });
+    }
+
+    const existing = existingRows[0];
+    const period = existing.period_key;
+
+    if (!period) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Invalid adjustment period" });
+    }
+
+    await connection.query("DELETE FROM salary_history WHERE id = ?", [id]);
+
+    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+
+    await connection.commit();
+    res.json({ message: "Adjustment removed successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in deleteSalaryHistoryEntry:", error);
+    res.status(500).json({ message: "Error removing adjustment" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -2258,5 +2551,34 @@ export const getMyAttendance = async (req, res) => {
   } catch (error) {
     console.error("DB Error in getMyAttendance:", error);
     res.status(500).json({ message: "Error fetching personal attendance" });
+  }
+};
+
+// --- RESET PAYROLL ---
+export const resetPayrollData = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Delete all payroll records
+    await connection.query("DELETE FROM payroll");
+
+    // Delete all salary history records (adjustments)
+    await connection.query("DELETE FROM salary_history");
+
+    await connection.commit();
+
+    res.json({
+      message: "All payroll data has been reset successfully",
+      timestamp: new Date(),
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in resetPayrollData:", error);
+    res
+      .status(500)
+      .json({ message: "Error resetting payroll data", error: error.message });
+  } finally {
+    connection.release();
   }
 };
