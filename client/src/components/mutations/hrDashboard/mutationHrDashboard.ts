@@ -12,7 +12,7 @@ export const updateMutationDoc = mutationOptions({
   },
 });
 
-export const updateReginsnationMutationOptions = mutationOptions({
+export const updateResignationMutationOptions = mutationOptions({
   mutationFn: async ({ id, status }: { id: number; status: string }) => {
     const res = await axiosInterceptor.put(
       `/api/employees/resignations/${id}`,
