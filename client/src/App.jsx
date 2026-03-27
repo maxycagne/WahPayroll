@@ -14,7 +14,8 @@ import SalaryHistory from "./pages/SalaryHistory";
 import HRReports from "./pages/HRReports";
 import Payslips from "./pages/Payslips";
 import Reports from "./pages/Reports";
-import { apiFetch } from "./lib/api";
+import axiosInterceptor from "./hooks/interceptor";
+import Login from "./pages/Login";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -27,123 +28,10 @@ const safeParseUser = () => {
   }
 };
 
-function LoginScreen({ onLogin }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setIsSubmitting(true);
-
-    try {
-      const res = await apiFetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid username or password");
-      }
-
-      onLogin(data.token, data.user);
-    } catch (err) {
-      setError(err.message || "Unable to sign in");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen grid place-items-center p-7 bg-gradient-to-br from-[#50109a] to-wah-accent">
-      <div className="w-full max-w-[500px] bg-wah-card rounded-[14px] overflow-hidden shadow-lg">
-        <section className="px-12 py-16 flex flex-col items-center">
-          <img
-            className="w-[150px] h-[150px] object-contain mb-6"
-            src="/images/wah-logo.png"
-            alt="WAH logo"
-          />
-
-          <h1 className="m-0 max-w-[320px] text-center text-[clamp(1.6rem,2vw,1.8rem)] leading-[1.15] text-wah-text">
-            Welcome to Wireless Access For Health Payroll System
-          </h1>
-
-          <form
-            className="mt-[34px] w-full max-w-[340px] grid gap-3"
-            onSubmit={handleSubmit}
-          >
-            <div className="relative w-full h-14">
-              <input
-                required
-                id="username"
-                type="text"
-                name="username"
-                value={username}
-                onChange={(e) =>
-                  setUsername(e.target.value.replace(/\s+/g, ""))
-                }
-                autoComplete="off"
-                className="peer w-full h-full border-[1.8px] border-wah-light rounded-[14px] bg-white px-4 pt-3 text-base text-[#1e2430] outline-none transition-colors duration-150 focus:border-wah-mid"
-              />
-              <label
-                htmlFor="username"
-                className="absolute left-3.5 top-1/2 text-wah-accent pointer-events-none -translate-y-1/2 transition-all duration-150 px-[0.2em] peer-focus:-translate-y-[160%] peer-focus:scale-[0.82] peer-focus:bg-wah-card peer-focus:text-wah-mid peer-valid:-translate-y-[160%] peer-valid:scale-[0.82] peer-valid:bg-wah-card peer-valid:text-wah-mid"
-              >
-                Username
-              </label>
-            </div>
-
-            <div className="relative w-full h-14">
-              <input
-                required
-                id="password"
-                type="password"
-                name="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="off"
-                className="peer w-full h-full border-[1.8px] border-wah-light rounded-[14px] bg-white px-4 pt-3 text-base text-[#1e2430] outline-none transition-colors duration-150 focus:border-wah-mid"
-              />
-              <label
-                htmlFor="password"
-                className="absolute left-3.5 top-1/2 text-wah-accent pointer-events-none -translate-y-1/2 transition-all duration-150 px-[0.2em] peer-focus:-translate-y-[160%] peer-focus:scale-[0.82] peer-focus:bg-wah-card peer-focus:text-wah-mid peer-valid:-translate-y-[160%] peer-valid:scale-[0.82] peer-valid:bg-wah-card peer-valid:text-wah-mid"
-              >
-                Password
-              </label>
-            </div>
-
-            {error && (
-              <p className="m-0 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            <div className="mt-2.5 grid grid-cols-1 gap-2.5">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-12 rounded-xl border-0 text-white text-xl font-semibold cursor-pointer bg-gradient-to-r from-wah-primary to-wah-lighter disabled:opacity-60"
-              >
-                {isSubmitting ? "Signing in..." : "Log in"}
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    </div>
-  );
-}
-
 function RoleProtectedRoute({ user, allowedRoles, children }) {
   if (!user) return <Navigate to="/" replace />;
 
   if (!allowedRoles.includes(user.role)) {
-    // If they go somewhere they aren't allowed, send them to their specific default dashboard
     const defaultPath = user.role === "HR" ? "/hr-dashboard" : "/dashboard";
     return <Navigate to={defaultPath} replace />;
   }
@@ -151,7 +39,7 @@ function RoleProtectedRoute({ user, allowedRoles, children }) {
   return children;
 }
 
-function AppRoutes({ user, onLogout }) {
+function AppRoutes({ user }) {
   const role = user?.role;
 
   const defaultPathByRole = {
@@ -164,7 +52,7 @@ function AppRoutes({ user, onLogout }) {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<MainLayout role={role} onLogout={onLogout} />}>
+        <Route element={<MainLayout role={role} />}>
           {/* --- DASHBOARDS --- */}
           <Route
             path="/dashboard"
@@ -302,8 +190,9 @@ function AppRoutes({ user, onLogout }) {
   );
 }
 
+const queryClient = new QueryClient();
+
 export default function App() {
-  const [queryClient] = useState(() => new QueryClient());
   const [user, setUser] = useState(() => safeParseUser());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 
@@ -311,24 +200,17 @@ export default function App() {
     () => Boolean(localStorage.getItem(STORAGE_TOKEN_KEY)),
     [user],
   );
-
   useEffect(() => {
     const bootstrapAuth = async () => {
       const token = localStorage.getItem(STORAGE_TOKEN_KEY);
-
       if (!token) {
         setIsBootstrapping(false);
         return;
       }
-
       try {
-        const res = await apiFetch("/api/auth/me");
+        const res = await axiosInterceptor.get("/api/auth/me");
 
-        if (!res.ok) {
-          throw new Error("Session expired");
-        }
-
-        const data = await res.json();
+        const data = res.data;
         localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
         setUser(data.user);
       } catch {
@@ -339,39 +221,12 @@ export default function App() {
         setIsBootstrapping(false);
       }
     };
-
     bootstrapAuth();
   }, []);
 
-  const handleLogin = (token, nextUser) => {
-    localStorage.setItem(STORAGE_TOKEN_KEY, token);
-    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
-    setUser(nextUser);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(STORAGE_TOKEN_KEY);
-    localStorage.removeItem(STORAGE_USER_KEY);
-    setUser(null);
-  };
-
-  if (isBootstrapping) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-gray-50">
-        <div className="p-6 font-bold text-purple-700 animate-pulse text-xl">
-          Loading WAH System...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
-      {!hasToken || !user ? (
-        <LoginScreen onLogin={handleLogin} />
-      ) : (
-        <AppRoutes user={user} onLogout={handleLogout} />
-      )}
+      {!hasToken || !user ? <Login></Login> : <AppRoutes user={user} />}
     </QueryClientProvider>
   );
 }

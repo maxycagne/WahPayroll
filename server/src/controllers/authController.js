@@ -2,11 +2,14 @@ import pool from "../config/db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
+import { createAccessToken, createRefreshToken } from "../helper/jwt.js";
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_wah_key";
 const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || "";
 
 const normalizeRole = (role) => {
-  const value = String(role || "").trim().toLowerCase();
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
 
   if (value === "admin") return "Admin";
   if (value === "supervisor") return "Supervisor";
@@ -31,7 +34,11 @@ const checkPassword = async (inputPassword, user) => {
     return inputPassword === generatedFallback;
   }
 
-  if (stored.startsWith("$2b$") || stored.startsWith("$2a$") || stored.startsWith("$2y$")) {
+  if (
+    stored.startsWith("$2b$") ||
+    stored.startsWith("$2a$") ||
+    stored.startsWith("$2y$")
+  ) {
     return bcrypt.compare(inputPassword, stored);
   }
 
@@ -72,12 +79,19 @@ export const login = async (req, res) => {
 
     const role = normalizeRole(user.role);
 
-    const token = jwt.sign({ emp_id: user.emp_id, role }, JWT_SECRET, {
-      expiresIn: "12h",
+    const token = createAccessToken({ emp_id: user.emp_id, role });
+    const refreshToken = createRefreshToken({ emp_id: user.emp_id, role });
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: false, // true in production with HTTPS
+      sameSite: "lax",
+      path: "/api/auth/refresh",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.json({
       token,
+
       user: {
         emp_id: user.emp_id,
         name: `${user.first_name} ${user.last_name}`,
@@ -89,6 +103,19 @@ export const login = async (req, res) => {
     console.error("Login Error:", error);
     res.status(500).json({ message: "Server error during login" });
   }
+};
+
+export const logout = (req, res) => {
+  console.log("hit logout!");
+  res.clearCookie("refresh_token", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/api/auth/refresh",
+  });
+  return res.status(200).json({
+    message: "Logged out successfully",
+  });
 };
 
 export const getMe = async (req, res) => {

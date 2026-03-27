@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { hashPassword } from "../helper/hashPass.js";
 
 const resolveRoleFromProfile = ({ designation, position }) => {
   const normalizedDesignation = String(designation || "")
@@ -185,7 +186,9 @@ const ensureEmployeeMissingDocsTable = async (connection = pool) => {
 };
 
 const normalizeRole = (role) => {
-  const value = String(role || "").trim().toLowerCase();
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
   if (value === "admin") return "Admin";
   if (value === "supervisor") return "Supervisor";
   if (value === "hr") return "HR";
@@ -254,7 +257,9 @@ const canApproverReviewRequester = (approver, requester) => {
   if (requester.role === "Supervisor") return true;
 
   if (requester.role === "RankAndFile" || requester.role === "HR") {
-    return !!requester.designation && approver.designation === requester.designation;
+    return (
+      !!requester.designation && approver.designation === requester.designation
+    );
   }
 
   return false;
@@ -285,14 +290,7 @@ const createNotification = async (
         status
       ) VALUES (?, ?, ?, ?, ?, ?, 'Unread')
     `,
-    [
-      empId,
-      notificationType,
-      title,
-      message,
-      referenceType,
-      referenceId,
-    ],
+    [empId, notificationType, title, message, referenceType, referenceId],
   );
 };
 
@@ -420,6 +418,9 @@ export const createEmployee = async (req, res) => {
 
   const generatedAutoPassword = `${emp_id || ""}${(first_name || "").replace(/\s+/g, "")}`;
   const employeePassword = password || generatedAutoPassword;
+
+  const hashPass = await hashPassword(employeePassword);
+
   const employeeRole = resolveRoleFromProfile({ designation, position });
 
   try {
@@ -439,7 +440,7 @@ export const createEmployee = async (req, res) => {
         email,
         dob || null,
         hired_date || null,
-        employeePassword,
+        hashPass,
         employeeRole,
       ],
     );
@@ -554,6 +555,47 @@ export const deleteEmployee = async (req, res) => {
   } catch (error) {
     console.error("DB Error in deleteEmployee:", error);
     res.status(500).json({ message: "Error deleting employee" });
+  }
+};
+
+export const updateResignationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    await pool.query("UPDATE resignations SET status = ? WHERE id = ?", [
+      status,
+      id,
+    ]);
+    res.json({ message: "Resignation updated successfully" });
+  } catch (error) {
+    console.error("DB Error in updateResignationStatus:", error);
+    res.status(500).json({ message: "Error updating resignation" });
+  }
+};
+
+export const getAllResignations = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        r.id AS res_id, 
+        r.emp_id, 
+        r.resignation_type, 
+        r.effective_date, 
+        r.reason, 
+        r.status, 
+        r.created_at,
+        e.first_name, 
+        e.last_name
+      FROM resignations r 
+      JOIN employees e ON r.emp_id = e.emp_id 
+      ORDER BY r.created_at DESC
+    `);
+
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error("DETAILED SQL ERROR:", error.message);
+    // This will send the EXACT error to your browser console
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -766,7 +808,9 @@ export const fileResignation = async (req, res) => {
   const { emp_id, resignation_type, effective_date, reason } = req.body;
   try {
     const requesterEmpId =
-      req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
+      req.user?.role === "Admin" && emp_id
+        ? emp_id
+        : req.user?.emp_id || emp_id;
 
     if (!requesterEmpId || !resignation_type || !effective_date) {
       return res.status(400).json({
@@ -808,84 +852,6 @@ export const fileResignation = async (req, res) => {
   } catch (error) {
     console.error("DB Error in fileResignation:", error);
     res.status(500).json({ message: "Error filing resignation" });
-  }
-};
-
-export const updateResignationStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status, review_remarks } = req.body;
-
-  if (!["Pending Approval", "Approved", "Rejected"].includes(status)) {
-    return res.status(400).json({ message: "Invalid resignation status" });
-  }
-
-  const approverId = req.user?.emp_id;
-  if (!approverId) return res.status(401).json({ message: "Unauthorized" });
-
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
-    await ensureResignationsTable(connection);
-
-    const approver = await getEmployeeProfile(connection, approverId);
-    if (!approver) {
-      await connection.rollback();
-      return res.status(401).json({ message: "Approver not found" });
-    }
-
-    const [rows] = await connection.query(
-      "SELECT * FROM resignations WHERE id = ? LIMIT 1",
-      [id],
-    );
-
-    if (rows.length === 0) {
-      await connection.rollback();
-      return res.status(404).json({ message: "Resignation request not found" });
-    }
-
-    const requestRow = rows[0];
-    const requester = await getEmployeeProfile(connection, requestRow.emp_id);
-
-    if (!canApproverReviewRequester(approver, requester)) {
-      await connection.rollback();
-      return res.status(403).json({
-        message: "You are not allowed to approve this resignation request",
-      });
-    }
-
-    await connection.query(
-      `
-        UPDATE resignations
-        SET status = ?,
-            reviewed_by = ?,
-            review_remarks = ?,
-            reviewed_at = ?
-        WHERE id = ?
-      `,
-      [
-        status,
-        approver.emp_id,
-        review_remarks || null,
-        status === "Approved" || status === "Rejected" ? new Date() : null,
-        id,
-      ],
-    );
-
-    await notifyRequesterForDecision(connection, {
-      requesterEmpId: requestRow.emp_id,
-      moduleType: "Resignation",
-      status,
-      approverName: `${approver.first_name} ${approver.last_name}`.trim(),
-    });
-
-    await connection.commit();
-    res.json({ message: `Resignation request ${status.toLowerCase()}` });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in updateResignationStatus:", error);
-    res.status(500).json({ message: "Error updating resignation status" });
-  } finally {
-    connection.release();
   }
 };
 
@@ -1003,23 +969,22 @@ export const getAttendance = async (req, res) => {
   }
 };
 
-// --- Get Monthly Attendance Summary for the Calendar ---
-// --- Get Monthly Attendance Summary for the Calendar ---
 export const getAttendanceCalendarSummary = async (req, res) => {
   const { month, year } = req.query;
   try {
     const [rows] = await pool.query(
       `
-      SELECT date, 
-             SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
-             SUM(CASE WHEN status = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
-             SUM(CASE WHEN status = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as leave_count
+      SELECT DATE_FORMAT(date, '%Y-%m-%d') as date, 
+             DATE_FORMAT(date, '%Y-%m-%d') as formatted_date,
+             SUM(CASE WHEN status LIKE '%Present%' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN status LIKE '%Absent%' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN status LIKE '%Late%' THEN 1 ELSE 0 END) as late_count,
+             SUM(CASE WHEN status LIKE '%Undertime%' THEN 1 ELSE 0 END) as undertime_count,
+             SUM(CASE WHEN status LIKE '%Half-Day%' THEN 1 ELSE 0 END) as halfday_count,
+             SUM(CASE WHEN status LIKE '%On Leave%' THEN 1 ELSE 0 END) as leave_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
-      GROUP BY date
+      GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
     `,
       [month, year],
     );
@@ -1030,7 +995,6 @@ export const getAttendanceCalendarSummary = async (req, res) => {
   }
 };
 
-// --- Get Daily Attendance List for a Specific Date ---
 export const getDailyAttendance = async (req, res) => {
   const { date } = req.query;
   try {
@@ -1038,7 +1002,7 @@ export const getDailyAttendance = async (req, res) => {
       `
       SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status
       FROM employees e
-      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = ?
+      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
       WHERE COALESCE(e.role, '') <> 'Admin'
     `,
       [date],
@@ -1050,33 +1014,39 @@ export const getDailyAttendance = async (req, res) => {
   }
 };
 
-// --- Save Bulk Attendance ---
 export const saveBulkAttendance = async (req, res) => {
   const { date, records } = req.body;
+  const connection = await pool.getConnection();
+
   try {
-    for (const record of records) {
-      const [eligibleRows] = await pool.query(
-        "SELECT emp_id FROM employees WHERE emp_id = ? AND COALESCE(role, '') <> 'Admin' LIMIT 1",
-        [record.emp_id],
-      );
+    await connection.beginTransaction();
 
-      if (eligibleRows.length === 0) {
-        continue;
+    // 1. Wipe existing attendance matching the exact formatted date string
+    await connection.query(
+      `DELETE a FROM attendance a
+       JOIN employees e ON a.emp_id = e.emp_id
+       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND COALESCE(e.role, '') <> 'Admin'`,
+      [date],
+    );
+
+    // 2. Insert the fresh records using strict DATE() parsing
+    if (records && records.length > 0) {
+      for (const record of records) {
+        await connection.query(
+          `INSERT INTO attendance (emp_id, date, status) VALUES (?, DATE(?), ?)`,
+          [record.emp_id, date, record.status],
+        );
       }
-
-      await pool.query(
-        `
-        INSERT INTO attendance (emp_id, date, status) 
-        VALUES (?, ?, ?) 
-        ON DUPLICATE KEY UPDATE status = VALUES(status)
-      `,
-        [record.emp_id, date, record.status],
-      );
     }
+
+    await connection.commit();
     res.json({ message: "Attendance saved successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in saveBulkAttendance:", error);
     res.status(500).json({ message: "Error saving attendance" });
+  } finally {
+    connection.release();
   }
 };
 

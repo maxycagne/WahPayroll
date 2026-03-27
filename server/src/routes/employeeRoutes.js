@@ -18,6 +18,7 @@ import {
   updateBaseSalaryByPosition,
   getAttendanceCalendarSummary,
   getDailyAttendance,
+  getAllResignations,
   saveBulkAttendance,
   getWorkweekConfigs,
   upsertWorkweekConfig,
@@ -66,6 +67,7 @@ router.get(
   getAttendance,
 );
 
+router.get("/all-resignations", getAllResignations);
 router.get(
   "/my-resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -102,11 +104,8 @@ router.put(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   markAllNotificationsRead,
 );
-router.put(
-  "/leave-balance/:id",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  adjustLeaveBalance,
-);
+router.put("/leave-balance/:id", authorizeRoles("HR"), adjustLeaveBalance);
+
 router.get(
   "/attendance-summary",
   authorizeRoles("Admin", "Supervisor", "HR"),
@@ -117,11 +116,7 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR"),
   getDailyAttendance,
 );
-router.post(
-  "/attendance-bulk",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  saveBulkAttendance,
-);
+router.post("/attendance-bulk", authorizeRoles("HR"), saveBulkAttendance);
 
 router.get(
   "/workweek-config",
@@ -138,6 +133,12 @@ router.delete(
   "/workweek-config/:id",
   authorizeRoles("Admin"),
   deleteWorkweekConfigById,
+);
+
+router.put(
+  "/resignations/:id",
+  authorizeRoles("Admin", "Supervisor", "HR"),
+  updateResignationStatus,
 );
 
 router.get(
@@ -210,7 +211,7 @@ router.get(
 );
 
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
-router.post("/", authorizeRoles("Admin", "HR"), createEmployee);
+router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
 router.put(
   "/:id/reset-password",

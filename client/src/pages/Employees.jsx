@@ -41,6 +41,7 @@ export default function Employees() {
   const [editEmployee, setEditEmployee] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [resetConfirm, setResetConfirm] = useState(null);
+  const [addConfirm, setAddConfirm] = useState(null);
   const { toast, showToast, clearToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -70,7 +71,7 @@ export default function Employees() {
     mutationFn: (newData) => {
       // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
-      return apiFetch("/api/employees", {
+      return apiFetch("/api/employees/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newData, password: autoPassword }),
@@ -359,7 +360,7 @@ export default function Employees() {
       </div>
 
       {/* Modals same as before but updated with logic */}
-      {isAddModalOpen && (
+      {isAddModalOpen && !addConfirm && (
         <EmployeeModal
           title="Add New Employee"
           data={formData}
@@ -370,7 +371,7 @@ export default function Employees() {
           }}
           onSubmit={(e) => {
             e.preventDefault();
-            addMutation.mutate(formData);
+            setAddConfirm(formData);
           }}
           isPending={addMutation.isPending}
         />
@@ -479,6 +480,98 @@ export default function Employees() {
                 className="flex-1 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50"
               >
                 {resetPasswordMutation.isPending ? "Resetting..." : "Reset"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Employee Confirmation */}
+      {addConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full shadow-2xl my-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-3">Confirm Add Employee</h2>
+              <p className="text-gray-600 text-base">
+                Please review and confirm the following employee information:
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3 mb-8 max-h-96 overflow-y-auto text-base">
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">
+                  Employee ID:
+                </span>
+                <span className="font-mono">{addConfirm.emp_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Name:</span>
+                <span>
+                  {addConfirm.first_name}{" "}
+                  {addConfirm.middle_initial
+                    ? `${addConfirm.middle_initial}.`
+                    : ""}{" "}
+                  {addConfirm.last_name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Email:</span>
+                <span>{addConfirm.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">
+                  Designation:
+                </span>
+                <span>{addConfirm.designation}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Position:</span>
+                <span>{addConfirm.position}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Status:</span>
+                <span>{addConfirm.status}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Hired Date:</span>
+                <span>
+                  {addConfirm.hired_date
+                    ? new Date(addConfirm.hired_date).toLocaleDateString()
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-gray-600">
+                    Auto-Password:
+                  </span>
+                  <span className="font-mono text-purple-600 font-semibold">
+                    {addConfirm.emp_id}
+                    {addConfirm.first_name.replace(/\s+/g, "")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setAddConfirm(null);
+                  setIsAddModalOpen(true);
+                }}
+                className="flex-1 py-3 border border-gray-300 rounded-lg font-semibold text-gray-600 hover:bg-gray-50 text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setAddConfirm(null);
+                  addMutation.mutate(formData);
+                }}
+                disabled={addMutation.isPending}
+                className="flex-1 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 text-base"
+              >
+                {addMutation.isPending ? "Saving..." : "Confirm & Save"}
               </button>
             </div>
           </div>

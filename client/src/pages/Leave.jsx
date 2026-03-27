@@ -223,11 +223,16 @@ function LeaveCalendar({ leaves, attendance }) {
                 {dayLeaves.map((leave) => (
                   <div
                     key={leave.id}
-                    className="flex flex-col gap-0.5 text-left w-full"
+                    className="flex flex-col gap-0.5 text-left w-full mt-1 border-t border-gray-100/50 pt-1"
                   >
                     <span
-                      className={`truncate font-bold text-[0.65rem] leading-tight ${isSelected ? "text-white" : "text-gray-800"}`}
-                      title={leave.leave_type}
+                      className={`truncate font-bold text-[0.65rem] leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
+                      title={`${leave.first_name} ${leave.last_name}`}
+                    >
+                      {leave.first_name} {leave.last_name}
+                    </span>
+                    <span
+                      className={`truncate font-semibold text-[0.60rem] leading-tight ${isSelected ? "text-white/90" : "text-gray-600"}`}
                     >
                       {leave.leave_type}
                     </span>
@@ -282,13 +287,17 @@ function LeaveCalendar({ leaves, attendance }) {
               )}
 
               {/* Show Leaves */}
+              {/* Show Leaves */}
               {selectedLeaves.map((l) => (
                 <li
                   key={l.id}
                   className="flex items-center justify-between gap-3 p-4 bg-white border border-gray-200 shadow-sm rounded-xl"
                 >
                   <div>
-                    <p className="m-0 font-bold text-gray-900 text-sm">
+                    <p className="m-0 font-bold text-purple-700 text-sm">
+                      {l.first_name} {l.last_name}
+                    </p>
+                    <p className="m-0 font-bold text-gray-900 text-sm mt-0.5">
                       {l.leave_type}
                     </p>
                     <p className="m-0 text-xs text-gray-500 mt-1">
@@ -326,6 +335,7 @@ export default function Leave() {
   const [activeTab, setActiveTab] = useState("leave");
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const [offsetForm, setOffsetForm] = useState({
     date_from: "",
@@ -398,18 +408,21 @@ export default function Leave() {
     },
   });
 
-  // New Query: My Resignations
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery({
-      queryKey: ["my-resignations", currentUser?.emp_id],
+      queryKey: ["all-resignations"],
       queryFn: async () => {
-        if (!currentUser?.emp_id) return [];
-        const res = await apiFetch(`/api/employees/my-resignations`);
-        if (!res.ok) return [];
-        return res.json();
+        const res = await apiFetch(`/api/employees/all-resignations`);
+        const result = await res.json();
+
+        if (!res.ok) {
+          // This will now print the REAL SQL error (e.g., "Table 'resignations' doesn't exist")
+          console.error("REAL BACKEND ERROR:", result.message);
+          return [];
+        }
+        return result;
       },
     });
-
   // --- MUTATIONS ---
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
@@ -497,13 +510,12 @@ export default function Leave() {
       return;
     }
 
-    submitLeaveMutation.mutate({
-      emp_id: formData.emp_id,
-      leave_type: formData.leaveType,
-      date_from: formData.fromDate,
-      date_to: formData.toDate,
-      priority: formData.priority,
-      supervisor_remarks: formData.reason,
+    // Show confirmation modal instead of directly submitting
+    setConfirmAction({
+      type: "leave",
+      leaveType: formData.leaveType,
+      fromDate: formData.fromDate,
+      toDate: formData.toDate,
     });
   };
 
@@ -573,7 +585,7 @@ export default function Leave() {
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          My Dashboard
+          My Application
         </h1>
       </div>
 
@@ -618,14 +630,17 @@ export default function Leave() {
       {/* LEAVE TAB */}
       {activeTab === "leave" && (
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
-              onClick={() => setShowForm(!showForm)}
-            >
-              {showForm ? "✕ Cancel Request" : "+ File New Leave"}
-            </button>
-          </div>
+          {/* FIX: Hide the File Leave button for Admins */}
+          {currentUser?.role !== "Admin" && (
+            <div className="flex items-center gap-3 mb-6">
+              <button
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
+                onClick={() => setShowForm(!showForm)}
+              >
+                {showForm ? "✕ Cancel Request" : "+ File New Leave"}
+              </button>
+            </div>
+          )}
 
           {showForm && currentUser?.role !== "Admin" && (
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -733,6 +748,22 @@ export default function Leave() {
                 </div>
                 <div className="mt-2 flex gap-3 justify-end md:col-span-3">
                   <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setFormData({
+                        ...formData,
+                        fromDate: "",
+                        toDate: "",
+                        reason: "",
+                      });
+                      setFormError("");
+                    }}
+                    className="px-6 py-2.5 rounded-lg bg-gray-200 border-0 text-gray-700 text-sm font-bold cursor-pointer hover:bg-gray-300 shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
                     type="submit"
                     disabled={submitLeaveMutation.isPending}
                     className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 disabled:opacity-50 shadow-sm"
@@ -746,8 +777,71 @@ export default function Leave() {
             </div>
           )}
 
+          {/* Confirmation Modal */}
+          {confirmAction && confirmAction.type === "leave" && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                <h2 className="m-0 text-lg font-semibold text-gray-900 mb-4">
+                  Confirm Leave Application
+                </h2>
+                <div className="mb-6 space-y-3 text-sm">
+                  <div>
+                    <p className="m-0 text-gray-600 font-medium">Leave Type:</p>
+                    <p className="m-0 text-gray-900 font-semibold">
+                      {confirmAction.leaveType}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="m-0 text-gray-600 font-medium">From Date:</p>
+                    <p className="m-0 text-gray-900 font-semibold">
+                      {new Date(confirmAction.fromDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="m-0 text-gray-600 font-medium">To Date:</p>
+                    <p className="m-0 text-gray-900 font-semibold">
+                      {new Date(confirmAction.toDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <p className="m-0 text-sm text-gray-600 mb-6">
+                  Are you sure you want to submit this leave application?
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmAction(null)}
+                    className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium cursor-pointer hover:bg-gray-50 shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      submitLeaveMutation.mutate({
+                        emp_id: formData.emp_id,
+                        leave_type: formData.leaveType,
+                        date_from: formData.fromDate,
+                        date_to: formData.toDate,
+                        priority: formData.priority,
+                        supervisor_remarks: formData.reason,
+                      });
+                      setConfirmAction(null);
+                    }}
+                    className="px-4 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-medium cursor-pointer hover:bg-green-700 shadow-sm"
+                  >
+                    Submit Application
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* PERMANENT CALENDAR VIEW */}
-          <LeaveCalendar leaves={myLeaves} attendance={myAttendance} />
+          <LeaveCalendar
+            leaves={currentUser?.role === "RankAndFile" ? myLeaves : leaves}
+            attendance={myAttendance}
+          />
         </div>
       )}
 

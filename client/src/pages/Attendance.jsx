@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
@@ -12,6 +12,7 @@ const badgeClass = {
   Absent: "bg-red-100 text-red-800",
   "On Leave": "bg-purple-100 text-purple-800",
   Pending: "bg-gray-100 text-gray-500",
+  "": "bg-gray-100 text-gray-500", // Fallback styling for None
 };
 
 export default function Attendance() {
@@ -92,20 +93,34 @@ export default function Attendance() {
       const res = await apiFetch(
         `/api/employees/attendance-daily?date=${selectedDate}`,
       );
-      const data = await res.json();
-
-      const initialForm = {};
-      const initialSecondary = {};
-      data.forEach((emp) => {
-        initialForm[emp.emp_id] = emp.attendance_status || "Present";
-        initialSecondary[emp.emp_id] = "";
-      });
-      setAttendanceForm(initialForm);
-      setSecondaryStatusForm(initialSecondary);
-      return data;
+      return res.json();
     },
     enabled: !!selectedDate && dailyModalOpen,
   });
+
+  useEffect(() => {
+    if (dailyModalOpen && dailyList.length > 0) {
+      const initialForm = {};
+      const initialSecondary = {};
+
+      dailyList.forEach((emp) => {
+        let primary = emp.attendance_status || "";
+        let secondary = "";
+
+        if (primary.includes(",")) {
+          const parts = primary.split(",");
+          primary = parts[0].trim();
+          secondary = parts[1] ? parts[1].trim() : "";
+        }
+
+        initialForm[emp.emp_id] = primary;
+        initialSecondary[emp.emp_id] = secondary;
+      });
+
+      setAttendanceForm(initialForm);
+      setSecondaryStatusForm(initialSecondary);
+    }
+  }, [dailyList, dailyModalOpen]);
 
   // --- MUTATIONS ---
   const adjustBalanceMutation = useMutation({
@@ -140,8 +155,9 @@ export default function Attendance() {
       if (!res.ok) throw new Error("Failed to save attendance");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["attendance"]);
-      queryClient.invalidateQueries(["attendance-calendar"]);
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-daily"] });
       showToast("Attendance saved successfully.");
       setDailyModalOpen(false);
     },
@@ -231,7 +247,7 @@ export default function Attendance() {
   const handleDailySubmit = (e) => {
     e.preventDefault();
     const records = Object.entries(attendanceForm)
-      .filter(([_, status]) => status !== "Pending")
+      .filter(([_, status]) => status !== "" && status !== "Pending")
       .map(([emp_id, status]) => {
         const secondary = secondaryStatusForm[emp_id];
         const finalStatus = secondary ? `${status}, ${secondary}` : status;
@@ -243,7 +259,7 @@ export default function Attendance() {
   const markAllPresent = () => {
     const updated = { ...attendanceForm };
     dailyList.forEach((emp) => {
-      if (updated[emp.emp_id] === "Pending") {
+      if (!updated[emp.emp_id] || updated[emp.emp_id] === "Pending") {
         updated[emp.emp_id] = "Present";
       }
     });
@@ -411,18 +427,20 @@ export default function Attendance() {
             ))}
             {cells.map((day, i) => {
               if (!day) return <div key={`empty-${i}`} />;
+
+              // Formatting exactly like the database date formatter
               const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+
               const isToday =
                 today.getFullYear() === year &&
                 today.getMonth() === month &&
                 today.getDate() === day;
 
+              // FIX: Bypassing the JS timezone bug by doing a direct string match
               const dayData = calendarSummary.find((s) => {
-                const dbDate = new Date(s.date);
                 return (
-                  dbDate.getFullYear() === year &&
-                  dbDate.getMonth() === month &&
-                  dbDate.getDate() === day
+                  s.formatted_date === dateStr ||
+                  (s.date && s.date.startsWith(dateStr))
                 );
               });
 
@@ -443,7 +461,6 @@ export default function Attendance() {
                   </span>
                   {dayData && (
                     <div className="mt-auto w-full space-y-0.5 flex flex-col gap-0.5">
-                      {/* NEW STATUSES ADDED HERE */}
                       {dayData.present_count > 0 && (
                         <div className="text-[0.6rem] font-bold text-green-700 bg-green-50 rounded px-1 w-full text-left truncate border border-green-100">
                           • {dayData.present_count} Present
@@ -483,92 +500,14 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* --- ALL EMPLOYEES SUMMARY TABLE --- */}
-      <h2 className="m-0 text-base font-bold text-gray-900 mb-2">
-        Overall Attendance Overview
-      </h2>
-      <div className="mb-2">
-        <input
-          type="text"
-          className="w-full max-w-[280px] px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-purple-500"
-          placeholder="Search by name or ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Employee ID
-                </th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Name
-                </th>
-                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
-                  Absences
-                </th>
-                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
-                  Balance
-                </th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Status
-                </th>
-                <th className="px-3 py-2 text-right font-semibold text-gray-700 uppercase text-[11px]">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredMain.map((a, index) => (
-                <tr key={`${a.emp_id}-${index}`} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 text-xs">{a.emp_id}</td>
-                  <td className="px-3 py-2 font-semibold text-xs">
-                    {a.first_name} {a.last_name}
-                  </td>
-                  <td className="px-3 py-2 text-center text-xs">
-                    {a.total_absences || 0}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${getLeaveHighlightColor(a.leave_balance)}`}
-                    >
-                      {Number(a.leave_balance)} /{" "}
-                      {a.emp_status === "Job Order" || a.emp_status === "Casual"
-                        ? 12
-                        : 27}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`inline-flex items-center border border-transparent rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
-                    >
-                      {a.status || "No Data"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => setAdjModal(a)}
-                      className="px-2 py-1 rounded-md bg-purple-100 text-purple-700 text-[10px] font-bold border-0 cursor-pointer hover:bg-purple-200"
-                    >
-                      Adjust Balance
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* --- MODAL: DAILY ATTENDANCE FORM --- */}
       {dailyModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm"
-          onClick={() => setDailyModalOpen(false)}
+          onClick={() => {
+            setDailyModalOpen(false);
+            setSelectedEmployees(new Set());
+          }}
         >
           <div
             className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh]"
@@ -579,7 +518,10 @@ export default function Attendance() {
                 Attendance for {selectedDate}
               </h2>
               <button
-                onClick={() => setDailyModalOpen(false)}
+                onClick={() => {
+                  setDailyModalOpen(false);
+                  setSelectedEmployees(new Set());
+                }}
                 className="text-white hover:text-gray-200 text-xl border-0 bg-transparent cursor-pointer"
               >
                 &times;
@@ -607,6 +549,7 @@ export default function Attendance() {
                     onChange={(e) => setBulkStatus(e.target.value)}
                     className="px-2 py-1 rounded border border-gray-300 text-xs font-medium outline-none focus:ring-2 focus:ring-purple-500"
                   >
+                    <option value="">-- Select --</option>
                     <option value="Present">Present</option>
                     <option value="Late">Late</option>
                     <option value="Undertime">Undertime</option>
@@ -663,7 +606,7 @@ export default function Attendance() {
                     {dailyLoading ? (
                       <tr>
                         <td
-                          colSpan="4"
+                          colSpan="5"
                           className="p-4 text-center font-bold text-gray-500"
                         >
                           Loading List...
@@ -700,15 +643,16 @@ export default function Attendance() {
                             </td>
                             <td className="px-3 py-2">
                               <select
-                                value={attendanceForm[emp.emp_id] || "Present"}
+                                value={attendanceForm[emp.emp_id] || ""}
                                 onChange={(e) =>
                                   setAttendanceForm({
                                     ...attendanceForm,
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass.Present}`}
+                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass[""]}`}
                               >
+                                <option value="">-- None --</option>
                                 <option value="Present">Present</option>
                                 <option value="Late">Late</option>
                                 <option value="Undertime">Undertime</option>
@@ -744,7 +688,10 @@ export default function Attendance() {
 
               <div className="mt-3 pt-3 border-t flex justify-end gap-2 shrink-0">
                 <button
-                  onClick={() => setDailyModalOpen(false)}
+                  onClick={() => {
+                    setDailyModalOpen(false);
+                    setSelectedEmployees(new Set());
+                  }}
                   className="px-4 py-1.5 border rounded-lg font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer text-sm"
                 >
                   Back

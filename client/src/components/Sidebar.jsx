@@ -53,13 +53,13 @@ export default function Sidebar({ role, onLogout }) {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3.5 py-3 text-white/90 no-underline text-[0.95rem] transition-colors duration-150 hover:bg-white/10 hover:text-white ${isActive ? "bg-white/[0.18] text-white font-semibold" : ""}`
+              `flex items-center gap-3 px-3.5 py-3 text-white/90 no-underline text-[0.85rem] transition-colors duration-150 hover:bg-white/10 hover:text-white ${isActive ? "bg-white/[0.18] text-white font-semibold" : ""}`
             }
           >
             <span className="text-[1.1rem] w-[22px] text-center">
               {item.icon}
             </span>
-            {item.label}
+            <span className="whitespace-nowrap">{item.label}</span>
           </NavLink>
         ))}
       </nav>

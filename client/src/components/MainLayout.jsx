@@ -3,12 +3,18 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "./Sidebar";
 import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
 
-export default function MainLayout({ role, onLogout }) {
+const STORAGE_TOKEN_KEY = "wah_token";
+const STORAGE_USER_KEY = "wah_user";
+
+export default function MainLayout({ role }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [openNotifications, setOpenNotifications] = useState(false);
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
 
+  // --- NOTIFICATIONS LOGIC ---
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
@@ -64,6 +70,23 @@ export default function MainLayout({ role, onLogout }) {
 
     navigate(`/leave?${params.toString()}`);
     setOpenNotifications(false);
+  };
+
+  const processLogout = async () => {
+    try {
+      await axiosInterceptor.post("/api/auth/logout");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      localStorage.removeItem(STORAGE_TOKEN_KEY);
+      localStorage.removeItem(STORAGE_USER_KEY);
+      window.location.href = "/";
+    }
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirmation(false);
+    processLogout();
   };
 
   return (
@@ -141,12 +164,53 @@ export default function MainLayout({ role, onLogout }) {
           </span>
         </div>
       </header>
+
       <div className="grid grid-cols-[200px_1fr] flex-1">
-        <Sidebar role={role} onLogout={onLogout} />
+        {/* We pass a function to the Sidebar to open the logout modal instead of logging out instantly */}
+        <Sidebar role={role} onLogout={() => setShowLogoutConfirmation(true)} />
         <main className="flex-1 p-5 overflow-y-auto">
           <Outlet />
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirmation && (
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[400px] overflow-hidden">
+            <div className="flex items-center justify-between bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+              <h2 className="m-0 text-lg font-semibold text-white">
+                Confirm Logout
+              </h2>
+              <button
+                onClick={() => setShowLogoutConfirmation(false)}
+                className="bg-transparent border-0 text-2xl cursor-pointer text-white/80 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="m-0 text-gray-700">
+                Are you sure you want to log out?
+              </p>
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirmation(false)}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-pointer hover:bg-gray-200 transition-colors border-0"
+                >
+                  No
+                </button>
+                <button
+                  onClick={handleLogoutConfirm}
+                  className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold cursor-pointer hover:bg-red-700 transition-colors border-0"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
