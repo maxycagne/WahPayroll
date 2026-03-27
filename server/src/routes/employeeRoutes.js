@@ -158,7 +158,7 @@ router.get(
 );
 router.put(
   "/offset-applications/:id",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Supervisor", "HR"),
   updateOffsetApplicationStatus,
 );
 
@@ -174,7 +174,7 @@ router.post(
 );
 router.put(
   "/leaves/:id",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Supervisor", "HR"),
   updateLeaveStatus,
 );
 

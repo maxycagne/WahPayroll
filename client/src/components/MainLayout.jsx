@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { apiFetch } from "../lib/api";
 import axiosInterceptor from "../hooks/interceptor";
@@ -14,6 +14,7 @@ export default function MainLayout({ role }) {
   const queryClient = useQueryClient();
   const [openNotifications, setOpenNotifications] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // --- NOTIFICATIONS LOGIC ---
   const { data: notifications = [] } = useQuery({
@@ -94,14 +95,32 @@ export default function MainLayout({ role }) {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-7">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="m-0 flex items-baseline gap-2">
-            <span className="text-[0.95rem] font-extrabold uppercase tracking-[0.13em] text-slate-900">
-              Wireless Access For Health
-            </span>
-            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-violet-700">
-              Payroll
-            </span>
-          </h2>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+              className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-violet-50 md:flex"
+              aria-label={
+                isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+
+            <h2 className="m-0 flex items-baseline gap-2">
+              <span className="text-[0.95rem] font-extrabold uppercase tracking-[0.13em] text-slate-900">
+                Wireless Access For Health
+              </span>
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-violet-700">
+                Payroll
+              </span>
+            </h2>
+          </div>
           <div className="relative flex items-center gap-3">
             <button
               type="button"
@@ -169,10 +188,16 @@ export default function MainLayout({ role }) {
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-1 md:grid-cols-[248px_1fr]">
+      <div
+        className={`grid h-[calc(100vh-65px)] overflow-hidden grid-cols-1 ${isSidebarCollapsed ? "md:grid-cols-[84px_1fr]" : "md:grid-cols-[248px_1fr]"}`}
+      >
         {/* We pass a function to the Sidebar to open the logout modal instead of logging out instantly */}
-        <Sidebar role={role} onLogout={() => setShowLogoutConfirmation(true)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <Sidebar
+          role={role}
+          isCollapsed={isSidebarCollapsed}
+          onLogout={() => setShowLogoutConfirmation(true)}
+        />
+        <main className="h-full overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>

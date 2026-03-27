@@ -21,3 +21,20 @@ export const updateResignationMutationOptions = mutationOptions({
   },
   onError: () => alert("Error updating resignation"),
 });
+
+export const updateLeaveMutationOptions = mutationOptions({
+  mutationFn: async ({
+    id,
+    ...payload
+  }: {
+    id: number;
+    status: string;
+    approved_days?: number | null;
+    approved_dates?: string[] | null;
+    supervisor_remarks?: string;
+  }) => {
+    const res = await axiosInterceptor.put(`/api/employees/leaves/${id}`, payload);
+    return res.data;
+  },
+  onError: () => alert("Error updating leave request"),
+});

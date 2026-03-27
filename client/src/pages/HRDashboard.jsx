@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
 import Toast from "../components/Toast";
 
 import {
@@ -9,6 +10,7 @@ import {
 } from "@/components/queries/hrDashboard/queryHrDashboard";
 import {
   updateMutationDoc,
+  updateLeaveMutationOptions,
   updateResignationMutationOptions,
 } from "@/components/mutations/hrDashboard/mutationHrDashboard";
 
@@ -30,7 +32,6 @@ export default function HRDashboard() {
 
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null);
 
   // Toast notification state
   const [toast, setToast] = useState(null);
@@ -71,6 +72,16 @@ export default function HRDashboard() {
       showToast(error.message || "Error updating resignation", "error"),
   });
 
+  const updateLeaveMutation = useMutation({
+    ...updateLeaveMutationOptions,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["dashboardSummary"]);
+      showToast("Leave request updated successfully!", "success");
+    },
+    onError: (error) =>
+      showToast(error.message || "Error updating leave request", "error"),
+  });
+
   const filteredEmployees = employeesData.filter((emp) => {
     if (emp.role === "Admin") return false;
     return `${emp.emp_id} ${emp.first_name} ${emp.last_name}`
@@ -109,70 +120,61 @@ export default function HRDashboard() {
     e.preventDefault();
     if (!docForm.emp_id)
       return alert("Please select an employee from the list.");
-
-    // Show confirmation modal instead of directly mutating
-    setConfirmAction({
-      type: "updateDocuments",
+    updateDocsMutation.mutate({
       emp_id: docForm.emp_id,
       missing_docs: docForm.missing_docs,
-      employee_name: `${selectedEmployee.first_name} ${selectedEmployee.last_name}`,
     });
-  };
-
-  const handleConfirmAction = () => {
-    if (!confirmAction) return;
-
-    if (confirmAction.type === "resignation") {
-      setConfirmAction(null);
-      updateResignationMutation.mutate({
-        id: confirmAction.id,
-        status: confirmAction.status,
-      });
-    } else if (confirmAction.type === "updateDocuments") {
-      setConfirmAction(null);
-      setShowModal(false);
-      updateDocsMutation.mutate({
-        emp_id: confirmAction.emp_id,
-        missing_docs: confirmAction.missing_docs,
-      });
-    } else {
-      setConfirmAction(null);
-    }
   };
 
   if (isLoadingDashboard || isLoadingEmployees) {
     return (
-      <div className="p-6 text-gray-900 font-bold">Loading HR Dashboard...</div>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+        Loading HR Dashboard...
+      </div>
     );
   }
+
+  const quickActionTheme = {
+    purple:
+      "border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800",
+    green:
+      "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800",
+    amber: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800",
+  };
 
   return (
     <div className="max-w-full">
       {/* Toast Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <h1 className="text-[1.4rem] font-bold text-gray-900 mb-6">
+      <h1 className="mb-3 text-[1.2rem] font-bold text-slate-900 md:text-[1.3rem]">
         HR Dashboard
       </h1>
 
       <StatCard stats={dashboardData.stats} onCardClick={setActiveModal} />
 
       {/* Quick Actions */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <section className="mb-5">
+        <h2 className="mb-3 text-base font-semibold text-slate-900">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {HR_DASHBOARD_QUICK_ACCESS.map(
             ({ icon, label, sub, path, color }) => (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`p-6 rounded-lg border-2 border-dashed border-${color}-300 bg-${color}-50 text-center hover:bg-${color}-100 transition-colors cursor-pointer`}
+                className={`group rounded-lg border p-3.5 text-left shadow-sm transition-colors cursor-pointer md:p-3 ${quickActionTheme[color] || "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800"}`}
               >
-                <p className="text-2xl mb-2">{icon}</p>
-                <p className="font-semibold text-gray-900">{label}</p>
-                <p className="text-xs text-gray-600 mt-1">{sub}</p>
+                <p className="mb-1 text-xl md:text-lg">{icon}</p>
+                <p className="text-sm font-semibold text-slate-900 md:text-[13px]">
+                  {label}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-600">{sub}</p>
+                <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                  Open
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </span>
               </button>
             ),
           )}
@@ -211,6 +213,7 @@ export default function HRDashboard() {
         open={activeModal === "pending-leave-approval"}
         onClose={() => setActiveModal(null)}
         pendingLeaves={dashboardData?.information.pendingLeaves}
+        mutation={updateLeaveMutation}
       />
       <OnLeaveModal
         open={activeModal === "on-leave"}

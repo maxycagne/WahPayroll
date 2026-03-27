@@ -21,19 +21,22 @@ export default function UpdateDocsModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[600px] p-0 overflow-hidden">
-        <DialogHeader className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
-          <DialogTitle className="text-white text-lg font-semibold">
+      <DialogContent className="max-w-[560px] overflow-hidden p-0">
+        <DialogHeader className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
+          <DialogTitle className="text-base font-semibold text-white">
             Update Employee Documents
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmitDocs} className="p-6 space-y-4">
+        <form
+          onSubmit={handleSubmitDocs}
+          className="space-y-3.5 p-4 md:space-y-3 md:p-3.5"
+        >
           <div className="flex flex-col">
-            <label className="text-sm font-semibold text-gray-700 mb-1 flex justify-between">
+            <label className="mb-1 flex justify-between text-sm font-semibold text-slate-700">
               <span>Select Employee *</span>
               {selectedEmployee && (
-                <span className="text-purple-600 font-bold text-xs">
+                <span className="text-[11px] font-bold text-purple-600">
                   Selected: {selectedEmployee.first_name}{" "}
                   {selectedEmployee.last_name}
                 </span>
@@ -44,11 +47,11 @@ export default function UpdateDocsModal({
               placeholder="🔍 Search by name or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white border-b-0 text-sm"
+              className="w-full rounded-t-lg border border-slate-300 border-b-0 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
-            <div className="max-h-36 overflow-y-auto border border-gray-300 rounded-b-lg bg-gray-50">
+            <div className="max-h-32 overflow-y-auto rounded-b-lg border border-slate-300 bg-slate-50 md:max-h-28">
               {filteredEmployees.length === 0 ? (
-                <div className="p-3 text-sm text-gray-500 text-center">
+                <div className="p-2.5 text-center text-sm text-slate-500">
                   No employees found.
                 </div>
               ) : (
@@ -58,13 +61,13 @@ export default function UpdateDocsModal({
                     onClick={() =>
                       setDocForm({ ...docForm, emp_id: emp.emp_id })
                     }
-                    className={`px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 transition-colors last:border-b-0 ${
+                    className={`cursor-pointer border-b border-slate-100 px-3 py-2 text-sm transition-colors last:border-b-0 ${
                       docForm.emp_id === emp.emp_id
                         ? "bg-purple-100 text-purple-800 font-bold border-l-4 border-l-purple-600"
-                        : "hover:bg-gray-100 text-gray-700 border-l-4 border-l-transparent"
+                        : "border-l-4 border-l-transparent text-slate-700 hover:bg-slate-100"
                     }`}
                   >
-                    <span className="text-gray-500 font-mono text-xs mr-2">
+                    <span className="mr-2 font-mono text-[11px] text-slate-500">
                       {emp.emp_id}
                     </span>
                     {emp.first_name} {emp.last_name}
@@ -75,54 +78,54 @@ export default function UpdateDocsModal({
           </div>
 
           <div>
-            <div className="flex justify-between items-end mb-2 mt-2">
-              <label className="text-sm font-semibold text-gray-700">
+            <div className="mb-1.5 mt-1.5 flex items-end justify-between">
+              <label className="text-sm font-semibold text-slate-700">
                 Missing Documents
               </label>
-              <span className="text-xs text-gray-500">
+              <span className="text-[11px] text-slate-500">
                 Select all that apply
               </span>
             </div>
             <div
-              className={`grid grid-cols-2 gap-3 p-4 border rounded-lg ${!docForm.emp_id ? "bg-gray-100 border-gray-200 opacity-60" : "border-gray-300 bg-white"}`}
+              className={`grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 md:gap-1.5 md:p-2.5 ${!docForm.emp_id ? "border-slate-200 bg-slate-100 opacity-60" : "border-slate-300 bg-white"}`}
             >
               {STANDARD_DOCUMENTS.map((docName) => {
                 const isChecked = docForm.missing_docs.includes(docName);
                 return (
                   <label
                     key={docName}
-                    className={`flex items-center gap-2 text-sm cursor-pointer select-none p-1 rounded transition-colors ${isChecked ? "text-purple-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
+                    className={`flex cursor-pointer select-none items-center gap-2 rounded p-0.5 text-xs transition-colors md:text-[11px] ${isChecked ? "font-semibold text-purple-700" : "text-slate-700 hover:bg-slate-50"}`}
                   >
                     <input
                       type="checkbox"
                       disabled={!docForm.emp_id}
                       checked={isChecked}
                       onChange={() => handleCheckboxChange(docName)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer disabled:cursor-not-allowed"
+                      className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-purple-600 focus:ring-purple-500 disabled:cursor-not-allowed"
                     />
                     {docName}
                   </label>
                 );
               })}
             </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
+            <p className="mt-1.5 text-center text-[11px] text-slate-500">
               Uncheck all boxes to clear the employee from the missing documents
               tracker.
             </p>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-gray-200">
+          <div className="flex gap-2.5 border-t border-slate-200 pt-3 md:gap-2 md:pt-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors border-0"
+              className="flex-1 rounded-md border-0 bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 md:px-2.5 md:py-1 md:text-xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={mutation.isPending || !docForm.emp_id}
-              className="flex-1 px-4 py-2 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-md border-0 bg-purple-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50 md:px-2.5 md:py-1 md:text-xs"
             >
               {mutation.isPending ? "Saving..." : "Save Updates"}
             </button>

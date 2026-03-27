@@ -46,6 +46,27 @@ function calculateBusinessDays(startDate, endDate) {
   return count;
 }
 
+function getDateDiffInclusive(start, end) {
+  const from = new Date(start).setHours(0, 0, 0, 0);
+  const to = new Date(end).setHours(0, 0, 0, 0);
+  return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function getDateRangeInclusive(start, end) {
+  const dates = [];
+  const current = new Date(start);
+  const to = new Date(end);
+  current.setHours(0, 0, 0, 0);
+  to.setHours(0, 0, 0, 0);
+
+  while (current <= to) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
+
 const leavePolicy = {
   "Birthday Leave": { maxDays: 1, excludeWeekends: true },
   "Vacation Leave": { maxDays: 20, excludeWeekends: true },
@@ -59,6 +80,8 @@ const badgeClass = {
   Denied: "bg-red-100 text-red-800",
   Pending: "bg-yellow-100 text-yellow-800",
   "Pending Approval": "bg-yellow-100 text-yellow-800",
+  Rejected: "bg-red-100 text-red-800",
+  "Partially Approved": "bg-amber-100 text-amber-800",
 };
 
 // --- CALENDAR COMPONENT ---
@@ -90,6 +113,11 @@ function LeaveCalendar({ leaves, attendance }) {
       bg: "bg-red-50",
       border: "border-l-4 border-l-red-500",
       text: "text-red-700",
+    },
+    "Partially Approved": {
+      bg: "bg-amber-50",
+      border: "border-l-4 border-l-amber-500",
+      text: "text-amber-700",
     },
   };
 
@@ -132,19 +160,19 @@ function LeaveCalendar({ leaves, attendance }) {
     : [];
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-6">
-      <div className="mb-6 pb-6 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
+    <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
         <div>
-          <h4 className="m-0 text-sm font-semibold text-gray-900 mb-3">
+          <h4 className="m-0 mb-2 text-xs font-semibold text-gray-900">
             Leave Status Legend
           </h4>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap gap-4">
             {Object.entries(statusColors).map(([status, colors]) => (
               <div key={status} className="flex items-center gap-2">
                 <div
                   className={`w-3 h-3 rounded-full ${colors.border.split("border-l-")[1]}`}
                 ></div>
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-[11px] font-medium text-gray-700">
                   {status}
                 </span>
               </div>
@@ -153,26 +181,26 @@ function LeaveCalendar({ leaves, attendance }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-3 flex items-center justify-between">
         <button
-          className="px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
+          className="cursor-pointer rounded-md border border-gray-300 bg-transparent px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
           onClick={prevMonth}
         >
           ◀ Previous
         </button>
-        <h3 className="m-0 text-xl font-bold text-gray-900">{monthName}</h3>
+        <h3 className="m-0 text-lg font-bold text-gray-900">{monthName}</h3>
         <button
-          className="px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-sm font-semibold cursor-pointer text-gray-700 hover:bg-gray-50"
+          className="cursor-pointer rounded-md border border-gray-300 bg-transparent px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
           onClick={nextMonth}
         >
           Next ▶
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div
             key={d}
-            className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 py-2 bg-gray-50 rounded-md"
+            className="rounded-md bg-gray-50 py-1.5 text-center text-[11px] font-bold uppercase tracking-wider text-gray-500"
           >
             {d}
           </div>
@@ -196,24 +224,24 @@ function LeaveCalendar({ leaves, attendance }) {
             <button
               key={i}
               type="button"
-              className={`min-h-24 flex flex-col items-start justify-start rounded-lg cursor-pointer relative p-2 transition-all duration-150 ${
+              className={`relative flex min-h-18 cursor-pointer flex-col items-start justify-start rounded-md p-1.5 transition-all duration-150 ${
                 dayLeaves.length > 0 && !isSelected
                   ? colorConfig?.border + " " + colorConfig?.bg
                   : "border border-gray-200"
-              } ${isSelected ? "bg-purple-600 text-white border-purple-600 shadow-md transform scale-105 z-10" : "hover:border-purple-300 hover:bg-purple-50/30"}`}
+              } ${isSelected ? "z-10 border-purple-600 bg-purple-600 text-white shadow-md" : "hover:border-purple-300 hover:bg-purple-50/30"}`}
               onClick={() => setSelectedDate(day === selectedDate ? null : day)}
             >
               <span
-                className={`font-bold text-sm mb-1 ${isSelected ? "text-white" : "text-gray-900"}`}
+                className={`mb-0.5 text-xs font-bold ${isSelected ? "text-white" : "text-gray-900"}`}
               >
                 {day}
               </span>
 
-              <div className="flex flex-col gap-1.5 w-full mt-1">
+              <div className="mt-0.5 flex w-full flex-col gap-1">
                 {/* ATTENDANCE BADGE */}
                 {dayAtt && dayAtt.status !== "On Leave" && (
                   <span
-                    className={`text-[0.60rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex w-fit ${isSelected ? "bg-white/20 text-white" : attendanceColors[dayAtt.status] || "text-gray-600 bg-gray-100"}`}
+                    className={`flex w-fit rounded px-1 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${isSelected ? "bg-white/20 text-white" : attendanceColors[dayAtt.status] || "bg-gray-100 text-gray-600"}`}
                   >
                     {dayAtt.status}
                   </span>
@@ -223,21 +251,21 @@ function LeaveCalendar({ leaves, attendance }) {
                 {dayLeaves.map((leave) => (
                   <div
                     key={leave.id}
-                    className="flex flex-col gap-0.5 text-left w-full mt-1 border-t border-gray-100/50 pt-1"
+                    className="mt-0.5 flex w-full flex-col gap-0.5 border-t border-gray-100/50 pt-0.5 text-left"
                   >
                     <span
-                      className={`truncate font-bold text-[0.65rem] leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
+                      className={`truncate text-[0.6rem] font-bold leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
                       title={`${leave.first_name} ${leave.last_name}`}
                     >
                       {leave.first_name} {leave.last_name}
                     </span>
                     <span
-                      className={`truncate font-semibold text-[0.60rem] leading-tight ${isSelected ? "text-white/90" : "text-gray-600"}`}
+                      className={`truncate text-[0.55rem] font-semibold leading-tight ${isSelected ? "text-white/90" : "text-gray-600"}`}
                     >
                       {leave.leave_type}
                     </span>
                     <span
-                      className={`truncate font-semibold text-[0.60rem] uppercase ${isSelected ? "text-purple-200" : statusColors[leave.status]?.text}`}
+                      className={`truncate text-[0.55rem] font-semibold uppercase ${isSelected ? "text-purple-200" : statusColors[leave.status]?.text}`}
                     >
                       • {leave.status}
                     </span>
@@ -250,32 +278,34 @@ function LeaveCalendar({ leaves, attendance }) {
       </div>
 
       {selectedDate && (
-        <div className="mt-6 pt-5 border-t border-gray-200 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <h4 className="m-0 mb-4 font-bold text-gray-900 text-lg">
+        <div className="mt-4 animate-in border-t border-gray-200 pt-3 fade-in slide-in-from-bottom-2 duration-200">
+          <h4 className="m-0 mb-3 text-base font-bold text-gray-900">
             Details for {monthName.split(" ")[0]} {selectedDate}, {year}
           </h4>
           {selectedLeaves.length === 0 &&
           !getAttendanceForDate(
             `${year}-${pad(month + 1)}-${pad(selectedDate)}`,
           ) ? (
-            <p className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <p className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
               No leave or attendance records found for this date.
             </p>
           ) : (
-            <ul className="list-none m-0 p-0 flex flex-col gap-3">
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {/* Show Attendance if it exists */}
               {getAttendanceForDate(
                 `${year}-${pad(month + 1)}-${pad(selectedDate)}`,
               ) && (
-                <li className="flex items-center justify-between gap-3 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                <li className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
                   <div>
                     <p className="m-0 font-bold text-gray-900 text-sm">
                       Daily Attendance Record
                     </p>
-                    <p className="m-0 text-xs text-gray-500 mt-1">System Log</p>
+                    <p className="m-0 mt-1 text-[11px] text-gray-500">
+                      System Log
+                    </p>
                   </div>
                   <span
-                    className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wider ${attendanceColors[getAttendanceForDate(`${year}-${pad(month + 1)}-${pad(selectedDate)}`).status] || "bg-gray-200 text-gray-800"}`}
+                    className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${attendanceColors[getAttendanceForDate(`${year}-${pad(month + 1)}-${pad(selectedDate)}`).status] || "bg-gray-200 text-gray-800"}`}
                   >
                     {
                       getAttendanceForDate(
@@ -291,7 +321,7 @@ function LeaveCalendar({ leaves, attendance }) {
               {selectedLeaves.map((l) => (
                 <li
                   key={l.id}
-                  className="flex items-center justify-between gap-3 p-4 bg-white border border-gray-200 shadow-sm rounded-xl"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
                 >
                   <div>
                     <p className="m-0 font-bold text-purple-700 text-sm">
@@ -300,18 +330,18 @@ function LeaveCalendar({ leaves, attendance }) {
                     <p className="m-0 font-bold text-gray-900 text-sm mt-0.5">
                       {l.leave_type}
                     </p>
-                    <p className="m-0 text-xs text-gray-500 mt-1">
+                    <p className="m-0 mt-1 text-[11px] text-gray-500">
                       {new Date(l.date_from).toLocaleDateString()} to{" "}
                       {new Date(l.date_to).toLocaleDateString()}
                     </p>
                     {l.supervisor_remarks && (
-                      <p className="m-0 text-xs text-gray-600 mt-2 italic bg-gray-50 p-2 rounded-md border border-gray-100">
+                      <p className="m-0 mt-1.5 rounded-md border border-gray-100 bg-gray-50 p-1.5 text-[11px] italic text-gray-600">
                         "{l.supervisor_remarks}"
                       </p>
                     )}
                   </div>
                   <span
-                    className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wider ${badgeClass[l.status] || "bg-gray-100"}`}
+                    className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badgeClass[l.status] || "bg-gray-100"}`}
                   >
                     {l.status}
                   </span>
@@ -336,6 +366,7 @@ export default function Leave() {
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
+  const [reviewConfirm, setReviewConfirm] = useState(null);
 
   const [offsetForm, setOffsetForm] = useState({
     date_from: "",
@@ -358,6 +389,9 @@ export default function Leave() {
     effective_date: "",
     reason: "",
   });
+
+  const approverRoles = ["Supervisor", "HR"];
+  const isApprover = approverRoles.includes(currentUser?.role);
 
   // --- QUERIES ---
   const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
@@ -410,9 +444,9 @@ export default function Leave() {
 
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery({
-      queryKey: ["all-resignations"],
+      queryKey: ["resignations"],
       queryFn: async () => {
-        const res = await apiFetch(`/api/employees/all-resignations`);
+        const res = await apiFetch(`/api/employees/resignations`);
         const result = await res.json();
 
         if (!res.ok) {
@@ -423,6 +457,35 @@ export default function Leave() {
         return result;
       },
     });
+
+  const pendingLeaveApprovals = isApprover
+    ? leaves.filter(
+        (l) =>
+          l.status === "Pending" &&
+          String(l.emp_id) !== String(currentUser?.emp_id),
+      )
+    : [];
+
+  const pendingOffsetApprovals = isApprover
+    ? offsetApplications.filter(
+        (oa) =>
+          oa.status === "Pending" &&
+          String(oa.emp_id) !== String(currentUser?.emp_id),
+      )
+    : [];
+
+  const pendingResignationApprovals = isApprover
+    ? myResignations.filter(
+        (r) =>
+          r.status === "Pending Approval" &&
+          String(r.emp_id) !== String(currentUser?.emp_id),
+      )
+    : [];
+
+  const leaveTabPendingCount = pendingLeaveApprovals.length;
+  const offsetTabPendingCount = pendingOffsetApprovals.length;
+  const resignationTabPendingCount = pendingResignationApprovals.length;
+
   // --- MUTATIONS ---
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
@@ -490,7 +553,7 @@ export default function Leave() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["my-resignations"]);
+      queryClient.invalidateQueries(["resignations"]);
       showToast("Resignation filed successfully.");
       setResignationForm({
         resignation_type: "Voluntary Resignation",
@@ -500,6 +563,65 @@ export default function Leave() {
       setShowForm(false);
     },
     onError: () => showToast("Error filing resignation.", "error"),
+  });
+
+  const reviewLeaveMutation = useMutation({
+    mutationFn: async ({ id, ...payload }) => {
+      const res = await apiFetch(`/api/employees/leaves/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || "Failed to update leave");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["leaves"]);
+      showToast("Leave request updated successfully.");
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to update leave request.", "error"),
+  });
+
+  const reviewOffsetMutation = useMutation({
+    mutationFn: async ({ id, ...payload }) => {
+      const res = await apiFetch(`/api/employees/offset-applications/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (!res.ok)
+        throw new Error(result.message || "Failed to update offset request");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["offset-applications"]);
+      showToast("Offset request updated successfully.");
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to update offset request.", "error"),
+  });
+
+  const reviewResignationMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const res = await apiFetch(`/api/employees/resignations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const result = await res.json();
+      if (!res.ok)
+        throw new Error(result.message || "Failed to update resignation");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["resignations"]);
+      showToast("Resignation request updated successfully.");
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to update resignation.", "error"),
   });
 
   // --- HANDLERS ---
@@ -576,6 +698,146 @@ export default function Leave() {
     setFormError("");
   };
 
+  const openLeaveDecisionConfirm = (item, status) => {
+    const totalDays = getDateDiffInclusive(item.date_from, item.date_to);
+    const requestedDates = getDateRangeInclusive(item.date_from, item.date_to);
+    const isMultiDay = totalDays > 1;
+
+    setReviewConfirm({
+      module: "leave",
+      status,
+      item,
+      isMultiDay,
+      totalDays,
+      selectedDates: status === "Approved" ? requestedDates : [],
+      remarks: "",
+    });
+  };
+
+  const openOffsetDecisionConfirm = (item, status) => {
+    const totalDays = Number(item.days_applied || 0);
+    const isMultiDay = totalDays > 1;
+
+    setReviewConfirm({
+      module: "offset",
+      status,
+      item,
+      isMultiDay,
+      isPartial: false,
+      approvedDays: totalDays,
+      remarks: "",
+    });
+  };
+
+  const openResignationDecisionConfirm = (item, status) => {
+    setReviewConfirm({
+      module: "resignation",
+      status,
+      item,
+      remarks: "",
+    });
+  };
+
+  const toggleLeaveApprovedDate = (date) => {
+    if (!reviewConfirm || reviewConfirm.module !== "leave") return;
+
+    const selected = new Set(reviewConfirm.selectedDates || []);
+    if (selected.has(date)) {
+      selected.delete(date);
+    } else {
+      selected.add(date);
+    }
+
+    setReviewConfirm({
+      ...reviewConfirm,
+      selectedDates: Array.from(selected).sort(),
+    });
+  };
+
+  const submitReviewDecision = () => {
+    if (!reviewConfirm) return;
+
+    if (reviewConfirm.module === "leave") {
+      const requestedDates = getDateRangeInclusive(
+        reviewConfirm.item.date_from,
+        reviewConfirm.item.date_to,
+      );
+      const selectedDates = reviewConfirm.selectedDates || [];
+
+      if (reviewConfirm.status === "Approved" && reviewConfirm.isMultiDay) {
+        if (selectedDates.length === 0) {
+          showToast("Select at least one day to approve.", "error");
+          return;
+        }
+      }
+
+      const isPartialApproval =
+        reviewConfirm.status === "Approved" &&
+        reviewConfirm.isMultiDay &&
+        selectedDates.length < requestedDates.length;
+
+      reviewLeaveMutation.mutate({
+        id: reviewConfirm.item.id,
+        status:
+          reviewConfirm.status === "Denied"
+            ? "Denied"
+            : isPartialApproval
+              ? "Partially Approved"
+              : "Approved",
+        approved_days:
+          reviewConfirm.status === "Denied" ? null : selectedDates.length,
+        approved_dates:
+          reviewConfirm.status === "Denied" ? null : selectedDates,
+        supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+      });
+
+      setReviewConfirm(null);
+      return;
+    }
+
+    if (reviewConfirm.module === "offset") {
+      if (reviewConfirm.status === "Approved") {
+        const approvedDays = Number(reviewConfirm.approvedDays || 0);
+        const totalDays = Number(reviewConfirm.item.days_applied || 0);
+
+        if (!approvedDays || approvedDays <= 0 || approvedDays > totalDays) {
+          showToast(
+            "Approved days must be between 0 and requested days.",
+            "error",
+          );
+          return;
+        }
+
+        const isPartial = approvedDays < totalDays;
+
+        reviewOffsetMutation.mutate({
+          id: reviewConfirm.item.id,
+          status: isPartial ? "Partially Approved" : "Approved",
+          approved_days: isPartial ? approvedDays : null,
+          supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+        });
+      } else {
+        reviewOffsetMutation.mutate({
+          id: reviewConfirm.item.id,
+          status: "Denied",
+          supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+        });
+      }
+
+      setReviewConfirm(null);
+      return;
+    }
+
+    if (reviewConfirm.module === "resignation") {
+      reviewResignationMutation.mutate({
+        id: reviewConfirm.item.id,
+        status: reviewConfirm.status === "Denied" ? "Denied" : "Approved",
+      });
+
+      setReviewConfirm(null);
+    }
+  };
+
   if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations)
     return (
       <div className="p-6 font-bold text-gray-800">Loading your data...</div>
@@ -599,7 +861,14 @@ export default function Leave() {
               : "border-transparent text-gray-600 hover:text-gray-900"
           }`}
         >
-          📅 My Calendar
+          <span className="inline-flex items-center gap-1.5">
+            <span>📅 My Calendar</span>
+            {isApprover && leaveTabPendingCount > 0 && (
+              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800">
+                {leaveTabPendingCount}
+              </span>
+            )}
+          </span>
         </button>
         {currentUser?.role !== "Admin" && (
           <>
@@ -611,7 +880,14 @@ export default function Leave() {
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              ⏱️ Offset / Overtime
+              <span className="inline-flex items-center gap-1.5">
+                <span>⏱️ Offset / Overtime</span>
+                {isApprover && offsetTabPendingCount > 0 && (
+                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800">
+                    {offsetTabPendingCount}
+                  </span>
+                )}
+              </span>
             </button>
             <button
               onClick={() => switchTab("resignation")}
@@ -621,7 +897,14 @@ export default function Leave() {
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              🚪 Resignation
+              <span className="inline-flex items-center gap-1.5">
+                <span>🚪 Resignation</span>
+                {isApprover && resignationTabPendingCount > 0 && (
+                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800">
+                    {resignationTabPendingCount}
+                  </span>
+                )}
+              </span>
             </button>
           </>
         )}
@@ -630,6 +913,90 @@ export default function Leave() {
       {/* LEAVE TAB */}
       {activeTab === "leave" && (
         <div>
+          {isApprover && (
+            <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                <h3 className="m-0 text-sm font-bold text-gray-900">
+                  Pending Leave Approval Requests
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-white">
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Employee
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Leave Type
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Dates
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pendingLeaveApprovals.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="4"
+                          className="px-4 py-6 text-center text-sm font-medium text-gray-500"
+                        >
+                          No pending leave requests for your approval.
+                        </td>
+                      </tr>
+                    ) : (
+                      pendingLeaveApprovals.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="transition-colors hover:bg-gray-50/50"
+                        >
+                          <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
+                            {item.first_name} {item.last_name}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm text-gray-700">
+                            {item.leave_type}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm text-gray-700">
+                            {new Date(item.date_from).toLocaleDateString()} -{" "}
+                            {new Date(item.date_to).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="inline-flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openLeaveDecisionConfirm(item, "Approved")
+                                }
+                                disabled={reviewLeaveMutation.isPending}
+                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200 disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openLeaveDecisionConfirm(item, "Denied")
+                                }
+                                disabled={reviewLeaveMutation.isPending}
+                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 disabled:opacity-50"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* FIX: Hide the File Leave button for Admins */}
           {currentUser?.role !== "Admin" && (
             <div className="flex items-center gap-3 mb-6">
@@ -837,6 +1204,136 @@ export default function Leave() {
             </div>
           )}
 
+          {reviewConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-lg">
+                <h2 className="m-0 mb-2 text-lg font-semibold text-gray-900">
+                  {reviewConfirm.status === "Denied"
+                    ? "Confirm Denial"
+                    : "Confirm Approval"}
+                </h2>
+                <p className="m-0 mb-4 text-sm text-gray-600">
+                  {reviewConfirm.item.first_name} {reviewConfirm.item.last_name}
+                  {reviewConfirm.module === "resignation"
+                    ? ` • ${reviewConfirm.item.resignation_type} • Effective ${reviewConfirm.item.effective_date ? new Date(reviewConfirm.item.effective_date).toLocaleDateString() : "N/A"}`
+                    : ` • ${new Date(reviewConfirm.item.date_from).toLocaleDateString()} - ${new Date(reviewConfirm.item.date_to).toLocaleDateString()}`}
+                </p>
+
+                <p className="m-0 mb-4 text-sm text-gray-700">
+                  Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
+                  this {reviewConfirm.module} request?
+                </p>
+
+                {reviewConfirm.module === "leave" &&
+                  reviewConfirm.status === "Approved" &&
+                  reviewConfirm.isMultiDay && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+                        Multi-day request: select specific days to approve
+                      </p>
+                      <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto pr-1">
+                        {getDateRangeInclusive(
+                          reviewConfirm.item.date_from,
+                          reviewConfirm.item.date_to,
+                        ).map((date) => (
+                          <label
+                            key={date}
+                            className="flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-gray-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(
+                                reviewConfirm.selectedDates || []
+                              ).includes(date)}
+                              onChange={() => toggleLeaveApprovedDate(date)}
+                            />
+                            <span>{new Date(date).toLocaleDateString()}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="m-0 mt-2 text-xs font-semibold text-amber-800">
+                        Selected: {(reviewConfirm.selectedDates || []).length}{" "}
+                        day(s)
+                      </p>
+                    </div>
+                  )}
+
+                {reviewConfirm.module === "offset" &&
+                  reviewConfirm.status === "Approved" &&
+                  reviewConfirm.isMultiDay && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+                        Multi-day request: set approved days
+                      </p>
+                      <input
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        max={Number(reviewConfirm.item.days_applied || 0)}
+                        value={reviewConfirm.approvedDays}
+                        onChange={(e) =>
+                          setReviewConfirm({
+                            ...reviewConfirm,
+                            approvedDays: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-md border border-amber-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <p className="m-0 mt-2 text-xs text-amber-800">
+                        Requested:{" "}
+                        {Number(reviewConfirm.item.days_applied || 0).toFixed(
+                          2,
+                        )}{" "}
+                        day(s)
+                      </p>
+                    </div>
+                  )}
+
+                <div className="mb-5">
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Remarks (optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reviewConfirm.remarks}
+                    onChange={(e) =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        remarks: e.target.value,
+                      })
+                    }
+                    className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Add remarks for this decision"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewConfirm(null)}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitReviewDecision}
+                    disabled={
+                      reviewLeaveMutation.isPending ||
+                      reviewOffsetMutation.isPending ||
+                      reviewResignationMutation.isPending
+                    }
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
+                  >
+                    {reviewConfirm.status === "Denied"
+                      ? "Confirm Denial"
+                      : "Confirm Approval"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* PERMANENT CALENDAR VIEW */}
           <LeaveCalendar
             leaves={currentUser?.role === "RankAndFile" ? myLeaves : leaves}
@@ -848,58 +1345,142 @@ export default function Leave() {
       {/* OFFSET TAB */}
       {activeTab === "offset" && currentUser?.role !== "Admin" && (
         <div>
-          <div className="mb-6 p-5 rounded-xl bg-indigo-50 border border-indigo-100 shadow-sm">
-            <h3 className="m-0 mb-4 text-base font-bold text-indigo-900 border-b border-indigo-200 pb-2">
+          {isApprover && (
+            <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                <h3 className="m-0 text-sm font-bold text-gray-900">
+                  Pending Offset Approval Requests
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-white">
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Employee
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Date Range
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Days
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pendingOffsetApprovals.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="4"
+                          className="px-4 py-6 text-center text-sm font-medium text-gray-500"
+                        >
+                          No pending offset requests for your approval.
+                        </td>
+                      </tr>
+                    ) : (
+                      pendingOffsetApprovals.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="transition-colors hover:bg-gray-50/50"
+                        >
+                          <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
+                            {item.first_name} {item.last_name}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm text-gray-700">
+                            {new Date(item.date_from).toLocaleDateString()} -{" "}
+                            {new Date(item.date_to).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2.5 text-center text-sm font-bold text-indigo-700">
+                            {Number(item.days_applied || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="inline-flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openOffsetDecisionConfirm(item, "Approved")
+                                }
+                                disabled={reviewOffsetMutation.isPending}
+                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200 disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openOffsetDecisionConfirm(item, "Denied")
+                                }
+                                disabled={reviewOffsetMutation.isPending}
+                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 disabled:opacity-50"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 p-4 shadow-sm">
+            <h3 className="m-0 mb-3 border-b border-indigo-200 pb-2 text-sm font-bold text-indigo-900">
               Monthly Offset Balance
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
-                <p className="text-indigo-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+            <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+                <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-indigo-600">
                   Working Days
                 </p>
-                <p className="text-indigo-900 font-black text-xl">
+                <p className="text-lg font-black text-indigo-900">
                   {Number(offsetBalance.workingDaysCompleted || 0).toFixed(1)}
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
-                <p className="text-indigo-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+              <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+                <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-indigo-600">
                   Baseline
                 </p>
-                <p className="text-indigo-900 font-black text-xl">
+                <p className="text-lg font-black text-indigo-900">
                   {offsetBalance.baselineDays || 22}
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
-                <p className="text-green-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+              <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+                <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-green-600">
                   Earned Offsets
                 </p>
-                <p className="text-green-700 font-black text-xl">
+                <p className="text-lg font-black text-green-700">
                   +{Number(offsetBalance.offsetEarned || 0).toFixed(2)}
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-lg border border-indigo-50 text-center shadow-sm">
-                <p className="text-purple-600 font-bold uppercase tracking-wider text-[0.65rem] mb-1">
+              <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+                <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-purple-600">
                   End Balance
                 </p>
-                <p className="text-purple-700 font-black text-xl">
+                <p className="text-lg font-black text-purple-700">
                   {Number(offsetBalance.finalBalance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mb-6 flex items-center gap-3">
+          <div className="mb-4 flex items-center gap-3">
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
+              className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90"
             >
               {showForm ? "✕ Cancel Request" : "+ File Offset Request"}
             </button>
           </div>
 
           {showForm && (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
-              <h3 className="m-0 mb-4 text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">
+            <div className="mb-6 animate-in rounded-xl border border-gray-200 bg-white p-4 shadow-sm fade-in slide-in-from-top-2 duration-200">
+              <h3 className="m-0 mb-3 border-b border-gray-100 pb-2 text-base font-bold text-gray-900">
                 File Offset / Overtime Request
               </h3>
               <form
@@ -919,10 +1500,10 @@ export default function Leave() {
                     days_applied: parseFloat(offsetForm.days_applied),
                   });
                 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-5"
+                className="grid grid-cols-1 gap-3 md:grid-cols-3"
               >
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     From Date
                   </label>
                   <input
@@ -935,18 +1516,18 @@ export default function Leave() {
                         date_from: e.target.value,
                       })
                     }
-                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     To Date
                   </label>
                   <input
                     type="date"
                     required
                     value={offsetForm.date_to}
-                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                     onChange={(e) =>
                       setOffsetForm({ ...offsetForm, date_to: e.target.value })
                     }
@@ -954,7 +1535,7 @@ export default function Leave() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     Days Applied
                   </label>
                   <input
@@ -969,14 +1550,14 @@ export default function Leave() {
                         days_applied: e.target.value,
                       })
                     }
-                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
-                <div className="mt-2 flex gap-3 justify-end col-span-full">
+                <div className="col-span-full mt-1 flex justify-end gap-2">
                   <button
                     type="submit"
                     disabled={fileOffsetMutation.isPending}
-                    className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 disabled:opacity-50 shadow-sm"
+                    className="cursor-pointer rounded-md border-0 bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
                   >
                     {fileOffsetMutation.isPending
                       ? "Filing..."
@@ -987,9 +1568,9 @@ export default function Leave() {
             </div>
           )}
 
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-              <h3 className="m-0 text-lg font-bold text-gray-900">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+              <h3 className="m-0 text-base font-bold text-gray-900">
                 My Offset History
               </h3>
             </div>
@@ -997,16 +1578,16 @@ export default function Leave() {
               <table className="w-full text-sm text-left">
                 <thead>
                   <tr className="border-b border-gray-200 bg-white">
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                    <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       From Date
                     </th>
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                    <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       To Date
                     </th>
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-center">
+                    <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       Days
                     </th>
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">
+                    <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       Status
                     </th>
                   </tr>
@@ -1016,7 +1597,7 @@ export default function Leave() {
                     <tr>
                       <td
                         colSpan="4"
-                        className="px-6 py-10 text-center text-gray-500 font-medium"
+                        className="px-4 py-8 text-center text-sm font-medium text-gray-500"
                       >
                         You haven't filed any offset requests yet.
                       </td>
@@ -1027,18 +1608,18 @@ export default function Leave() {
                         key={oa.id}
                         className="hover:bg-gray-50/50 transition-colors"
                       >
-                        <td className="px-6 py-4 text-gray-700 font-medium">
+                        <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
                           {new Date(oa.date_from).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-gray-700 font-medium">
+                        <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
                           {new Date(oa.date_to).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 font-bold text-indigo-700 text-center">
+                        <td className="px-4 py-2.5 text-center text-sm font-bold text-indigo-700">
                           {Number(oa.days_applied || 0).toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <span
-                            className={`inline-flex items-center rounded-md px-3 py-1 text-[0.70rem] font-bold uppercase tracking-wider ${
+                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
                               oa.status === "Approved"
                                 ? "bg-green-100 text-green-700 border border-green-200"
                                 : oa.status === "Denied"
@@ -1064,18 +1645,108 @@ export default function Leave() {
       {/* RESIGNATION TAB */}
       {activeTab === "resignation" && currentUser?.role !== "Admin" && (
         <div>
-          <div className="mb-6 flex items-center gap-3">
+          {isApprover && (
+            <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                <h3 className="m-0 text-sm font-bold text-gray-900">
+                  Pending Resignation Approval Requests
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-white">
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Employee
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Type
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Effective Date
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pendingResignationApprovals.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="4"
+                          className="px-4 py-6 text-center text-sm font-medium text-gray-500"
+                        >
+                          No pending resignation requests for your approval.
+                        </td>
+                      </tr>
+                    ) : (
+                      pendingResignationApprovals.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="transition-colors hover:bg-gray-50/50"
+                        >
+                          <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
+                            {item.first_name} {item.last_name}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm text-gray-700">
+                            {item.resignation_type}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm text-gray-700">
+                            {item.effective_date
+                              ? new Date(
+                                  item.effective_date,
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="inline-flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openResignationDecisionConfirm(
+                                    item,
+                                    "Approved",
+                                  )
+                                }
+                                disabled={reviewResignationMutation.isPending}
+                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200 disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openResignationDecisionConfirm(item, "Denied")
+                                }
+                                disabled={reviewResignationMutation.isPending}
+                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 disabled:opacity-50"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4 flex items-center gap-3">
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
+              className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-red-600 to-red-700 px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90"
             >
               {showForm ? "✕ Cancel" : "+ File Resignation"}
             </button>
           </div>
 
           {showForm && (
-            <div className="rounded-xl border border-red-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
-              <h3 className="m-0 mb-4 text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">
+            <div className="mb-6 animate-in rounded-xl border border-red-200 bg-white p-4 shadow-sm fade-in slide-in-from-top-2 duration-200">
+              <h3 className="m-0 mb-3 border-b border-gray-100 pb-2 text-base font-bold text-gray-900">
                 File Notice of Resignation
               </h3>
               <form
@@ -1090,10 +1761,10 @@ export default function Leave() {
                   }
                   fileResignationMutation.mutate(resignationForm);
                 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                className="grid grid-cols-1 gap-3 md:grid-cols-2"
               >
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     Resignation Type
                   </label>
                   <select
@@ -1105,7 +1776,7 @@ export default function Leave() {
                         resignation_type: e.target.value,
                       })
                     }
-                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                    className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                   >
                     {resignationTypes.map((type) => (
                       <option key={type} value={type}>
@@ -1115,7 +1786,7 @@ export default function Leave() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     Effective Date
                   </label>
                   <input
@@ -1128,14 +1799,14 @@ export default function Leave() {
                         effective_date: e.target.value,
                       })
                     }
-                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                   />
-                  <p className="text-[0.65rem] text-gray-500 font-semibold uppercase mt-1">
+                  <p className="mt-0.5 text-[0.6rem] font-semibold uppercase text-gray-500">
                     Typically 30 days from today.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     Reason / Comments
                   </label>
                   <textarea
@@ -1149,14 +1820,14 @@ export default function Leave() {
                         reason: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm resize-none"
+                    className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
-                <div className="mt-2 flex gap-3 justify-end md:col-span-2">
+                <div className="md:col-span-2 mt-1 flex justify-end gap-2">
                   <button
                     type="submit"
                     disabled={fileResignationMutation.isPending}
-                    className="px-6 py-2.5 rounded-lg bg-red-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-red-700 disabled:opacity-50 shadow-sm"
+                    className="cursor-pointer rounded-md border-0 bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
                   >
                     {fileResignationMutation.isPending
                       ? "Submitting..."
@@ -1167,9 +1838,9 @@ export default function Leave() {
             </div>
           )}
 
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
-              <h3 className="m-0 text-lg font-bold text-gray-900">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+              <h3 className="m-0 text-base font-bold text-gray-900">
                 My Resignation History
               </h3>
             </div>
@@ -1177,16 +1848,16 @@ export default function Leave() {
               <table className="w-full text-sm text-left">
                 <thead>
                   <tr className="border-b border-gray-200 bg-white">
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                    <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       Date Filed
                     </th>
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                    <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       Effective Date
                     </th>
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                    <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       Type
                     </th>
-                    <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">
+                    <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
                       Status
                     </th>
                   </tr>
@@ -1196,7 +1867,7 @@ export default function Leave() {
                     <tr>
                       <td
                         colSpan="4"
-                        className="px-6 py-10 text-center text-gray-500 font-medium"
+                        className="px-4 py-8 text-center text-sm font-medium text-gray-500"
                       >
                         You have not filed a resignation.
                       </td>
@@ -1207,20 +1878,20 @@ export default function Leave() {
                         key={r.id}
                         className="hover:bg-gray-50/50 transition-colors"
                       >
-                        <td className="px-6 py-4 text-gray-700 font-medium">
+                        <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
                           {new Date(r.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-gray-700 font-medium">
+                        <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
                           {r.effective_date
                             ? new Date(r.effective_date).toLocaleDateString()
                             : "N/A"}
                         </td>
-                        <td className="px-6 py-4 font-medium text-gray-800">
+                        <td className="px-4 py-2.5 text-sm font-medium text-gray-800">
                           {r.resignation_type}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <span
-                            className={`inline-flex items-center rounded-md px-3 py-1 text-[0.70rem] font-bold uppercase tracking-wider ${
+                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
                               r.status === "Approved"
                                 ? "bg-green-100 text-green-700 border border-green-200"
                                 : r.status === "Denied"

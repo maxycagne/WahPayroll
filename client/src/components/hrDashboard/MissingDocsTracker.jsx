@@ -1,4 +1,3 @@
-import { STANDARD_DOCUMENTS } from "@/assets/constantData";
 import {
   Table,
   TableBody,
@@ -10,14 +9,14 @@ import {
 
 export default function MissingDocsTracker({ missingDocs, onOpenModal }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white shadow-sm mb-8">
-      <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-900">
+    <section className="mb-6 rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 md:py-2.5">
+        <h3 className="text-base font-semibold text-slate-900">
           Missing Requirements Tracker
         </h3>
         <button
           onClick={onOpenModal}
-          className="px-4 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-all duration-200 hover:shadow-md border-0 shadow-sm"
+          className="rounded-md border-0 bg-[#5a1ea2] px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#4b1788] md:px-2.5 md:py-1"
         >
           Update Documents
         </button>
@@ -25,7 +24,7 @@ export default function MissingDocsTracker({ missingDocs, onOpenModal }) {
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50">
+            <TableRow className="bg-slate-50">
               {[
                 "Employee Name",
                 "Designation",
@@ -35,7 +34,7 @@ export default function MissingDocsTracker({ missingDocs, onOpenModal }) {
               ].map((h) => (
                 <TableHead
                   key={h}
-                  className="text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="h-9 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700 md:h-8"
                 >
                   {h}
                 </TableHead>
@@ -47,33 +46,33 @@ export default function MissingDocsTracker({ missingDocs, onOpenModal }) {
               <TableRow>
                 <TableCell
                   colSpan={5}
-                  className="text-center text-gray-500 font-medium py-6"
+                  className="py-5 text-center text-sm font-medium text-slate-500"
                 >
                   All employees have submitted their complete requirements! 🎉
                 </TableCell>
               </TableRow>
             ) : (
               missingDocs.map((doc) => (
-                <TableRow key={doc.emp_id}>
-                  <TableCell className="font-bold text-gray-900">
+                <TableRow key={doc.emp_id} className="hover:bg-slate-50/80">
+                  <TableCell className="px-3 py-2.5 text-sm font-bold text-slate-900 md:py-2">
                     {doc.first_name} {doc.last_name}
                   </TableCell>
-                  <TableCell className="text-gray-700">
+                  <TableCell className="px-3 py-2.5 text-sm text-slate-700 md:py-2">
                     {doc.designation || "N/A"}
                   </TableCell>
-                  <TableCell className="text-gray-700">
+                  <TableCell className="px-3 py-2.5 text-sm text-slate-700 md:py-2">
                     {doc.hired_date
                       ? new Date(doc.hired_date).toLocaleDateString()
                       : "N/A"}
                   </TableCell>
-                  <TableCell className="text-red-600 font-medium">
+                  <TableCell className="px-3 py-2.5 text-sm font-medium text-red-600 md:py-2">
                     <ul className="list-disc pl-4 space-y-0.5">
                       {doc.missing_docs.split(", ").map((item, idx) => (
                         <li key={idx}>{item}</li>
                       ))}
                     </ul>
                   </TableCell>
-                  <TableCell className="text-xs text-gray-500">
+                  <TableCell className="px-3 py-2.5 text-[11px] text-slate-500 md:py-2">
                     {new Date(doc.updated_at).toLocaleString()}
                   </TableCell>
                 </TableRow>

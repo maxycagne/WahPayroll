@@ -125,6 +125,48 @@ const ensureOffsetTables = async (connection = pool) => {
   `);
 };
 
+const ensureLeaveApprovalColumns = async (connection = pool) => {
+  // Align status options for existing databases.
+  await connection.query(`
+    ALTER TABLE leave_requests
+    MODIFY COLUMN status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending'
+  `);
+
+  const [approvedDaysColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'approved_days'
+      LIMIT 1
+    `,
+  );
+
+  if (approvedDaysColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN approved_days DECIMAL(5,2) NULL AFTER status",
+    );
+  }
+
+  const [approvedDatesColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'approved_dates'
+      LIMIT 1
+    `,
+  );
+
+  if (approvedDatesColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN approved_dates JSON NULL AFTER approved_days",
+    );
+  }
+};
+
 const ensureResignationsTable = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
@@ -223,12 +265,20 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
       `
         SELECT emp_id
         FROM employees
-        WHERE COALESCE(role, '') = 'Supervisor'
+        WHERE COALESCE(role, '') = 'HR'
           AND emp_id <> ?
       `,
       [requester.emp_id],
     );
     return rows;
+  }
+
+  if (
+    requester.role !== "RankAndFile" &&
+    requester.role !== "HR" &&
+    requester.role !== "Admin"
+  ) {
+    return [];
   }
 
   if (!requester.designation) return [];
@@ -249,14 +299,20 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
 
 const canApproverReviewRequester = (approver, requester) => {
   if (!approver || !requester) return false;
-
-  if (approver.role === "Admin") return true;
-  if (approver.role !== "Supervisor") return false;
   if (approver.emp_id === requester.emp_id) return false;
 
-  if (requester.role === "Supervisor") return true;
+  // Policy: supervisor requests are reviewed by HR only.
+  if (requester.role === "Supervisor") {
+    return approver.role === "HR";
+  }
 
-  if (requester.role === "RankAndFile" || requester.role === "HR") {
+  // Policy: rank-and-file and HR/Admin requests are reviewed by supervisor of same designation.
+  if (
+    requester.role === "RankAndFile" ||
+    requester.role === "HR" ||
+    requester.role === "Admin"
+  ) {
+    if (approver.role !== "Supervisor") return false;
     return (
       !!requester.designation && approver.designation === requester.designation
     );
@@ -616,29 +672,35 @@ export const getDashboardSummary = async (req, res) => {
           FROM leave_requests l
           JOIN employees e ON l.emp_id = e.emp_id
           WHERE l.status = 'Pending'
-            AND (
-              (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
-              OR (
-                COALESCE(e.role, '') IN ('RankAndFile', 'HR')
-                AND e.designation = ?
-              )
-            )
+            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+            AND e.designation = ?
+            AND e.emp_id <> ?
         `,
-        [currentUser.emp_id, currentUser.designation || ""],
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+      pending = rows;
+    } else if (currentUser?.role === "HR") {
+      const [rows] = await pool.query(
+        `
+          SELECT l.*, e.first_name, e.last_name
+          FROM leave_requests l
+          JOIN employees e ON l.emp_id = e.emp_id
+          WHERE l.status = 'Pending'
+            AND COALESCE(e.role, '') = 'Supervisor'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
       );
       pending = rows;
     } else {
-      const [rows] = await pool.query(
-        "SELECT l.*, e.first_name, e.last_name FROM leave_requests l JOIN employees e ON l.emp_id = e.emp_id WHERE l.status = 'Pending'",
-      );
-      pending = rows;
+      pending = [];
     }
 
     const [onLeave] = await pool.query(
       "SELECT e.first_name, e.last_name, l.leave_type FROM employees e JOIN leave_requests l ON e.emp_id = l.emp_id WHERE CURDATE() BETWEEN l.date_from AND l.date_to AND l.status = 'Approved'",
     );
     const [absents] = await pool.query(
-      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE()) AND status != 'Inactive'",
+      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE()) AND status != 'Inactive' AND COALESCE(role, '') <> 'Admin'",
     );
     const [balances] = await pool.query(
       "SELECT e.first_name, e.last_name, lb.leave_balance, lb.offset_credits FROM employees e JOIN leave_balances lb ON e.emp_id = lb.emp_id",
@@ -654,22 +716,28 @@ export const getDashboardSummary = async (req, res) => {
             FROM resignations r
             JOIN employees e ON r.emp_id = e.emp_id
             WHERE r.status = 'Pending Approval'
-              AND (
-                (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
-                OR (
-                  COALESCE(e.role, '') IN ('RankAndFile', 'HR')
-                  AND e.designation = ?
-                )
-              )
+              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+              AND e.designation = ?
+              AND e.emp_id <> ?
           `,
-          [currentUser.emp_id, currentUser.designation || ""],
+          [currentUser.designation || "", currentUser.emp_id],
+        );
+        resignations = resigRows;
+      } else if (currentUser?.role === "HR") {
+        const [resigRows] = await pool.query(
+          `
+            SELECT r.*, e.first_name, e.last_name
+            FROM resignations r
+            JOIN employees e ON r.emp_id = e.emp_id
+            WHERE r.status = 'Pending Approval'
+              AND COALESCE(e.role, '') = 'Supervisor'
+              AND e.emp_id <> ?
+          `,
+          [currentUser.emp_id],
         );
         resignations = resigRows;
       } else {
-        const [resigRows] = await pool.query(
-          "SELECT r.*, e.first_name, e.last_name FROM resignations r JOIN employees e ON r.emp_id = e.emp_id WHERE r.status = 'Pending Approval'",
-        );
-        resignations = resigRows;
+        resignations = [];
       }
     } catch (e) {
       console.error(e);
@@ -774,7 +842,7 @@ export const getResignations = async (req, res) => {
 
     const params = [];
 
-    if (viewer.role === "RankAndFile" || viewer.role === "HR") {
+    if (viewer.role === "RankAndFile") {
       query += " WHERE r.emp_id = ?";
       params.push(viewer.emp_id);
     } else if (viewer.role === "Supervisor") {
@@ -782,16 +850,22 @@ export const getResignations = async (req, res) => {
         WHERE r.emp_id = ?
            OR (
              r.status = 'Pending Approval'
-             AND (
-               (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
-               OR (
-                 COALESCE(e.role, '') IN ('RankAndFile', 'HR')
-                 AND e.designation = ?
-               )
-             )
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
+             AND e.emp_id <> ?
            )
       `;
-      params.push(viewer.emp_id, viewer.emp_id, viewer.designation || "");
+      params.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    } else if (viewer.role === "HR") {
+      query += `
+        WHERE r.emp_id = ?
+           OR (
+             r.status = 'Pending Approval'
+             AND COALESCE(e.role, '') = 'Supervisor'
+             AND e.emp_id <> ?
+           )
+      `;
+      params.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY r.created_at DESC";
@@ -1068,20 +1142,42 @@ export const adjustLeaveBalance = async (req, res) => {
 
 export const getAllLeaves = async (req, res) => {
   try {
-    const userRole = req.user?.role;
-    const empId = req.user?.emp_id;
+    await ensureLeaveApprovalColumns();
+
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
 
     let query = `
-      SELECT l.*, e.first_name, e.last_name 
-      FROM leave_requests l 
+      SELECT l.*, e.first_name, e.last_name, e.designation, COALESCE(e.role, 'RankAndFile') as requester_role
+      FROM leave_requests l
       JOIN employees e ON l.emp_id = e.emp_id
     `;
     const queryParams = [];
 
-    // PRIVACY FIX: If regular employee, only show their own leaves
-    if (userRole === "RankAndFile") {
+    if (viewer.role === "RankAndFile") {
       query += " WHERE l.emp_id = ?";
-      queryParams.push(empId);
+      queryParams.push(viewer.emp_id);
+    } else if (viewer.role === "Supervisor") {
+      query += `
+        WHERE l.emp_id = ?
+           OR (
+             l.status = 'Pending'
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    } else if (viewer.role === "HR") {
+      query += `
+        WHERE l.emp_id = ?
+           OR (
+             l.status = 'Pending'
+             AND COALESCE(e.role, '') = 'Supervisor'
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY l.id DESC";
@@ -1095,9 +1191,10 @@ export const getAllLeaves = async (req, res) => {
 };
 export const updateLeaveStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, supervisor_remarks } = req.body;
+  const { status, supervisor_remarks, approved_days, approved_dates } =
+    req.body;
 
-  if (!["Pending", "Approved", "Denied"].includes(status)) {
+  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
     return res.status(400).json({ message: "Invalid leave status" });
   }
 
@@ -1109,6 +1206,7 @@ export const updateLeaveStatus = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    await ensureLeaveApprovalColumns(connection);
 
     const approver = await getEmployeeProfile(connection, approverId);
     if (!approver) {
@@ -1117,7 +1215,7 @@ export const updateLeaveStatus = async (req, res) => {
     }
 
     const [rows] = await connection.query(
-      "SELECT id, emp_id FROM leave_requests WHERE id = ? LIMIT 1",
+      "SELECT id, emp_id, date_from, date_to FROM leave_requests WHERE id = ? LIMIT 1",
       [id],
     );
 
@@ -1136,14 +1234,98 @@ export const updateLeaveStatus = async (req, res) => {
       });
     }
 
+    const totalRequestDays =
+      Math.floor(
+        (new Date(leaveRequest.date_to).getTime() -
+          new Date(leaveRequest.date_from).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    const parsedApprovedDays =
+      approved_days !== undefined && approved_days !== null
+        ? Number(approved_days)
+        : null;
+
+    const parsedApprovedDates = Array.isArray(approved_dates)
+      ? approved_dates
+          .map((d) => String(d || "").trim())
+          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      : [];
+
+    if (status === "Partially Approved") {
+      if (!parsedApprovedDays || parsedApprovedDays <= 0) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_days must be greater than zero for partial approval",
+        });
+      }
+
+      if (parsedApprovedDays >= totalRequestDays) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_days must be less than the total requested days",
+        });
+      }
+    }
+
+    if (status === "Approved" && parsedApprovedDays !== null) {
+      if (parsedApprovedDays <= 0 || parsedApprovedDays > totalRequestDays) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_days is out of range for this request",
+        });
+      }
+    }
+
+    if (parsedApprovedDates.length > 0) {
+      const fromDate = new Date(leaveRequest.date_from).setHours(0, 0, 0, 0);
+      const toDate = new Date(leaveRequest.date_to).setHours(0, 0, 0, 0);
+
+      const hasOutOfRangeDate = parsedApprovedDates.some((dateString) => {
+        const value = new Date(dateString).setHours(0, 0, 0, 0);
+        return value < fromDate || value > toDate;
+      });
+
+      if (hasOutOfRangeDate) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_dates contains date(s) outside the request range",
+        });
+      }
+    }
+
+    const finalApprovedDays =
+      status === "Denied"
+        ? null
+        : parsedApprovedDays !== null
+          ? parsedApprovedDays
+          : status === "Approved"
+            ? totalRequestDays
+            : null;
+
+    const finalApprovedDates =
+      status === "Denied"
+        ? null
+        : parsedApprovedDates.length > 0
+          ? JSON.stringify(parsedApprovedDates)
+          : null;
+
     await connection.query(
       `
         UPDATE leave_requests
         SET status = ?,
+            approved_days = ?,
+            approved_dates = ?,
             supervisor_remarks = COALESCE(?, supervisor_remarks)
         WHERE id = ?
       `,
-      [status, supervisor_remarks || null, id],
+      [
+        status,
+        finalApprovedDays,
+        finalApprovedDates,
+        supervisor_remarks || null,
+        id,
+      ],
     );
 
     await notifyRequesterForDecision(connection, {
@@ -1591,14 +1773,16 @@ export const getOffsetApplications = async (req, res) => {
   try {
     await ensureOffsetTables();
 
-    const userRole = req.user?.role;
-    const empId = req.user?.emp_id;
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
 
     let query = `
       SELECT
         oa.*,
         e.first_name,
         e.last_name,
+        e.designation,
+        COALESCE(e.role, 'RankAndFile') as requester_role,
         sup.first_name as supervisor_first_name,
         sup.last_name as supervisor_last_name
       FROM offset_applications oa
@@ -1607,10 +1791,30 @@ export const getOffsetApplications = async (req, res) => {
     `;
     const queryParams = [];
 
-    // PRIVACY FIX: If regular employee, only show their own offsets
-    if (userRole === "RankAndFile") {
+    if (viewer.role === "RankAndFile") {
       query += " WHERE oa.emp_id = ?";
-      queryParams.push(empId);
+      queryParams.push(viewer.emp_id);
+    } else if (viewer.role === "Supervisor") {
+      query += `
+        WHERE oa.emp_id = ?
+           OR (
+             oa.status = 'Pending'
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    } else if (viewer.role === "HR") {
+      query += `
+        WHERE oa.emp_id = ?
+           OR (
+             oa.status = 'Pending'
+             AND COALESCE(e.role, '') = 'Supervisor'
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY oa.created_at DESC";
