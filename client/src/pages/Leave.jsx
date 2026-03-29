@@ -223,11 +223,16 @@ function LeaveCalendar({ leaves, attendance }) {
                 {dayLeaves.map((leave) => (
                   <div
                     key={leave.id}
-                    className="flex flex-col gap-0.5 text-left w-full"
+                    className="flex flex-col gap-0.5 text-left w-full mt-1 border-t border-gray-100/50 pt-1"
                   >
                     <span
-                      className={`truncate font-bold text-[0.65rem] leading-tight ${isSelected ? "text-white" : "text-gray-800"}`}
-                      title={leave.leave_type}
+                      className={`truncate font-bold text-[0.65rem] leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
+                      title={`${leave.first_name} ${leave.last_name}`}
+                    >
+                      {leave.first_name} {leave.last_name}
+                    </span>
+                    <span
+                      className={`truncate font-semibold text-[0.60rem] leading-tight ${isSelected ? "text-white/90" : "text-gray-600"}`}
                     >
                       {leave.leave_type}
                     </span>
@@ -282,13 +287,17 @@ function LeaveCalendar({ leaves, attendance }) {
               )}
 
               {/* Show Leaves */}
+              {/* Show Leaves */}
               {selectedLeaves.map((l) => (
                 <li
                   key={l.id}
                   className="flex items-center justify-between gap-3 p-4 bg-white border border-gray-200 shadow-sm rounded-xl"
                 >
                   <div>
-                    <p className="m-0 font-bold text-gray-900 text-sm">
+                    <p className="m-0 font-bold text-purple-700 text-sm">
+                      {l.first_name} {l.last_name}
+                    </p>
+                    <p className="m-0 font-bold text-gray-900 text-sm mt-0.5">
                       {l.leave_type}
                     </p>
                     <p className="m-0 text-xs text-gray-500 mt-1">
@@ -576,7 +585,7 @@ export default function Leave() {
     <div className="max-w-full">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          My Dashboard
+          My Application
         </h1>
       </div>
 
@@ -621,14 +630,17 @@ export default function Leave() {
       {/* LEAVE TAB */}
       {activeTab === "leave" && (
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
-              onClick={() => setShowForm(!showForm)}
-            >
-              {showForm ? "✕ Cancel Request" : "+ File New Leave"}
-            </button>
-          </div>
+          {/* FIX: Hide the File Leave button for Admins */}
+          {currentUser?.role !== "Admin" && (
+            <div className="flex items-center gap-3 mb-6">
+              <button
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
+                onClick={() => setShowForm(!showForm)}
+              >
+                {showForm ? "✕ Cancel Request" : "+ File New Leave"}
+              </button>
+            </div>
+          )}
 
           {showForm && currentUser?.role !== "Admin" && (
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -739,7 +751,12 @@ export default function Leave() {
                     type="button"
                     onClick={() => {
                       setShowForm(false);
-                      setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
+                      setFormData({
+                        ...formData,
+                        fromDate: "",
+                        toDate: "",
+                        reason: "",
+                      });
                       setFormError("");
                     }}
                     className="px-6 py-2.5 rounded-lg bg-gray-200 border-0 text-gray-700 text-sm font-bold cursor-pointer hover:bg-gray-300 shadow-sm"
@@ -770,15 +787,21 @@ export default function Leave() {
                 <div className="mb-6 space-y-3 text-sm">
                   <div>
                     <p className="m-0 text-gray-600 font-medium">Leave Type:</p>
-                    <p className="m-0 text-gray-900 font-semibold">{confirmAction.leaveType}</p>
+                    <p className="m-0 text-gray-900 font-semibold">
+                      {confirmAction.leaveType}
+                    </p>
                   </div>
                   <div>
                     <p className="m-0 text-gray-600 font-medium">From Date:</p>
-                    <p className="m-0 text-gray-900 font-semibold">{new Date(confirmAction.fromDate).toLocaleDateString()}</p>
+                    <p className="m-0 text-gray-900 font-semibold">
+                      {new Date(confirmAction.fromDate).toLocaleDateString()}
+                    </p>
                   </div>
                   <div>
                     <p className="m-0 text-gray-600 font-medium">To Date:</p>
-                    <p className="m-0 text-gray-900 font-semibold">{new Date(confirmAction.toDate).toLocaleDateString()}</p>
+                    <p className="m-0 text-gray-900 font-semibold">
+                      {new Date(confirmAction.toDate).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
                 <p className="m-0 text-sm text-gray-600 mb-6">
@@ -815,7 +838,10 @@ export default function Leave() {
           )}
 
           {/* PERMANENT CALENDAR VIEW */}
-          <LeaveCalendar leaves={myLeaves} attendance={myAttendance} />
+          <LeaveCalendar
+            leaves={currentUser?.role === "RankAndFile" ? myLeaves : leaves}
+            attendance={myAttendance}
+          />
         </div>
       )}
 

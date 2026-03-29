@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { hashPassword } from "../helper/hashPass.js";
 
 const resolveRoleFromProfile = ({ designation, position }) => {
   const normalizedDesignation = String(designation || "")
@@ -403,6 +404,9 @@ export const createEmployee = async (req, res) => {
 
   const generatedAutoPassword = `${emp_id || ""}${(first_name || "").replace(/\s+/g, "")}`;
   const employeePassword = password || generatedAutoPassword;
+
+  const hashPass = await hashPassword(employeePassword);
+
   const employeeRole = resolveRoleFromProfile({ designation, position });
 
   try {
@@ -422,7 +426,7 @@ export const createEmployee = async (req, res) => {
         email,
         dob || null,
         hired_date || null,
-        employeePassword,
+        hashPass,
         employeeRole,
       ],
     );
@@ -573,7 +577,6 @@ export const getAllResignations = async (req, res) => {
       ORDER BY r.created_at DESC
     `);
 
-    console.log("Success! Found rows:", rows.length);
     return res.status(200).json(rows);
   } catch (error) {
     console.error("DETAILED SQL ERROR:", error.message);
@@ -949,23 +952,22 @@ export const getAttendance = async (req, res) => {
   }
 };
 
-// --- Get Monthly Attendance Summary for the Calendar ---
-// --- Get Monthly Attendance Summary for the Calendar ---
 export const getAttendanceCalendarSummary = async (req, res) => {
   const { month, year } = req.query;
   try {
     const [rows] = await pool.query(
       `
-      SELECT date, 
-             SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
-             SUM(CASE WHEN status = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
-             SUM(CASE WHEN status = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as leave_count
+      SELECT DATE_FORMAT(date, '%Y-%m-%d') as date, 
+             DATE_FORMAT(date, '%Y-%m-%d') as formatted_date,
+             SUM(CASE WHEN status LIKE '%Present%' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN status LIKE '%Absent%' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN status LIKE '%Late%' THEN 1 ELSE 0 END) as late_count,
+             SUM(CASE WHEN status LIKE '%Undertime%' THEN 1 ELSE 0 END) as undertime_count,
+             SUM(CASE WHEN status LIKE '%Half-Day%' THEN 1 ELSE 0 END) as halfday_count,
+             SUM(CASE WHEN status LIKE '%On Leave%' THEN 1 ELSE 0 END) as leave_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
-      GROUP BY date
+      GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
     `,
       [month, year],
     );
@@ -976,7 +978,6 @@ export const getAttendanceCalendarSummary = async (req, res) => {
   }
 };
 
-// --- Get Daily Attendance List for a Specific Date ---
 export const getDailyAttendance = async (req, res) => {
   const { date } = req.query;
   try {
@@ -984,7 +985,7 @@ export const getDailyAttendance = async (req, res) => {
       `
       SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status
       FROM employees e
-      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = ?
+      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
       WHERE COALESCE(e.role, '') <> 'Admin'
     `,
       [date],
@@ -996,33 +997,39 @@ export const getDailyAttendance = async (req, res) => {
   }
 };
 
-// --- Save Bulk Attendance ---
 export const saveBulkAttendance = async (req, res) => {
   const { date, records } = req.body;
+  const connection = await pool.getConnection();
+
   try {
-    for (const record of records) {
-      const [eligibleRows] = await pool.query(
-        "SELECT emp_id FROM employees WHERE emp_id = ? AND COALESCE(role, '') <> 'Admin' LIMIT 1",
-        [record.emp_id],
-      );
+    await connection.beginTransaction();
 
-      if (eligibleRows.length === 0) {
-        continue;
+    // 1. Wipe existing attendance matching the exact formatted date string
+    await connection.query(
+      `DELETE a FROM attendance a
+       JOIN employees e ON a.emp_id = e.emp_id
+       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND COALESCE(e.role, '') <> 'Admin'`,
+      [date],
+    );
+
+    // 2. Insert the fresh records using strict DATE() parsing
+    if (records && records.length > 0) {
+      for (const record of records) {
+        await connection.query(
+          `INSERT INTO attendance (emp_id, date, status) VALUES (?, DATE(?), ?)`,
+          [record.emp_id, date, record.status],
+        );
       }
-
-      await pool.query(
-        `
-        INSERT INTO attendance (emp_id, date, status) 
-        VALUES (?, ?, ?) 
-        ON DUPLICATE KEY UPDATE status = VALUES(status)
-      `,
-        [record.emp_id, date, record.status],
-      );
     }
+
+    await connection.commit();
     res.json({ message: "Attendance saved successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in saveBulkAttendance:", error);
     res.status(500).json({ message: "Error saving attendance" });
+  } finally {
+    connection.release();
   }
 };
 

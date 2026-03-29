@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const designationMap = {
   Operations: [
@@ -71,10 +72,9 @@ export default function Employees() {
     mutationFn: (newData) => {
       // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
-      return apiFetch("/api/employees", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newData, password: autoPassword }),
+      return axiosInterceptor.post("/api/employees/add", {
+        ...newData,
+        password: autoPassword,
       });
     },
     onSuccess: () => {
@@ -499,14 +499,18 @@ export default function Employees() {
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3 mb-8 max-h-96 overflow-y-auto text-base">
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Employee ID:</span>
+                <span className="font-semibold text-gray-600">
+                  Employee ID:
+                </span>
                 <span className="font-mono">{addConfirm.emp_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold text-gray-600">Name:</span>
                 <span>
                   {addConfirm.first_name}{" "}
-                  {addConfirm.middle_initial ? `${addConfirm.middle_initial}.` : ""}{" "}
+                  {addConfirm.middle_initial
+                    ? `${addConfirm.middle_initial}.`
+                    : ""}{" "}
                   {addConfirm.last_name}
                 </span>
               </div>
@@ -515,7 +519,9 @@ export default function Employees() {
                 <span>{addConfirm.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Designation:</span>
+                <span className="font-semibold text-gray-600">
+                  Designation:
+                </span>
                 <span>{addConfirm.designation}</span>
               </div>
               <div className="flex justify-between">
