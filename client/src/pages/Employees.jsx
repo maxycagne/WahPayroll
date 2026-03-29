@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const designationMap = {
   Operations: [
@@ -71,10 +72,9 @@ export default function Employees() {
     mutationFn: (newData) => {
       // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
-      return apiFetch("/api/employees/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newData, password: autoPassword }),
+      return axiosInterceptor.post("/api/employees/add", {
+        ...newData,
+        password: autoPassword,
       });
     },
     onSuccess: () => {
