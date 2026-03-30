@@ -128,7 +128,8 @@ function EmployeeDashboard({ currentUser }) {
     <div className="max-w-full space-y-6">
       <div>
         <h1 className="m-0 text-[1.6rem] font-bold text-slate-900">
-          Welcome back, {currentUser?.first_name || "Employee"}!
+          Welcome back,{" "}
+          {currentUser?.first_name || currentUser?.name || "Employee"}!
         </h1>
         <p className="m-0 mt-1 text-sm text-slate-500">
           Here is what is happening with your account today.
