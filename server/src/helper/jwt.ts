@@ -11,7 +11,7 @@ if (!ACCESS_TOKEN_SECRET || !REFRESH_TOKEN_SECRET) {
 }
 export const createAccessToken = (payload: any) => {
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
-    expiresIn: "15m",
+    expiresIn: "8d",
   });
 };
 

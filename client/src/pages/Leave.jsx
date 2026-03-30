@@ -56,11 +56,19 @@ function getDateRangeInclusive(start, end) {
   const dates = [];
   const current = new Date(start);
   const to = new Date(end);
+
+  // Normalize both dates to the start of the day
   current.setHours(0, 0, 0, 0);
   to.setHours(0, 0, 0, 0);
 
   while (current <= to) {
-    dates.push(current.toISOString().slice(0, 10));
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = String(current.getDate()).padStart(2, "0");
+
+    // Fixed: Added backticks for the template literal
+    dates.push(`${year}-${month}-${day}`);
+
     current.setDate(current.getDate() + 1);
   }
 
