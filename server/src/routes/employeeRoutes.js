@@ -14,6 +14,8 @@ import {
   adjustLeaveBalance,
   getDashboardSummary,
   getSalaryHistory,
+  updateSalaryHistoryEntry,
+  deleteSalaryHistoryEntry,
   applySalaryAdjustment,
   updateBaseSalaryByPosition,
   getAttendanceCalendarSummary,
@@ -38,6 +40,7 @@ import {
   getMyNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  resetPayrollData,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -158,7 +161,7 @@ router.get(
 );
 router.put(
   "/offset-applications/:id",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Supervisor", "HR"),
   updateOffsetApplicationStatus,
 );
 
@@ -174,7 +177,7 @@ router.post(
 );
 router.put(
   "/leaves/:id",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Supervisor", "HR"),
   updateLeaveStatus,
 );
 
@@ -185,23 +188,40 @@ router.get(
 );
 router.post(
   "/generate-payroll",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Admin"),
   generatePayroll,
 );
 router.post(
   "/salary-adjustment",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Admin"),
   applySalaryAdjustment,
 );
 router.put(
   "/update-base-salary",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Admin"),
   updateBaseSalaryByPosition,
 );
+
+router.post(
+  "/reset-payroll",
+  authorizeRoles("Admin"),
+  resetPayrollData,
+);
+
 router.get(
   "/salary-history/:emp_id",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getSalaryHistory,
+);
+router.put(
+  "/salary-history/:id",
+  authorizeRoles("Admin"),
+  updateSalaryHistoryEntry,
+);
+router.delete(
+  "/salary-history/:id",
+  authorizeRoles("Admin"),
+  deleteSalaryHistoryEntry,
 );
 
 router.get(

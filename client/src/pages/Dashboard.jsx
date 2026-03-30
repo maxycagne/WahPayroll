@@ -1,7 +1,35 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarPlus2,
+  Clock3,
+  FolderClock,
+} from "lucide-react";
 import { apiFetch } from "../lib/api";
+
+function getDateDiffInclusive(start, end) {
+  const from = new Date(start).setHours(0, 0, 0, 0);
+  const to = new Date(end).setHours(0, 0, 0, 0);
+  return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function getDateRangeInclusive(start, end) {
+  const dates = [];
+  const current = new Date(start);
+  const to = new Date(end);
+  current.setHours(0, 0, 0, 0);
+  to.setHours(0, 0, 0, 0);
+
+  while (current <= to) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
 
 // ==========================================
 // 1. RANK & FILE (EMPLOYEE) DASHBOARD
@@ -51,7 +79,9 @@ function EmployeeDashboard({ currentUser }) {
 
   if (dashLoading || attLoading) {
     return (
-      <div className="p-6 font-bold text-gray-800">Loading My Dashboard...</div>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+        Loading My Dashboard...
+      </div>
     );
   }
 
@@ -85,34 +115,36 @@ function EmployeeDashboard({ currentUser }) {
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const badgeClass = {
-    Present: "bg-green-100 text-green-800",
+    Present: "bg-emerald-100 text-emerald-800",
     Late: "bg-amber-100 text-amber-800",
     Undertime: "bg-rose-100 text-rose-800",
     "Half-Day": "bg-orange-100 text-orange-800",
     Absent: "bg-red-100 text-red-800",
-    "On Leave": "bg-purple-100 text-purple-800",
+    "On Leave": "bg-violet-100 text-violet-800",
+    Pending: "bg-slate-100 text-slate-700",
   };
-  console.log("My Logs:", currentUser?.first_name);
 
   return (
     <div className="max-w-full space-y-6">
       <div>
-        <h1 className="m-0 text-[1.5rem] font-bold text-gray-900">
+        <h1 className="m-0 text-[1.6rem] font-bold text-slate-900">
           Welcome back, {currentUser?.first_name || "Employee"}!
         </h1>
-        <p className="m-0 text-sm text-gray-500 mt-1">
+        <p className="m-0 mt-1 text-sm text-slate-500">
           Here is what is happening with your account today.
         </p>
       </div>
       {/* ALERT: Missing Documents */}
       {myMissingDocsRecord && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 shadow-sm">
-          <span className="text-xl">⚠️</span>
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+          <span className="mt-0.5 rounded-md bg-white p-1 text-red-600">
+            <AlertTriangle className="h-4 w-4" />
+          </span>
           <div>
-            <h3 className="m-0 text-sm font-bold text-red-800 mb-1">
+            <h3 className="m-0 mb-1 text-sm font-bold text-red-800">
               Action Required: Missing Documents
             </h3>
-            <p className="m-0 text-xs text-red-700">
+            <p className="m-0 text-xs leading-5 text-red-700">
               HR has flagged your profile for missing requirements:{" "}
               <span className="font-bold">
                 {myMissingDocsRecord.missing_docs}
@@ -124,29 +156,29 @@ function EmployeeDashboard({ currentUser }) {
       )}
       {/* STAT CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-t-4 border-t-green-500 flex flex-col justify-between">
-          <p className="m-0 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+        <div className="flex flex-col justify-between rounded-xl border border-emerald-200/70 bg-white p-5 shadow-sm">
+          <p className="m-0 mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
             Leave Balance
           </p>
           <div className="flex items-baseline gap-2">
-            <h2 className="m-0 text-4xl font-black text-gray-900">
+            <h2 className="m-0 text-4xl font-black text-slate-900">
               {myBalanceRecord?.leave_balance || 0}
             </h2>
-            <span className="text-sm font-medium text-gray-500">
+            <span className="text-sm font-medium text-slate-500">
               Days Remaining
             </span>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-t-4 border-t-purple-500 flex flex-col justify-between">
-          <p className="m-0 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+        <div className="flex flex-col justify-between rounded-xl border border-violet-200/80 bg-white p-5 shadow-sm">
+          <p className="m-0 mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
             Offset Credits
           </p>
           <div className="flex items-baseline gap-2">
-            <h2 className="m-0 text-4xl font-black text-gray-900">
+            <h2 className="m-0 text-4xl font-black text-slate-900">
               {myBalanceRecord?.offset_credits || 0}
             </h2>
-            <span className="text-sm font-medium text-gray-500">
+            <span className="text-sm font-medium text-slate-500">
               Earned Credits
             </span>
           </div>
@@ -156,35 +188,41 @@ function EmployeeDashboard({ currentUser }) {
         <div className="flex flex-col gap-2">
           <button
             onClick={() => navigate("/leave")}
-            className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 flex items-center gap-3 px-4 cursor-pointer transition-colors"
+            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm transition-colors hover:bg-slate-50 cursor-pointer"
           >
-            <span className="text-xl">📅</span>
-            <span className="text-sm font-bold text-gray-800">
+            <span className="rounded-md bg-violet-100 p-1.5 text-violet-700">
+              <CalendarPlus2 className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold text-slate-800">
               File a Leave Request
             </span>
+            <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </button>
           <button
             onClick={() => navigate("/leave")}
-            className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 flex items-center gap-3 px-4 cursor-pointer transition-colors"
+            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm transition-colors hover:bg-slate-50 cursor-pointer"
           >
-            <span className="text-xl">⏱️</span>
-            <span className="text-sm font-bold text-gray-800">
+            <span className="rounded-md bg-indigo-100 p-1.5 text-indigo-700">
+              <Clock3 className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold text-slate-800">
               File an Offset
             </span>
+            <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* RECENT ATTENDANCE */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-          <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
-            <h3 className="m-0 text-sm font-bold text-gray-900">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-3">
+            <h3 className="m-0 text-sm font-bold text-slate-900">
               Recent Attendance (Last 5 Days)
             </h3>
           </div>
           <div className="flex-1 p-5">
             {myAttendance.length === 0 ? (
-              <p className="text-sm text-gray-500 italic text-center py-4">
+              <p className="py-4 text-center text-sm italic text-slate-500">
                 No recent attendance records found.
               </p>
             ) : (
@@ -196,10 +234,10 @@ function EmployeeDashboard({ currentUser }) {
                   return (
                     <div
                       key={idx}
-                      className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                      className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-0 last:pb-0"
                     >
                       <div>
-                        <p className="m-0 text-sm font-semibold text-gray-800">
+                        <p className="m-0 text-sm font-semibold text-slate-800">
                           {new Date(log.date).toLocaleDateString(undefined, {
                             weekday: "short",
                             month: "short",
@@ -219,31 +257,34 @@ function EmployeeDashboard({ currentUser }) {
             )}
             <button
               onClick={() => navigate("/attendance")}
-              className="w-full mt-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-600 border border-gray-200 transition-colors cursor-pointer"
+              className="mt-4 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100 cursor-pointer"
             >
               View Full Calendar
+              <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
         {/* PENDING REQUESTS TRACKER */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-          <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 flex justify-between items-center">
-            <h3 className="m-0 text-sm font-bold text-gray-900">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3">
+            <h3 className="m-0 text-sm font-bold text-slate-900">
               My Pending Requests
             </h3>
-            <span className="bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
               {pendingRequests.length} Pending
             </span>
           </div>
           <div className="flex-1 p-5 overflow-y-auto max-h-[300px]">
             {pendingRequests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <span className="text-3xl mb-2">🎉</span>
-                <p className="m-0 text-sm font-semibold text-gray-700">
+                <span className="mb-2 rounded-full bg-emerald-100 p-2 text-emerald-700">
+                  <FolderClock className="h-5 w-5" />
+                </span>
+                <p className="m-0 text-sm font-semibold text-slate-700">
                   You are all caught up!
                 </p>
-                <p className="m-0 text-xs text-gray-500 mt-1">
+                <p className="m-0 mt-1 text-xs text-slate-500">
                   No pending requests waiting for approval.
                 </p>
               </div>
@@ -252,21 +293,25 @@ function EmployeeDashboard({ currentUser }) {
                 {pendingRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50"
+                    className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3"
                   >
-                    <div className="mt-1">
-                      {req.type === "Leave" ? "📅" : "⏱️"}
+                    <div className="mt-0.5 rounded-md bg-white p-1.5 text-violet-700 ring-1 ring-slate-200">
+                      {req.type === "Leave" ? (
+                        <CalendarPlus2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Clock3 className="h-3.5 w-3.5" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="m-0 text-sm font-bold text-gray-900">
+                      <p className="m-0 text-sm font-bold text-slate-900">
                         {req.type} Request
                       </p>
-                      <p className="m-0 text-xs text-gray-600">{req.title}</p>
-                      <p className="m-0 text-[10px] text-gray-400 mt-1">
+                      <p className="m-0 text-xs text-slate-600">{req.title}</p>
+                      <p className="m-0 mt-1 text-[10px] text-slate-400">
                         Filed on {new Date(req.date).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
                       Pending
                     </span>
                   </div>
@@ -286,6 +331,7 @@ function EmployeeDashboard({ currentUser }) {
 function AdminDashboard({ currentUser }) {
   const [activeModal, setActiveModal] = useState(null);
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
+  const [reviewConfirm, setReviewConfirm] = useState(null);
 
   const fetchDashboardData = async () => {
     const res = await apiFetch("/api/employees/dashboard-summary", {
@@ -341,14 +387,14 @@ function AdminDashboard({ currentUser }) {
 
   const priorityOrder = { High: 0, Medium: 1, Low: 2 };
 
-  const handleUpdateLeaveStatus = async (id, newStatus) => {
+  const handleUpdateLeaveStatus = async (id, payload) => {
     try {
       const res = await apiFetch(`/api/employees/leaves/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -368,14 +414,86 @@ function AdminDashboard({ currentUser }) {
     setApprovedLeaves(new Set());
   };
 
+  const openLeaveDecisionConfirm = (employee, status) => {
+    const totalDays = getDateDiffInclusive(
+      employee.date_from,
+      employee.date_to,
+    );
+    const requestedDates = getDateRangeInclusive(
+      employee.date_from,
+      employee.date_to,
+    );
+
+    setReviewConfirm({
+      employee,
+      status,
+      totalDays,
+      isMultiDay: totalDays > 1,
+      selectedDates: status === "Approved" ? requestedDates : [],
+      remarks: "",
+    });
+  };
+
+  const toggleApprovedDate = (date) => {
+    if (!reviewConfirm) return;
+    const selected = new Set(reviewConfirm.selectedDates || []);
+    if (selected.has(date)) {
+      selected.delete(date);
+    } else {
+      selected.add(date);
+    }
+
+    setReviewConfirm({
+      ...reviewConfirm,
+      selectedDates: Array.from(selected).sort(),
+    });
+  };
+
+  const submitLeaveDecision = async () => {
+    if (!reviewConfirm) return;
+
+    if (reviewConfirm.status === "Denied") {
+      await handleUpdateLeaveStatus(reviewConfirm.employee.id, {
+        status: "Denied",
+        supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+      });
+      setReviewConfirm(null);
+      return;
+    }
+
+    const requestedDates = getDateRangeInclusive(
+      reviewConfirm.employee.date_from,
+      reviewConfirm.employee.date_to,
+    );
+    const selectedDates = reviewConfirm.selectedDates || [];
+
+    if (selectedDates.length === 0) {
+      alert("Select at least one day to approve.");
+      return;
+    }
+
+    const isPartial =
+      reviewConfirm.isMultiDay && selectedDates.length < requestedDates.length;
+
+    await handleUpdateLeaveStatus(reviewConfirm.employee.id, {
+      status: isPartial ? "Partially Approved" : "Approved",
+      approved_days: selectedDates.length,
+      approved_dates: selectedDates,
+      supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+    });
+    setReviewConfirm(null);
+  };
+
   if (dashboardQuery.isLoading)
     return (
-      <div className="p-6 text-gray-900 font-bold">Loading Dashboard...</div>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+        Loading Dashboard...
+      </div>
     );
 
   return (
     <div className="max-w-full">
-      <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">Dashboard</h1>
+      <h1 className="m-0 text-[1.45rem] font-bold text-slate-900">Dashboard</h1>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-6">
@@ -385,15 +503,15 @@ function AdminDashboard({ currentUser }) {
             type="button"
             onClick={() => c.clickable && setActiveModal(c.modalKey)}
             disabled={!c.clickable}
-            className={`group relative rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200 ${
+            className={`group relative rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 ${
               c.clickable
-                ? "hover:shadow-md hover:-translate-y-1 cursor-pointer hover:border-gray-300"
+                ? "cursor-pointer hover:-translate-y-1 hover:border-slate-300 hover:shadow-md"
                 : "cursor-default"
             }`}
-            style={{ borderTop: `4px solid ${c.borderColor}` }}
+            style={{ boxShadow: `inset 0 3px 0 0 ${c.borderColor}` }}
           >
             <div className="p-5 text-left">
-              <p className="m-0 text-sm font-medium text-gray-600 mb-2">
+              <p className="m-0 mb-2 text-sm font-medium text-slate-600">
                 {c.label}
               </p>
               <p
@@ -403,7 +521,7 @@ function AdminDashboard({ currentUser }) {
                 {c.value}
               </p>
               {c.clickable && (
-                <p className="m-0 text-xs text-gray-400 mt-2 group-hover:text-gray-500">
+                <p className="m-0 mt-2 text-xs text-slate-400 group-hover:text-slate-500">
                   Click to view
                 </p>
               )}
@@ -419,11 +537,11 @@ function AdminDashboard({ currentUser }) {
           onClick={closeModal}
         >
           <div
-            className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-white p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:-translate-y-1/2 data-[state=open]:translate-y-[-50%] rounded-lg"
+            className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl border border-slate-200 bg-white p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:-translate-y-1/2 data-[state=open]:translate-y-[-50%]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-purple-200 px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700">
+            <div className="flex items-center justify-between border-b border-violet-200 bg-gradient-to-r from-[#5a1ea2] to-[#6d2cc2] px-6 py-4">
               <h2 className="m-0 text-lg font-semibold text-white">
                 {activeModal === "pending"
                   ? `Pending Leave Approvals`
@@ -436,7 +554,7 @@ function AdminDashboard({ currentUser }) {
               <button
                 type="button"
                 onClick={closeModal}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 disabled:pointer-events-none text-white/80 hover:text-white"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-sm text-white/80 opacity-70 ring-offset-white transition-opacity hover:text-white hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:ring-offset-2 disabled:pointer-events-none"
               >
                 <span className="text-2xl">×</span>
               </button>
@@ -483,10 +601,7 @@ function AdminDashboard({ currentUser }) {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleUpdateLeaveStatus(
-                                    employee.id,
-                                    "Approved",
-                                  )
+                                  openLeaveDecisionConfirm(employee, "Approved")
                                 }
                                 className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 transition-colors duration-150"
                               >
@@ -495,7 +610,7 @@ function AdminDashboard({ currentUser }) {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleUpdateLeaveStatus(employee.id, "Denied")
+                                  openLeaveDecisionConfirm(employee, "Denied")
                                 }
                                 className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-red-700 transition-colors duration-150"
                               >
@@ -619,6 +734,123 @@ function AdminDashboard({ currentUser }) {
                 className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-colors duration-150"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewConfirm && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/55"
+          onClick={() => setReviewConfirm(null)}
+        >
+          <div
+            className="fixed left-[50%] top-[50%] z-[61] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-xl border border-slate-200 bg-white shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h3 className="m-0 text-base font-semibold text-slate-900">
+                {reviewConfirm.status === "Denied"
+                  ? "Confirm Denial"
+                  : "Confirm Approval"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setReviewConfirm(null)}
+                className="rounded text-xl text-slate-500 hover:text-slate-700"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto px-5 py-4">
+              <p className="m-0 text-sm text-slate-700">
+                <span className="font-semibold text-slate-900">
+                  {reviewConfirm.employee.first_name}{" "}
+                  {reviewConfirm.employee.last_name}
+                </span>{" "}
+                requested {reviewConfirm.employee.leave_type} from{" "}
+                {new Date(
+                  reviewConfirm.employee.date_from,
+                ).toLocaleDateString()}{" "}
+                to{" "}
+                {new Date(reviewConfirm.employee.date_to).toLocaleDateString()}.
+              </p>
+
+              <p className="m-0 text-sm text-slate-700">
+                Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
+                this leave request?
+              </p>
+
+              {reviewConfirm.status === "Approved" &&
+                reviewConfirm.isMultiDay && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+                      Multi-day request: select specific days to approve
+                    </p>
+                    <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto pr-1">
+                      {getDateRangeInclusive(
+                        reviewConfirm.employee.date_from,
+                        reviewConfirm.employee.date_to,
+                      ).map((date) => (
+                        <label
+                          key={date}
+                          className="flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(
+                              reviewConfirm.selectedDates || []
+                            ).includes(date)}
+                            onChange={() => toggleApprovedDate(date)}
+                          />
+                          <span>{new Date(date).toLocaleDateString()}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="m-0 mt-2 text-xs font-semibold text-amber-800">
+                      Selected: {(reviewConfirm.selectedDates || []).length}{" "}
+                      day(s)
+                    </p>
+                  </div>
+                )}
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Remarks (optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={reviewConfirm.remarks}
+                  onChange={(e) =>
+                    setReviewConfirm({
+                      ...reviewConfirm,
+                      remarks: e.target.value,
+                    })
+                  }
+                  className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder="Add remarks for this decision"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setReviewConfirm(null)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitLeaveDecision}
+                className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
+              >
+                {reviewConfirm.status === "Denied"
+                  ? "Confirm Denial"
+                  : "Confirm Approval"}
               </button>
             </div>
           </div>

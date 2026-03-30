@@ -125,6 +125,48 @@ const ensureOffsetTables = async (connection = pool) => {
   `);
 };
 
+const ensureLeaveApprovalColumns = async (connection = pool) => {
+  // Align status options for existing databases.
+  await connection.query(`
+    ALTER TABLE leave_requests
+    MODIFY COLUMN status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending'
+  `);
+
+  const [approvedDaysColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'approved_days'
+      LIMIT 1
+    `,
+  );
+
+  if (approvedDaysColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN approved_days DECIMAL(5,2) NULL AFTER status",
+    );
+  }
+
+  const [approvedDatesColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'approved_dates'
+      LIMIT 1
+    `,
+  );
+
+  if (approvedDatesColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN approved_dates JSON NULL AFTER approved_days",
+    );
+  }
+};
+
 const ensureResignationsTable = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
@@ -171,6 +213,20 @@ const ensureNotificationsTable = async (connection = pool) => {
   `);
 };
 
+const ensureEmployeeMissingDocsTable = async (connection = pool) => {
+  const empIdColumn = await getEmpIdColumnDefinition(connection);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS employee_missing_docs (
+      emp_id ${empIdColumn} PRIMARY KEY,
+      missing_docs TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+    )
+  `);
+};
+
 const normalizeRole = (role) => {
   const value = String(role || "")
     .trim()
@@ -209,12 +265,20 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
       `
         SELECT emp_id
         FROM employees
-        WHERE COALESCE(role, '') = 'Supervisor'
+        WHERE COALESCE(role, '') = 'HR'
           AND emp_id <> ?
       `,
       [requester.emp_id],
     );
     return rows;
+  }
+
+  if (
+    requester.role !== "RankAndFile" &&
+    requester.role !== "HR" &&
+    requester.role !== "Admin"
+  ) {
+    return [];
   }
 
   if (!requester.designation) return [];
@@ -235,14 +299,20 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
 
 const canApproverReviewRequester = (approver, requester) => {
   if (!approver || !requester) return false;
-
-  if (approver.role === "Admin") return true;
-  if (approver.role !== "Supervisor") return false;
   if (approver.emp_id === requester.emp_id) return false;
 
-  if (requester.role === "Supervisor") return true;
+  // Policy: supervisor requests are reviewed by HR only.
+  if (requester.role === "Supervisor") {
+    return approver.role === "HR";
+  }
 
-  if (requester.role === "RankAndFile" || requester.role === "HR") {
+  // Policy: rank-and-file and HR/Admin requests are reviewed by supervisor of same designation.
+  if (
+    requester.role === "RankAndFile" ||
+    requester.role === "HR" ||
+    requester.role === "Admin"
+  ) {
+    if (approver.role !== "Supervisor") return false;
     return (
       !!requester.designation && approver.designation === requester.designation
     );
@@ -589,6 +659,7 @@ export const getAllResignations = async (req, res) => {
 export const getDashboardSummary = async (req, res) => {
   try {
     await ensureResignationsTable();
+    await ensureEmployeeMissingDocsTable();
 
     const currentUser = await getEmployeeProfile(pool, req.user?.emp_id);
     const isSupervisor = currentUser?.role === "Supervisor";
@@ -601,29 +672,35 @@ export const getDashboardSummary = async (req, res) => {
           FROM leave_requests l
           JOIN employees e ON l.emp_id = e.emp_id
           WHERE l.status = 'Pending'
-            AND (
-              (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
-              OR (
-                COALESCE(e.role, '') IN ('RankAndFile', 'HR')
-                AND e.designation = ?
-              )
-            )
+            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+            AND e.designation = ?
+            AND e.emp_id <> ?
         `,
-        [currentUser.emp_id, currentUser.designation || ""],
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+      pending = rows;
+    } else if (currentUser?.role === "HR") {
+      const [rows] = await pool.query(
+        `
+          SELECT l.*, e.first_name, e.last_name
+          FROM leave_requests l
+          JOIN employees e ON l.emp_id = e.emp_id
+          WHERE l.status = 'Pending'
+            AND COALESCE(e.role, '') = 'Supervisor'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
       );
       pending = rows;
     } else {
-      const [rows] = await pool.query(
-        "SELECT l.*, e.first_name, e.last_name FROM leave_requests l JOIN employees e ON l.emp_id = e.emp_id WHERE l.status = 'Pending'",
-      );
-      pending = rows;
+      pending = [];
     }
 
     const [onLeave] = await pool.query(
       "SELECT e.first_name, e.last_name, l.leave_type FROM employees e JOIN leave_requests l ON e.emp_id = l.emp_id WHERE CURDATE() BETWEEN l.date_from AND l.date_to AND l.status = 'Approved'",
     );
     const [absents] = await pool.query(
-      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE()) AND status != 'Inactive'",
+      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE()) AND status != 'Inactive' AND COALESCE(role, '') <> 'Admin'",
     );
     const [balances] = await pool.query(
       "SELECT e.first_name, e.last_name, lb.leave_balance, lb.offset_credits FROM employees e JOIN leave_balances lb ON e.emp_id = lb.emp_id",
@@ -639,22 +716,28 @@ export const getDashboardSummary = async (req, res) => {
             FROM resignations r
             JOIN employees e ON r.emp_id = e.emp_id
             WHERE r.status = 'Pending Approval'
-              AND (
-                (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
-                OR (
-                  COALESCE(e.role, '') IN ('RankAndFile', 'HR')
-                  AND e.designation = ?
-                )
-              )
+              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+              AND e.designation = ?
+              AND e.emp_id <> ?
           `,
-          [currentUser.emp_id, currentUser.designation || ""],
+          [currentUser.designation || "", currentUser.emp_id],
+        );
+        resignations = resigRows;
+      } else if (currentUser?.role === "HR") {
+        const [resigRows] = await pool.query(
+          `
+            SELECT r.*, e.first_name, e.last_name
+            FROM resignations r
+            JOIN employees e ON r.emp_id = e.emp_id
+            WHERE r.status = 'Pending Approval'
+              AND COALESCE(e.role, '') = 'Supervisor'
+              AND e.emp_id <> ?
+          `,
+          [currentUser.emp_id],
         );
         resignations = resigRows;
       } else {
-        const [resigRows] = await pool.query(
-          "SELECT r.*, e.first_name, e.last_name FROM resignations r JOIN employees e ON r.emp_id = e.emp_id WHERE r.status = 'Pending Approval'",
-        );
-        resignations = resigRows;
+        resignations = [];
       }
     } catch (e) {
       console.error(e);
@@ -696,6 +779,8 @@ export const updateMissingDocs = async (req, res) => {
     return res.status(400).json({ message: "Employee ID is required" });
 
   try {
+    await ensureEmployeeMissingDocsTable();
+
     if (!missing_docs || missing_docs.trim() === "") {
       // If the HR clears the text box, it means all docs are submitted! Delete the record.
       await pool.query("DELETE FROM employee_missing_docs WHERE emp_id = ?", [
@@ -757,7 +842,7 @@ export const getResignations = async (req, res) => {
 
     const params = [];
 
-    if (viewer.role === "RankAndFile" || viewer.role === "HR") {
+    if (viewer.role === "RankAndFile") {
       query += " WHERE r.emp_id = ?";
       params.push(viewer.emp_id);
     } else if (viewer.role === "Supervisor") {
@@ -765,16 +850,22 @@ export const getResignations = async (req, res) => {
         WHERE r.emp_id = ?
            OR (
              r.status = 'Pending Approval'
-             AND (
-               (COALESCE(e.role, '') = 'Supervisor' AND e.emp_id <> ?)
-               OR (
-                 COALESCE(e.role, '') IN ('RankAndFile', 'HR')
-                 AND e.designation = ?
-               )
-             )
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
+             AND e.emp_id <> ?
            )
       `;
-      params.push(viewer.emp_id, viewer.emp_id, viewer.designation || "");
+      params.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    } else if (viewer.role === "HR") {
+      query += `
+        WHERE r.emp_id = ?
+           OR (
+             r.status = 'Pending Approval'
+             AND COALESCE(e.role, '') = 'Supervisor'
+             AND e.emp_id <> ?
+           )
+      `;
+      params.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY r.created_at DESC";
@@ -1051,20 +1142,42 @@ export const adjustLeaveBalance = async (req, res) => {
 
 export const getAllLeaves = async (req, res) => {
   try {
-    const userRole = req.user?.role;
-    const empId = req.user?.emp_id;
+    await ensureLeaveApprovalColumns();
+
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
 
     let query = `
-      SELECT l.*, e.first_name, e.last_name 
-      FROM leave_requests l 
+      SELECT l.*, e.first_name, e.last_name, e.designation, COALESCE(e.role, 'RankAndFile') as requester_role
+      FROM leave_requests l
       JOIN employees e ON l.emp_id = e.emp_id
     `;
     const queryParams = [];
 
-    // PRIVACY FIX: If regular employee, only show their own leaves
-    if (userRole === "RankAndFile") {
+    if (viewer.role === "RankAndFile") {
       query += " WHERE l.emp_id = ?";
-      queryParams.push(empId);
+      queryParams.push(viewer.emp_id);
+    } else if (viewer.role === "Supervisor") {
+      query += `
+        WHERE l.emp_id = ?
+           OR (
+             l.status = 'Pending'
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    } else if (viewer.role === "HR") {
+      query += `
+        WHERE l.emp_id = ?
+           OR (
+             l.status = 'Pending'
+             AND COALESCE(e.role, '') = 'Supervisor'
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY l.id DESC";
@@ -1078,9 +1191,10 @@ export const getAllLeaves = async (req, res) => {
 };
 export const updateLeaveStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, supervisor_remarks } = req.body;
+  const { status, supervisor_remarks, approved_days, approved_dates } =
+    req.body;
 
-  if (!["Pending", "Approved", "Denied"].includes(status)) {
+  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
     return res.status(400).json({ message: "Invalid leave status" });
   }
 
@@ -1092,6 +1206,7 @@ export const updateLeaveStatus = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    await ensureLeaveApprovalColumns(connection);
 
     const approver = await getEmployeeProfile(connection, approverId);
     if (!approver) {
@@ -1100,7 +1215,7 @@ export const updateLeaveStatus = async (req, res) => {
     }
 
     const [rows] = await connection.query(
-      "SELECT id, emp_id FROM leave_requests WHERE id = ? LIMIT 1",
+      "SELECT id, emp_id, date_from, date_to FROM leave_requests WHERE id = ? LIMIT 1",
       [id],
     );
 
@@ -1119,14 +1234,98 @@ export const updateLeaveStatus = async (req, res) => {
       });
     }
 
+    const totalRequestDays =
+      Math.floor(
+        (new Date(leaveRequest.date_to).getTime() -
+          new Date(leaveRequest.date_from).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    const parsedApprovedDays =
+      approved_days !== undefined && approved_days !== null
+        ? Number(approved_days)
+        : null;
+
+    const parsedApprovedDates = Array.isArray(approved_dates)
+      ? approved_dates
+          .map((d) => String(d || "").trim())
+          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      : [];
+
+    if (status === "Partially Approved") {
+      if (!parsedApprovedDays || parsedApprovedDays <= 0) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_days must be greater than zero for partial approval",
+        });
+      }
+
+      if (parsedApprovedDays >= totalRequestDays) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_days must be less than the total requested days",
+        });
+      }
+    }
+
+    if (status === "Approved" && parsedApprovedDays !== null) {
+      if (parsedApprovedDays <= 0 || parsedApprovedDays > totalRequestDays) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_days is out of range for this request",
+        });
+      }
+    }
+
+    if (parsedApprovedDates.length > 0) {
+      const fromDate = new Date(leaveRequest.date_from).setHours(0, 0, 0, 0);
+      const toDate = new Date(leaveRequest.date_to).setHours(0, 0, 0, 0);
+
+      const hasOutOfRangeDate = parsedApprovedDates.some((dateString) => {
+        const value = new Date(dateString).setHours(0, 0, 0, 0);
+        return value < fromDate || value > toDate;
+      });
+
+      if (hasOutOfRangeDate) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "approved_dates contains date(s) outside the request range",
+        });
+      }
+    }
+
+    const finalApprovedDays =
+      status === "Denied"
+        ? null
+        : parsedApprovedDays !== null
+          ? parsedApprovedDays
+          : status === "Approved"
+            ? totalRequestDays
+            : null;
+
+    const finalApprovedDates =
+      status === "Denied"
+        ? null
+        : parsedApprovedDates.length > 0
+          ? JSON.stringify(parsedApprovedDates)
+          : null;
+
     await connection.query(
       `
         UPDATE leave_requests
         SET status = ?,
+            approved_days = ?,
+            approved_dates = ?,
             supervisor_remarks = COALESCE(?, supervisor_remarks)
         WHERE id = ?
       `,
-      [status, supervisor_remarks || null, id],
+      [
+        status,
+        finalApprovedDays,
+        finalApprovedDates,
+        supervisor_remarks || null,
+        id,
+      ],
     );
 
     await notifyRequesterForDecision(connection, {
@@ -1152,42 +1351,72 @@ export const updateLeaveStatus = async (req, res) => {
 export const getAllPayroll = async (req, res) => {
   try {
     const { period } = req.query;
-    const { periodStart, periodEnd } = parsePeriodRange(period);
-
-    const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
-      periodStart,
-      periodEnd,
-    );
+    const { periodStart } = parsePeriodRange(period);
 
     // FIX: Added the WHERE clause to only fetch payrolls for the selected month!
     const [rows] = await pool.query(
-      `SELECT p.*, e.first_name, e.last_name, e.designation, e.position 
-       FROM payroll p 
+      `SELECT
+         p.*,
+         e.first_name,
+         e.last_name,
+         e.designation,
+         e.position,
+         adj.adjustment_reasons,
+         adj.incentive_reasons,
+         adj.deduction_reasons
+       FROM payroll p
        JOIN employees e ON p.emp_id = e.emp_id
+       LEFT JOIN (
+         SELECT
+           emp_id,
+           GROUP_CONCAT(
+             CASE
+               WHEN type IN ('Bonus', 'Increase') THEN CONCAT(type, ': ', COALESCE(description, 'No reason provided'))
+               ELSE NULL
+             END
+             ORDER BY effective_date DESC, id DESC
+             SEPARATOR ' | '
+           ) AS incentive_reasons,
+           GROUP_CONCAT(
+             CASE
+               WHEN type = 'Decrease' THEN CONCAT(
+                 COALESCE(NULLIF(TRIM(description), ''), 'No reason provided'),
+                 ' = ₱',
+                 FORMAT(ABS(amount), 2)
+               )
+               ELSE NULL
+             END
+             ORDER BY effective_date DESC, id DESC
+             SEPARATOR ' | '
+           ) AS deduction_reasons,
+           GROUP_CONCAT(
+             CONCAT(type, ': ', COALESCE(description, 'No reason provided'))
+             ORDER BY effective_date DESC, id DESC
+             SEPARATOR ' | '
+           ) AS adjustment_reasons
+         FROM salary_history
+         WHERE DATE_FORMAT(effective_date, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
+         GROUP BY emp_id
+       ) adj ON adj.emp_id = p.emp_id
        WHERE p.period_start = ?`,
-      [periodStart],
+      [periodStart, periodStart],
     );
 
     const enrichedRows = rows.map((row) => {
-      const absenceSummary = absenceSummaryByEmployee[row.emp_id] || {
-        rawAbsences: 0,
-        convertedAbsences: 0,
-      };
-
       const basicPay = Number(row.basic_pay || 0);
       const incentives = Number(row.incentives || 0);
-      const absenceDeductions = Number(
-        ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
-      );
+      const totalDeductions = Number(row.absence_deductions || 0);
       const netPay = Number(
-        (basicPay + incentives - absenceDeductions).toFixed(2),
+        (basicPay + incentives - totalDeductions).toFixed(2),
       );
 
       return {
         ...row,
-        absences_count: absenceSummary.rawAbsences,
-        converted_absences: Number(absenceSummary.convertedAbsences.toFixed(2)),
-        absence_deductions: absenceDeductions,
+        absences_count: 0,
+        converted_absences: 0,
+        absence_deductions: totalDeductions,
+        baseline_absence_deductions: 0,
+        adjustment_deductions: totalDeductions,
         net_pay: netPay,
       };
     });
@@ -1574,14 +1803,16 @@ export const getOffsetApplications = async (req, res) => {
   try {
     await ensureOffsetTables();
 
-    const userRole = req.user?.role;
-    const empId = req.user?.emp_id;
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
 
     let query = `
       SELECT
         oa.*,
         e.first_name,
         e.last_name,
+        e.designation,
+        COALESCE(e.role, 'RankAndFile') as requester_role,
         sup.first_name as supervisor_first_name,
         sup.last_name as supervisor_last_name
       FROM offset_applications oa
@@ -1590,10 +1821,30 @@ export const getOffsetApplications = async (req, res) => {
     `;
     const queryParams = [];
 
-    // PRIVACY FIX: If regular employee, only show their own offsets
-    if (userRole === "RankAndFile") {
+    if (viewer.role === "RankAndFile") {
       query += " WHERE oa.emp_id = ?";
-      queryParams.push(empId);
+      queryParams.push(viewer.emp_id);
+    } else if (viewer.role === "Supervisor") {
+      query += `
+        WHERE oa.emp_id = ?
+           OR (
+             oa.status = 'Pending'
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    } else if (viewer.role === "HR") {
+      query += `
+        WHERE oa.emp_id = ?
+           OR (
+             oa.status = 'Pending'
+             AND COALESCE(e.role, '') = 'Supervisor'
+             AND e.emp_id <> ?
+           )
+      `;
+      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY oa.created_at DESC";
@@ -1697,28 +1948,154 @@ export const updateOffsetApplicationStatus = async (req, res) => {
   }
 };
 
+const normalizeAdjustmentType = (rawType) => {
+  const normalized = String(rawType || "")
+    .trim()
+    .toLowerCase();
+
+  if (["decrease", "deduction", "deductions"].includes(normalized)) {
+    return "Decrease";
+  }
+
+  if (["increase", "incentive", "incentives", "raise"].includes(normalized)) {
+    return "Increase";
+  }
+
+  if (["bonus"].includes(normalized)) {
+    return "Bonus";
+  }
+
+  return null;
+};
+
+const recomputePayrollForEmployeesPeriod = async (
+  connection,
+  empIds,
+  period,
+) => {
+  if (!Array.isArray(empIds) || empIds.length === 0) return;
+
+  const uniqueEmpIds = Array.from(new Set(empIds));
+  const placeholders = uniqueEmpIds.map(() => "?").join(", ");
+  const { periodStart } = parsePeriodRange(period);
+
+  const [adjustmentTotals] = await connection.query(
+    `SELECT
+       emp_id,
+       COALESCE(
+         SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END),
+         0
+       ) AS total_incentives,
+       COALESCE(
+         SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END),
+         0
+       ) AS total_deductions
+     FROM salary_history
+     WHERE DATE_FORMAT(effective_date, '%Y-%m') = ?
+       AND emp_id IN (${placeholders})
+     GROUP BY emp_id`,
+    [period, ...uniqueEmpIds],
+  );
+
+  const totalsByEmp = new Map(
+    adjustmentTotals.map((row) => [
+      row.emp_id,
+      {
+        incentives: Number(row.total_incentives || 0),
+        deductions: Number(row.total_deductions || 0),
+      },
+    ]),
+  );
+
+  const [payrollRows] = await connection.query(
+    `SELECT emp_id
+     FROM payroll
+     WHERE period_start = ?
+       AND emp_id IN (${placeholders})`,
+    [periodStart, ...uniqueEmpIds],
+  );
+
+  for (const row of payrollRows) {
+    const totals = totalsByEmp.get(row.emp_id) || { incentives: 0, deductions: 0 };
+
+    await connection.query(
+      `UPDATE payroll
+       SET incentives = ?,
+           absence_deductions = ?,
+           gross_pay = ROUND(basic_pay + ?, 2),
+           net_pay = ROUND((basic_pay + ?) - ?, 2)
+       WHERE period_start = ?
+         AND emp_id = ?`,
+      [
+        totals.incentives,
+        totals.deductions,
+        totals.incentives,
+        totals.incentives,
+        totals.deductions,
+        periodStart,
+        row.emp_id,
+      ],
+    );
+  }
+};
+
 export const applySalaryAdjustment = async (req, res) => {
   const { emp_ids, type, amount, description, date } = req.body;
+
+  if (!Array.isArray(emp_ids) || emp_ids.length === 0) {
+    return res.status(400).json({ message: "At least one employee is required" });
+  }
+
+  if (!type || amount === undefined || amount === null || !date) {
+    return res.status(400).json({ message: "type, amount, and date are required" });
+  }
+
+  const normalizedType = normalizeAdjustmentType(type);
+  if (!normalizedType) {
+    return res.status(400).json({ message: "Invalid adjustment type" });
+  }
+
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ message: "Amount must be greater than 0" });
+  }
+
+  const period = String(date).slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(period)) {
+    return res.status(400).json({ message: "Invalid adjustment date" });
+  }
+
+  const connection = await pool.getConnection();
+
   try {
+    await connection.beginTransaction();
+
     // Loop through each selected employee ID and save the record
     for (const emp_id of emp_ids) {
-      await pool.query(
+      await connection.query(
         `INSERT INTO salary_history (emp_id, effective_date, type, amount, description, remarks) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
           emp_id,
           date,
-          type,
-          amount,
-          description,
+          normalizedType,
+          numericAmount,
+          description || null,
           "Added via Payroll Bulk Adjustment",
         ],
       );
     }
+
+    await recomputePayrollForEmployeesPeriod(connection, emp_ids, period);
+
+    await connection.commit();
     res.json({ message: "Adjustments applied successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in applySalaryAdjustment:", error);
     res.status(500).json({ message: "Error applying adjustment" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -1726,49 +2103,56 @@ export const generatePayroll = async (req, res) => {
   const { period } = req.body;
   if (!period) return res.status(400).json({ message: "Period is required" });
 
+  const connection = await pool.getConnection();
+
   try {
+    await connection.beginTransaction();
+
     // 1. Get the exact start and end dates for the selected month
-    const { periodStart, periodEnd } = parsePeriodRange(period);
+    const { periodStart } = parsePeriodRange(period);
 
-    // 2. Fetch the calculated absences (incorporates the 1 vs 1.25 workweek logic)
-    const absenceSummaryByEmployee = await getConvertedAbsenceSummary(
+    // Keep payroll generation idempotent by replacing the selected period snapshot.
+    await connection.query("DELETE FROM payroll WHERE period_start = ?", [
       periodStart,
-      periodEnd,
-    );
+    ]);
 
-    // 3. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin)
-    const [employees] = await pool.query(
+    // 2. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin)
+    const [employees] = await connection.query(
       "SELECT emp_id, basic_pay FROM employees WHERE COALESCE(role, '') != 'Admin'",
     );
 
-    // 4. Calculate and save the snapshot for each employee
+    // 3. Calculate and save the snapshot for each employee
     for (const emp of employees) {
       const basicPay = Number(emp.basic_pay || 0);
 
-      const absenceSummary = absenceSummaryByEmployee[emp.emp_id] || {
-        rawAbsences: 0,
-        convertedAbsences: 0,
-      };
-
-      // Formula: (Monthly Pay / 22 days) * converted absences
-      const absenceDeductions = Number(
-        ((basicPay / 22) * absenceSummary.convertedAbsences).toFixed(2),
-      );
-
-      // Calculate total incentives (Bonus/Increases) given this month
-      const [incentiveRows] = await pool.query(
-        "SELECT SUM(amount) as total_incentives FROM salary_history WHERE emp_id = ? AND type IN ('Bonus', 'Increase') AND DATE_FORMAT(effective_date, '%Y-%m') = ?",
+      const [adjustmentRows] = await connection.query(
+        `SELECT
+           COALESCE(
+             SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END),
+             0
+           ) as total_incentives,
+           COALESCE(
+             SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END),
+             0
+           ) as total_adjustment_deductions
+         FROM salary_history
+         WHERE emp_id = ?
+           AND DATE_FORMAT(effective_date, '%Y-%m') = ?`,
         [emp.emp_id, period],
       );
-      const incentives = Number(incentiveRows[0]?.total_incentives || 0);
+      const incentives = Number(adjustmentRows[0]?.total_incentives || 0);
+      const adjustmentDeductions = Number(
+        adjustmentRows[0]?.total_adjustment_deductions || 0,
+      );
+      const totalDeductions = Number(adjustmentDeductions.toFixed(2));
 
       // Calculate Gross and Net Pay
       const grossPay = Number((basicPay + incentives).toFixed(2));
-      const netPay = Number((grossPay - absenceDeductions).toFixed(2));
+      const netPay = Number((grossPay - totalDeductions).toFixed(2));
 
-      // 5. Save the official snapshot to the payroll table
+      // 4. Save the official snapshot to the payroll table
       // EXACTLY matching your database columns from the screenshot
-      await pool.query(
+      await connection.query(
         `INSERT INTO payroll (emp_id, period_start, basic_pay, absences_count, absence_deductions, incentives, gross_pay, net_pay)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE 
@@ -1782,8 +2166,8 @@ export const generatePayroll = async (req, res) => {
           emp.emp_id,
           periodStart,
           basicPay,
-          absenceSummary.rawAbsences,
-          absenceDeductions,
+          0,
+          totalDeductions,
           incentives,
           grossPay,
           netPay,
@@ -1791,10 +2175,14 @@ export const generatePayroll = async (req, res) => {
       );
     }
 
+    await connection.commit();
     res.json({ message: "Payroll generated successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in generatePayroll:", error);
     res.status(500).json({ message: "Error generating payroll" });
+  } finally {
+    connection.release();
   }
 };
 export const updateBaseSalaryByPosition = async (req, res) => {
@@ -1832,15 +2220,141 @@ export const updateBaseSalaryByPosition = async (req, res) => {
 // --- SALARY HISTORY ---
 export const getSalaryHistory = async (req, res) => {
   const { emp_id } = req.params;
+  const { period } = req.query;
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM salary_history WHERE emp_id = ? ORDER BY effective_date DESC",
-      [emp_id],
-    );
+    let rows;
+
+    if (period && /^\d{4}-\d{2}$/.test(String(period))) {
+      [rows] = await pool.query(
+        `SELECT *
+         FROM salary_history
+         WHERE emp_id = ?
+           AND DATE_FORMAT(effective_date, '%Y-%m') = ?
+         ORDER BY effective_date DESC, id DESC`,
+        [emp_id, period],
+      );
+    } else {
+      [rows] = await pool.query(
+        `SELECT *
+         FROM salary_history
+         WHERE emp_id = ?
+         ORDER BY effective_date DESC, id DESC`,
+        [emp_id],
+      );
+    }
+
     res.json(rows);
   } catch (error) {
     console.error("DB Error in getSalaryHistory:", error);
     res.status(500).json({ message: "Error fetching salary history" });
+  }
+};
+
+export const updateSalaryHistoryEntry = async (req, res) => {
+  const { id } = req.params;
+  const { type, amount, description } = req.body;
+
+  const normalizedType = normalizeAdjustmentType(type);
+  if (!normalizedType) {
+    return res.status(400).json({ message: "Invalid adjustment type" });
+  }
+
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ message: "Amount must be greater than 0" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query(
+      `SELECT
+         id,
+         emp_id,
+         DATE_FORMAT(effective_date, '%Y-%m') AS period_key
+       FROM salary_history
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+
+    if (existingRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Adjustment record not found" });
+    }
+
+    const existing = existingRows[0];
+    const period = existing.period_key;
+
+    if (!period) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Invalid adjustment period" });
+    }
+
+    await connection.query(
+      `UPDATE salary_history
+       SET type = ?, amount = ?, description = ?
+       WHERE id = ?`,
+      [normalizedType, numericAmount, description || null, id],
+    );
+
+    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+
+    await connection.commit();
+    res.json({ message: "Adjustment updated successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in updateSalaryHistoryEntry:", error);
+    res.status(500).json({ message: "Error updating adjustment" });
+  } finally {
+    connection.release();
+  }
+};
+
+export const deleteSalaryHistoryEntry = async (req, res) => {
+  const { id } = req.params;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query(
+      `SELECT
+         id,
+         emp_id,
+         DATE_FORMAT(effective_date, '%Y-%m') AS period_key
+       FROM salary_history
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+
+    if (existingRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Adjustment record not found" });
+    }
+
+    const existing = existingRows[0];
+    const period = existing.period_key;
+
+    if (!period) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Invalid adjustment period" });
+    }
+
+    await connection.query("DELETE FROM salary_history WHERE id = ?", [id]);
+
+    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+
+    await connection.commit();
+    res.json({ message: "Adjustment removed successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in deleteSalaryHistoryEntry:", error);
+    res.status(500).json({ message: "Error removing adjustment" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -2037,5 +2551,34 @@ export const getMyAttendance = async (req, res) => {
   } catch (error) {
     console.error("DB Error in getMyAttendance:", error);
     res.status(500).json({ message: "Error fetching personal attendance" });
+  }
+};
+
+// --- RESET PAYROLL ---
+export const resetPayrollData = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Delete all payroll records
+    await connection.query("DELETE FROM payroll");
+
+    // Delete all salary history records (adjustments)
+    await connection.query("DELETE FROM salary_history");
+
+    await connection.commit();
+
+    res.json({
+      message: "All payroll data has been reset successfully",
+      timestamp: new Date(),
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in resetPayrollData:", error);
+    res
+      .status(500)
+      .json({ message: "Error resetting payroll data", error: error.message });
+  } finally {
+    connection.release();
   }
 };

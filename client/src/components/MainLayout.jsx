@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, CheckCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { apiFetch } from "../lib/api";
 import axiosInterceptor from "../hooks/interceptor";
@@ -13,6 +14,7 @@ export default function MainLayout({ role }) {
   const queryClient = useQueryClient();
   const [openNotifications, setOpenNotifications] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // --- NOTIFICATIONS LOGIC ---
   const { data: notifications = [] } = useQuery({
@@ -90,85 +92,112 @@ export default function MainLayout({ role }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="flex items-center justify-between px-7 py-3 bg-gradient-to-r from-wah-topbar-start to-wah-topbar-end sticky top-0 z-20">
-        <h2 className="m-0 flex items-baseline gap-2">
-          <span className="text-white text-[0.95rem] font-extrabold uppercase tracking-wide">
-            WIRELESS ACCESS FOR HEALTH
-          </span>
-          <span className="text-white/70 text-[0.78rem] font-normal uppercase tracking-wider">
-            PAYROLL.
-          </span>
-        </h2>
-        <div className="relative flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setOpenNotifications((prev) => !prev)}
-            className="relative h-8 w-8 rounded-full border border-white/35 text-white hover:bg-white/10"
-            aria-label="Notifications"
-          >
-            <span className="text-sm">🔔</span>
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
-                {unreadCount > 99 ? "99+" : unreadCount}
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-7">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+              className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-violet-50 md:flex"
+              aria-label={
+                isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+
+            <h2 className="m-0 flex items-baseline gap-2">
+              <span className="text-[0.95rem] font-extrabold uppercase tracking-[0.13em] text-slate-900">
+                Wireless Access For Health
               </span>
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-violet-700">
+                Payroll
+              </span>
+            </h2>
+          </div>
+          <div className="relative flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setOpenNotifications((prev) => !prev)}
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-violet-50"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4.5 w-4.5" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {openNotifications && (
+              <div className="absolute right-0 top-11 z-30 w-96 max-w-[90vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <h3 className="m-0 text-sm font-bold text-slate-900">
+                    Notifications
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => markAllReadMutation.mutate()}
+                    className="inline-flex items-center gap-1 bg-transparent text-xs font-semibold text-violet-700 border-0 cursor-pointer"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Mark all read
+                  </button>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="m-0 px-4 py-4 text-sm text-slate-500">
+                      No notifications yet.
+                    </p>
+                  ) : (
+                    notifications.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleNotificationClick(item)}
+                        className={`w-full cursor-pointer border-0 bg-transparent px-4 py-3 text-left hover:bg-slate-50 ${item.status === "Unread" ? "bg-violet-50/45" : ""}`}
+                      >
+                        <p className="m-0 text-sm font-semibold text-slate-900">
+                          {item.title}
+                        </p>
+                        <p className="m-0 mt-1 text-xs text-slate-600">
+                          {item.message}
+                        </p>
+                        <p className="m-0 mt-1 text-[11px] text-slate-400">
+                          {new Date(item.created_at).toLocaleString()}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
-          </button>
 
-          {openNotifications && (
-            <div className="absolute right-0 top-10 w-96 max-w-[90vw] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-30">
-              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="m-0 text-sm font-bold text-gray-900">
-                  Notifications
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => markAllReadMutation.mutate()}
-                  className="text-xs font-semibold text-purple-700 bg-transparent border-0 cursor-pointer"
-                >
-                  Mark all read
-                </button>
-              </div>
-
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <p className="m-0 px-4 py-4 text-sm text-gray-500">
-                    No notifications yet.
-                  </p>
-                ) : (
-                  notifications.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleNotificationClick(item)}
-                      className={`w-full text-left border-0 bg-transparent px-4 py-3 cursor-pointer hover:bg-gray-50 ${item.status === "Unread" ? "bg-purple-50/40" : ""}`}
-                    >
-                      <p className="m-0 text-sm font-semibold text-gray-900">
-                        {item.title}
-                      </p>
-                      <p className="m-0 text-xs text-gray-600 mt-1">
-                        {item.message}
-                      </p>
-                      <p className="m-0 text-[11px] text-gray-400 mt-1">
-                        {new Date(item.created_at).toLocaleString()}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          <span className="text-[0.78rem] uppercase tracking-widest font-semibold px-2.5 py-1 rounded-full border border-white/35 text-white/90">
-            {role}
-          </span>
+            <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-violet-700">
+              {role}
+            </span>
+          </div>
         </div>
       </header>
 
-      <div className="grid grid-cols-[200px_1fr] flex-1">
+      <div
+        className={`grid h-[calc(100vh-65px)] overflow-hidden grid-cols-1 ${isSidebarCollapsed ? "md:grid-cols-[84px_1fr]" : "md:grid-cols-[248px_1fr]"}`}
+      >
         {/* We pass a function to the Sidebar to open the logout modal instead of logging out instantly */}
-        <Sidebar role={role} onLogout={() => setShowLogoutConfirmation(true)} />
-        <main className="flex-1 p-5 overflow-y-auto">
+        <Sidebar
+          role={role}
+          isCollapsed={isSidebarCollapsed}
+          onLogout={() => setShowLogoutConfirmation(true)}
+        />
+        <main className="h-full overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>

@@ -62,7 +62,9 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   date_from DATE NOT NULL,
   date_to DATE NOT NULL,
   priority VARCHAR(50),
-  status ENUM('Pending', 'Approved', 'Denied') DEFAULT 'Pending',
+  status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
+  approved_days DECIMAL(5,2),
+  approved_dates JSON,
   supervisor_remarks TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -102,6 +104,14 @@ CREATE TABLE IF NOT EXISTS notifications (
   read_at TIMESTAMP NULL,
   INDEX idx_notification_emp_status (emp_id, status),
   INDEX idx_notification_created (created_at),
+  FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS employee_missing_docs (
+  emp_id VARCHAR(50) PRIMARY KEY,
+  missing_docs TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
