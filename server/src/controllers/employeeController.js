@@ -1159,9 +1159,9 @@ export const getAllLeaves = async (req, res) => {
       queryParams.push(viewer.emp_id);
     } else if (viewer.role === "Supervisor") {
       query += `
-        WHERE l.emp_id = ?
+       WHERE l.emp_id = ?
            OR (
-             l.status = 'Pending'
+             l.status IN ('Pending', 'Approved', 'Partially Approved','Declined') -- UPDATED HERE
              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
              AND e.designation = ?
              AND e.emp_id <> ?
@@ -1172,12 +1172,13 @@ export const getAllLeaves = async (req, res) => {
       query += `
         WHERE l.emp_id = ?
            OR (
-             l.status = 'Pending'
-             AND COALESCE(e.role, '') = 'Supervisor'
+             l.status IN ('Pending', 'Approved', 'Partially Approved','Declined') -- UPDATED HERE
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
              AND e.emp_id <> ?
            )
       `;
-      queryParams.push(viewer.emp_id, viewer.emp_id);
+      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
     }
 
     query += " ORDER BY l.id DESC";
@@ -1194,7 +1195,9 @@ export const updateLeaveStatus = async (req, res) => {
   const { status, supervisor_remarks, approved_days, approved_dates } =
     req.body;
 
-  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
+  if (
+    !["Pending", "Approved", "Denied", "Partially Approved"].includes(status)
+  ) {
     return res.status(400).json({ message: "Invalid leave status" });
   }
 
@@ -1256,7 +1259,8 @@ export const updateLeaveStatus = async (req, res) => {
       if (!parsedApprovedDays || parsedApprovedDays <= 0) {
         await connection.rollback();
         return res.status(400).json({
-          message: "approved_days must be greater than zero for partial approval",
+          message:
+            "approved_days must be greater than zero for partial approval",
         });
       }
 
@@ -2016,7 +2020,10 @@ const recomputePayrollForEmployeesPeriod = async (
   );
 
   for (const row of payrollRows) {
-    const totals = totalsByEmp.get(row.emp_id) || { incentives: 0, deductions: 0 };
+    const totals = totalsByEmp.get(row.emp_id) || {
+      incentives: 0,
+      deductions: 0,
+    };
 
     await connection.query(
       `UPDATE payroll
@@ -2043,11 +2050,15 @@ export const applySalaryAdjustment = async (req, res) => {
   const { emp_ids, type, amount, description, date } = req.body;
 
   if (!Array.isArray(emp_ids) || emp_ids.length === 0) {
-    return res.status(400).json({ message: "At least one employee is required" });
+    return res
+      .status(400)
+      .json({ message: "At least one employee is required" });
   }
 
   if (!type || amount === undefined || amount === null || !date) {
-    return res.status(400).json({ message: "type, amount, and date are required" });
+    return res
+      .status(400)
+      .json({ message: "type, amount, and date are required" });
   }
 
   const normalizedType = normalizeAdjustmentType(type);
@@ -2299,7 +2310,11 @@ export const updateSalaryHistoryEntry = async (req, res) => {
       [normalizedType, numericAmount, description || null, id],
     );
 
-    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+    await recomputePayrollForEmployeesPeriod(
+      connection,
+      [existing.emp_id],
+      period,
+    );
 
     await connection.commit();
     res.json({ message: "Adjustment updated successfully" });
@@ -2345,7 +2360,11 @@ export const deleteSalaryHistoryEntry = async (req, res) => {
 
     await connection.query("DELETE FROM salary_history WHERE id = ?", [id]);
 
-    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+    await recomputePayrollForEmployeesPeriod(
+      connection,
+      [existing.emp_id],
+      period,
+    );
 
     await connection.commit();
     res.json({ message: "Adjustment removed successfully" });

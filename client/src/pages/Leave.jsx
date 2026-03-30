@@ -56,6 +56,8 @@ function getDateRangeInclusive(start, end) {
   const dates = [];
   const current = new Date(start);
   const to = new Date(end);
+
+  // Normalize both dates to the start of the day
   current.setHours(0, 0, 0, 0);
   to.setHours(0, 0, 0, 0);
 
