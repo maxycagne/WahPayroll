@@ -24,8 +24,6 @@ const navItems = {
     { to: "/employees", icon: Users, label: "Employees" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
-    { to: "/payroll", icon: Wallet, label: "Payroll" },
-    { to: "/payroll-reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
   ],
   HR: [

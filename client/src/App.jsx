@@ -119,10 +119,7 @@ function AppRoutes({ user }) {
           <Route
             path="/payroll"
             element={
-              <RoleProtectedRoute
-                user={user}
-                allowedRoles={["Admin", "Supervisor", "HR"]}
-              >
+              <RoleProtectedRoute user={user} allowedRoles={["Admin", "HR"]}>
                 <Payroll />
               </RoleProtectedRoute>
             }
@@ -156,10 +153,7 @@ function AppRoutes({ user }) {
           <Route
             path="/payroll-reports"
             element={
-              <RoleProtectedRoute
-                user={user}
-                allowedRoles={["Admin", "Supervisor"]}
-              >
+              <RoleProtectedRoute user={user} allowedRoles={["Admin"]}>
                 <Reports />
               </RoleProtectedRoute>
             }
