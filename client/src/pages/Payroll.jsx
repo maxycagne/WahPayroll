@@ -1,4 +1,4 @@
-import { useState, Fragment, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
@@ -40,21 +40,67 @@ const fmt = (n) => {
         });
 };
 
+const fmtSigned = (n) => {
+  const num = Number(n || 0);
+  if (isNaN(num)) return "+₱0.00";
+  return `${num >= 0 ? "+" : "-"}${fmt(Math.abs(num))}`;
+};
+
+const getMonthsInRange = (startPeriod, endPeriod) => {
+  if (!/^\d{4}-\d{2}$/.test(String(startPeriod || ""))) return [];
+  if (!/^\d{4}-\d{2}$/.test(String(endPeriod || ""))) return [];
+
+  const [startYear, startMonth] = startPeriod.split("-").map(Number);
+  const [endYear, endMonth] = endPeriod.split("-").map(Number);
+
+  const start = new Date(startYear, startMonth - 1, 1);
+  const end = new Date(endYear, endMonth - 1, 1);
+  if (start > end) return [];
+
+  const months = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    months.push(
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+    );
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months;
+};
+
 export default function Payroll() {
   const queryClient = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState("2026-03");
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("wah_user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const isAdmin = currentUser?.role === "Admin";
 
   // Modal & Form States
   const [adjustmentModal, setAdjustmentModal] = useState(null);
   const [salarySettingsModal, setSalarySettingsModal] = useState(false);
+  const [salaryBreakdownModal, setSalaryBreakdownModal] = useState(null);
+  const [resetConfirmModal, setResetConfirmModal] = useState(false);
+  const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
 
-  const [adjustmentType, setAdjustmentType] = useState("Increase");
+  const [adjustmentType, setAdjustmentType] = useState("Bonus");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [applyToOtherMonth, setApplyToOtherMonth] = useState(false);
+  const [adjustmentTargetPeriod, setAdjustmentTargetPeriod] = useState(period);
+  const [applyByRange, setApplyByRange] = useState(false);
+  const [adjustmentRangeStart, setAdjustmentRangeStart] = useState(period);
+  const [adjustmentRangeEnd, setAdjustmentRangeEnd] = useState(period);
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
   const [bulkAdjustmentMode, setBulkAdjustmentMode] = useState(false);
   const [search, setSearch] = useState("");
+  const [designationFilter, setDesignationFilter] = useState("All");
 
   // Salary Settings State (Added designation for cascading dropdowns)
   const [salaryForm, setSalaryForm] = useState({
@@ -93,6 +139,23 @@ export default function Payroll() {
     },
   });
 
+  const { data: salaryHistoryData = [] } = useQuery({
+    queryKey: [
+      "salary-history",
+      adjustmentModal?.emp_id,
+      applyToOtherMonth ? adjustmentTargetPeriod : period,
+    ],
+    enabled: Boolean(adjustmentModal?.emp_id),
+    queryFn: async () => {
+      const activePeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
+      const res = await apiFetch(
+        `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch salary history");
+      return res.json();
+    },
+  });
+
   // --- MUTATIONS ---
   const adjustmentMutation = useMutation({
     mutationFn: async (payload) => {
@@ -106,12 +169,54 @@ export default function Payroll() {
       if (!res.ok) throw new Error("Failed to save adjustments");
       return res.json();
     },
+  });
+
+  const updateHistoryEntryMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await apiFetch(
+        `/api/employees/salary-history/${payload.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: payload.type,
+            amount: payload.amount,
+            description: payload.description,
+          }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to update adjustment");
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
-      showToast("Adjustments applied successfully.");
-      closeAdjustmentModal();
+      queryClient.invalidateQueries({
+        queryKey: ["salary-history", adjustmentModal?.emp_id],
+      });
+      setEditingHistoryEntry(null);
+      showToast("Adjustment updated successfully.");
     },
-    onError: () => showToast("Failed to apply adjustments.", "error"),
+    onError: () => showToast("Failed to update adjustment.", "error"),
+  });
+
+  const deleteHistoryEntryMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await apiFetch(`/api/employees/salary-history/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to remove adjustment");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({
+        queryKey: ["salary-history", adjustmentModal?.emp_id],
+      });
+      showToast("Adjustment removed successfully.");
+    },
+    onError: () => showToast("Failed to remove adjustment.", "error"),
   });
 
   const updateBaseSalaryMutation = useMutation({
@@ -162,16 +267,58 @@ export default function Payroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
-      showToast("Payroll calculation generated successfully!");
     },
     onError: (err) =>
-      showToast(err.message || "Failed to generate payroll.", "error"),
+      console.error(err.message || "Failed to generate payroll."),
   });
 
+  const resetPayrollMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch("/api/employees/reset-payroll", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!res.ok) throw new Error("Failed to reset payroll data");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      setResetConfirmModal(false);
+      showToast("All payroll data has been reset successfully.");
+    },
+    onError: () => {
+      showToast("Failed to reset payroll data.", "error");
+    },
+  });
+
+  // Auto-generate payroll when period changes
+  useEffect(() => {
+    if (isAdmin) {
+      generatePayrollMutation.mutate();
+    }
+  }, [period]);
+
   // --- HANDLERS ---
-  const handleAdjustment = () => {
+  const handleAdjustment = async () => {
     if (!adjustmentAmount || !adjustmentReason)
       return showToast("Fill in all fields.", "error");
+
+    const targetPeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
+
+    let targetPeriods = [targetPeriod];
+    if (applyToOtherMonth && applyByRange) {
+      targetPeriods = getMonthsInRange(
+        adjustmentRangeStart,
+        adjustmentRangeEnd,
+      );
+      if (targetPeriods.length === 0) {
+        return showToast("Select a valid month range.", "error");
+      }
+    } else if (!/^\d{4}-\d{2}$/.test(String(targetPeriod || ""))) {
+      return showToast("Select a valid target month.", "error");
+    }
 
     const empIds = bulkAdjustmentMode
       ? Array.from(selectedEmployees)
@@ -179,13 +326,33 @@ export default function Payroll() {
     if (empIds.length === 0)
       return showToast("No employees selected.", "error");
 
-    adjustmentMutation.mutate({
-      emp_ids: empIds,
-      type: adjustmentType,
-      amount: adjustmentAmount,
-      description: adjustmentReason,
-      date: `${period}-01`,
-    });
+    try {
+      for (const month of targetPeriods) {
+        await adjustmentMutation.mutateAsync({
+          emp_ids: empIds,
+          type: adjustmentType,
+          amount: adjustmentAmount,
+          description: adjustmentReason,
+          date: `${month}-01`,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({
+        queryKey: ["salary-history", adjustmentModal?.emp_id],
+      });
+
+      if (targetPeriods.length > 1) {
+        showToast(
+          `Adjustments applied successfully across ${targetPeriods.length} months.`,
+        );
+      } else {
+        showToast("Adjustments applied successfully.");
+      }
+      closeAdjustmentModal();
+    } catch {
+      showToast("Failed to apply adjustments.", "error");
+    }
   };
 
   const handleBaseSalaryUpdate = (e) => {
@@ -202,7 +369,46 @@ export default function Payroll() {
     setAdjustmentModal(null);
     setAdjustmentAmount("");
     setAdjustmentReason("");
+    setApplyToOtherMonth(false);
+    setAdjustmentTargetPeriod(period);
+    setApplyByRange(false);
+    setAdjustmentRangeStart(period);
+    setAdjustmentRangeEnd(period);
+    setEditingHistoryEntry(null);
     setSelectedEmployees(new Set());
+  };
+
+  const startEditHistoryEntry = (entry) => {
+    setEditingHistoryEntry({
+      id: entry.id,
+      type: entry.type,
+      amount: Number(entry.amount || 0),
+      description: entry.description || "",
+    });
+  };
+
+  const saveEditHistoryEntry = () => {
+    if (!editingHistoryEntry) return;
+
+    if (
+      !editingHistoryEntry.amount ||
+      Number(editingHistoryEntry.amount) <= 0
+    ) {
+      showToast("Amount must be greater than 0.", "error");
+      return;
+    }
+
+    updateHistoryEntryMutation.mutate({
+      id: editingHistoryEntry.id,
+      type: editingHistoryEntry.type,
+      amount: Number(editingHistoryEntry.amount),
+      description: editingHistoryEntry.description,
+    });
+  };
+
+  const removeHistoryEntry = (id) => {
+    if (!window.confirm("Remove this adjustment entry?")) return;
+    deleteHistoryEntryMutation.mutate(id);
   };
 
   const toggleEmployeeSelection = (id) => {
@@ -211,11 +417,68 @@ export default function Payroll() {
     setSelectedEmployees(newSelected);
   };
 
-  const filteredPayroll = payrollData.filter((p) =>
-    `${p.first_name} ${p.last_name} ${p.emp_id}`
-      .toLowerCase()
-      .includes(search?.toLowerCase() || ""),
+  const designationOptions = useMemo(() => {
+    const unique = new Set();
+    for (const row of payrollData) {
+      if (row.designation) unique.add(row.designation);
+    }
+    return ["All", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
+  }, [payrollData]);
+
+  const filteredPayroll = useMemo(() => {
+    const searchText = (search || "").toLowerCase();
+
+    return payrollData.filter((p) => {
+      const bySearch = `${p.first_name} ${p.last_name} ${p.emp_id}`
+        .toLowerCase()
+        .includes(searchText);
+      const byDesignation =
+        designationFilter === "All" || p.designation === designationFilter;
+      return bySearch && byDesignation;
+    });
+  }, [payrollData, search, designationFilter]);
+
+  const currentPeriodHistory = useMemo(
+    () => salaryHistoryData,
+    [salaryHistoryData],
   );
+
+  const hasReasonFallback = useMemo(() => {
+    const deductionReasons = String(
+      adjustmentModal?.deduction_reasons || "",
+    ).trim();
+    const incentiveReasons = String(
+      adjustmentModal?.incentive_reasons || "",
+    ).trim();
+    return deductionReasons.length > 0 || incentiveReasons.length > 0;
+  }, [adjustmentModal]);
+
+  useEffect(() => {
+    if (adjustmentModal) {
+      setApplyToOtherMonth(false);
+      setAdjustmentTargetPeriod(period);
+      setApplyByRange(false);
+      setAdjustmentRangeStart(period);
+      setAdjustmentRangeEnd(period);
+    }
+  }, [adjustmentModal, period]);
+
+  const allFilteredSelected =
+    filteredPayroll.length > 0 &&
+    filteredPayroll.every((p) => selectedEmployees.has(p.emp_id));
+
+  const payrollSummary = useMemo(() => {
+    return filteredPayroll.reduce(
+      (acc, row) => {
+        acc.count += 1;
+        acc.gross += Number(row.gross_pay || 0);
+        acc.deductions += Number(row.absence_deductions || 0);
+        acc.net += Number(row.net_pay || 0);
+        return acc;
+      },
+      { count: 0, gross: 0, deductions: 0, net: 0 },
+    );
+  }, [filteredPayroll]);
 
   if (isLoadingPayroll || isLoadingEmployees)
     return (
@@ -226,7 +489,7 @@ export default function Payroll() {
     <div>
       <div className="flex items-center justify-between gap-4 mb-6 flex-nowrap">
         <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 whitespace-nowrap flex-shrink-0">
-          Salary / Payroll
+          Payroll
         </h1>
         <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
           <label className="flex items-center gap-2 text-sm text-gray-600 mr-2">
@@ -239,65 +502,121 @@ export default function Payroll() {
             />
           </label>
 
-          <button
-            onClick={() => setSalarySettingsModal(true)}
-            className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
-          >
-            ⚙️ Salary Settings
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setSalarySettingsModal(true)}
+                className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                Salary Settings
+              </button>
 
-          <button
-            onClick={() => generatePayrollMutation.mutate()}
-            disabled={generatePayrollMutation.isPending}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50"
-          >
-            {generatePayrollMutation.isPending
-              ? "Calculating..."
-              : "🔄 Generate Payroll"}
-          </button>
+              <button
+                onClick={() => {
+                  setBulkAdjustmentMode(!bulkAdjustmentMode);
+                  setSelectedEmployees(new Set());
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
+              >
+                {bulkAdjustmentMode ? "Cancel Bulk" : "Adjust Multiple"}
+              </button>
 
-          <button
-            onClick={() => {
-              setBulkAdjustmentMode(!bulkAdjustmentMode);
-              setSelectedEmployees(new Set());
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
-          >
-            {bulkAdjustmentMode ? "✓ Cancel Bulk" : "Adjust Multiple"}
-          </button>
+              <button
+                onClick={() => setResetConfirmModal(true)}
+                className="px-4 py-2 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors"
+              >
+                Reset All Data
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            Employees
+          </p>
+          <p className="m-0 mt-1 text-xl font-black text-gray-900">
+            {payrollSummary.count}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            Gross Total
+          </p>
+          <p className="m-0 mt-1 text-xl font-black text-gray-900">
+            {fmt(payrollSummary.gross)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-red-100 bg-red-50 p-3 shadow-sm">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-600">
+            Deductions
+          </p>
+          <p className="m-0 mt-1 text-xl font-black text-red-700">
+            -{fmt(payrollSummary.deductions)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-green-100 bg-green-50 p-3 shadow-sm">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-green-600">
+            Net Total
+          </p>
+          <p className="m-0 mt-1 text-xl font-black text-green-700">
+            {fmt(payrollSummary.net)}
+          </p>
         </div>
       </div>
 
       <div className="mb-4">
-        <input
-          type="text"
-          className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-          placeholder="Search employee..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="flex flex-wrap gap-3 items-center">
+          <input
+            type="text"
+            className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Search employee..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            value={designationFilter}
+            onChange={(e) => {
+              setDesignationFilter(e.target.value);
+              setSelectedEmployees(new Set());
+            }}
+            className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            {designationOptions.map((option) => (
+              <option key={option} value={option}>
+                {option === "All" ? "All Designations" : option}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {!isAdmin && (
+        <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-semibold text-sky-700">
+          View-only mode: only Admin can generate payroll, adjust salaries, and
+          update salary settings.
+        </div>
+      )}
 
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-8">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                {bulkAdjustmentMode && (
+                {isAdmin && bulkAdjustmentMode && (
                   <th className="px-6 py-3 text-center w-12">
                     <input
                       type="checkbox"
                       onChange={() =>
                         setSelectedEmployees(
-                          selectedEmployees.size === payrollData.length
+                          allFilteredSelected
                             ? new Set()
-                            : new Set(payrollData.map((p) => p.emp_id)),
+                            : new Set(filteredPayroll.map((p) => p.emp_id)),
                         )
                       }
-                      checked={
-                        selectedEmployees.size > 0 &&
-                        selectedEmployees.size === payrollData.length
-                      }
+                      checked={allFilteredSelected}
                       className="w-4 h-4 cursor-pointer"
                     />
                   </th>
@@ -311,9 +630,6 @@ export default function Payroll() {
                 <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                   Basic Pay
                 </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-center">
-                  Absences
-                </th>
                 <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                   Deductions
                 </th>
@@ -323,7 +639,7 @@ export default function Payroll() {
                 <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                   Net Pay
                 </th>
-                {!bulkAdjustmentMode && (
+                {isAdmin && !bulkAdjustmentMode && (
                   <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                     Actions
                   </th>
@@ -334,7 +650,7 @@ export default function Payroll() {
               {filteredPayroll.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={bulkAdjustmentMode ? 9 : 8}
+                    colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     No payroll records found for {period}. Click "Generate
@@ -345,13 +661,19 @@ export default function Payroll() {
                 filteredPayroll.map((p) => (
                   <tr
                     key={p.id}
-                    className={`hover:bg-gray-50 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""}`}
+                    onClick={() => {
+                      if (isAdmin && bulkAdjustmentMode) {
+                        toggleEmployeeSelection(p.emp_id);
+                      }
+                    }}
+                    className={`hover:bg-gray-50 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : ""}`}
                   >
-                    {bulkAdjustmentMode && (
+                    {isAdmin && bulkAdjustmentMode && (
                       <td className="px-6 py-4 text-center">
                         <input
                           type="checkbox"
                           checked={selectedEmployees.has(p.emp_id)}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={() => toggleEmployeeSelection(p.emp_id)}
                           className="w-4 h-4 cursor-pointer"
                         />
@@ -367,32 +689,43 @@ export default function Payroll() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">{fmt(p.basic_pay)}</td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="font-semibold text-gray-800">
-                        {p.absences_count}
-                      </div>
-                      <div className="text-[11px] text-gray-500">
-                        Converted:{" "}
-                        {Number(p.converted_absences || 0).toFixed(2)}
-                      </div>
-                    </td>
                     <td className="px-6 py-4 text-right text-red-600">
-                      {fmt(p.absence_deductions)}
+                      <div className="font-semibold">
+                        {fmt(p.absence_deductions)}
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        {p.deduction_reasons || "No deduction reason"}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-right text-green-600">
-                      +{fmt(p.incentives)}
+                    <td className="px-6 py-4 text-right">
+                      <div
+                        className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {fmtSigned(p.incentives)}
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        {p.incentive_reasons || "No incentive reason"}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-purple-700">
                       {fmt(p.net_pay)}
                     </td>
-                    {!bulkAdjustmentMode && (
+                    {isAdmin && !bulkAdjustmentMode && (
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setAdjustmentModal(p)}
-                          className="px-3 py-1.5 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200"
-                        >
-                          Adjust
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSalaryBreakdownModal(p)}
+                            className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => setAdjustmentModal(p)}
+                            className="px-3 py-1.5 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200"
+                          >
+                            Adjust
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -401,7 +734,7 @@ export default function Payroll() {
             </tbody>
           </table>
         </div>
-        {bulkAdjustmentMode && selectedEmployees.size > 0 && (
+        {isAdmin && bulkAdjustmentMode && selectedEmployees.size > 0 && (
           <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
             <button
               onClick={() =>
@@ -419,9 +752,9 @@ export default function Payroll() {
       </div>
 
       {/* Salary Settings Modal (With Grouped Preview Table & Dropdown) */}
-      {salarySettingsModal && (
+      {isAdmin && salarySettingsModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 bg-gray-900 flex justify-between items-center text-white shrink-0">
               <h2 className="text-lg font-bold m-0">
                 Position Salary Settings
@@ -435,9 +768,8 @@ export default function Payroll() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* LEFT: UPDATE FORM */}
-                <div className="sticky top-0">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
                   <h3 className="text-sm font-bold text-gray-800 uppercase mb-3 border-b border-gray-200 pb-2">
                     Update Base Salary
                   </h3>
@@ -561,80 +893,82 @@ export default function Payroll() {
                   </form>
                 </div>
 
-                {/* RIGHT: CURRENT SALARY PREVIEW TABLE (GROUPED) */}
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 uppercase mb-3 border-b border-gray-200 pb-2">
-                    Current Base Salaries Preview
-                  </h3>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 font-semibold text-gray-600">
-                            Position
-                          </th>
-                          <th className="px-4 py-2 font-semibold text-gray-600 text-right w-32">
-                            Base Salary
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {Object.entries(DESIGNATIONS).map(
-                          ([dept, positions]) => (
-                            <Fragment key={dept}>
-                              {/* Group Header */}
-                              <tr className="bg-purple-50/50">
-                                <td
-                                  colSpan="2"
-                                  className="px-4 py-1.5 font-bold text-purple-800 text-[10px] uppercase tracking-wider"
-                                >
-                                  {dept}
-                                </td>
-                              </tr>
-                              {/* Position Rows */}
-                              {positions.map((pos) => {
-                                // Look at the DB Employee Data
-                                const emp = employeesData.find(
-                                  (e) =>
-                                    e.position?.trim().toLowerCase() ===
-                                    pos.trim().toLowerCase(),
-                                );
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                  Salary settings are Admin-only and apply per selected
+                  position.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                                // Check if it's cached locally OR in the DB
-                                const actualSalary =
-                                  emp?.basic_pay > 0 ? emp.basic_pay : null;
-                                const salary =
-                                  positionSalaries[pos] || actualSalary;
-
-                                return (
-                                  <tr key={pos} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2 text-gray-800 text-xs font-medium pl-6">
-                                      {pos}
-                                    </td>
-                                    <td className="px-4 py-2 text-right font-bold text-purple-700 text-xs">
-                                      {salary !== null &&
-                                      salary !== undefined &&
-                                      salary > 0 ? (
-                                        fmt(salary)
-                                      ) : (
-                                        <span className="text-gray-400 italic font-normal">
-                                          Not Set
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </Fragment>
-                          ),
-                        )}
-                      </tbody>
-                    </table>
+      {/* Salary Breakdown Modal */}
+      {salaryBreakdownModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold m-0">Salary Breakdown</h2>
+              <button
+                onClick={() => setSalaryBreakdownModal(null)}
+                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="text-sm font-bold text-gray-700 mb-4">
+                {salaryBreakdownModal.first_name}{" "}
+                {salaryBreakdownModal.last_name}
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="font-semibold text-gray-700">Basic Pay</span>
+                  <span className="text-gray-900 font-bold">
+                    {fmt(salaryBreakdownModal.basic_pay)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-red-200 bg-red-50">
+                  <span className="font-semibold text-red-700">Deductions</span>
+                  <span className="text-red-700 font-bold">
+                    -{fmt(salaryBreakdownModal.absence_deductions)}
+                  </span>
+                </div>
+                {salaryBreakdownModal.deduction_reasons && (
+                  <div className="py-3 bg-red-50 rounded-lg border border-red-200 p-3">
+                    <p className="text-xs font-bold text-red-800 uppercase mb-2">
+                      Deduction Reasons:
+                    </p>
+                    <p className="text-xs text-red-900 leading-relaxed">
+                      {salaryBreakdownModal.deduction_reasons}
+                    </p>
                   </div>
-                  <p className="text-[0.65rem] text-gray-500 mt-2 italic text-right leading-tight">
-                    * Displays the active base salary. "Not Set" indicates this
-                    position has not been configured yet.
-                  </p>
+                )}
+                {salaryBreakdownModal.incentive_reasons && (
+                  <div className="py-3 bg-yellow-50 rounded-lg border border-yellow-200 p-3">
+                    <p className="text-xs font-bold text-yellow-800 uppercase mb-2">
+                      Incentive Reasons:
+                    </p>
+                    <p className="text-xs text-yellow-900 leading-relaxed">
+                      {salaryBreakdownModal.incentive_reasons}
+                    </p>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 border-b border-green-200 bg-green-50">
+                  <span className="font-semibold text-green-700">
+                    Incentives
+                  </span>
+                  <span
+                    className={`font-bold ${Number(salaryBreakdownModal.incentives || 0) >= 0 ? "text-green-700" : "text-red-700"}`}
+                  >
+                    {fmtSigned(salaryBreakdownModal.incentives)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-3 bg-purple-50 rounded-lg p-3">
+                  <span className="font-bold text-purple-900">Net Pay</span>
+                  <span className="text-purple-900 font-black text-lg">
+                    {fmt(salaryBreakdownModal.net_pay)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -643,7 +977,7 @@ export default function Payroll() {
       )}
 
       {/* Adjustment Modal */}
-      {adjustmentModal && (
+      {isAdmin && adjustmentModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700 flex justify-between items-center text-white">
@@ -663,29 +997,95 @@ export default function Payroll() {
                   ? `${selectedEmployees.size} selected`
                   : `${adjustmentModal.first_name} ${adjustmentModal.last_name}`}
               </p>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={applyToOtherMonth}
+                    onChange={(e) => setApplyToOtherMonth(e.target.checked)}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                  Apply to another month
+                </label>
+                {applyToOtherMonth && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={applyByRange}
+                        onChange={(e) => setApplyByRange(e.target.checked)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                      Select month range
+                    </label>
+
+                    {applyByRange ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="month"
+                          value={adjustmentRangeStart}
+                          onChange={(e) =>
+                            setAdjustmentRangeStart(e.target.value)
+                          }
+                          className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                        />
+                        <input
+                          type="month"
+                          value={adjustmentRangeEnd}
+                          onChange={(e) =>
+                            setAdjustmentRangeEnd(e.target.value)
+                          }
+                          className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="month"
+                        value={adjustmentTargetPeriod}
+                        onChange={(e) =>
+                          setAdjustmentTargetPeriod(e.target.value)
+                        }
+                        className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
               <select
                 value={adjustmentType}
                 onChange={(e) => setAdjustmentType(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
               >
-                <option value="Increase">Increase (Raise)</option>
-                <option value="Bonus">Bonus</option>
-                <option value="Decrease">Decrease</option>
+                <option value="Bonus">Incentives (Bonus)</option>
+                <option value="Increase">Incentives (Raise)</option>
+                <option value="Decrease">Deductions</option>
               </select>
-              <input
-                type="number"
-                value={adjustmentAmount}
-                onChange={(e) => setAdjustmentAmount(e.target.value)}
-                placeholder="Amount (₱)"
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-              />
-              <textarea
-                value={adjustmentReason}
-                onChange={(e) => setAdjustmentReason(e.target.value)}
-                placeholder="Reason..."
-                rows={3}
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-              />
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  {adjustmentType === "Decrease"
+                    ? "Deduction Amount"
+                    : "Incentives Amount"}
+                </label>
+                <input
+                  type="number"
+                  value={adjustmentAmount}
+                  onChange={(e) => setAdjustmentAmount(e.target.value)}
+                  placeholder={`${adjustmentType === "Decrease" ? "Deduction" : "Incentives"} Amount (₱)`}
+                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Reason (shown in breakdown)
+                </label>
+                <textarea
+                  value={adjustmentReason}
+                  onChange={(e) => setAdjustmentReason(e.target.value)}
+                  placeholder="Reason..."
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                />
+              </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={closeAdjustmentModal}
@@ -698,9 +1098,182 @@ export default function Payroll() {
                   disabled={adjustmentMutation.isPending}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium cursor-pointer border-0 hover:bg-purple-700"
                 >
-                  {adjustmentMutation.isPending ? "Applying..." : "Apply"}
+                  {adjustmentMutation.isPending
+                    ? "Applying..."
+                    : applyToOtherMonth && applyByRange
+                      ? "Apply to Range"
+                      : "Apply"}
                 </button>
               </div>
+
+              {!bulkAdjustmentMode && (
+                <div className="pt-2 border-t border-gray-200">
+                  <p className="text-xs font-bold text-gray-700 uppercase mb-2">
+                    Recent Deductions/Incentives (
+                    {applyToOtherMonth
+                      ? applyByRange
+                        ? adjustmentRangeEnd
+                        : adjustmentTargetPeriod
+                      : period}
+                    )
+                  </p>
+                  {currentPeriodHistory.length === 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500">
+                        No editable adjustment records found for this month.
+                      </p>
+                      {hasReasonFallback && (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 p-2">
+                          <p className="text-[11px] font-bold text-amber-700 uppercase mb-1">
+                            Current Payroll Entries
+                          </p>
+                          {adjustmentModal?.deduction_reasons && (
+                            <p className="text-xs text-amber-900">
+                              Deductions: {adjustmentModal.deduction_reasons}
+                            </p>
+                          )}
+                          {adjustmentModal?.incentive_reasons && (
+                            <p className="text-xs text-amber-900 mt-1">
+                              Incentives: {adjustmentModal.incentive_reasons}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {currentPeriodHistory.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="rounded-md border border-gray-200 bg-gray-50 p-2 flex items-center justify-between gap-2"
+                        >
+                          <div className="text-xs text-gray-700">
+                            <span className="font-bold">{entry.type}</span>:{" "}
+                            {entry.description || "No reason provided"} ={" "}
+                            {fmt(entry.amount)}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => startEditHistoryEntry(entry)}
+                              className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-semibold border-0 cursor-pointer hover:bg-blue-200"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => removeHistoryEntry(entry.id)}
+                              disabled={deleteHistoryEntryMutation.isPending}
+                              className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold border-0 cursor-pointer hover:bg-red-200 disabled:opacity-60"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && editingHistoryEntry && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold m-0">Edit Adjustment</h2>
+              <button
+                onClick={() => setEditingHistoryEntry(null)}
+                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <select
+                value={editingHistoryEntry.type}
+                onChange={(e) =>
+                  setEditingHistoryEntry({
+                    ...editingHistoryEntry,
+                    type: e.target.value,
+                  })
+                }
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+              >
+                <option value="Bonus">Incentives (Bonus)</option>
+                <option value="Increase">Incentives (Raise)</option>
+                <option value="Decrease">Deductions</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                value={editingHistoryEntry.amount}
+                onChange={(e) =>
+                  setEditingHistoryEntry({
+                    ...editingHistoryEntry,
+                    amount: e.target.value,
+                  })
+                }
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              <textarea
+                value={editingHistoryEntry.description}
+                onChange={(e) =>
+                  setEditingHistoryEntry({
+                    ...editingHistoryEntry,
+                    description: e.target.value,
+                  })
+                }
+                rows={3}
+                placeholder="Reason"
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setEditingHistoryEntry(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEditHistoryEntry}
+                  disabled={updateHistoryEntryMutation.isPending}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium cursor-pointer border-0 hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {updateHistoryEntryMutation.isPending ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {resetConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">
+              Reset All Payroll Data?
+            </h2>
+            <p className="text-gray-600 mb-4">
+              This will permanently delete all payroll records and salary
+              adjustments. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setResetConfirmModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => resetPayrollMutation.mutate()}
+                disabled={resetPayrollMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium cursor-pointer border-0 hover:bg-red-700 disabled:bg-red-400"
+              >
+                {resetPayrollMutation.isPending ? "Resetting..." : "Reset All"}
+              </button>
             </div>
           </div>
         </div>

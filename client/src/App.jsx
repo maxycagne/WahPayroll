@@ -14,6 +14,7 @@ import SalaryHistory from "./pages/SalaryHistory";
 import HRReports from "./pages/HRReports";
 import Payslips from "./pages/Payslips";
 import Reports from "./pages/Reports";
+import MyReports from "./pages/MyReports";
 import axiosInterceptor from "./hooks/interceptor";
 import Login from "./pages/Login";
 
@@ -120,7 +121,7 @@ function AppRoutes({ user }) {
             element={
               <RoleProtectedRoute
                 user={user}
-                allowedRoles={["Admin", "Supervisor"]}
+                allowedRoles={["Admin", "Supervisor", "HR"]}
               >
                 <Payroll />
               </RoleProtectedRoute>
@@ -132,7 +133,7 @@ function AppRoutes({ user }) {
             element={
               <RoleProtectedRoute
                 user={user}
-                allowedRoles={["Admin", "Supervisor", "HR"]}
+                allowedRoles={["Admin", "Supervisor"]}
               >
                 <SalaryHistory />
               </RoleProtectedRoute>
@@ -173,6 +174,15 @@ function AppRoutes({ user }) {
                 allowedRoles={["Supervisor", "HR", "RankAndFile"]}
               >
                 <Payslips />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-reports"
+            element={
+              <RoleProtectedRoute user={user} allowedRoles={["RankAndFile"]}>
+                <MyReports />
               </RoleProtectedRoute>
             }
           />
