@@ -171,6 +171,20 @@ const ensureNotificationsTable = async (connection = pool) => {
   `);
 };
 
+const ensureEmployeeMissingDocsTable = async (connection = pool) => {
+  const empIdColumn = await getEmpIdColumnDefinition(connection);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS employee_missing_docs (
+      emp_id ${empIdColumn} PRIMARY KEY,
+      missing_docs TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+    )
+  `);
+};
+
 const normalizeRole = (role) => {
   const value = String(role || "")
     .trim()
@@ -589,6 +603,7 @@ export const getAllResignations = async (req, res) => {
 export const getDashboardSummary = async (req, res) => {
   try {
     await ensureResignationsTable();
+    await ensureEmployeeMissingDocsTable();
 
     const currentUser = await getEmployeeProfile(pool, req.user?.emp_id);
     const isSupervisor = currentUser?.role === "Supervisor";
@@ -696,6 +711,8 @@ export const updateMissingDocs = async (req, res) => {
     return res.status(400).json({ message: "Employee ID is required" });
 
   try {
+    await ensureEmployeeMissingDocsTable();
+
     if (!missing_docs || missing_docs.trim() === "") {
       // If the HR clears the text box, it means all docs are submitted! Delete the record.
       await pool.query("DELETE FROM employee_missing_docs WHERE emp_id = ?", [
