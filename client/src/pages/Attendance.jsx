@@ -515,14 +515,8 @@ export default function Attendance() {
                 <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
                   Absences
                 </th>
-                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
-                  Balance
-                </th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
                   Status
-                </th>
-                <th className="px-3 py-2 text-right font-semibold text-gray-700 uppercase text-[11px]">
-                  Actions
                 </th>
               </tr>
             </thead>
@@ -536,30 +530,13 @@ export default function Attendance() {
                   <td className="px-3 py-2 text-center text-xs">
                     {a.total_absences || 0}
                   </td>
-                  <td className="px-3 py-2 text-center">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${getLeaveHighlightColor(a.leave_balance)}`}
-                    >
-                      {Number(a.leave_balance)} /{" "}
-                      {a.emp_status === "Job Order" || a.emp_status === "Casual"
-                        ? 12
-                        : 27}
-                    </span>
-                  </td>
+
                   <td className="px-3 py-2">
                     <span
                       className={`inline-flex items-center border border-transparent rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
                     >
                       {a.status || "No Data"}
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => setAdjModal(a)}
-                      className="px-2 py-1 rounded-md bg-purple-100 text-purple-700 text-[10px] font-bold border-0 cursor-pointer hover:bg-purple-200"
-                    >
-                      Adjust Balance
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -953,9 +930,6 @@ export default function Attendance() {
                       </th>
                       <th className="px-3 py-2 text-left font-bold text-gray-700 uppercase text-[10px]">
                         Unit
-                      </th>
-                      <th className="px-3 py-2 text-right font-bold text-gray-700 uppercase text-[10px]">
-                        Actions
                       </th>
                     </tr>
                   </thead>
