@@ -1172,12 +1172,13 @@ export const getAllLeaves = async (req, res) => {
       query += `
         WHERE l.emp_id = ?
            OR (
-             l.status = 'Pending'
-             AND COALESCE(e.role, '') = 'Supervisor'
+             l.status IN ('Pending', 'Approved', 'Partially Approved','Declined') -- UPDATED HERE
+             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+             AND e.designation = ?
              AND e.emp_id <> ?
            )
       `;
-      queryParams.push(viewer.emp_id, viewer.emp_id);
+      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
     }
 
     query += " ORDER BY l.id DESC";
