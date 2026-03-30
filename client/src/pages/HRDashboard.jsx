@@ -23,7 +23,6 @@ import {
   PendingLeaveModal,
   ResignationModal,
 } from "@/components/hrDashboard/StatsModal";
-import ResignationTable from "@/components/hrDashboard/ResignationTable";
 import { HR_DASHBOARD_QUICK_ACCESS } from "@/assets/constantData";
 
 export default function HRDashboard() {
@@ -90,13 +89,15 @@ export default function HRDashboard() {
   });
 
   const selectedEmployee = employeesData.find(
-    (e) => e.emp_id === docForm.emp_id,
+    // FORCE STRING COMPARISON
+    (e) => String(e.emp_id) === String(docForm.emp_id),
   );
 
   useEffect(() => {
-    if (docForm.emp_id && dashboardData?.missingDocs) {
-      const existing = dashboardData.missingDocs.find(
-        (d) => d.emp_id === docForm.emp_id,
+    if (docForm.emp_id && dashboardData?.information?.missingDocs) {
+      const existing = dashboardData.information.missingDocs.find(
+        // FORCE STRING COMPARISON
+        (d) => String(d.emp_id) === String(docForm.emp_id),
       );
       setDocForm((prev) => ({
         ...prev,
@@ -181,16 +182,26 @@ export default function HRDashboard() {
         </div>
       </section>
 
-      <ResignationTable
-        resignations={dashboardData?.information.resignations}
-        mutation={updateResignationMutation}
-      />
-
       <MissingDocsTracker
         missingDocs={dashboardData?.information.missingDocs}
-        onOpenModal={() => {
-          setDocForm({ emp_id: "", missing_docs: [] });
-          setSearchQuery("");
+        onOpenModal={(empId = "") => {
+          // 1. CLOSE THE TRACKER MODAL FIRST! (This unlocks the screen)
+          setActiveModal(null);
+
+          // 2. Set the employee ID immediately
+          setDocForm({ emp_id: empId, missing_docs: [] });
+
+          // 3. Find the name and pre-fill the search bar
+          if (empId) {
+            const emp = employeesData.find(
+              (e) => String(e.emp_id) === String(empId),
+            );
+            if (emp) setSearchQuery(`${emp.first_name} ${emp.last_name}`);
+          } else {
+            setSearchQuery("");
+          }
+
+          // 4. Open the Update Form
           setShowDocsModal(true);
         }}
       />

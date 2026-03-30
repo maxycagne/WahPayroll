@@ -142,8 +142,9 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
               </button>
               <button
                 onClick={() => {
-                  setSelectedEmp(null); // Close this modal
-                  onOpenModal(); // Open the Update form
+                  const currentId = selectedEmp.emp_id; // Grab the ID
+                  setSelectedEmp(null); // Close the inner modal
+                  onOpenModal(currentId); // Pass the ID to the Dashboard
                 }}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 cursor-pointer"
               >
