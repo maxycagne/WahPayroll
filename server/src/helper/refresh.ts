@@ -23,6 +23,7 @@ const refresh = (req: Request, res: Response) => {
       role: payload.role,
     });
 
+    console.log(`hit Refresh! old: ${refresh_token}, new: ${newToken}`);
     return res.status(200).json({
       token: newToken,
     });

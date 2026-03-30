@@ -36,6 +36,7 @@ export default function Login() {
       window.location.href =
         data.user.role === "HR" ? "/hr-dashboard" : "/dashboard";
     },
+    onError: (e) => console.log(e),
   });
 
   return (

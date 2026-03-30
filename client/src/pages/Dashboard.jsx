@@ -8,7 +8,7 @@ import {
   Clock3,
   FolderClock,
 } from "lucide-react";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "@/hooks/interceptor";
 
 function getDateDiffInclusive(start, end) {
   const from = new Date(start).setHours(0, 0, 0, 0);
@@ -41,19 +41,25 @@ function EmployeeDashboard({ currentUser }) {
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/dashboard-summary");
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
+      const res = await axiosInterceptor.get(
+        "/api/employees/dashboard-summary",
+      );
+      console.log(res.data);
+      return res.data;
     },
+    onError: (e) => console.log(e),
   });
 
   // Fetch Personal Attendance
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/my-attendance`);
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        const res = await axiosInterceptor.get("/api/employees/my-attendance");
+        return res.data;
+      } catch (error) {
+        return [];
+      }
     },
   });
 
@@ -61,9 +67,12 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myLeaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/leaves");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        const res = await axiosInterceptor.get("/api/employees/leaves");
+        return res.data;
+      } catch (error) {
+        return [];
+      }
     },
   });
 
@@ -71,9 +80,14 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myOffsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/offset-applications");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        const res = await axiosInterceptor.get(
+          "/api/employees/offset-applications",
+        );
+        return res.data;
+      } catch (error) {
+        return [];
+      }
     },
   });
 
@@ -93,7 +107,6 @@ function EmployeeDashboard({ currentUser }) {
     (d) => String(d.emp_id) === String(currentUser.emp_id),
   );
 
-  // Compile Pending Requests
   // Compile Pending Requests (FIXED: Added fallbacks so it never says "Invalid Date")
   const pendingRequests = [
     ...myLeaves
@@ -325,22 +338,15 @@ function EmployeeDashboard({ currentUser }) {
   );
 }
 
-// ==========================================
-// 2. ADMIN / HR / SUPERVISOR DASHBOARD
-// ==========================================
 function AdminDashboard({ currentUser }) {
   const [activeModal, setActiveModal] = useState(null);
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
   const [reviewConfirm, setReviewConfirm] = useState(null);
 
   const fetchDashboardData = async () => {
-    const res = await apiFetch("/api/employees/dashboard-summary", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return await res.json();
+    const res = await axiosInterceptor.get("/api/employees/dashboard-summary");
+    console.log(res.data);
+    return res.data;
   };
 
   const dashboardQuery = useQuery({
@@ -389,15 +395,12 @@ function AdminDashboard({ currentUser }) {
 
   const handleUpdateLeaveStatus = async (id, payload) => {
     try {
-      const res = await apiFetch(`/api/employees/leaves/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const res = await axiosInterceptor.put(
+        `/api/employees/leaves/${id}`,
+        payload,
+      );
 
-      if (res.ok) {
+      if (res.status === 200) {
         setApprovedLeaves(new Set([...approvedLeaves, id]));
         // Note: For a true refresh, use queryClient.invalidateQueries(["dashboardSummary"])
         // if you import useQueryClient. Otherwise, this visual state handles it.
@@ -406,6 +409,7 @@ function AdminDashboard({ currentUser }) {
       }
     } catch (error) {
       console.error("Error updating leave:", error);
+      alert("Failed to update leave request");
     }
   };
 

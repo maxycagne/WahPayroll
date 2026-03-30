@@ -36,3 +36,12 @@ export const HR_DASHBOARD_QUICK_ACCESS = [
     color: "amber",
   },
 ];
+
+export const status = ["Present", "Late", "Undertime", "Absent", "Pending"];
+// SELECT DATE_FORMAT(date, '%Y-%m') as month,
+// COUNT(CASE WHEN status ="Absent" THEN 1 END) as Absent,
+// COUNT(CASE WHEN status ="Present" THEN 1 END) as Present,
+// COUNT(CASE WHEN status ="Late" THEN 1 END) as Late,
+// COUNT(CASE WHEN status ="Undertime" THEN 1 END) as Undetime,
+// COUNT(CASE WHEN status ="Pending" THEN 1 END) as Pending
+// FROM attendance GROUP BY month
