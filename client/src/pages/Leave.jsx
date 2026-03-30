@@ -60,7 +60,12 @@ function getDateRangeInclusive(start, end) {
   to.setHours(0, 0, 0, 0);
 
   while (current <= to) {
-    dates.push(current.toISOString().slice(0, 10));
+    // SAFE LOCAL DATE FORMATTING (YYYY-MM-DD)
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = String(current.getDate()).padStart(2, "0");
+    dates.push(`${year}-${month}-${day}`);
+
     current.setDate(current.getDate() + 1);
   }
 
