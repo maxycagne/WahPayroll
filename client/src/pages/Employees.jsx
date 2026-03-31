@@ -43,6 +43,7 @@ export default function Employees() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [resetConfirm, setResetConfirm] = useState(null);
   const [addConfirm, setAddConfirm] = useState(null);
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState(null);
   const { toast, showToast, clearToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -54,6 +55,12 @@ export default function Employees() {
     position: "",
     status: "Permanent",
     email: "",
+    philhealth_no: "",
+    tin: "",
+    sss_no: "",
+    pag_ibig_mid_no: "",
+    pag_ibig_rtn: "",
+    gsis_no: "",
     dob: "",
     hired_date: "",
   });
@@ -178,6 +185,12 @@ export default function Employees() {
       position: "",
       status: "Permanent",
       email: "",
+      philhealth_no: "",
+      tin: "",
+      sss_no: "",
+      pag_ibig_mid_no: "",
+      pag_ibig_rtn: "",
+      gsis_no: "",
       dob: "",
       hired_date: "",
     });
@@ -273,7 +286,8 @@ export default function Employees() {
             {filteredEmployees.map((emp) => (
               <tr
                 key={emp.emp_id}
-                className="hover:bg-gray-50 transition-colors"
+                onClick={() => setSelectedEmployeeDetails(emp)}
+                className="hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
                 <td className="px-6 py-4 font-semibold text-gray-800">
@@ -292,7 +306,10 @@ export default function Employees() {
                     {emp.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-center relative">
+                <td
+                  className="px-6 py-4 text-center relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     onClick={() =>
                       setActiveMenu(
@@ -540,6 +557,36 @@ export default function Employees() {
                     : "N/A"}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">
+                  PHILHEALTH No.:
+                </span>
+                <span>{addConfirm.philhealth_no || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">TIN:</span>
+                <span>{addConfirm.tin || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">SSS No.:</span>
+                <span>{addConfirm.sss_no || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">
+                  PAG-IBIG MID No.:
+                </span>
+                <span>{addConfirm.pag_ibig_mid_no || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">
+                  PAG-IBIG RTN:
+                </span>
+                <span>{addConfirm.pag_ibig_rtn || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">GSIS No.:</span>
+                <span>{addConfirm.gsis_no || "N/A"}</span>
+              </div>
               <div className="border-t border-gray-200 pt-2 mt-2">
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-600">
@@ -578,7 +625,74 @@ export default function Employees() {
         </div>
       )}
 
+      {selectedEmployeeDetails && (
+        <EmployeeDetailsModal
+          employee={selectedEmployeeDetails}
+          onClose={() => setSelectedEmployeeDetails(null)}
+        />
+      )}
+
       <Toast toast={toast} onClose={clearToast} />
+    </div>
+  );
+}
+
+function EmployeeDetailsModal({ employee, onClose }) {
+  const details = [
+    { label: "PHILHEALTH No.", value: employee.philhealth_no },
+    { label: "TIN", value: employee.tin },
+    { label: "SSS No.", value: employee.sss_no },
+    { label: "PAG-IBIG MID No.", value: employee.pag_ibig_mid_no },
+    { label: "PAG_IBIG RTN", value: employee.pag_ibig_rtn },
+    { label: "GSIS No.", value: employee.gsis_no },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="m-0 text-xl font-bold text-gray-900">
+              Employee Details
+            </h2>
+            <p className="m-0 mt-1 text-sm text-gray-600">
+              {employee.last_name}, {employee.first_name}{" "}
+              {employee.middle_initial ? `${employee.middle_initial}.` : ""}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 text-2xl bg-transparent border-0 cursor-pointer"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
+          {details.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center justify-between gap-4 border-b border-gray-200 pb-2 last:border-b-0 last:pb-0"
+            >
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                {item.label}
+              </span>
+              <span className="text-sm font-semibold text-gray-800 text-right">
+                {item.value || "N/A"}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end mt-5">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -594,8 +708,8 @@ function EmployeeModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="bg-gray-900 px-6 py-4 flex justify-between items-center text-white">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="px-4 py-3 bg-gray-900 flex justify-between items-center text-white">
           <h2 className="text-lg font-bold m-0">{title}</h2>
           <button
             onClick={onClose}
@@ -604,8 +718,8 @@ function EmployeeModal({
             &times;
           </button>
         </div>
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={onSubmit} className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Employee ID
@@ -744,6 +858,56 @@ function EmployeeModal({
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
+
+            <div className="flex flex-col gap-1 col-span-2 mt-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Government Details
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  name="philhealth_no"
+                  value={data.philhealth_no || ""}
+                  onChange={onChange}
+                  placeholder="PHILHEALTH No."
+                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+                <input
+                  name="tin"
+                  value={data.tin || ""}
+                  onChange={onChange}
+                  placeholder="TIN"
+                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+                <input
+                  name="sss_no"
+                  value={data.sss_no || ""}
+                  onChange={onChange}
+                  placeholder="SSS No."
+                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+                <input
+                  name="pag_ibig_mid_no"
+                  value={data.pag_ibig_mid_no || ""}
+                  onChange={onChange}
+                  placeholder="PAG-IBIG MID No."
+                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+                <input
+                  name="pag_ibig_rtn"
+                  value={data.pag_ibig_rtn || ""}
+                  onChange={onChange}
+                  placeholder="PAG-IBIG RTN"
+                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+                <input
+                  name="gsis_no"
+                  value={data.gsis_no || ""}
+                  onChange={onChange}
+                  placeholder="GSIS No."
+                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+              </div>
+            </div>
           </div>
 
           {!isEdit && (
@@ -758,7 +922,7 @@ function EmployeeModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}

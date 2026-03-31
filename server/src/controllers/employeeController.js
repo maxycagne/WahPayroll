@@ -227,6 +227,61 @@ const ensureEmployeeMissingDocsTable = async (connection = pool) => {
   `);
 };
 
+const ensureEmployeeGovernmentColumns = async (connection = pool) => {
+  const governmentColumns = [
+    { name: "philhealth_no", type: "VARCHAR(50)", after: "email" },
+    { name: "tin", type: "VARCHAR(50)", after: "philhealth_no" },
+    { name: "sss_no", type: "VARCHAR(50)", after: "tin" },
+    { name: "pag_ibig_mid_no", type: "VARCHAR(50)", after: "sss_no" },
+    { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
+    { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
+  ];
+
+  for (const column of governmentColumns) {
+    const [rows] = await connection.query(
+      `
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'employees'
+          AND COLUMN_NAME = ?
+        LIMIT 1
+      `,
+      [column.name],
+    );
+
+    if (rows.length === 0) {
+      try {
+        await connection.query(
+          `ALTER TABLE employees ADD COLUMN ${column.name} ${column.type} NULL AFTER ${column.after}`,
+        );
+      } catch (error) {
+        // Ignore race-condition duplicates when concurrent requests add the same column.
+        if (error?.code !== "ER_DUP_FIELDNAME") {
+          throw error;
+        }
+      }
+    }
+  }
+};
+
+const normalizeDateInput = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const directMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (directMatch) return directMatch[1];
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const year = parsed.getUTCFullYear();
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const normalizeRole = (role) => {
   const value = String(role || "")
     .trim()
@@ -448,7 +503,14 @@ const getConvertedAbsenceSummary = async (periodStart, periodEnd) => {
 // --- EMPLOYEES ---
 export const getAllEmployees = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM employees");
+    await ensureEmployeeGovernmentColumns();
+    const [rows] = await pool.query(
+      `SELECT *
+       FROM employees
+       ORDER BY
+         CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
+         emp_id ASC`,
+    );
     res.json(rows);
   } catch (error) {
     console.error("DB Error in getAllEmployees:", error);
@@ -467,6 +529,12 @@ export const createEmployee = async (req, res) => {
     position,
     status,
     email,
+    philhealth_no,
+    tin,
+    sss_no,
+    pag_ibig_mid_no,
+    pag_ibig_rtn,
+    gsis_no,
     dob,
     hired_date,
     password,
@@ -478,12 +546,15 @@ export const createEmployee = async (req, res) => {
   const hashPass = await hashPassword(employeePassword);
 
   const employeeRole = resolveRoleFromProfile({ designation, position });
+  const normalizedDob = normalizeDateInput(dob);
+  const normalizedHiredDate = normalizeDateInput(hired_date);
 
   try {
+    await ensureEmployeeGovernmentColumns();
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, dob, hired_date, password, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, role) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -494,8 +565,14 @@ export const createEmployee = async (req, res) => {
         position,
         status,
         email,
-        dob || null,
-        hired_date || null,
+        philhealth_no || null,
+        tin || null,
+        sss_no || null,
+        pag_ibig_mid_no || null,
+        pag_ibig_rtn || null,
+        gsis_no || null,
+        normalizedDob,
+        normalizedHiredDate,
         hashPass,
         employeeRole,
       ],
@@ -525,13 +602,22 @@ export const updateEmployee = async (req, res) => {
     position,
     status,
     email,
+    philhealth_no,
+    tin,
+    sss_no,
+    pag_ibig_mid_no,
+    pag_ibig_rtn,
+    gsis_no,
     dob,
     hired_date,
   } = req.body;
 
   const employeeRole = resolveRoleFromProfile({ designation, position });
+  const normalizedDob = normalizeDateInput(dob);
+  const normalizedHiredDate = normalizeDateInput(hired_date);
 
   try {
+    await ensureEmployeeGovernmentColumns();
     const [result] = await pool.query(
       `UPDATE employees
        SET first_name = ?,
@@ -541,6 +627,12 @@ export const updateEmployee = async (req, res) => {
            position = ?,
            status = ?,
            email = ?,
+           philhealth_no = ?,
+           tin = ?,
+           sss_no = ?,
+           pag_ibig_mid_no = ?,
+           pag_ibig_rtn = ?,
+           gsis_no = ?,
            dob = ?,
              hired_date = ?,
            role = ?
@@ -553,8 +645,14 @@ export const updateEmployee = async (req, res) => {
         position,
         status,
         email,
-        dob || null,
-        hired_date || null,
+        philhealth_no || null,
+        tin || null,
+        sss_no || null,
+        pag_ibig_mid_no || null,
+        pag_ibig_rtn || null,
+        gsis_no || null,
+        normalizedDob,
+        normalizedHiredDate,
         employeeRole,
         id,
       ],
@@ -1159,9 +1257,9 @@ export const getAllLeaves = async (req, res) => {
       queryParams.push(viewer.emp_id);
     } else if (viewer.role === "Supervisor") {
       query += `
-       WHERE l.emp_id = ?
+        WHERE l.emp_id = ?
            OR (
-             l.status IN ('Pending', 'Approved', 'Partially Approved','Declined') -- UPDATED HERE
+             l.status = 'Pending'
              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
              AND e.designation = ?
              AND e.emp_id <> ?
@@ -1172,13 +1270,12 @@ export const getAllLeaves = async (req, res) => {
       query += `
         WHERE l.emp_id = ?
            OR (
-             l.status IN ('Pending', 'Approved', 'Partially Approved','Declined') -- UPDATED HERE
-             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-             AND e.designation = ?
+             l.status = 'Pending'
+             AND COALESCE(e.role, '') = 'Supervisor'
              AND e.emp_id <> ?
            )
       `;
-      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY l.id DESC";
@@ -1195,9 +1292,7 @@ export const updateLeaveStatus = async (req, res) => {
   const { status, supervisor_remarks, approved_days, approved_dates } =
     req.body;
 
-  if (
-    !["Pending", "Approved", "Denied", "Partially Approved"].includes(status)
-  ) {
+  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
     return res.status(400).json({ message: "Invalid leave status" });
   }
 
@@ -1259,8 +1354,7 @@ export const updateLeaveStatus = async (req, res) => {
       if (!parsedApprovedDays || parsedApprovedDays <= 0) {
         await connection.rollback();
         return res.status(400).json({
-          message:
-            "approved_days must be greater than zero for partial approval",
+          message: "approved_days must be greater than zero for partial approval",
         });
       }
 
@@ -1365,6 +1459,8 @@ export const getAllPayroll = async (req, res) => {
          e.last_name,
          e.designation,
          e.position,
+         COALESCE(adj.total_incentives, p.incentives, 0) AS recalculated_incentives,
+         COALESCE(adj.total_deductions, p.absence_deductions, 0) AS recalculated_deductions,
          adj.adjustment_reasons,
          adj.incentive_reasons,
          adj.deduction_reasons
@@ -1375,16 +1471,24 @@ export const getAllPayroll = async (req, res) => {
            emp_id,
            GROUP_CONCAT(
              CASE
-               WHEN type IN ('Bonus', 'Increase') THEN CONCAT(type, ': ', COALESCE(description, 'No reason provided'))
+               WHEN type IN ('Bonus', 'Increase') THEN CONCAT(
+                 COALESCE(NULLIF(TRIM(description), ''), 'Unspecified incentive type'),
+                 ' = ₱',
+                 FORMAT(ABS(amount), 2)
+               )
                ELSE NULL
              END
              ORDER BY effective_date DESC, id DESC
              SEPARATOR ' | '
            ) AS incentive_reasons,
+           COALESCE(
+             SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END),
+             0
+           ) AS total_incentives,
            GROUP_CONCAT(
              CASE
                WHEN type = 'Decrease' THEN CONCAT(
-                 COALESCE(NULLIF(TRIM(description), ''), 'No reason provided'),
+                 COALESCE(NULLIF(TRIM(description), ''), 'Unspecified deduction type'),
                  ' = ₱',
                  FORMAT(ABS(amount), 2)
                )
@@ -1393,8 +1497,18 @@ export const getAllPayroll = async (req, res) => {
              ORDER BY effective_date DESC, id DESC
              SEPARATOR ' | '
            ) AS deduction_reasons,
+           COALESCE(
+             SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END),
+             0
+           ) AS total_deductions,
            GROUP_CONCAT(
-             CONCAT(type, ': ', COALESCE(description, 'No reason provided'))
+             CONCAT(
+               type,
+               ': ',
+               COALESCE(NULLIF(TRIM(description), ''), 'Unspecified type'),
+               ' = ₱',
+               FORMAT(ABS(amount), 2)
+             )
              ORDER BY effective_date DESC, id DESC
              SEPARATOR ' | '
            ) AS adjustment_reasons
@@ -1402,14 +1516,17 @@ export const getAllPayroll = async (req, res) => {
          WHERE DATE_FORMAT(effective_date, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
          GROUP BY emp_id
        ) adj ON adj.emp_id = p.emp_id
-       WHERE p.period_start = ?`,
+       WHERE p.period_start = ?
+       ORDER BY
+         CAST(COALESCE(NULLIF(REGEXP_SUBSTR(p.emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
+         p.emp_id ASC`,
       [periodStart, periodStart],
     );
 
     const enrichedRows = rows.map((row) => {
       const basicPay = Number(row.basic_pay || 0);
-      const incentives = Number(row.incentives || 0);
-      const totalDeductions = Number(row.absence_deductions || 0);
+      const incentives = Number(row.recalculated_incentives || 0);
+      const totalDeductions = Number(row.recalculated_deductions || 0);
       const netPay = Number(
         (basicPay + incentives - totalDeductions).toFixed(2),
       );
@@ -1418,6 +1535,7 @@ export const getAllPayroll = async (req, res) => {
         ...row,
         absences_count: 0,
         converted_absences: 0,
+        incentives,
         absence_deductions: totalDeductions,
         baseline_absence_deductions: 0,
         adjustment_deductions: totalDeductions,
@@ -2020,10 +2138,7 @@ const recomputePayrollForEmployeesPeriod = async (
   );
 
   for (const row of payrollRows) {
-    const totals = totalsByEmp.get(row.emp_id) || {
-      incentives: 0,
-      deductions: 0,
-    };
+    const totals = totalsByEmp.get(row.emp_id) || { incentives: 0, deductions: 0 };
 
     await connection.query(
       `UPDATE payroll
@@ -2050,15 +2165,11 @@ export const applySalaryAdjustment = async (req, res) => {
   const { emp_ids, type, amount, description, date } = req.body;
 
   if (!Array.isArray(emp_ids) || emp_ids.length === 0) {
-    return res
-      .status(400)
-      .json({ message: "At least one employee is required" });
+    return res.status(400).json({ message: "At least one employee is required" });
   }
 
   if (!type || amount === undefined || amount === null || !date) {
-    return res
-      .status(400)
-      .json({ message: "type, amount, and date are required" });
+    return res.status(400).json({ message: "type, amount, and date are required" });
   }
 
   const normalizedType = normalizeAdjustmentType(type);
@@ -2310,11 +2421,7 @@ export const updateSalaryHistoryEntry = async (req, res) => {
       [normalizedType, numericAmount, description || null, id],
     );
 
-    await recomputePayrollForEmployeesPeriod(
-      connection,
-      [existing.emp_id],
-      period,
-    );
+    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
 
     await connection.commit();
     res.json({ message: "Adjustment updated successfully" });
@@ -2360,11 +2467,7 @@ export const deleteSalaryHistoryEntry = async (req, res) => {
 
     await connection.query("DELETE FROM salary_history WHERE id = ?", [id]);
 
-    await recomputePayrollForEmployeesPeriod(
-      connection,
-      [existing.emp_id],
-      period,
-    );
+    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
 
     await connection.commit();
     res.json({ message: "Adjustment removed successfully" });
