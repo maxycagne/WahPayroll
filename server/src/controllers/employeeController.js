@@ -1832,24 +1832,16 @@ export const getOffsetApplications = async (req, res) => {
       query += `
         WHERE oa.emp_id = ?
            OR (
-             oa.status = 'Pending'
+             oa.status IN ('Pending', 'Approved', 'Partially Approved', 'Denied')
              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
              AND e.designation = ?
              AND e.emp_id <> ?
            )
       `;
       queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    } else if (viewer.role === "HR") {
-      query += `
-        WHERE oa.emp_id = ?
-           OR (
-             oa.status = 'Pending'
-             AND COALESCE(e.role, '') = 'Supervisor'
-             AND e.emp_id <> ?
-           )
-      `;
-      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
+    // FIX: If the role is HR or Admin, the query falls through here
+    // and fetches EVERYTHING without a WHERE restriction!
 
     query += " ORDER BY oa.created_at DESC";
 
@@ -1896,7 +1888,10 @@ export const updateOffsetApplicationStatus = async (req, res) => {
     const approver = await getEmployeeProfile(connection, supervisorId);
     const requester = await getEmployeeProfile(connection, application.emp_id);
 
-    if (!canApproverReviewRequester(approver, requester)) {
+    // FIX: Explicitly allow HR and Admin to bypass the strict supervisor-only check for Offsets
+    const isHRorAdmin = approver.role === "HR" || approver.role === "Admin";
+
+    if (!isHRorAdmin && !canApproverReviewRequester(approver, requester)) {
       await connection.rollback();
       return res.status(403).json({
         message: "You are not allowed to approve this offset request",
