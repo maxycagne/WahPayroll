@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import axiosInterceptor from "../hooks/interceptor";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -98,9 +99,9 @@ export default function Attendance() {
       const initialForm = {};
       const initialSecondary = {};
       data.forEach((emp) => {
-        // CHANGED: Now defaults to "" (None) instead of "Present"
         initialForm[emp.emp_id] = emp.attendance_status || "";
-        initialSecondary[emp.emp_id] = "";
+        // FIX: Tell React to load status2 from the database
+        initialSecondary[emp.emp_id] = emp.status2 || "";
       });
       setAttendanceForm(initialForm);
       setSecondaryStatusForm(initialSecondary);
@@ -132,14 +133,15 @@ export default function Attendance() {
 
   const saveDailyAttendanceMutation = useMutation({
     mutationFn: async (records) => {
-      const res = await apiFetch("/api/employees/attendance-bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // CHANGED: Use axiosInterceptor instead of apiFetch to guarantee the token is sent
+      const res = await axiosInterceptor.post(
+        "/api/employees/attendance-bulk",
+        {
+          date: selectedDate,
+          records,
         },
-        body: JSON.stringify({ date: selectedDate, records }),
-      });
-      if (!res.ok) throw new Error("Failed to save attendance");
+      );
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["attendance"]);
@@ -233,12 +235,16 @@ export default function Attendance() {
   const handleDailySubmit = (e) => {
     e.preventDefault();
     const records = Object.entries(attendanceForm)
-      // CHANGED: Filter out empty ("none") and "Pending" statuses so they don't get saved
       .filter(([_, status]) => status !== "" && status !== "Pending")
       .map(([emp_id, status]) => {
         const secondary = secondaryStatusForm[emp_id];
-        const finalStatus = secondary ? `${status}, ${secondary}` : status;
-        return { emp_id, status: finalStatus };
+
+        // FIX: Send them as two separate pieces of data!
+        return {
+          emp_id,
+          status: status,
+          status2: secondary || null,
+        };
       });
     saveDailyAttendanceMutation.mutate(records);
   };
@@ -453,21 +459,6 @@ export default function Attendance() {
                           • {dayData.present_count} Present
                         </div>
                       )}
-                      {dayData.late_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 rounded px-1 w-full text-left truncate border border-amber-100">
-                          • {dayData.late_count} Late
-                        </div>
-                      )}
-                      {dayData.undertime_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-rose-700 bg-rose-50 rounded px-1 w-full text-left truncate border border-rose-100">
-                          • {dayData.undertime_count} Undertime
-                        </div>
-                      )}
-                      {dayData.halfday_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-orange-700 bg-orange-50 rounded px-1 w-full text-left truncate border border-orange-100">
-                          • {dayData.halfday_count} Half-Day
-                        </div>
-                      )}
                       {dayData.leave_count > 0 && (
                         <div className="text-[0.6rem] font-bold text-purple-700 bg-purple-50 rounded px-1 w-full text-left truncate border border-purple-100">
                           • {dayData.leave_count} On Leave
@@ -590,10 +581,7 @@ export default function Attendance() {
                   >
                     <option value="">-- Select --</option>
                     <option value="Present">Present</option>
-                    <option value="Late">Late</option>
-                    <option value="Undertime">Undertime</option>
                     <option value="Absent">Absent</option>
-                    <option value="Half-Day">Half-Day</option>
                     <option value="On Leave">On Leave</option>
                   </select>
                   <button
@@ -695,10 +683,7 @@ export default function Attendance() {
                               >
                                 <option value="">-- None --</option>
                                 <option value="Present">Present</option>
-                                <option value="Late">Late</option>
-                                <option value="Undertime">Undertime</option>
                                 <option value="Absent">Absent</option>
-                                <option value="Half-Day">Half-Day</option>
                                 <option value="On Leave">On Leave</option>
                               </select>
                             </td>

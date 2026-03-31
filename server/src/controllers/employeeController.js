@@ -1050,12 +1050,12 @@ export const getAttendanceCalendarSummary = async (req, res) => {
       `
       SELECT DATE_FORMAT(date, '%Y-%m-%d') as date, 
              DATE_FORMAT(date, '%Y-%m-%d') as formatted_date,
-             SUM(CASE WHEN status LIKE '%Present%' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status LIKE '%Absent%' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN status LIKE '%Late%' THEN 1 ELSE 0 END) as late_count,
-             SUM(CASE WHEN status LIKE '%Undertime%' THEN 1 ELSE 0 END) as undertime_count,
-             SUM(CASE WHEN status LIKE '%Half-Day%' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status LIKE '%On Leave%' THEN 1 ELSE 0 END) as leave_count
+             SUM(CASE WHEN status = 'Present' OR status2 = 'Present' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN status = 'Absent' OR status2 = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN status = 'Late' OR status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
+             SUM(CASE WHEN status = 'Undertime' OR status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
+             SUM(CASE WHEN status = 'Half-Day' OR status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
+             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
       GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
@@ -1074,7 +1074,7 @@ export const getDailyAttendance = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
-      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status
+      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
       WHERE COALESCE(e.role, '') <> 'Admin'
@@ -1103,12 +1103,12 @@ export const saveBulkAttendance = async (req, res) => {
       [date],
     );
 
-    // 2. Insert the fresh records using strict DATE() parsing
+    // 2. Insert the fresh records including status2
     if (records && records.length > 0) {
       for (const record of records) {
         await connection.query(
-          `INSERT INTO attendance (emp_id, date, status) VALUES (?, DATE(?), ?)`,
-          [record.emp_id, date, record.status],
+          `INSERT INTO attendance (emp_id, date, status, status2) VALUES (?, DATE(?), ?, ?)`,
+          [record.emp_id, date, record.status, record.status2 || null],
         );
       }
     }
