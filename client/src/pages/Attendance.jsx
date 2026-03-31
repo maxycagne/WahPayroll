@@ -736,7 +736,7 @@ export default function Attendance({ shortcutMode = false }) {
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                className="border p-1 rounded outline-none font-semibold max-w-[90px] bg-white text-gray-700 text-xs"
+                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
                               >
                                 <option value="">-- None --</option>
                                 <option value="Late">Late</option>
