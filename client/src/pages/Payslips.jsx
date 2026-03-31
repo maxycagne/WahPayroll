@@ -79,6 +79,20 @@ export default function Payslips() {
     year: "numeric",
   });
 
+  const incentiveTypeLines = currentSlip?.incentive_reasons
+    ? String(currentSlip.incentive_reasons)
+        .split(" | ")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
+  const deductionTypeLines = currentSlip?.deduction_reasons
+    ? String(currentSlip.deduction_reasons)
+        .split(" | ")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
   const payItems = currentSlip
     ? [
         {
@@ -323,6 +337,47 @@ export default function Payslips() {
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-800">
+                  Deduction Types
+                </p>
+                {deductionTypeLines.length === 0 ? (
+                  <p className="m-0 mt-1 text-xs text-red-900">None</p>
+                ) : (
+                  <div className="mt-1 space-y-1">
+                    {deductionTypeLines.map((line, index) => (
+                      <p
+                        key={`deduction-type-${index}`}
+                        className="m-0 text-xs text-red-900"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                  Incentive Types
+                </p>
+                {incentiveTypeLines.length === 0 ? (
+                  <p className="m-0 mt-1 text-xs text-emerald-900">None</p>
+                ) : (
+                  <div className="mt-1 space-y-1">
+                    {incentiveTypeLines.map((line, index) => (
+                      <p
+                        key={`incentive-type-${index}`}
+                        className="m-0 text-xs text-emerald-900"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="mt-8 hidden print:block">

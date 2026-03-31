@@ -29,6 +29,33 @@ const DESIGNATIONS = {
   ],
 };
 
+const DEFAULT_DEDUCTION_TYPES = [
+  "CAP",
+  "SSS Loan",
+  "Pag-IBIG Loan",
+  "Cash Advance",
+  "Others",
+];
+
+const DEFAULT_INCENTIVE_TYPES = [
+  "Performance",
+  "Attendance",
+  "Project",
+  "Others",
+];
+
+const toUiAdjustmentCategory = (rawType) => {
+  const normalized = String(rawType || "")
+    .trim()
+    .toLowerCase();
+
+  if (["decrease", "deduction", "deductions"].includes(normalized)) {
+    return "Decrease";
+  }
+
+  return "Incentive";
+};
+
 const fmt = (n) => {
   const num = Number(n);
   return isNaN(num)
@@ -89,9 +116,42 @@ export default function Payroll() {
   const [resetConfirmModal, setResetConfirmModal] = useState(false);
   const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
 
-  const [adjustmentType, setAdjustmentType] = useState("Bonus");
+  const [adjustmentType, setAdjustmentType] = useState("Incentive");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
-  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [deductionTypes, setDeductionTypes] = useState(() => {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem("wah_deduction_types") || "[]",
+      );
+      if (Array.isArray(stored) && stored.length > 0) {
+        return stored;
+      }
+    } catch {
+      // Ignore malformed local storage values.
+    }
+    return DEFAULT_DEDUCTION_TYPES;
+  });
+  const [selectedDeductionType, setSelectedDeductionType] = useState(
+    DEFAULT_DEDUCTION_TYPES[0],
+  );
+  const [newDeductionType, setNewDeductionType] = useState("");
+  const [incentiveTypes, setIncentiveTypes] = useState(() => {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem("wah_incentive_types") || "[]",
+      );
+      if (Array.isArray(stored) && stored.length > 0) {
+        return stored;
+      }
+    } catch {
+      // Ignore malformed local storage values.
+    }
+    return DEFAULT_INCENTIVE_TYPES;
+  });
+  const [selectedIncentiveType, setSelectedIncentiveType] = useState(
+    DEFAULT_INCENTIVE_TYPES[0],
+  );
+  const [newIncentiveType, setNewIncentiveType] = useState("");
   const [applyToOtherMonth, setApplyToOtherMonth] = useState(false);
   const [adjustmentTargetPeriod, setAdjustmentTargetPeriod] = useState(period);
   const [applyByRange, setApplyByRange] = useState(false);
@@ -300,10 +360,33 @@ export default function Payroll() {
     }
   }, [period]);
 
+  useEffect(() => {
+    if (!Array.isArray(deductionTypes) || deductionTypes.length === 0) return;
+    localStorage.setItem("wah_deduction_types", JSON.stringify(deductionTypes));
+    if (!deductionTypes.includes(selectedDeductionType)) {
+      setSelectedDeductionType(deductionTypes[0]);
+    }
+  }, [deductionTypes, selectedDeductionType]);
+
+  useEffect(() => {
+    if (!Array.isArray(incentiveTypes) || incentiveTypes.length === 0) return;
+    localStorage.setItem("wah_incentive_types", JSON.stringify(incentiveTypes));
+    if (!incentiveTypes.includes(selectedIncentiveType)) {
+      setSelectedIncentiveType(incentiveTypes[0]);
+    }
+  }, [incentiveTypes, selectedIncentiveType]);
+
   // --- HANDLERS ---
   const handleAdjustment = async () => {
-    if (!adjustmentAmount || !adjustmentReason)
-      return showToast("Fill in all fields.", "error");
+    if (!adjustmentAmount) return showToast("Fill in all fields.", "error");
+
+    if (adjustmentType === "Decrease" && !selectedDeductionType) {
+      return showToast("Select a deduction type.", "error");
+    }
+
+    if (adjustmentType === "Incentive" && !selectedIncentiveType) {
+      return showToast("Select an incentive type.", "error");
+    }
 
     const targetPeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
 
@@ -327,12 +410,17 @@ export default function Payroll() {
       return showToast("No employees selected.", "error");
 
     try {
+      const descriptionValue =
+        adjustmentType === "Decrease"
+          ? selectedDeductionType
+          : selectedIncentiveType;
+
       for (const month of targetPeriods) {
         await adjustmentMutation.mutateAsync({
           emp_ids: empIds,
           type: adjustmentType,
           amount: adjustmentAmount,
-          description: adjustmentReason,
+          description: descriptionValue,
           date: `${month}-01`,
         });
       }
@@ -368,22 +456,28 @@ export default function Payroll() {
   const closeAdjustmentModal = () => {
     setAdjustmentModal(null);
     setAdjustmentAmount("");
-    setAdjustmentReason("");
+    setNewDeductionType("");
+    setNewIncentiveType("");
     setApplyToOtherMonth(false);
     setAdjustmentTargetPeriod(period);
     setApplyByRange(false);
     setAdjustmentRangeStart(period);
     setAdjustmentRangeEnd(period);
+    setAdjustmentType("Incentive");
     setEditingHistoryEntry(null);
     setSelectedEmployees(new Set());
   };
 
   const startEditHistoryEntry = (entry) => {
+    const uiType = toUiAdjustmentCategory(entry.type);
+    const fallbackType =
+      uiType === "Decrease" ? deductionTypes[0] : incentiveTypes[0];
+
     setEditingHistoryEntry({
       id: entry.id,
-      type: entry.type,
+      type: uiType,
       amount: Number(entry.amount || 0),
-      description: entry.description || "",
+      description: entry.description || fallbackType || "",
     });
   };
 
@@ -398,17 +492,107 @@ export default function Payroll() {
       return;
     }
 
+    const fallbackType =
+      editingHistoryEntry.type === "Decrease"
+        ? deductionTypes[0]
+        : incentiveTypes[0];
+    const selectedType =
+      String(editingHistoryEntry.description || "").trim() || fallbackType;
+
+    if (!selectedType) {
+      showToast("Select a type.", "error");
+      return;
+    }
+
     updateHistoryEntryMutation.mutate({
       id: editingHistoryEntry.id,
       type: editingHistoryEntry.type,
       amount: Number(editingHistoryEntry.amount),
-      description: editingHistoryEntry.description,
+      description: selectedType,
     });
   };
 
   const removeHistoryEntry = (id) => {
     if (!window.confirm("Remove this adjustment entry?")) return;
     deleteHistoryEntryMutation.mutate(id);
+  };
+
+  const addDeductionType = () => {
+    const value = newDeductionType.trim();
+    if (!value) return;
+
+    const exists = deductionTypes.some(
+      (item) => item.toLowerCase() === value.toLowerCase(),
+    );
+
+    if (exists) {
+      setSelectedDeductionType(
+        deductionTypes.find(
+          (item) => item.toLowerCase() === value.toLowerCase(),
+        ) || value,
+      );
+      setNewDeductionType("");
+      return;
+    }
+
+    const updated = [...deductionTypes, value].sort((a, b) =>
+      a.localeCompare(b),
+    );
+    setDeductionTypes(updated);
+    setSelectedDeductionType(value);
+    setNewDeductionType("");
+  };
+
+  const removeDeductionType = () => {
+    if (deductionTypes.length <= 1) {
+      showToast("At least one deduction type must remain.", "error");
+      return;
+    }
+
+    const updated = deductionTypes.filter(
+      (item) => item !== selectedDeductionType,
+    );
+    setDeductionTypes(updated);
+    setSelectedDeductionType(updated[0] || "");
+  };
+
+  const addIncentiveType = () => {
+    const value = newIncentiveType.trim();
+    if (!value) return;
+
+    const exists = incentiveTypes.some(
+      (item) => item.toLowerCase() === value.toLowerCase(),
+    );
+
+    if (exists) {
+      setSelectedIncentiveType(
+        incentiveTypes.find(
+          (item) => item.toLowerCase() === value.toLowerCase(),
+        ) || value,
+      );
+      setNewIncentiveType("");
+      return;
+    }
+
+    const updated = [...incentiveTypes, value].sort((a, b) =>
+      a.localeCompare(b),
+    );
+    setIncentiveTypes(updated);
+    setSelectedIncentiveType(value);
+    setNewIncentiveType("");
+  };
+
+  const removeIncentiveType = () => {
+    if (incentiveTypes.length <= 1) {
+      showToast("At least one incentive type must remain.", "error");
+      return;
+    }
+
+    const updated = incentiveTypes.filter(
+      (item) => item !== selectedIncentiveType,
+    );
+    setIncentiveTypes(updated);
+    setSelectedIncentiveType(updated[0] || "");
   };
 
   const toggleEmployeeSelection = (id) => {
@@ -442,16 +626,6 @@ export default function Payroll() {
     () => salaryHistoryData,
     [salaryHistoryData],
   );
-
-  const hasReasonFallback = useMemo(() => {
-    const deductionReasons = String(
-      adjustmentModal?.deduction_reasons || "",
-    ).trim();
-    const incentiveReasons = String(
-      adjustmentModal?.incentive_reasons || "",
-    ).trim();
-    return deductionReasons.length > 0 || incentiveReasons.length > 0;
-  }, [adjustmentModal]);
 
   useEffect(() => {
     if (adjustmentModal) {
@@ -694,7 +868,7 @@ export default function Payroll() {
                         {fmt(p.absence_deductions)}
                       </div>
                       <div className="text-[11px] text-gray-500 mt-0.5">
-                        {p.deduction_reasons || "No deduction reason"}
+                        {p.deduction_reasons || "No deduction type"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -704,7 +878,7 @@ export default function Payroll() {
                         {fmtSigned(p.incentives)}
                       </div>
                       <div className="text-[11px] text-gray-500 mt-0.5">
-                        {p.incentive_reasons || "No incentive reason"}
+                        {p.incentive_reasons || "No incentive type"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-purple-700">
@@ -937,20 +1111,10 @@ export default function Payroll() {
                 {salaryBreakdownModal.deduction_reasons && (
                   <div className="py-3 bg-red-50 rounded-lg border border-red-200 p-3">
                     <p className="text-xs font-bold text-red-800 uppercase mb-2">
-                      Deduction Reasons:
+                      Deduction Types:
                     </p>
                     <p className="text-xs text-red-900 leading-relaxed">
                       {salaryBreakdownModal.deduction_reasons}
-                    </p>
-                  </div>
-                )}
-                {salaryBreakdownModal.incentive_reasons && (
-                  <div className="py-3 bg-yellow-50 rounded-lg border border-yellow-200 p-3">
-                    <p className="text-xs font-bold text-yellow-800 uppercase mb-2">
-                      Incentive Reasons:
-                    </p>
-                    <p className="text-xs text-yellow-900 leading-relaxed">
-                      {salaryBreakdownModal.incentive_reasons}
                     </p>
                   </div>
                 )}
@@ -964,6 +1128,16 @@ export default function Payroll() {
                     {fmtSigned(salaryBreakdownModal.incentives)}
                   </span>
                 </div>
+                {salaryBreakdownModal.incentive_reasons && (
+                  <div className="py-3 bg-yellow-50 rounded-lg border border-yellow-200 p-3">
+                    <p className="text-xs font-bold text-yellow-800 uppercase mb-2">
+                      Incentive Types:
+                    </p>
+                    <p className="text-xs text-yellow-900 leading-relaxed">
+                      {salaryBreakdownModal.incentive_reasons}
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-between py-3 bg-purple-50 rounded-lg p-3">
                   <span className="font-bold text-purple-900">Net Pay</span>
                   <span className="text-purple-900 font-black text-lg">
@@ -1056,36 +1230,128 @@ export default function Payroll() {
                 onChange={(e) => setAdjustmentType(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
               >
-                <option value="Bonus">Incentives (Bonus)</option>
-                <option value="Increase">Incentives (Raise)</option>
+                <option value="Incentive">Incentives</option>
                 <option value="Decrease">Deductions</option>
               </select>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  {adjustmentType === "Decrease"
-                    ? "Deduction Amount"
-                    : "Incentives Amount"}
-                </label>
-                <input
-                  type="number"
-                  value={adjustmentAmount}
-                  onChange={(e) => setAdjustmentAmount(e.target.value)}
-                  placeholder={`${adjustmentType === "Decrease" ? "Deduction" : "Incentives"} Amount (₱)`}
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Reason (shown in breakdown)
-                </label>
-                <textarea
-                  value={adjustmentReason}
-                  onChange={(e) => setAdjustmentReason(e.target.value)}
-                  placeholder="Reason..."
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-                />
-              </div>
+              {adjustmentType === "Decrease" ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                    Deduction Type and Amount
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      value={selectedDeductionType}
+                      onChange={(e) => setSelectedDeductionType(e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                    >
+                      {deductionTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={adjustmentAmount}
+                      onChange={(e) => setAdjustmentAmount(e.target.value)}
+                      placeholder="Amount (₱)"
+                      className="w-36 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeDeductionType}
+                      className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
+                      title="Remove selected deduction type"
+                    >
+                      -
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newDeductionType}
+                      onChange={(e) => setNewDeductionType(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addDeductionType();
+                        }
+                      }}
+                      placeholder="Add deduction type"
+                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={addDeductionType}
+                      className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
+                      title="Add deduction type"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                    Incentive Type and Amount
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      value={selectedIncentiveType}
+                      onChange={(e) => setSelectedIncentiveType(e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                    >
+                      {incentiveTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={adjustmentAmount}
+                      onChange={(e) => setAdjustmentAmount(e.target.value)}
+                      placeholder="Amount (₱)"
+                      className="w-36 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeIncentiveType}
+                      className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
+                      title="Remove selected incentive type"
+                    >
+                      -
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newIncentiveType}
+                      onChange={(e) => setNewIncentiveType(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addIncentiveType();
+                        }
+                      }}
+                      placeholder="Add incentive type"
+                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={addIncentiveType}
+                      className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
+                      title="Add incentive type"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={closeAdjustmentModal}
@@ -1118,28 +1384,9 @@ export default function Payroll() {
                     )
                   </p>
                   {currentPeriodHistory.length === 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500">
-                        No editable adjustment records found for this month.
-                      </p>
-                      {hasReasonFallback && (
-                        <div className="rounded-md border border-amber-200 bg-amber-50 p-2">
-                          <p className="text-[11px] font-bold text-amber-700 uppercase mb-1">
-                            Current Payroll Entries
-                          </p>
-                          {adjustmentModal?.deduction_reasons && (
-                            <p className="text-xs text-amber-900">
-                              Deductions: {adjustmentModal.deduction_reasons}
-                            </p>
-                          )}
-                          {adjustmentModal?.incentive_reasons && (
-                            <p className="text-xs text-amber-900 mt-1">
-                              Incentives: {adjustmentModal.incentive_reasons}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      No editable adjustment records found for this month.
+                    </p>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                       {currentPeriodHistory.map((entry) => (
@@ -1148,8 +1395,12 @@ export default function Payroll() {
                           className="rounded-md border border-gray-200 bg-gray-50 p-2 flex items-center justify-between gap-2"
                         >
                           <div className="text-xs text-gray-700">
-                            <span className="font-bold">{entry.type}</span>:{" "}
-                            {entry.description || "No reason provided"} ={" "}
+                            <span className="font-bold">
+                              {toUiAdjustmentCategory(entry.type) === "Decrease"
+                                ? "Deduction"
+                                : "Incentive"}
+                            </span>
+                            : {entry.description || "No type provided"} ={" "}
                             {fmt(entry.amount)}
                           </div>
                           <div className="flex items-center gap-2">
@@ -1191,44 +1442,67 @@ export default function Payroll() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <select
-                value={editingHistoryEntry.type}
-                onChange={(e) =>
-                  setEditingHistoryEntry({
-                    ...editingHistoryEntry,
-                    type: e.target.value,
-                  })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-              >
-                <option value="Bonus">Incentives (Bonus)</option>
-                <option value="Increase">Incentives (Raise)</option>
-                <option value="Decrease">Deductions</option>
-              </select>
-              <input
-                type="number"
-                min="0"
-                value={editingHistoryEntry.amount}
-                onChange={(e) =>
-                  setEditingHistoryEntry({
-                    ...editingHistoryEntry,
-                    amount: e.target.value,
-                  })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600"
-              />
-              <textarea
-                value={editingHistoryEntry.description}
-                onChange={(e) =>
-                  setEditingHistoryEntry({
-                    ...editingHistoryEntry,
-                    description: e.target.value,
-                  })
-                }
-                rows={3}
-                placeholder="Reason"
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600"
-              />
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Type and Amount
+              </label>
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                <select
+                  value={editingHistoryEntry.type}
+                  onChange={(e) => {
+                    const nextType = e.target.value;
+                    const nextOptions =
+                      nextType === "Decrease" ? deductionTypes : incentiveTypes;
+                    const hasCurrentDescription = nextOptions.includes(
+                      editingHistoryEntry.description,
+                    );
+
+                    setEditingHistoryEntry({
+                      ...editingHistoryEntry,
+                      type: nextType,
+                      description: hasCurrentDescription
+                        ? editingHistoryEntry.description
+                        : nextOptions[0] || "",
+                    });
+                  }}
+                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                >
+                  <option value="Incentive">Incentives</option>
+                  <option value="Decrease">Deductions</option>
+                </select>
+                <select
+                  value={editingHistoryEntry.description || ""}
+                  onChange={(e) =>
+                    setEditingHistoryEntry({
+                      ...editingHistoryEntry,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                >
+                  {(editingHistoryEntry.type === "Decrease"
+                    ? deductionTypes
+                    : incentiveTypes
+                  ).map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingHistoryEntry.amount}
+                  onChange={(e) =>
+                    setEditingHistoryEntry({
+                      ...editingHistoryEntry,
+                      amount: e.target.value,
+                    })
+                  }
+                  placeholder="Amount"
+                  className="w-28 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => setEditingHistoryEntry(null)}
