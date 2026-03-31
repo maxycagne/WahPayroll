@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
@@ -17,6 +18,7 @@ const badgeClass = {
 
 export default function Attendance() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
   const [search, setSearch] = useState("");
   const [workweekForm, setWorkweekForm] = useState({
@@ -57,6 +59,20 @@ export default function Attendance() {
   const [secondaryStatusForm, setSecondaryStatusForm] = useState({});
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
   const [bulkStatus, setBulkStatus] = useState("Present");
+
+  useEffect(() => {
+    if (searchParams.get("open") !== "take-attendance") return;
+
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    setSelectedDate(localDate);
+    setDailyModalOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("open");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // --- QUERIES ---
   const { data: attendance = [], isLoading } = useQuery({

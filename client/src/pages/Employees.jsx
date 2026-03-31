@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
@@ -31,6 +32,7 @@ const designationMap = {
 
 export default function Employees() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const canResetPassword = currentUser?.role === "Admin";
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,6 +66,16 @@ export default function Employees() {
     dob: "",
     hired_date: "",
   });
+
+  useEffect(() => {
+    if (searchParams.get("open") !== "add-employee") return;
+
+    setIsAddModalOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("open");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // --- QUERIES ---
   const { data: employees = [], isLoading } = useQuery({
