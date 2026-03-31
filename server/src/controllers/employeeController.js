@@ -1148,12 +1148,12 @@ export const getAttendanceCalendarSummary = async (req, res) => {
       `
       SELECT DATE_FORMAT(date, '%Y-%m-%d') as date, 
              DATE_FORMAT(date, '%Y-%m-%d') as formatted_date,
-             SUM(CASE WHEN status LIKE '%Present%' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status LIKE '%Absent%' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN status LIKE '%Late%' THEN 1 ELSE 0 END) as late_count,
-             SUM(CASE WHEN status LIKE '%Undertime%' THEN 1 ELSE 0 END) as undertime_count,
-             SUM(CASE WHEN status LIKE '%Half-Day%' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status LIKE '%On Leave%' THEN 1 ELSE 0 END) as leave_count
+             SUM(CASE WHEN status = 'Present' OR status2 = 'Present' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN status = 'Absent' OR status2 = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN status = 'Late' OR status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
+             SUM(CASE WHEN status = 'Undertime' OR status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
+             SUM(CASE WHEN status = 'Half-Day' OR status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
+             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
       GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
@@ -1172,7 +1172,7 @@ export const getDailyAttendance = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
-      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status
+      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
       WHERE COALESCE(e.role, '') <> 'Admin'
@@ -1201,12 +1201,12 @@ export const saveBulkAttendance = async (req, res) => {
       [date],
     );
 
-    // 2. Insert the fresh records using strict DATE() parsing
+    // 2. Insert the fresh records including status2
     if (records && records.length > 0) {
       for (const record of records) {
         await connection.query(
-          `INSERT INTO attendance (emp_id, date, status) VALUES (?, DATE(?), ?)`,
-          [record.emp_id, date, record.status],
+          `INSERT INTO attendance (emp_id, date, status, status2) VALUES (?, DATE(?), ?, ?)`,
+          [record.emp_id, date, record.status, record.status2 || null],
         );
       }
     }
@@ -1950,24 +1950,16 @@ export const getOffsetApplications = async (req, res) => {
       query += `
         WHERE oa.emp_id = ?
            OR (
-             oa.status = 'Pending'
+             oa.status IN ('Pending', 'Approved', 'Partially Approved', 'Denied')
              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
              AND e.designation = ?
              AND e.emp_id <> ?
            )
       `;
       queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    } else if (viewer.role === "HR") {
-      query += `
-        WHERE oa.emp_id = ?
-           OR (
-             oa.status = 'Pending'
-             AND COALESCE(e.role, '') = 'Supervisor'
-             AND e.emp_id <> ?
-           )
-      `;
-      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
+    // FIX: If the role is HR or Admin, the query falls through here
+    // and fetches EVERYTHING without a WHERE restriction!
 
     query += " ORDER BY oa.created_at DESC";
 
@@ -2014,7 +2006,10 @@ export const updateOffsetApplicationStatus = async (req, res) => {
     const approver = await getEmployeeProfile(connection, supervisorId);
     const requester = await getEmployeeProfile(connection, application.emp_id);
 
-    if (!canApproverReviewRequester(approver, requester)) {
+    // FIX: Explicitly allow HR and Admin to bypass the strict supervisor-only check for Offsets
+    const isHRorAdmin = approver.role === "HR" || approver.role === "Admin";
+
+    if (!isHRorAdmin && !canApproverReviewRequester(approver, requester)) {
       await connection.rollback();
       return res.status(403).json({
         message: "You are not allowed to approve this offset request",

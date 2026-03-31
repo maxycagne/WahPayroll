@@ -119,7 +119,11 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR"),
   getDailyAttendance,
 );
-router.post("/attendance-bulk", authorizeRoles("HR"), saveBulkAttendance);
+router.post(
+  "/attendance-bulk",
+  authorizeRoles("Admin", "HR"),
+  saveBulkAttendance,
+);
 
 router.get(
   "/workweek-config",
@@ -186,11 +190,7 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getAllPayroll,
 );
-router.post(
-  "/generate-payroll",
-  authorizeRoles("Admin"),
-  generatePayroll,
-);
+router.post("/generate-payroll", authorizeRoles("Admin"), generatePayroll);
 router.post(
   "/salary-adjustment",
   authorizeRoles("Admin"),
@@ -202,11 +202,7 @@ router.put(
   updateBaseSalaryByPosition,
 );
 
-router.post(
-  "/reset-payroll",
-  authorizeRoles("Admin"),
-  resetPayrollData,
-);
+router.post("/reset-payroll", authorizeRoles("Admin"), resetPayrollData);
 
 router.get(
   "/salary-history/:emp_id",

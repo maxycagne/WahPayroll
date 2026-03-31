@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import axiosInterceptor from "../hooks/interceptor";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -116,9 +117,9 @@ export default function Attendance({ shortcutMode = false }) {
       const initialForm = {};
       const initialSecondary = {};
       data.forEach((emp) => {
-        // CHANGED: Now defaults to "" (None) instead of "Present"
         initialForm[emp.emp_id] = emp.attendance_status || "";
-        initialSecondary[emp.emp_id] = "";
+        // FIX: Tell React to load status2 from the database
+        initialSecondary[emp.emp_id] = emp.status2 || "";
       });
       setAttendanceForm(initialForm);
       setSecondaryStatusForm(initialSecondary);
@@ -150,14 +151,15 @@ export default function Attendance({ shortcutMode = false }) {
 
   const saveDailyAttendanceMutation = useMutation({
     mutationFn: async (records) => {
-      const res = await apiFetch("/api/employees/attendance-bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // CHANGED: Use axiosInterceptor instead of apiFetch to guarantee the token is sent
+      const res = await axiosInterceptor.post(
+        "/api/employees/attendance-bulk",
+        {
+          date: selectedDate,
+          records,
         },
-        body: JSON.stringify({ date: selectedDate, records }),
-      });
-      if (!res.ok) throw new Error("Failed to save attendance");
+      );
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["attendance"]);
@@ -251,12 +253,16 @@ export default function Attendance({ shortcutMode = false }) {
   const handleDailySubmit = (e) => {
     e.preventDefault();
     const records = Object.entries(attendanceForm)
-      // CHANGED: Filter out empty ("none") and "Pending" statuses so they don't get saved
       .filter(([_, status]) => status !== "" && status !== "Pending")
       .map(([emp_id, status]) => {
         const secondary = secondaryStatusForm[emp_id];
-        const finalStatus = secondary ? `${status}, ${secondary}` : status;
-        return { emp_id, status: finalStatus };
+
+        // FIX: Send them as two separate pieces of data!
+        return {
+          emp_id,
+          status: status,
+          status2: secondary || null,
+        };
       });
     saveDailyAttendanceMutation.mutate(records);
   };
@@ -615,10 +621,7 @@ export default function Attendance({ shortcutMode = false }) {
                   >
                     <option value="">-- Select --</option>
                     <option value="Present">Present</option>
-                    <option value="Late">Late</option>
-                    <option value="Undertime">Undertime</option>
                     <option value="Absent">Absent</option>
-                    <option value="Half-Day">Half-Day</option>
                     <option value="On Leave">On Leave</option>
                   </select>
                   <button
@@ -720,10 +723,7 @@ export default function Attendance({ shortcutMode = false }) {
                               >
                                 <option value="">-- None --</option>
                                 <option value="Present">Present</option>
-                                <option value="Late">Late</option>
-                                <option value="Undertime">Undertime</option>
                                 <option value="Absent">Absent</option>
-                                <option value="Half-Day">Half-Day</option>
                                 <option value="On Leave">On Leave</option>
                               </select>
                             </td>

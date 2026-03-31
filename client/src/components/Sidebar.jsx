@@ -15,7 +15,7 @@ const navItems = {
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
-    { to: "/leave", icon: FileSpreadsheet, label: "Leave Applications" },
+    { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/payroll-reports", icon: BarChart3, label: "Reports" },
   ],

@@ -9,6 +9,7 @@ const leaveTypes = [
   "Vacation Leave",
   "Sick Leave",
   "PGT Leave",
+  "Offset", // ADDED: Offset as a leave type
 ];
 
 const resignationTypes = [
@@ -57,17 +58,14 @@ function getDateRangeInclusive(start, end) {
   const current = new Date(start);
   const to = new Date(end);
 
-  // Normalize both dates to the start of the day
   current.setHours(0, 0, 0, 0);
   to.setHours(0, 0, 0, 0);
 
   while (current <= to) {
-    // SAFE LOCAL DATE FORMATTING (YYYY-MM-DD)
     const year = current.getFullYear();
     const month = String(current.getMonth() + 1).padStart(2, "0");
     const day = String(current.getDate()).padStart(2, "0");
     dates.push(`${year}-${month}-${day}`);
-
     current.setDate(current.getDate() + 1);
   }
 
@@ -80,6 +78,7 @@ const leavePolicy = {
   "Sick Leave": { maxDays: 10, excludeWeekends: true },
   "PGT Leave": { maxDays: 20, excludeWeekends: true },
   "Job Order MAC Leave": { maxDays: 12, excludeWeekends: true },
+  Offset: { maxDays: 999, excludeWeekends: false }, // Prevent maxDays error for offsets
 };
 
 const badgeClass = {
@@ -245,7 +244,6 @@ function LeaveCalendar({ leaves, attendance }) {
               </span>
 
               <div className="mt-0.5 flex w-full flex-col gap-1">
-                {/* ATTENDANCE BADGE */}
                 {dayAtt && dayAtt.status !== "On Leave" && (
                   <span
                     className={`flex w-fit rounded px-1 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${isSelected ? "bg-white/20 text-white" : attendanceColors[dayAtt.status] || "bg-gray-100 text-gray-600"}`}
@@ -253,8 +251,6 @@ function LeaveCalendar({ leaves, attendance }) {
                     {dayAtt.status}
                   </span>
                 )}
-
-                {/* LEAVE BADGES */}
                 {dayLeaves.map((leave) => (
                   <div
                     key={leave.id}
@@ -262,7 +258,6 @@ function LeaveCalendar({ leaves, attendance }) {
                   >
                     <span
                       className={`truncate text-[0.6rem] font-bold leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
-                      title={`${leave.first_name} ${leave.last_name}`}
                     >
                       {leave.first_name} {leave.last_name}
                     </span>
@@ -298,7 +293,6 @@ function LeaveCalendar({ leaves, attendance }) {
             </p>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {/* Show Attendance if it exists */}
               {getAttendanceForDate(
                 `${year}-${pad(month + 1)}-${pad(selectedDate)}`,
               ) && (
@@ -322,9 +316,6 @@ function LeaveCalendar({ leaves, attendance }) {
                   </span>
                 </li>
               )}
-
-              {/* Show Leaves */}
-              {/* Show Leaves */}
               {selectedLeaves.map((l) => (
                 <li
                   key={l.id}
@@ -335,7 +326,9 @@ function LeaveCalendar({ leaves, attendance }) {
                       {l.first_name} {l.last_name}
                     </p>
                     <p className="m-0 font-bold text-gray-900 text-sm mt-0.5">
-                      {l.leave_type}
+                      {l.leave_type}{" "}
+                      {l.leave_type === "Offset" &&
+                        `(${Number(l.days_applied || 0).toFixed(2)} days)`}
                     </p>
                     <p className="m-0 mt-1 text-[11px] text-gray-500">
                       {new Date(l.date_from).toLocaleDateString()} to{" "}
@@ -375,22 +368,17 @@ export default function Leave() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [reviewConfirm, setReviewConfirm] = useState(null);
 
-  const [offsetForm, setOffsetForm] = useState({
-    date_from: "",
-    date_to: "",
-    days_applied: "",
-  });
-
+  // Unified Form Data
   const [formData, setFormData] = useState({
     emp_id: currentUser?.emp_id || "",
     leaveType: "Birthday Leave",
     fromDate: "",
     toDate: "",
+    daysApplied: "", // ADDED: for Offset requests
     reason: "",
     priority: "Low",
   });
 
-  // Resignation Form State
   const [resignationForm, setResignationForm] = useState({
     resignation_type: "Voluntary Resignation",
     effective_date: "",
@@ -409,8 +397,6 @@ export default function Leave() {
       return res.json();
     },
   });
-
-  const myLeaves = leaves.filter((l) => l.emp_id === currentUser?.emp_id);
 
   const { data: myAttendance = [] } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
@@ -455,16 +441,35 @@ export default function Leave() {
       queryFn: async () => {
         const res = await apiFetch(`/api/employees/resignations`);
         const result = await res.json();
-
-        if (!res.ok) {
-          // This will now print the REAL SQL error (e.g., "Table 'resignations' doesn't exist")
-          console.error("REAL BACKEND ERROR:", result.message);
-          return [];
-        }
+        if (!res.ok) return [];
         return result;
       },
     });
 
+  // --- UNIFIED CALENDAR DATA ---
+  // Merge Leaves and Offsets so they both show on the calendar view
+  const myLeaves = leaves.filter((l) => l.emp_id === currentUser?.emp_id);
+  const myOffsets = offsetApplications.filter(
+    (o) => o.emp_id === currentUser?.emp_id,
+  );
+
+  const unifiedMyLeaves = [
+    ...myLeaves,
+    ...myOffsets.map((o) => ({
+      ...o,
+      leave_type: "Offset",
+      first_name: currentUser?.name || currentUser?.first_name,
+      last_name: "",
+    })),
+  ];
+
+  const unifiedAllLeaves = [
+    ...leaves,
+    ...offsetApplications.map((o) => ({ ...o, leave_type: "Offset" })),
+  ];
+
+  // --- UNIFIED APPROVAL DATA ---
+  // Merge Pending Leaves and Pending Offsets into one single table
   const pendingLeaveApprovals = isApprover
     ? leaves.filter(
         (l) =>
@@ -481,6 +486,23 @@ export default function Leave() {
       )
     : [];
 
+  const unifiedPending = [
+    ...pendingLeaveApprovals.map((l) => ({
+      ...l,
+      unified_type: l.leave_type,
+      isOffset: false,
+    })),
+    ...pendingOffsetApprovals.map((o) => ({
+      ...o,
+      unified_type: "Offset",
+      isOffset: true,
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+
   const pendingResignationApprovals = isApprover
     ? myResignations.filter(
         (r) =>
@@ -489,8 +511,7 @@ export default function Leave() {
       )
     : [];
 
-  const leaveTabPendingCount = pendingLeaveApprovals.length;
-  const offsetTabPendingCount = pendingOffsetApprovals.length;
+  const leaveTabPendingCount = unifiedPending.length;
   const resignationTabPendingCount = pendingResignationApprovals.length;
 
   // --- MUTATIONS ---
@@ -511,7 +532,13 @@ export default function Leave() {
       queryClient.invalidateQueries(["leaves"]);
       showToast("Leave application submitted successfully.");
       setShowForm(false);
-      setFormData({ ...formData, fromDate: "", toDate: "", reason: "" });
+      setFormData({
+        ...formData,
+        fromDate: "",
+        toDate: "",
+        reason: "",
+        daysApplied: "",
+      });
     },
     onError: (err) => {
       setFormError(err.message);
@@ -538,14 +565,19 @@ export default function Leave() {
     onSuccess: () => {
       queryClient.invalidateQueries(["offset-applications"]);
       showToast("Offset application filed successfully.");
-      setOffsetForm({ date_from: "", date_to: "", days_applied: "" });
       setShowForm(false);
+      setFormData({
+        ...formData,
+        fromDate: "",
+        toDate: "",
+        reason: "",
+        daysApplied: "",
+      });
     },
     onError: (err) =>
       showToast(err.message || "Failed to file offset.", "error"),
   });
 
-  // New Mutation: File Resignation
   const fileResignationMutation = useMutation({
     mutationFn: async (resignationData) => {
       const res = await apiFetch("/api/employees/resignations", {
@@ -627,8 +659,7 @@ export default function Leave() {
       queryClient.invalidateQueries(["resignations"]);
       showToast("Resignation request updated successfully.");
     },
-    onError: (err) =>
-      showToast(err.message || "Failed to update resignation.", "error"),
+    onError: (err) => showToast(err.message || "Failed to update.", "error"),
   });
 
   // --- HANDLERS ---
@@ -639,12 +670,18 @@ export default function Leave() {
       return;
     }
 
-    // Show confirmation modal instead of directly submitting
+    // Automatically calculate the days for Offset since the manual input was removed
+    let computedDays = formData.daysApplied;
+    if (formData.leaveType === "Offset") {
+      computedDays = calculateBusinessDays(formData.fromDate, formData.toDate);
+    }
+
     setConfirmAction({
       type: "leave",
       leaveType: formData.leaveType,
       fromDate: formData.fromDate,
       toDate: formData.toDate,
+      daysApplied: computedDays,
     });
   };
 
@@ -654,7 +691,12 @@ export default function Leave() {
       newLeaveType === "Birthday Leave" && formData.fromDate
         ? formData.fromDate
         : "";
-    setFormData({ ...formData, leaveType: newLeaveType, toDate: newToDate });
+    setFormData({
+      ...formData,
+      leaveType: newLeaveType,
+      toDate: newToDate,
+      daysApplied: "",
+    });
     setFormError("");
   };
 
@@ -668,17 +710,19 @@ export default function Leave() {
 
   const handleToDateChange = (e) => {
     const toDate = e.target.value;
-    const policy = leavePolicy[formData.leaveType];
-    if (formData.fromDate && toDate) {
-      const businessDays = calculateBusinessDays(
-        new Date(formData.fromDate),
-        new Date(toDate),
-      );
-      if (businessDays > policy.maxDays) {
-        setFormError(
-          `Maximum ${policy.maxDays} business day(s) allowed for ${formData.leaveType}`,
+    if (formData.leaveType !== "Offset") {
+      const policy = leavePolicy[formData.leaveType];
+      if (formData.fromDate && toDate && policy) {
+        const businessDays = calculateBusinessDays(
+          new Date(formData.fromDate),
+          new Date(toDate),
         );
-        return;
+        if (businessDays > policy.maxDays) {
+          setFormError(
+            `Maximum ${policy.maxDays} business day(s) allowed for ${formData.leaveType}`,
+          );
+          return;
+        }
       }
     }
     setFormData({ ...formData, toDate });
@@ -686,7 +730,7 @@ export default function Leave() {
   };
 
   const getMaxToDate = () => {
-    if (!formData.fromDate) return "";
+    if (!formData.fromDate || formData.leaveType === "Offset") return "";
     const policy = leavePolicy[formData.leaveType];
     const startDate = new Date(formData.fromDate);
     let daysAdded = 0;
@@ -698,7 +742,6 @@ export default function Leave() {
     return startDate.toISOString().split("T")[0];
   };
 
-  // Helper for changing tabs cleanly
   const switchTab = (tab) => {
     setActiveTab(tab);
     setShowForm(false);
@@ -737,24 +780,14 @@ export default function Leave() {
   };
 
   const openResignationDecisionConfirm = (item, status) => {
-    setReviewConfirm({
-      module: "resignation",
-      status,
-      item,
-      remarks: "",
-    });
+    setReviewConfirm({ module: "resignation", status, item, remarks: "" });
   };
 
   const toggleLeaveApprovedDate = (date) => {
     if (!reviewConfirm || reviewConfirm.module !== "leave") return;
-
     const selected = new Set(reviewConfirm.selectedDates || []);
-    if (selected.has(date)) {
-      selected.delete(date);
-    } else {
-      selected.add(date);
-    }
-
+    if (selected.has(date)) selected.delete(date);
+    else selected.add(date);
     setReviewConfirm({
       ...reviewConfirm,
       selectedDates: Array.from(selected).sort(),
@@ -771,11 +804,13 @@ export default function Leave() {
       );
       const selectedDates = reviewConfirm.selectedDates || [];
 
-      if (reviewConfirm.status === "Approved" && reviewConfirm.isMultiDay) {
-        if (selectedDates.length === 0) {
-          showToast("Select at least one day to approve.", "error");
-          return;
-        }
+      if (
+        reviewConfirm.status === "Approved" &&
+        reviewConfirm.isMultiDay &&
+        selectedDates.length === 0
+      ) {
+        showToast("Select at least one day to approve.", "error");
+        return;
       }
 
       const isPartialApproval =
@@ -797,7 +832,6 @@ export default function Leave() {
           reviewConfirm.status === "Denied" ? null : selectedDates,
         supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
       });
-
       setReviewConfirm(null);
       return;
     }
@@ -806,7 +840,6 @@ export default function Leave() {
       if (reviewConfirm.status === "Approved") {
         const approvedDays = Number(reviewConfirm.approvedDays || 0);
         const totalDays = Number(reviewConfirm.item.days_applied || 0);
-
         if (!approvedDays || approvedDays <= 0 || approvedDays > totalDays) {
           showToast(
             "Approved days must be between 0 and requested days.",
@@ -814,9 +847,7 @@ export default function Leave() {
           );
           return;
         }
-
         const isPartial = approvedDays < totalDays;
-
         reviewOffsetMutation.mutate({
           id: reviewConfirm.item.id,
           status: isPartial ? "Partially Approved" : "Approved",
@@ -830,7 +861,6 @@ export default function Leave() {
           supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
         });
       }
-
       setReviewConfirm(null);
       return;
     }
@@ -840,7 +870,6 @@ export default function Leave() {
         id: reviewConfirm.item.id,
         status: reviewConfirm.status === "Denied" ? "Denied" : "Approved",
       });
-
       setReviewConfirm(null);
     }
   };
@@ -874,23 +903,6 @@ export default function Leave() {
         {currentUser?.role !== "Admin" && (
           <>
             <button
-              onClick={() => switchTab("offset")}
-              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
-                activeTab === "offset"
-                  ? "border-purple-600 text-purple-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <span>⏱️ Offset / Overtime</span>
-                {isApprover && offsetTabPendingCount > 0 && (
-                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800">
-                    {offsetTabPendingCount}
-                  </span>
-                )}
-              </span>
-            </button>
-            <button
               onClick={() => switchTab("resignation")}
               className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
                 activeTab === "resignation"
@@ -918,7 +930,7 @@ export default function Leave() {
             <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
                 <h3 className="m-0 text-sm font-bold text-gray-900">
-                  Pending Leave Approval Requests
+                  Pending Approval Requests (Leaves & Offsets)
                 </h3>
               </div>
               <div className="overflow-x-auto">
@@ -929,7 +941,7 @@ export default function Leave() {
                         Employee
                       </th>
                       <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                        Leave Type
+                        Request Type
                       </th>
                       <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                         Dates
@@ -940,26 +952,28 @@ export default function Leave() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {pendingLeaveApprovals.length === 0 ? (
+                    {unifiedPending.length === 0 ? (
                       <tr>
                         <td
                           colSpan="4"
                           className="px-4 py-6 text-center text-sm font-medium text-gray-500"
                         >
-                          No pending leave requests for your approval.
+                          No pending requests for your approval.
                         </td>
                       </tr>
                     ) : (
-                      pendingLeaveApprovals.map((item) => (
+                      unifiedPending.map((item) => (
                         <tr
-                          key={item.id}
+                          key={`${item.isOffset ? "off" : "lv"}-${item.id}`}
                           className="transition-colors hover:bg-gray-50/50"
                         >
                           <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
                             {item.first_name} {item.last_name}
                           </td>
-                          <td className="px-4 py-2.5 text-sm text-gray-700">
-                            {item.leave_type}
+                          <td className="px-4 py-2.5 text-sm font-bold text-purple-700">
+                            {item.unified_type}{" "}
+                            {item.isOffset &&
+                              `(${Number(item.days_applied).toFixed(2)} days)`}
                           </td>
                           <td className="px-4 py-2.5 text-sm text-gray-700">
                             {new Date(item.date_from).toLocaleDateString()} -{" "}
@@ -970,20 +984,25 @@ export default function Leave() {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  openLeaveDecisionConfirm(item, "Approved")
+                                  item.isOffset
+                                    ? openOffsetDecisionConfirm(
+                                        item,
+                                        "Approved",
+                                      )
+                                    : openLeaveDecisionConfirm(item, "Approved")
                                 }
-                                disabled={reviewLeaveMutation.isPending}
-                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200 disabled:opacity-50"
+                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200"
                               >
                                 Approve
                               </button>
                               <button
                                 type="button"
                                 onClick={() =>
-                                  openLeaveDecisionConfirm(item, "Denied")
+                                  item.isOffset
+                                    ? openOffsetDecisionConfirm(item, "Denied")
+                                    : openLeaveDecisionConfirm(item, "Denied")
                                 }
-                                disabled={reviewLeaveMutation.isPending}
-                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 disabled:opacity-50"
+                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200"
                               >
                                 Deny
                               </button>
@@ -998,14 +1017,13 @@ export default function Leave() {
             </div>
           )}
 
-          {/* FIX: Hide the File Leave button for Admins */}
           {currentUser?.role !== "Admin" && (
             <div className="flex items-center gap-3 mb-6">
               <button
                 className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 border-0 text-white text-sm font-bold cursor-pointer hover:opacity-90 shadow-sm"
                 onClick={() => setShowForm(!showForm)}
               >
-                {showForm ? "✕ Cancel Request" : "+ File New Leave"}
+                {showForm ? "✕ Cancel Request" : "+ File New Application"}
               </button>
             </div>
           )}
@@ -1013,7 +1031,7 @@ export default function Leave() {
           {showForm && currentUser?.role !== "Admin" && (
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
               <h3 className="m-0 mb-4 text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">
-                File a Leave Application
+                File a Leave or Offset Application
               </h3>
               {formError && (
                 <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
@@ -1024,7 +1042,6 @@ export default function Leave() {
                 onSubmit={handleSubmitLeave}
                 className="grid grid-cols-1 md:grid-cols-3 gap-5"
               >
-                {/* LOCKED EMPLOYEE FIELD */}
                 <div className="flex flex-col gap-2 md:col-span-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                     Filing As
@@ -1052,10 +1069,12 @@ export default function Leave() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[0.65rem] text-gray-500 font-semibold uppercase mt-1">
-                    Max allowed: {leavePolicy[formData.leaveType]?.maxDays}{" "}
-                    business day(s)
-                  </p>
+                  {formData.leaveType !== "Offset" && (
+                    <p className="text-[0.65rem] text-gray-500 font-semibold uppercase mt-1">
+                      Max allowed: {leavePolicy[formData.leaveType]?.maxDays}{" "}
+                      business day(s)
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -1084,25 +1103,29 @@ export default function Leave() {
                     className={`px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                   />
                 </div>
+
+                {formData.leaveType !== "Offset" && (
+                  <div className="flex flex-col gap-2 md:col-span-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                      Priority Level
+                    </label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) =>
+                        setFormData({ ...formData, priority: e.target.value })
+                      }
+                      className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="Low">🟢 Low</option>
+                      <option value="Medium">🟡 Medium</option>
+                      <option value="High">🔴 High</option>
+                    </select>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-2 md:col-span-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Priority Level
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) =>
-                      setFormData({ ...formData, priority: e.target.value })
-                    }
-                    className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                  >
-                    <option value="Low">🟢 Low</option>
-                    <option value="Medium">🟡 Medium</option>
-                    <option value="High">🔴 High</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2 md:col-span-3">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Reason for Leave
+                    Reason / Details
                   </label>
                   <textarea
                     rows={3}
@@ -1124,6 +1147,7 @@ export default function Leave() {
                         fromDate: "",
                         toDate: "",
                         reason: "",
+                        daysApplied: "",
                       });
                       setFormError("");
                     }}
@@ -1133,48 +1157,46 @@ export default function Leave() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitLeaveMutation.isPending}
-                    className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 disabled:opacity-50 shadow-sm"
+                    className="px-6 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-bold cursor-pointer hover:bg-green-700 shadow-sm"
                   >
-                    {submitLeaveMutation.isPending
-                      ? "Submitting..."
-                      : "Submit Request"}
+                    Review Application
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          {/* Confirmation Modal */}
           {confirmAction && confirmAction.type === "leave" && (
             <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
               <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
                 <h2 className="m-0 text-lg font-semibold text-gray-900 mb-4">
-                  Confirm Leave Application
+                  Confirm Application
                 </h2>
                 <div className="mb-6 space-y-3 text-sm">
                   <div>
-                    <p className="m-0 text-gray-600 font-medium">Leave Type:</p>
-                    <p className="m-0 text-gray-900 font-semibold">
+                    <p className="m-0 text-gray-600 font-medium">Type:</p>
+                    <p className="m-0 text-purple-700 font-bold">
                       {confirmAction.leaveType}
                     </p>
                   </div>
                   <div>
-                    <p className="m-0 text-gray-600 font-medium">From Date:</p>
+                    <p className="m-0 text-gray-600 font-medium">Dates:</p>
                     <p className="m-0 text-gray-900 font-semibold">
-                      {new Date(confirmAction.fromDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="m-0 text-gray-600 font-medium">To Date:</p>
-                    <p className="m-0 text-gray-900 font-semibold">
+                      {new Date(confirmAction.fromDate).toLocaleDateString()} to{" "}
                       {new Date(confirmAction.toDate).toLocaleDateString()}
                     </p>
                   </div>
+                  {confirmAction.leaveType === "Offset" && (
+                    <div>
+                      <p className="m-0 text-gray-600 font-medium">
+                        Applied Amount:
+                      </p>
+                      <p className="m-0 text-gray-900 font-semibold">
+                        {confirmAction.daysApplied} Days/Hours
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <p className="m-0 text-sm text-gray-600 mb-6">
-                  Are you sure you want to submit this leave application?
-                </p>
                 <div className="flex gap-3 justify-end">
                   <button
                     type="button"
@@ -1186,14 +1208,22 @@ export default function Leave() {
                   <button
                     type="button"
                     onClick={() => {
-                      submitLeaveMutation.mutate({
-                        emp_id: formData.emp_id,
-                        leave_type: formData.leaveType,
-                        date_from: formData.fromDate,
-                        date_to: formData.toDate,
-                        priority: formData.priority,
-                        supervisor_remarks: formData.reason,
-                      });
+                      if (confirmAction.leaveType === "Offset") {
+                        fileOffsetMutation.mutate({
+                          date_from: confirmAction.fromDate,
+                          date_to: confirmAction.toDate,
+                          days_applied: parseFloat(confirmAction.daysApplied),
+                        });
+                      } else {
+                        submitLeaveMutation.mutate({
+                          emp_id: formData.emp_id,
+                          leave_type: formData.leaveType,
+                          date_from: formData.fromDate,
+                          date_to: formData.toDate,
+                          priority: formData.priority,
+                          supervisor_remarks: formData.reason,
+                        });
+                      }
                       setConfirmAction(null);
                     }}
                     className="px-4 py-2.5 rounded-lg bg-green-600 border-0 text-white text-sm font-medium cursor-pointer hover:bg-green-700 shadow-sm"
@@ -1216,13 +1246,8 @@ export default function Leave() {
                 <p className="m-0 mb-4 text-sm text-gray-600">
                   {reviewConfirm.item.first_name} {reviewConfirm.item.last_name}
                   {reviewConfirm.module === "resignation"
-                    ? ` • ${reviewConfirm.item.resignation_type} • Effective ${reviewConfirm.item.effective_date ? new Date(reviewConfirm.item.effective_date).toLocaleDateString() : "N/A"}`
+                    ? ` • ${reviewConfirm.item.resignation_type}`
                     : ` • ${new Date(reviewConfirm.item.date_from).toLocaleDateString()} - ${new Date(reviewConfirm.item.date_to).toLocaleDateString()}`}
-                </p>
-
-                <p className="m-0 mb-4 text-sm text-gray-700">
-                  Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
-                  this {reviewConfirm.module} request?
                 </p>
 
                 {reviewConfirm.module === "leave" &&
@@ -1230,7 +1255,7 @@ export default function Leave() {
                   reviewConfirm.isMultiDay && (
                     <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
-                        Multi-day request: select specific days to approve
+                        Select specific days to approve
                       </p>
                       <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto pr-1">
                         {getDateRangeInclusive(
@@ -1252,10 +1277,6 @@ export default function Leave() {
                           </label>
                         ))}
                       </div>
-                      <p className="m-0 mt-2 text-xs font-semibold text-amber-800">
-                        Selected: {(reviewConfirm.selectedDates || []).length}{" "}
-                        day(s)
-                      </p>
                     </div>
                   )}
 
@@ -1264,7 +1285,7 @@ export default function Leave() {
                   reviewConfirm.isMultiDay && (
                     <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
-                        Multi-day request: set approved days
+                        Set approved offset days
                       </p>
                       <input
                         type="number"
@@ -1280,13 +1301,6 @@ export default function Leave() {
                         }
                         className="w-full rounded-md border border-amber-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
                       />
-                      <p className="m-0 mt-2 text-xs text-amber-800">
-                        Requested:{" "}
-                        {Number(reviewConfirm.item.days_applied || 0).toFixed(
-                          2,
-                        )}{" "}
-                        day(s)
-                      </p>
                     </div>
                   )}
 
@@ -1304,7 +1318,6 @@ export default function Leave() {
                       })
                     }
                     className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Add remarks for this decision"
                   />
                 </div>
 
@@ -1319,16 +1332,9 @@ export default function Leave() {
                   <button
                     type="button"
                     onClick={submitReviewDecision}
-                    disabled={
-                      reviewLeaveMutation.isPending ||
-                      reviewOffsetMutation.isPending ||
-                      reviewResignationMutation.isPending
-                    }
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${reviewConfirm.status === "Denied" ? "bg-red-600" : "bg-green-600"}`}
                   >
-                    {reviewConfirm.status === "Denied"
-                      ? "Confirm Denial"
-                      : "Confirm Approval"}
+                    Confirm
                   </button>
                 </div>
               </div>
@@ -1337,99 +1343,19 @@ export default function Leave() {
 
           {/* PERMANENT CALENDAR VIEW */}
           <LeaveCalendar
-            leaves={currentUser?.role === "RankAndFile" ? myLeaves : leaves}
+            leaves={
+              currentUser?.role === "RankAndFile"
+                ? unifiedMyLeaves
+                : unifiedAllLeaves
+            }
             attendance={myAttendance}
           />
         </div>
       )}
 
-      {/* OFFSET TAB */}
+      {/* OFFSET TAB (BALANCES ONLY) */}
       {activeTab === "offset" && currentUser?.role !== "Admin" && (
         <div>
-          {isApprover && (
-            <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                <h3 className="m-0 text-sm font-bold text-gray-900">
-                  Pending Offset Approval Requests
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-white">
-                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                        Employee
-                      </th>
-                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                        Date Range
-                      </th>
-                      <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                        Days
-                      </th>
-                      <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pendingOffsetApprovals.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan="4"
-                          className="px-4 py-6 text-center text-sm font-medium text-gray-500"
-                        >
-                          No pending offset requests for your approval.
-                        </td>
-                      </tr>
-                    ) : (
-                      pendingOffsetApprovals.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="transition-colors hover:bg-gray-50/50"
-                        >
-                          <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
-                            {item.first_name} {item.last_name}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-gray-700">
-                            {new Date(item.date_from).toLocaleDateString()} -{" "}
-                            {new Date(item.date_to).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-2.5 text-center text-sm font-bold text-indigo-700">
-                            {Number(item.days_applied || 0).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <div className="inline-flex gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openOffsetDecisionConfirm(item, "Approved")
-                                }
-                                disabled={reviewOffsetMutation.isPending}
-                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200 disabled:opacity-50"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openOffsetDecisionConfirm(item, "Denied")
-                                }
-                                disabled={reviewOffsetMutation.isPending}
-                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 disabled:opacity-50"
-                              >
-                                Deny
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 p-4 shadow-sm">
             <h3 className="m-0 mb-3 border-b border-indigo-200 pb-2 text-sm font-bold text-indigo-900">
               Monthly Offset Balance
@@ -1469,105 +1395,6 @@ export default function Leave() {
               </div>
             </div>
           </div>
-
-          <div className="mb-4 flex items-center gap-3">
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90"
-            >
-              {showForm ? "✕ Cancel Request" : "+ File Offset Request"}
-            </button>
-          </div>
-
-          {showForm && (
-            <div className="mb-6 animate-in rounded-xl border border-gray-200 bg-white p-4 shadow-sm fade-in slide-in-from-top-2 duration-200">
-              <h3 className="m-0 mb-3 border-b border-gray-100 pb-2 text-base font-bold text-gray-900">
-                File Offset / Overtime Request
-              </h3>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (
-                    !offsetForm.date_from ||
-                    !offsetForm.date_to ||
-                    !offsetForm.days_applied
-                  ) {
-                    showToast("Please fill all required fields.", "error");
-                    return;
-                  }
-                  fileOffsetMutation.mutate({
-                    date_from: offsetForm.date_from,
-                    date_to: offsetForm.date_to,
-                    days_applied: parseFloat(offsetForm.days_applied),
-                  });
-                }}
-                className="grid grid-cols-1 gap-3 md:grid-cols-3"
-              >
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    From Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={offsetForm.date_from}
-                    onChange={(e) =>
-                      setOffsetForm({
-                        ...offsetForm,
-                        date_from: e.target.value,
-                      })
-                    }
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    To Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={offsetForm.date_to}
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                    onChange={(e) =>
-                      setOffsetForm({ ...offsetForm, date_to: e.target.value })
-                    }
-                    min={offsetForm.date_from}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    Days Applied
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    required
-                    value={offsetForm.days_applied}
-                    onChange={(e) =>
-                      setOffsetForm({
-                        ...offsetForm,
-                        days_applied: e.target.value,
-                      })
-                    }
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="col-span-full mt-1 flex justify-end gap-2">
-                  <button
-                    type="submit"
-                    disabled={fileOffsetMutation.isPending}
-                    className="cursor-pointer rounded-md border-0 bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {fileOffsetMutation.isPending
-                      ? "Filing..."
-                      : "Submit Request"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
 
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
@@ -1620,15 +1447,7 @@ export default function Leave() {
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <span
-                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
-                              oa.status === "Approved"
-                                ? "bg-green-100 text-green-700 border border-green-200"
-                                : oa.status === "Denied"
-                                  ? "bg-red-100 text-red-700 border border-red-200"
-                                  : oa.status === "Partially Approved"
-                                    ? "bg-amber-100 text-amber-700 border border-amber-200"
-                                    : "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                            }`}
+                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${badgeClass[oa.status] || "bg-gray-100"}`}
                           >
                             {oa.status}
                           </span>
@@ -1678,7 +1497,7 @@ export default function Leave() {
                           colSpan="4"
                           className="px-4 py-6 text-center text-sm font-medium text-gray-500"
                         >
-                          No pending resignation requests for your approval.
+                          No pending requests.
                         </td>
                       </tr>
                     ) : (
@@ -1703,25 +1522,21 @@ export default function Leave() {
                           <td className="px-4 py-2.5 text-right">
                             <div className="inline-flex gap-1.5">
                               <button
-                                type="button"
                                 onClick={() =>
                                   openResignationDecisionConfirm(
                                     item,
                                     "Approved",
                                   )
                                 }
-                                disabled={reviewResignationMutation.isPending}
-                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200 disabled:opacity-50"
+                                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700"
                               >
                                 Approve
                               </button>
                               <button
-                                type="button"
                                 onClick={() =>
                                   openResignationDecisionConfirm(item, "Denied")
                                 }
-                                disabled={reviewResignationMutation.isPending}
-                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200 disabled:opacity-50"
+                                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700"
                               >
                                 Deny
                               </button>
@@ -1739,7 +1554,7 @@ export default function Leave() {
           <div className="mb-4 flex items-center gap-3">
             <button
               onClick={() => setShowForm(!showForm)}
-              className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-red-600 to-red-700 px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90"
+              className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-red-600 to-red-700 px-4 py-2 text-xs font-bold text-white shadow-sm"
             >
               {showForm ? "✕ Cancel" : "+ File Resignation"}
             </button>
@@ -1753,13 +1568,6 @@ export default function Leave() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (
-                    !resignationForm.effective_date ||
-                    !resignationForm.reason
-                  ) {
-                    showToast("Please fill all required fields.", "error");
-                    return;
-                  }
                   fileResignationMutation.mutate(resignationForm);
                 }}
                 className="grid grid-cols-1 gap-3 md:grid-cols-2"
@@ -1769,7 +1577,6 @@ export default function Leave() {
                     Resignation Type
                   </label>
                   <select
-                    required
                     value={resignationForm.resignation_type}
                     onChange={(e) =>
                       setResignationForm({
@@ -1802,9 +1609,6 @@ export default function Leave() {
                     }
                     className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                   />
-                  <p className="mt-0.5 text-[0.6rem] font-semibold uppercase text-gray-500">
-                    Typically 30 days from today.
-                  </p>
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
@@ -1813,7 +1617,6 @@ export default function Leave() {
                   <textarea
                     rows="4"
                     required
-                    placeholder="Please provide your reason for leaving..."
                     value={resignationForm.reason}
                     onChange={(e) =>
                       setResignationForm({
@@ -1830,9 +1633,7 @@ export default function Leave() {
                     disabled={fileResignationMutation.isPending}
                     className="cursor-pointer rounded-md border-0 bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
                   >
-                    {fileResignationMutation.isPending
-                      ? "Submitting..."
-                      : "Submit Resignation"}
+                    Submit Resignation
                   </button>
                 </div>
               </form>
@@ -1892,13 +1693,7 @@ export default function Leave() {
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <span
-                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
-                              r.status === "Approved"
-                                ? "bg-green-100 text-green-700 border border-green-200"
-                                : r.status === "Denied"
-                                  ? "bg-red-100 text-red-700 border border-red-200"
-                                  : "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                            }`}
+                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${badgeClass[r.status] || "bg-gray-100"}`}
                           >
                             {r.status}
                           </span>
