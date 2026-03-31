@@ -881,12 +881,6 @@ export default function Leave() {
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
-          My Application
-        </h1>
-      </div>
-
       {/* TAB NAVIGATION */}
       <div className="flex items-center gap-2 mb-6 border-b border-gray-200">
         <button

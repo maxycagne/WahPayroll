@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
@@ -97,6 +98,7 @@ const getMonthsInRange = (startPeriod, endPeriod) => {
 
 export default function Payroll() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState("2026-03");
   const currentUser = useMemo(() => {
@@ -359,6 +361,16 @@ export default function Payroll() {
       generatePayrollMutation.mutate();
     }
   }, [period]);
+
+  useEffect(() => {
+    if (searchParams.get("open") !== "salary-settings") return;
+
+    setSalarySettingsModal(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("open");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!Array.isArray(deductionTypes) || deductionTypes.length === 0) return;

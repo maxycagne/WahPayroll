@@ -93,13 +93,13 @@ export default function MainLayout({ role }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-7">
+      <header className="sticky top-0 z-20 border-b border-white/15 bg-gradient-to-r from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] px-4 py-3 text-white shadow-sm backdrop-blur md:px-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-              className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-violet-50 md:flex"
+              className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20 md:flex"
               aria-label={
                 isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
               }
@@ -113,10 +113,10 @@ export default function MainLayout({ role }) {
             </button>
 
             <h2 className="m-0 flex items-baseline gap-2">
-              <span className="text-[0.95rem] font-extrabold uppercase tracking-[0.13em] text-slate-900">
+              <span className="text-[0.95rem] font-extrabold uppercase tracking-[0.13em] text-white">
                 Wireless Access For Health
               </span>
-              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-violet-700">
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-white/75">
                 Payroll
               </span>
             </h2>
@@ -125,7 +125,7 @@ export default function MainLayout({ role }) {
             <button
               type="button"
               onClick={() => setOpenNotifications((prev) => !prev)}
-              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-violet-50"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20"
               aria-label="Notifications"
             >
               <Bell className="h-4.5 w-4.5" />
@@ -181,7 +181,7 @@ export default function MainLayout({ role }) {
               </div>
             )}
 
-            <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-violet-700">
+            <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-white">
               {role}
             </span>
           </div>
