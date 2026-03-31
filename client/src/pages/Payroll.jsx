@@ -96,7 +96,7 @@ const getMonthsInRange = (startPeriod, endPeriod) => {
   return months;
 };
 
-export default function Payroll() {
+export default function Payroll({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
@@ -363,14 +363,16 @@ export default function Payroll() {
   }, [period]);
 
   useEffect(() => {
-    if (searchParams.get("open") !== "salary-settings") return;
+    if (!shortcutMode && searchParams.get("open") !== "salary-settings") return;
 
     setSalarySettingsModal(true);
+
+    if (shortcutMode) return;
 
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, shortcutMode]);
 
   useEffect(() => {
     if (!Array.isArray(deductionTypes) || deductionTypes.length === 0) return;
@@ -673,269 +675,275 @@ export default function Payroll() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4 mb-6 flex-nowrap">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 whitespace-nowrap flex-shrink-0">
-          Payroll
-        </h1>
-        <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
-          <label className="flex items-center gap-2 text-sm text-gray-600 mr-2">
-            Period:
-            <input
-              type="month"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </label>
+      {!shortcutMode && (
+        <>
+          <div className="flex items-center justify-between gap-4 mb-6 flex-nowrap">
+            <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 whitespace-nowrap flex-shrink-0">
+              Payroll
+            </h1>
+            <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
+              <label className="flex items-center gap-2 text-sm text-gray-600 mr-2">
+                Period:
+                <input
+                  type="month"
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </label>
 
-          {isAdmin && (
-            <>
-              <button
-                onClick={() => setSalarySettingsModal(true)}
-                className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
-              >
-                Salary Settings
-              </button>
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => setSalarySettingsModal(true)}
+                    className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
+                    Salary Settings
+                  </button>
 
-              <button
-                onClick={() => {
-                  setBulkAdjustmentMode(!bulkAdjustmentMode);
+                  <button
+                    onClick={() => {
+                      setBulkAdjustmentMode(!bulkAdjustmentMode);
+                      setSelectedEmployees(new Set());
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
+                  >
+                    {bulkAdjustmentMode ? "Cancel Bulk" : "Adjust Multiple"}
+                  </button>
+
+                  <button
+                    onClick={() => setResetConfirmModal(true)}
+                    className="px-4 py-2 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors"
+                  >
+                    Reset All Data
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                Employees
+              </p>
+              <p className="m-0 mt-1 text-xl font-black text-gray-900">
+                {payrollSummary.count}
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                Gross Total
+              </p>
+              <p className="m-0 mt-1 text-xl font-black text-gray-900">
+                {fmt(payrollSummary.gross)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-red-100 bg-red-50 p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-600">
+                Deductions
+              </p>
+              <p className="m-0 mt-1 text-xl font-black text-red-700">
+                -{fmt(payrollSummary.deductions)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-green-100 bg-green-50 p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-green-600">
+                Net Total
+              </p>
+              <p className="m-0 mt-1 text-xl font-black text-green-700">
+                {fmt(payrollSummary.net)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-3 items-center">
+              <input
+                type="text"
+                className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Search employee..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <select
+                value={designationFilter}
+                onChange={(e) => {
+                  setDesignationFilter(e.target.value);
                   setSelectedEmployees(new Set());
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
+                className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-500"
               >
-                {bulkAdjustmentMode ? "Cancel Bulk" : "Adjust Multiple"}
-              </button>
+                {designationOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "All" ? "All Designations" : option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-              <button
-                onClick={() => setResetConfirmModal(true)}
-                className="px-4 py-2 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors"
-              >
-                Reset All Data
-              </button>
-            </>
+          {!isAdmin && (
+            <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-semibold text-sky-700">
+              View-only mode: only Admin can generate payroll, adjust salaries,
+              and update salary settings.
+            </div>
           )}
-        </div>
-      </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-            Employees
-          </p>
-          <p className="m-0 mt-1 text-xl font-black text-gray-900">
-            {payrollSummary.count}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-            Gross Total
-          </p>
-          <p className="m-0 mt-1 text-xl font-black text-gray-900">
-            {fmt(payrollSummary.gross)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-red-100 bg-red-50 p-3 shadow-sm">
-          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-600">
-            Deductions
-          </p>
-          <p className="m-0 mt-1 text-xl font-black text-red-700">
-            -{fmt(payrollSummary.deductions)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-green-100 bg-green-50 p-3 shadow-sm">
-          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-green-600">
-            Net Total
-          </p>
-          <p className="m-0 mt-1 text-xl font-black text-green-700">
-            {fmt(payrollSummary.net)}
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <input
-            type="text"
-            className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="Search employee..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            value={designationFilter}
-            onChange={(e) => {
-              setDesignationFilter(e.target.value);
-              setSelectedEmployees(new Set());
-            }}
-            className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            {designationOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "All" ? "All Designations" : option}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {!isAdmin && (
-        <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-semibold text-sky-700">
-          View-only mode: only Admin can generate payroll, adjust salaries, and
-          update salary settings.
-        </div>
-      )}
-
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-8">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                {isAdmin && bulkAdjustmentMode && (
-                  <th className="px-6 py-3 text-center w-12">
-                    <input
-                      type="checkbox"
-                      onChange={() =>
-                        setSelectedEmployees(
-                          allFilteredSelected
-                            ? new Set()
-                            : new Set(filteredPayroll.map((p) => p.emp_id)),
-                        )
-                      }
-                      checked={allFilteredSelected}
-                      className="w-4 h-4 cursor-pointer"
-                    />
-                  </th>
-                )}
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs">
-                  ID
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs">
-                  Name
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                  Basic Pay
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                  Deductions
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                  Incentives
-                </th>
-                <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                  Net Pay
-                </th>
-                {isAdmin && !bulkAdjustmentMode && (
-                  <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredPayroll.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    No payroll records found for {period}. Click "Generate
-                    Payroll" to calculate.
-                  </td>
-                </tr>
-              ) : (
-                filteredPayroll.map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => {
-                      if (isAdmin && bulkAdjustmentMode) {
-                        toggleEmployeeSelection(p.emp_id);
-                      }
-                    }}
-                    className={`hover:bg-gray-50 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : ""}`}
-                  >
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-8">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
                     {isAdmin && bulkAdjustmentMode && (
-                      <td className="px-6 py-4 text-center">
+                      <th className="px-6 py-3 text-center w-12">
                         <input
                           type="checkbox"
-                          checked={selectedEmployees.has(p.emp_id)}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => toggleEmployeeSelection(p.emp_id)}
+                          onChange={() =>
+                            setSelectedEmployees(
+                              allFilteredSelected
+                                ? new Set()
+                                : new Set(filteredPayroll.map((p) => p.emp_id)),
+                            )
+                          }
+                          checked={allFilteredSelected}
                           className="w-4 h-4 cursor-pointer"
                         />
-                      </td>
+                      </th>
                     )}
-                    <td className="px-6 py-4">{p.emp_id}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">
-                        {p.first_name} {p.last_name}
-                      </div>
-                      <div className="text-xs text-gray-500 font-normal mt-0.5">
-                        {p.position}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">{fmt(p.basic_pay)}</td>
-                    <td className="px-6 py-4 text-right text-red-600">
-                      <div className="font-semibold">
-                        {fmt(p.absence_deductions)}
-                      </div>
-                      <div className="text-[11px] text-gray-500 mt-0.5">
-                        {p.deduction_reasons || "No deduction type"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div
-                        className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {fmtSigned(p.incentives)}
-                      </div>
-                      <div className="text-[11px] text-gray-500 mt-0.5">
-                        {p.incentive_reasons || "No incentive type"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-purple-700">
-                      {fmt(p.net_pay)}
-                    </td>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs">
+                      ID
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                      Basic Pay
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                      Deductions
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                      Incentives
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                      Net Pay
+                    </th>
                     {isAdmin && !bulkAdjustmentMode && (
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setSalaryBreakdownModal(p)}
-                            className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => setAdjustmentModal(p)}
-                            className="px-3 py-1.5 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200"
-                          >
-                            Adjust
-                          </button>
-                        </div>
-                      </td>
+                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                        Actions
+                      </th>
                     )}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {isAdmin && bulkAdjustmentMode && selectedEmployees.size > 0 && (
-          <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-            <button
-              onClick={() =>
-                setAdjustmentModal({
-                  name: `${selectedEmployees.size} Employee(s)`,
-                  isBulk: true,
-                })
-              }
-              className="px-6 py-2 rounded-lg bg-green-600 text-white text-sm font-bold cursor-pointer hover:bg-green-700 border-0"
-            >
-              Apply Adjustment to {selectedEmployees.size} Employees
-            </button>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredPayroll.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
+                        className="px-6 py-8 text-center text-gray-500"
+                      >
+                        No payroll records found for {period}. Click "Generate
+                        Payroll" to calculate.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPayroll.map((p) => (
+                      <tr
+                        key={p.id}
+                        onClick={() => {
+                          if (isAdmin && bulkAdjustmentMode) {
+                            toggleEmployeeSelection(p.emp_id);
+                          }
+                        }}
+                        className={`hover:bg-gray-50 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : ""}`}
+                      >
+                        {isAdmin && bulkAdjustmentMode && (
+                          <td className="px-6 py-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedEmployees.has(p.emp_id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => toggleEmployeeSelection(p.emp_id)}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                          </td>
+                        )}
+                        <td className="px-6 py-4">{p.emp_id}</td>
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-gray-900">
+                            {p.first_name} {p.last_name}
+                          </div>
+                          <div className="text-xs text-gray-500 font-normal mt-0.5">
+                            {p.position}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {fmt(p.basic_pay)}
+                        </td>
+                        <td className="px-6 py-4 text-right text-red-600">
+                          <div className="font-semibold">
+                            {fmt(p.absence_deductions)}
+                          </div>
+                          <div className="text-[11px] text-gray-500 mt-0.5">
+                            {p.deduction_reasons || "No deduction type"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div
+                            className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                          >
+                            {fmtSigned(p.incentives)}
+                          </div>
+                          <div className="text-[11px] text-gray-500 mt-0.5">
+                            {p.incentive_reasons || "No incentive type"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-purple-700">
+                          {fmt(p.net_pay)}
+                        </td>
+                        {isAdmin && !bulkAdjustmentMode && (
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setSalaryBreakdownModal(p)}
+                                className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => setAdjustmentModal(p)}
+                                className="px-3 py-1.5 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200"
+                              >
+                                Adjust
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {isAdmin && bulkAdjustmentMode && selectedEmployees.size > 0 && (
+              <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button
+                  onClick={() =>
+                    setAdjustmentModal({
+                      name: `${selectedEmployees.size} Employee(s)`,
+                      isBulk: true,
+                    })
+                  }
+                  className="px-6 py-2 rounded-lg bg-green-600 text-white text-sm font-bold cursor-pointer hover:bg-green-700 border-0"
+                >
+                  Apply Adjustment to {selectedEmployees.size} Employees
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Salary Settings Modal (With Grouped Preview Table & Dropdown) */}
       {isAdmin && salarySettingsModal && (

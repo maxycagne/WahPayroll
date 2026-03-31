@@ -27,6 +27,9 @@ import {
   YAxis,
 } from "recharts";
 import { apiFetch } from "../lib/api";
+import Employees from "./Employees";
+import Attendance from "./Attendance";
+import Payroll from "./Payroll";
 
 function getDateDiffInclusive(start, end) {
   const from = new Date(start).setHours(0, 0, 0, 0);
@@ -414,10 +417,11 @@ function EmployeeDashboard({ currentUser }) {
 // 2. ADMIN / HR / SUPERVISOR DASHBOARD
 // ==========================================
 function AdminDashboard({ currentUser }) {
-  const navigate = useNavigate();
   const [activeModal, setActiveModal] = useState(null);
   const [approvedLeaves, setApprovedLeaves] = useState(new Set());
   const [reviewConfirm, setReviewConfirm] = useState(null);
+  const [quickActionHost, setQuickActionHost] = useState(null);
+  const [quickActionSeed, setQuickActionSeed] = useState(0);
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
 
   const [year, month] = period.split("-").map(Number);
@@ -524,21 +528,21 @@ function AdminDashboard({ currentUser }) {
     {
       label: "Add Employee",
       sub: "Open Add Employee modal",
-      path: "/employees?open=add-employee",
+      action: "add-employee",
       icon: <Users className="h-4 w-4" />,
       color: "bg-blue-50 border-blue-200 text-blue-800",
     },
     {
       label: "Take Attendance",
       sub: "Open attendance modal",
-      path: "/attendance?open=take-attendance",
+      action: "take-attendance",
       icon: <Clock3 className="h-4 w-4" />,
       color: "bg-emerald-50 border-emerald-200 text-emerald-800",
     },
     {
       label: "Salary Settings",
       sub: "Open Position Salary Settings",
-      path: "/payroll?open=salary-settings",
+      action: "salary-settings",
       icon: <HandCoins className="h-4 w-4" />,
       color: "bg-purple-50 border-purple-200 text-purple-800",
     },
@@ -611,6 +615,24 @@ function AdminDashboard({ currentUser }) {
   const closeModal = () => {
     setActiveModal(null);
     setApprovedLeaves(new Set());
+  };
+
+  const openQuickAction = (action) => {
+    setQuickActionSeed((prev) => prev + 1);
+
+    if (action.action === "add-employee") {
+      setQuickActionHost("employees");
+      return;
+    }
+
+    if (action.action === "take-attendance") {
+      setQuickActionHost("attendance");
+      return;
+    }
+
+    if (action.action === "salary-settings") {
+      setQuickActionHost("payroll");
+    }
   };
 
   const openLeaveDecisionConfirm = (employee, status) => {
@@ -813,8 +835,8 @@ function AdminDashboard({ currentUser }) {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {quickActions.map((action) => (
             <button
-              key={action.path}
-              onClick={() => navigate(action.path)}
+              key={action.action}
+              onClick={() => openQuickAction(action)}
               className={`group rounded-lg border p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${action.color}`}
             >
               <span className="inline-flex items-center gap-2 text-xs font-bold">
@@ -832,6 +854,16 @@ function AdminDashboard({ currentUser }) {
           ))}
         </div>
       </section>
+
+      {quickActionHost === "employees" && (
+        <Employees key={`qa-employees-${quickActionSeed}`} shortcutMode />
+      )}
+      {quickActionHost === "attendance" && (
+        <Attendance key={`qa-attendance-${quickActionSeed}`} shortcutMode />
+      )}
+      {quickActionHost === "payroll" && (
+        <Payroll key={`qa-payroll-${quickActionSeed}`} shortcutMode />
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">

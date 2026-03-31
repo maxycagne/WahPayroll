@@ -16,7 +16,7 @@ const badgeClass = {
   "": "bg-gray-100 text-gray-500", // Fallback styling for None
 };
 
-export default function Attendance() {
+export default function Attendance({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
@@ -61,7 +61,7 @@ export default function Attendance() {
   const [bulkStatus, setBulkStatus] = useState("Present");
 
   useEffect(() => {
-    if (searchParams.get("open") !== "take-attendance") return;
+    if (!shortcutMode && searchParams.get("open") !== "take-attendance") return;
 
     const now = new Date();
     const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -69,10 +69,12 @@ export default function Attendance() {
     setSelectedDate(localDate);
     setDailyModalOpen(true);
 
+    if (shortcutMode) return;
+
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, shortcutMode]);
 
   // --- QUERIES ---
   const { data: attendance = [], isLoading } = useQuery({
@@ -377,189 +379,196 @@ export default function Attendance() {
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <h1 className="m-0 text-lg font-bold text-gray-900">
-          Attendance Management
-        </h1>
-        {canConfigureWorkweek && (
-          <button
-            onClick={() => setWorkweekModalOpen(true)}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm cursor-pointer hover:bg-indigo-700 border-0 transition-colors"
-          >
-            ⚙️ Workweek Setup
-          </button>
-        )}
-      </div>
-
-      {/* --- INLINE CALENDAR VIEW --- */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-        <div className="bg-purple-700 px-4 py-2 text-white">
-          <h2 className="text-base font-bold m-0">
-            Select Date to Take Attendance
-          </h2>
-        </div>
-        <div className="p-3 bg-gray-50">
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={() => setViewDate(new Date(year, month - 1, 1))}
-              className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
-            >
-              ◀ Prev
-            </button>
-            <h3 className="m-0 text-base font-bold">
-              {viewDate.toLocaleString("default", {
-                month: "long",
-                year: "numeric",
-              })}
-            </h3>
-            <button
-              onClick={() => setViewDate(new Date(year, month + 1, 1))}
-              className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
-            >
-              Next ▶
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-              <div
-                key={d}
-                className="text-center text-xs font-bold text-gray-500 py-1"
+      {!shortcutMode && (
+        <>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <h1 className="m-0 text-lg font-bold text-gray-900">
+              Attendance Management
+            </h1>
+            {canConfigureWorkweek && (
+              <button
+                onClick={() => setWorkweekModalOpen(true)}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm cursor-pointer hover:bg-indigo-700 border-0 transition-colors"
               >
-                {d}
-              </div>
-            ))}
-            {cells.map((day, i) => {
-              if (!day) return <div key={`empty-${i}`} />;
-              const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-              const isToday =
-                today.getFullYear() === year &&
-                today.getMonth() === month &&
-                today.getDate() === day;
-
-              const dayData = calendarSummary.find((s) => {
-                const dbDate = new Date(s.date);
-                return (
-                  dbDate.getFullYear() === year &&
-                  dbDate.getMonth() === month &&
-                  dbDate.getDate() === day
-                );
-              });
-
-              return (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setSelectedDate(dateStr);
-                    setDailyModalOpen(true);
-                    setSelectedEmployees(new Set());
-                  }}
-                  className={`min-h-[60px] border rounded p-1 flex flex-col items-start bg-white cursor-pointer hover:border-purple-500 hover:shadow-md transition-all ${isToday ? "border-purple-600 bg-purple-50" : "border-gray-200"}`}
-                >
-                  <span
-                    className={`font-bold text-xs ${isToday ? "text-purple-700" : "text-gray-700"}`}
-                  >
-                    {day}
-                  </span>
-                  {dayData && (
-                    <div className="mt-auto w-full space-y-0.5 flex flex-col gap-0.5">
-                      {/* NEW STATUSES ADDED HERE */}
-                      {dayData.present_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-green-700 bg-green-50 rounded px-1 w-full text-left truncate border border-green-100">
-                          • {dayData.present_count} Present
-                        </div>
-                      )}
-                      {dayData.late_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 rounded px-1 w-full text-left truncate border border-amber-100">
-                          • {dayData.late_count} Late
-                        </div>
-                      )}
-                      {dayData.undertime_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-rose-700 bg-rose-50 rounded px-1 w-full text-left truncate border border-rose-100">
-                          • {dayData.undertime_count} Undertime
-                        </div>
-                      )}
-                      {dayData.halfday_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-orange-700 bg-orange-50 rounded px-1 w-full text-left truncate border border-orange-100">
-                          • {dayData.halfday_count} Half-Day
-                        </div>
-                      )}
-                      {dayData.leave_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-purple-700 bg-purple-50 rounded px-1 w-full text-left truncate border border-purple-100">
-                          • {dayData.leave_count} On Leave
-                        </div>
-                      )}
-                      {dayData.absent_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-red-700 bg-red-50 rounded px-1 w-full text-left truncate border border-red-100">
-                          • {dayData.absent_count} Absent
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+                ⚙️ Workweek Setup
+              </button>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* --- ALL EMPLOYEES SUMMARY TABLE --- */}
-      <h2 className="m-0 text-base font-bold text-gray-900 mb-2">
-        Overall Attendance Overview
-      </h2>
-      <div className="mb-2">
-        <input
-          type="text"
-          className="w-full max-w-[280px] px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-purple-500"
-          placeholder="Search by name or ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+          {/* --- INLINE CALENDAR VIEW --- */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+            <div className="bg-purple-700 px-4 py-2 text-white">
+              <h2 className="text-base font-bold m-0">
+                Select Date to Take Attendance
+              </h2>
+            </div>
+            <div className="p-3 bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() => setViewDate(new Date(year, month - 1, 1))}
+                  className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
+                >
+                  ◀ Prev
+                </button>
+                <h3 className="m-0 text-base font-bold">
+                  {viewDate.toLocaleString("default", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </h3>
+                <button
+                  onClick={() => setViewDate(new Date(year, month + 1, 1))}
+                  className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
+                >
+                  Next ▶
+                </button>
+              </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Employee ID
-                </th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Name
-                </th>
-                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
-                  Absences
-                </th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredMain.map((a, index) => (
-                <tr key={`${a.emp_id}-${index}`} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 text-xs">{a.emp_id}</td>
-                  <td className="px-3 py-2 font-semibold text-xs">
-                    {a.first_name} {a.last_name}
-                  </td>
-                  <td className="px-3 py-2 text-center text-xs">
-                    {a.total_absences || 0}
-                  </td>
+              <div className="grid grid-cols-7 gap-1">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                  <div
+                    key={d}
+                    className="text-center text-xs font-bold text-gray-500 py-1"
+                  >
+                    {d}
+                  </div>
+                ))}
+                {cells.map((day, i) => {
+                  if (!day) return <div key={`empty-${i}`} />;
+                  const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+                  const isToday =
+                    today.getFullYear() === year &&
+                    today.getMonth() === month &&
+                    today.getDate() === day;
 
-                  <td className="px-3 py-2">
-                    <span
-                      className={`inline-flex items-center border border-transparent rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
+                  const dayData = calendarSummary.find((s) => {
+                    const dbDate = new Date(s.date);
+                    return (
+                      dbDate.getFullYear() === year &&
+                      dbDate.getMonth() === month &&
+                      dbDate.getDate() === day
+                    );
+                  });
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setSelectedDate(dateStr);
+                        setDailyModalOpen(true);
+                        setSelectedEmployees(new Set());
+                      }}
+                      className={`min-h-[60px] border rounded p-1 flex flex-col items-start bg-white cursor-pointer hover:border-purple-500 hover:shadow-md transition-all ${isToday ? "border-purple-600 bg-purple-50" : "border-gray-200"}`}
                     >
-                      {a.status || "No Data"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      <span
+                        className={`font-bold text-xs ${isToday ? "text-purple-700" : "text-gray-700"}`}
+                      >
+                        {day}
+                      </span>
+                      {dayData && (
+                        <div className="mt-auto w-full space-y-0.5 flex flex-col gap-0.5">
+                          {/* NEW STATUSES ADDED HERE */}
+                          {dayData.present_count > 0 && (
+                            <div className="text-[0.6rem] font-bold text-green-700 bg-green-50 rounded px-1 w-full text-left truncate border border-green-100">
+                              • {dayData.present_count} Present
+                            </div>
+                          )}
+                          {dayData.late_count > 0 && (
+                            <div className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 rounded px-1 w-full text-left truncate border border-amber-100">
+                              • {dayData.late_count} Late
+                            </div>
+                          )}
+                          {dayData.undertime_count > 0 && (
+                            <div className="text-[0.6rem] font-bold text-rose-700 bg-rose-50 rounded px-1 w-full text-left truncate border border-rose-100">
+                              • {dayData.undertime_count} Undertime
+                            </div>
+                          )}
+                          {dayData.halfday_count > 0 && (
+                            <div className="text-[0.6rem] font-bold text-orange-700 bg-orange-50 rounded px-1 w-full text-left truncate border border-orange-100">
+                              • {dayData.halfday_count} Half-Day
+                            </div>
+                          )}
+                          {dayData.leave_count > 0 && (
+                            <div className="text-[0.6rem] font-bold text-purple-700 bg-purple-50 rounded px-1 w-full text-left truncate border border-purple-100">
+                              • {dayData.leave_count} On Leave
+                            </div>
+                          )}
+                          {dayData.absent_count > 0 && (
+                            <div className="text-[0.6rem] font-bold text-red-700 bg-red-50 rounded px-1 w-full text-left truncate border border-red-100">
+                              • {dayData.absent_count} Absent
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* --- ALL EMPLOYEES SUMMARY TABLE --- */}
+          <h2 className="m-0 text-base font-bold text-gray-900 mb-2">
+            Overall Attendance Overview
+          </h2>
+          <div className="mb-2">
+            <input
+              type="text"
+              className="w-full max-w-[280px] px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Search by name or ID…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Employee ID
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Name
+                    </th>
+                    <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
+                      Absences
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredMain.map((a, index) => (
+                    <tr
+                      key={`${a.emp_id}-${index}`}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-3 py-2 text-xs">{a.emp_id}</td>
+                      <td className="px-3 py-2 font-semibold text-xs">
+                        {a.first_name} {a.last_name}
+                      </td>
+                      <td className="px-3 py-2 text-center text-xs">
+                        {a.total_absences || 0}
+                      </td>
+
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex items-center border border-transparent rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
+                        >
+                          {a.status || "No Data"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* --- MODAL: DAILY ATTENDANCE FORM --- */}
       {dailyModalOpen && (
