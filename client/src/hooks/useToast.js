@@ -18,7 +18,7 @@ export function useToast(defaultDuration = 2800) {
         clearTimeout(timerRef.current);
       }
 
-      setToast({ message, type });
+      setToast({ message, type, duration, createdAt: Date.now() });
       timerRef.current = setTimeout(() => {
         setToast(null);
         timerRef.current = null;

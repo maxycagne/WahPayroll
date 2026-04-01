@@ -54,6 +54,18 @@ const ensureWorkweekConfigsTable = async (connection = pool) => {
   `);
 };
 
+const ensurePositionSalarySettingsTable = async (connection = pool) => {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS position_salary_settings (
+      position VARCHAR(100) PRIMARY KEY,
+      amount DECIMAL(12,2) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_position_salary_updated_at (updated_at)
+    )
+  `);
+};
+
 const getEmpIdColumnDefinition = async (connection = pool) => {
   const [empIdMetaRows] = await connection.query(
     `
@@ -117,12 +129,65 @@ const ensureOffsetTables = async (connection = pool) => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       approved_at TIMESTAMP NULL,
+      cancellation_requested_at TIMESTAMP NULL,
+      cancellation_reason TEXT,
       INDEX idx_emp_status (emp_id, status),
       INDEX idx_date_range (date_from, date_to),
       FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
       FOREIGN KEY (supervisor_emp_id) REFERENCES employees(emp_id) ON DELETE SET NULL
     )
   `);
+
+  const [offsetCancelRequestedColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'offset_applications'
+        AND COLUMN_NAME = 'cancellation_requested_at'
+      LIMIT 1
+    `,
+  );
+
+  if (offsetCancelRequestedColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE offset_applications ADD COLUMN cancellation_requested_at TIMESTAMP NULL AFTER approved_at",
+    );
+  }
+
+  const [offsetCancellationReasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'offset_applications'
+        AND COLUMN_NAME = 'cancellation_reason'
+      LIMIT 1
+    `,
+  );
+
+  if (offsetCancellationReasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE offset_applications ADD COLUMN cancellation_reason TEXT NULL AFTER cancellation_requested_at",
+    );
+  }
+
+  const [offsetHrNoteColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'offset_applications'
+        AND COLUMN_NAME = 'hr_note'
+      LIMIT 1
+    `,
+  );
+
+  if (offsetHrNoteColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE offset_applications ADD COLUMN hr_note TEXT NULL AFTER supervisor_remarks",
+    );
+  }
 };
 
 const ensureLeaveApprovalColumns = async (connection = pool) => {
@@ -165,6 +230,57 @@ const ensureLeaveApprovalColumns = async (connection = pool) => {
       "ALTER TABLE leave_requests ADD COLUMN approved_dates JSON NULL AFTER approved_days",
     );
   }
+
+  const [leaveCancelRequestedColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'cancellation_requested_at'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveCancelRequestedColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN cancellation_requested_at TIMESTAMP NULL AFTER approved_dates",
+    );
+  }
+
+  const [leaveCancellationReasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'cancellation_reason'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveCancellationReasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN cancellation_reason TEXT NULL AFTER cancellation_requested_at",
+    );
+  }
+
+  const [leaveHrNoteColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'hr_note'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveHrNoteColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN hr_note TEXT NULL AFTER supervisor_remarks",
+    );
+  }
 };
 
 const ensureResignationsTable = async (connection = pool) => {
@@ -181,6 +297,8 @@ const ensureResignationsTable = async (connection = pool) => {
       reviewed_by ${empIdColumn} NULL,
       review_remarks TEXT,
       reviewed_at TIMESTAMP NULL,
+      cancellation_requested_at TIMESTAMP NULL,
+      cancellation_reason TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_resignation_emp_status (emp_id, status),
@@ -189,6 +307,57 @@ const ensureResignationsTable = async (connection = pool) => {
       FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
     )
   `);
+
+  const [resignationCancelRequestedColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'cancellation_requested_at'
+      LIMIT 1
+    `,
+  );
+
+  if (resignationCancelRequestedColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN cancellation_requested_at TIMESTAMP NULL AFTER reviewed_at",
+    );
+  }
+
+  const [resignationCancellationReasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'cancellation_reason'
+      LIMIT 1
+    `,
+  );
+
+  if (resignationCancellationReasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN cancellation_reason TEXT NULL AFTER cancellation_requested_at",
+    );
+  }
+
+  const [resignationHrNoteColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'hr_note'
+      LIMIT 1
+    `,
+  );
+
+  if (resignationHrNoteColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN hr_note TEXT NULL AFTER review_remarks",
+    );
+  }
 };
 
 const ensureNotificationsTable = async (connection = pool) => {
@@ -292,10 +461,64 @@ const normalizeRole = (role) => {
   return "RankAndFile";
 };
 
+const getDefaultLeaveAllocation = (status) => {
+  const normalizedStatus = String(status || "")
+    .trim()
+    .toLowerCase();
+
+  return ["job order", "pgt employee", "pgt"].includes(normalizedStatus)
+    ? 12
+    : 27;
+};
+
+const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
+  const [employeeRows] = await connection.query(
+    `SELECT status
+     FROM employees
+     WHERE emp_id = ?
+     LIMIT 1`,
+    [empId],
+  );
+
+  if (employeeRows.length === 0) return null;
+
+  const defaultLeave = getDefaultLeaveAllocation(employeeRows[0].status);
+
+  const [usedRows] = await connection.query(
+    `SELECT
+       COALESCE(
+         SUM(
+           CASE
+             WHEN status = 'Approved' THEN COALESCE(approved_days, DATEDIFF(date_to, date_from) + 1, 0)
+             WHEN status = 'Partially Approved' THEN COALESCE(approved_days, 0)
+             ELSE 0
+           END
+         ),
+         0
+       ) AS used_days
+     FROM leave_requests
+     WHERE emp_id = ?
+       AND status IN ('Approved', 'Partially Approved')`,
+    [empId],
+  );
+
+  const usedDays = Number(usedRows[0]?.used_days || 0);
+  const computedBalance = Number(Math.max(defaultLeave - usedDays, 0).toFixed(2));
+
+  await connection.query(
+    `INSERT INTO leave_balances (emp_id, leave_balance, offset_credits)
+     VALUES (?, ?, 0)
+     ON DUPLICATE KEY UPDATE leave_balance = VALUES(leave_balance)`,
+    [empId, computedBalance],
+  );
+
+  return computedBalance;
+};
+
 const getEmployeeProfile = async (connection, empId) => {
   const [rows] = await connection.query(
     `
-      SELECT emp_id, first_name, last_name, designation, COALESCE(role, 'RankAndFile') as role
+      SELECT emp_id, first_name, last_name, designation, status, COALESCE(role, 'RankAndFile') as role
       FROM employees
       WHERE emp_id = ?
       LIMIT 1
@@ -308,6 +531,7 @@ const getEmployeeProfile = async (connection, empId) => {
   return {
     ...rows[0],
     role: normalizeRole(rows[0].role),
+    status: rows[0].status || null,
     designation: rows[0].designation || null,
   };
 };
@@ -430,6 +654,31 @@ const notifyApproversForRequest = async (
   }
 };
 
+const notifySupervisorsForHrRoutingNote = async (
+  connection,
+  { requester, moduleType, requestId, hrName, note },
+) => {
+  const supervisors = await getSupervisorApproversForRequester(
+    connection,
+    requester,
+  );
+
+  if (supervisors.length === 0) return;
+
+  const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
+
+  for (const supervisor of supervisors) {
+    await createNotification(connection, {
+      empId: supervisor.emp_id,
+      notificationType: `${moduleType}_HR_NOTE`,
+      title: `HR Note Added: ${moduleType}`,
+      message: `${hrName} added a note for ${requesterName}'s ${moduleType.toLowerCase()} request: ${note}`,
+      referenceType: moduleType,
+      referenceId: requestId,
+    });
+  }
+};
+
 const notifyRequesterForDecision = async (
   connection,
   { requesterEmpId, moduleType, status, approverName },
@@ -439,6 +688,80 @@ const notifyRequesterForDecision = async (
     notificationType: `${moduleType}_STATUS`,
     title: `${moduleType} Request ${status}`,
     message: `Your ${moduleType.toLowerCase()} request was marked ${status.toLowerCase()} by ${approverName}.`,
+    referenceType: moduleType,
+  });
+};
+
+const formatDateForNotification = (value) => {
+  const normalized = normalizeDateInput(value);
+  return normalized || String(value || "").trim() || "N/A";
+};
+
+const getRequestWindowText = ({ fromDate = null, toDate = null }) => {
+  const from = formatDateForNotification(fromDate);
+  const to = formatDateForNotification(toDate || fromDate);
+  return `From: ${from} To: ${to}`;
+};
+
+const notifyApproversForCancellationRequest = async (
+  connection,
+  {
+    requester,
+    moduleType,
+    requestId,
+    fromDate = null,
+    toDate = null,
+    descriptor = "request",
+  },
+) => {
+  const approvers = await getSupervisorApproversForRequester(
+    connection,
+    requester,
+  );
+
+  if (approvers.length === 0) return;
+
+  const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
+  const windowText = getRequestWindowText({ fromDate, toDate });
+
+  for (const approver of approvers) {
+    await createNotification(connection, {
+      empId: approver.emp_id,
+      notificationType: `${moduleType}_CANCELLATION_REQUEST`,
+      title: `${moduleType} Cancellation Pending`,
+      message: `${requesterName} requested cancellation for ${descriptor}. ${windowText}.`,
+      referenceType: moduleType,
+      referenceId: requestId,
+    });
+  }
+};
+
+const notifyRequesterForCancellationDecision = async (
+  connection,
+  {
+    requesterEmpId,
+    moduleType,
+    status,
+    approverName,
+    fromDate = null,
+    toDate = null,
+    descriptor = "request",
+  },
+) => {
+  const normalizedStatus = String(status || "").toLowerCase();
+  const decisionWord =
+    normalizedStatus === "approved"
+      ? "approved"
+      : normalizedStatus === "rejected"
+        ? "rejected"
+        : normalizedStatus;
+  const windowText = getRequestWindowText({ fromDate, toDate });
+
+  await createNotification(connection, {
+    empId: requesterEmpId,
+    notificationType: `${moduleType}_CANCELLATION_STATUS`,
+    title: `${moduleType} Cancellation ${status}`,
+    message: `Your cancellation request for ${descriptor} was ${decisionWord} by ${approverName}. ${windowText}.`,
     referenceType: moduleType,
   });
 };
@@ -551,10 +874,42 @@ export const createEmployee = async (req, res) => {
 
   try {
     await ensureEmployeeGovernmentColumns();
+    await ensurePositionSalarySettingsTable();
+
+    let baseSalary = null;
+
+    if (position) {
+      const [positionSalaryRows] = await pool.query(
+        `SELECT amount
+         FROM position_salary_settings
+         WHERE position = ?
+         LIMIT 1`,
+        [position],
+      );
+
+      if (positionSalaryRows.length > 0) {
+        baseSalary = Number(positionSalaryRows[0].amount);
+      } else {
+        const [existingPositionRows] = await pool.query(
+          `SELECT basic_pay
+           FROM employees
+           WHERE position = ?
+             AND basic_pay IS NOT NULL
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [position],
+        );
+
+        if (existingPositionRows.length > 0) {
+          baseSalary = Number(existingPositionRows[0].basic_pay);
+        }
+      }
+    }
+
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -574,16 +929,12 @@ export const createEmployee = async (req, res) => {
         normalizedDob,
         normalizedHiredDate,
         hashPass,
+        baseSalary,
         employeeRole,
       ],
     );
 
-    // Automatically create leave balance based on status
-    const defaultLeaves = status === "Job Order" ? 12 : 27;
-    await pool.query(
-      `INSERT INTO leave_balances (emp_id, leave_balance) VALUES (?, ?)`,
-      [emp_id, defaultLeaves],
-    );
+    await recalculateLeaveBalanceForEmployee(pool, emp_id);
 
     res.status(201).json({ message: "Employee added successfully" });
   } catch (error) {
@@ -662,6 +1013,8 @@ export const updateEmployee = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
+    await recalculateLeaveBalanceForEmployee(pool, id);
+
     res.json({ message: "Employee updated successfully" });
   } catch (error) {
     console.error("DB Error in updateEmployee:", error);
@@ -714,16 +1067,224 @@ export const deleteEmployee = async (req, res) => {
 
 export const updateResignationStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, decision_mode, review_remarks } = req.body;
+  const trimmedReviewRemarks = String(review_remarks || "").trim();
   try {
-    await pool.query("UPDATE resignations SET status = ? WHERE id = ?", [
-      status,
-      id,
-    ]);
+    await ensureResignationsTable();
+
+    if (decision_mode === "cancellation") {
+      if (!["Approved", "Rejected"].includes(status)) {
+        return res.status(400).json({
+          message: "Invalid cancellation decision status",
+        });
+      }
+
+      if (status === "Rejected" && !trimmedReviewRemarks) {
+        return res.status(400).json({
+          message: "Reason is required for rejection",
+        });
+      }
+
+      const [rows] = await pool.query(
+        "SELECT id, emp_id, effective_date, cancellation_requested_at, resignation_type FROM resignations WHERE id = ? LIMIT 1",
+        [id],
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({ message: "Resignation request not found" });
+      }
+
+      const request = rows[0];
+      if (!request.cancellation_requested_at) {
+        return res.status(400).json({
+          message: "No cancellation request is pending approval",
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const effectiveDate = new Date(request.effective_date);
+      effectiveDate.setHours(0, 0, 0, 0);
+      if (effectiveDate <= today) {
+        return res.status(400).json({
+          message: "Cannot process cancellation on or after effective date",
+        });
+      }
+
+      const approver = await getEmployeeProfile(pool, req.user?.emp_id);
+      const approverName = approver
+        ? `${approver.first_name} ${approver.last_name}`.trim()
+        : "the approver";
+
+      if (status === "Approved") {
+        await pool.query("DELETE FROM resignations WHERE id = ?", [id]);
+      } else {
+        await pool.query(
+          `UPDATE resignations
+           SET cancellation_requested_at = NULL,
+               review_remarks = ?
+           WHERE id = ?`,
+          [trimmedReviewRemarks, id],
+        );
+      }
+
+      await notifyRequesterForCancellationDecision(pool, {
+        requesterEmpId: request.emp_id,
+        moduleType: "Resignation",
+        status,
+        approverName,
+        fromDate: request.effective_date,
+        toDate: request.effective_date,
+        descriptor: "resignation",
+      });
+
+      return res.json({
+        message: `Resignation cancellation ${status.toLowerCase()} successfully`,
+      });
+    }
+
+    if (!["Approved", "Rejected"].includes(String(status || ""))) {
+      return res.status(400).json({ message: "Invalid resignation status" });
+    }
+
+    if (status === "Rejected" && !trimmedReviewRemarks) {
+      return res.status(400).json({
+        message: "Reason is required for rejection",
+      });
+    }
+
+    const reviewRemarksValue =
+      status === "Rejected" ? trimmedReviewRemarks : null;
+
+    await pool.query(
+      `UPDATE resignations
+       SET status = ?,
+           review_remarks = ?
+       WHERE id = ?`,
+      [status, reviewRemarksValue, id],
+    );
     res.json({ message: "Resignation updated successfully" });
   } catch (error) {
     console.error("DB Error in updateResignationStatus:", error);
     res.status(500).json({ message: "Error updating resignation" });
+  }
+};
+
+export const addHrNoteToPendingRequest = async (req, res) => {
+  const { module, id } = req.params;
+  const { hr_note } = req.body;
+  const note = String(hr_note || "").trim();
+
+  if (String(req.user?.role || "") !== "HR") {
+    return res.status(403).json({ message: "Only HR can add routing notes" });
+  }
+
+  if (!note) {
+    return res.status(400).json({ message: "HR note is required" });
+  }
+
+  const moduleMap = {
+    leave: {
+      ensure: ensureLeaveApprovalColumns,
+      table: "leave_requests",
+      statusColumn: "status",
+      pendingStatus: ["Pending"],
+      idColumn: "id",
+      referenceType: "Leave",
+    },
+    offset: {
+      ensure: ensureOffsetTables,
+      table: "offset_applications",
+      statusColumn: "status",
+      pendingStatus: ["Pending", "Pending Approval"],
+      idColumn: "id",
+      referenceType: "Offset",
+    },
+    resignation: {
+      ensure: ensureResignationsTable,
+      table: "resignations",
+      statusColumn: "status",
+      pendingStatus: ["Pending Approval"],
+      idColumn: "id",
+      referenceType: "Resignation",
+    },
+  };
+
+  const config = moduleMap[String(module || "").toLowerCase()];
+  if (!config) {
+    return res.status(400).json({ message: "Invalid module" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await config.ensure(connection);
+
+    const [rows] = await connection.query(
+      `
+        SELECT t.${config.idColumn} as id,
+               t.emp_id,
+               t.${config.statusColumn} as status,
+               t.cancellation_requested_at,
+               e.first_name,
+               e.last_name,
+               e.designation,
+               COALESCE(e.role, 'RankAndFile') as role
+        FROM ${config.table} t
+        JOIN employees e ON t.emp_id = e.emp_id
+        WHERE t.${config.idColumn} = ?
+        LIMIT 1
+      `,
+      [id],
+    );
+
+    if (!rows.length) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    const requestRow = rows[0];
+    const isPending = config.pendingStatus.includes(String(requestRow.status || ""));
+    const isCancellationPending = Boolean(requestRow.cancellation_requested_at);
+
+    if (!isPending && !isCancellationPending) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Request is not pending review" });
+    }
+
+    if (String(requestRow.role || "") === "Supervisor") {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "HR can approve or reject supervisor requests directly",
+      });
+    }
+
+    await connection.query(
+      `UPDATE ${config.table} SET hr_note = ? WHERE ${config.idColumn} = ?`,
+      [note, id],
+    );
+
+    const hrProfile = await getEmployeeProfile(connection, req.user?.emp_id);
+    const hrName = hrProfile
+      ? `${hrProfile.first_name} ${hrProfile.last_name}`.trim()
+      : "HR";
+
+    await notifySupervisorsForHrRoutingNote(connection, {
+      requester: requestRow,
+      moduleType: config.referenceType,
+      requestId: Number(id),
+      hrName,
+      note,
+    });
+
+    await connection.commit();
+    return res.json({ message: "HR note saved and supervisors notified" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("DB Error in addHrNoteToPendingRequest:", error);
+    return res.status(500).json({ message: "Error saving HR note" });
+  } finally {
+    connection.release();
   }
 };
 
@@ -760,7 +1321,16 @@ export const getDashboardSummary = async (req, res) => {
     await ensureEmployeeMissingDocsTable();
 
     const currentUser = await getEmployeeProfile(pool, req.user?.emp_id);
-    const isSupervisor = currentUser?.role === "Supervisor";
+    if (!currentUser) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    await recalculateLeaveBalanceForEmployee(pool, currentUser.emp_id);
+
+    const isAdmin = currentUser.role === "Admin";
+    const isHR = currentUser.role === "HR";
+    const isSupervisor = currentUser.role === "Supervisor";
+    const isRankAndFile = currentUser.role === "RankAndFile";
 
     let pending = [];
     if (isSupervisor) {
@@ -777,7 +1347,7 @@ export const getDashboardSummary = async (req, res) => {
         [currentUser.designation || "", currentUser.emp_id],
       );
       pending = rows;
-    } else if (currentUser?.role === "HR") {
+    } else if (isHR) {
       const [rows] = await pool.query(
         `
           SELECT l.*, e.first_name, e.last_name
@@ -790,77 +1360,352 @@ export const getDashboardSummary = async (req, res) => {
         [currentUser.emp_id],
       );
       pending = rows;
+    }
+
+    let onLeave = [];
+    if (isAdmin || isHR) {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, l.leave_type
+         FROM employees e
+         JOIN leave_requests l ON e.emp_id = l.emp_id
+         WHERE CURDATE() BETWEEN l.date_from AND l.date_to
+           AND l.status = 'Approved'`,
+      );
+      onLeave = rows;
+    } else if (isSupervisor) {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, l.leave_type
+         FROM employees e
+         JOIN leave_requests l ON e.emp_id = l.emp_id
+         WHERE CURDATE() BETWEEN l.date_from AND l.date_to
+           AND l.status = 'Approved'
+           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.designation = ?
+           AND e.emp_id <> ?`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+      onLeave = rows;
     } else {
-      pending = [];
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, l.leave_type
+         FROM employees e
+         JOIN leave_requests l ON e.emp_id = l.emp_id
+         WHERE e.emp_id = ?
+           AND CURDATE() BETWEEN l.date_from AND l.date_to
+           AND l.status = 'Approved'`,
+        [currentUser.emp_id],
+      );
+      onLeave = rows;
     }
 
-    const [onLeave] = await pool.query(
-      "SELECT e.first_name, e.last_name, l.leave_type FROM employees e JOIN leave_requests l ON e.emp_id = l.emp_id WHERE CURDATE() BETWEEN l.date_from AND l.date_to AND l.status = 'Approved'",
-    );
-    const [absents] = await pool.query(
-      "SELECT first_name, last_name FROM employees WHERE emp_id NOT IN (SELECT emp_id FROM attendance WHERE date = CURDATE()) AND status != 'Inactive' AND COALESCE(role, '') <> 'Admin'",
-    );
-    const [balances] = await pool.query(
-      "SELECT e.first_name, e.last_name, lb.leave_balance, lb.offset_credits FROM employees e JOIN leave_balances lb ON e.emp_id = lb.emp_id",
-    );
+    let absents = [];
+    if (isAdmin || isHR) {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation
+         FROM employees e
+         WHERE e.status != 'Inactive'
+           AND COALESCE(e.role, '') <> 'Admin'
+           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+      );
+      absents = rows;
+    } else if (isSupervisor) {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation
+         FROM employees e
+         WHERE e.status != 'Inactive'
+           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.designation = ?
+           AND e.emp_id <> ?
+           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+      absents = rows;
+    } else {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation
+         FROM employees e
+         WHERE e.emp_id = ?
+           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+        [currentUser.emp_id],
+      );
+      absents = rows;
+    }
 
-    // Fetch REAL Resignations
+    let balances = [];
+    if (isAdmin || isHR) {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
+         FROM employees e
+         JOIN leave_balances lb ON e.emp_id = lb.emp_id`,
+      );
+      balances = rows;
+    } else {
+      const [rows] = await pool.query(
+        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
+         FROM employees e
+         JOIN leave_balances lb ON e.emp_id = lb.emp_id
+         WHERE e.emp_id = ?`,
+        [currentUser.emp_id],
+      );
+      balances = rows;
+    }
+
     let resignations = [];
-    try {
-      if (isSupervisor) {
-        const [resigRows] = await pool.query(
-          `
-            SELECT r.*, e.first_name, e.last_name
-            FROM resignations r
-            JOIN employees e ON r.emp_id = e.emp_id
-            WHERE r.status = 'Pending Approval'
-              AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-              AND e.designation = ?
-              AND e.emp_id <> ?
-          `,
-          [currentUser.designation || "", currentUser.emp_id],
-        );
-        resignations = resigRows;
-      } else if (currentUser?.role === "HR") {
-        const [resigRows] = await pool.query(
-          `
-            SELECT r.*, e.first_name, e.last_name
-            FROM resignations r
-            JOIN employees e ON r.emp_id = e.emp_id
-            WHERE r.status = 'Pending Approval'
-              AND COALESCE(e.role, '') = 'Supervisor'
-              AND e.emp_id <> ?
-          `,
-          [currentUser.emp_id],
-        );
-        resignations = resigRows;
-      } else {
-        resignations = [];
-      }
-    } catch (e) {
-      console.error(e);
+    if (isSupervisor) {
+      const [rows] = await pool.query(
+        `
+          SELECT r.*, e.first_name, e.last_name
+          FROM resignations r
+          JOIN employees e ON r.emp_id = e.emp_id
+          WHERE r.status = 'Pending Approval'
+            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+            AND e.designation = ?
+            AND e.emp_id <> ?
+        `,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+      resignations = rows;
+    } else if (isHR) {
+      const [rows] = await pool.query(
+        `
+          SELECT r.*, e.first_name, e.last_name
+          FROM resignations r
+          JOIN employees e ON r.emp_id = e.emp_id
+          WHERE r.status = 'Pending Approval'
+            AND COALESCE(e.role, '') = 'Supervisor'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
+      );
+      resignations = rows;
     }
 
-    // Fetch Missing Documents for Dashboard
     let missingDocs = [];
-    try {
-      const [docsRows] = await pool.query(`
-        SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date 
-        FROM employee_missing_docs m 
-        JOIN employees e ON m.emp_id = e.emp_id
-      `);
-      missingDocs = docsRows;
-    } catch (e) {
-      console.error(e);
+    if (isAdmin || isHR) {
+      const [rows] = await pool.query(
+        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
+         FROM employee_missing_docs m
+         JOIN employees e ON m.emp_id = e.emp_id`,
+      );
+      missingDocs = rows;
+    } else if (isSupervisor) {
+      const [rows] = await pool.query(
+        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
+         FROM employee_missing_docs m
+         JOIN employees e ON m.emp_id = e.emp_id
+         WHERE COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.designation = ?
+           AND e.emp_id <> ?`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+      missingDocs = rows;
+    } else {
+      const [rows] = await pool.query(
+        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
+         FROM employee_missing_docs m
+         JOIN employees e ON m.emp_id = e.emp_id
+         WHERE m.emp_id = ?`,
+        [currentUser.emp_id],
+      );
+      missingDocs = rows;
+    }
+
+    const [todayAttendanceRows] = await pool.query(
+      `SELECT status
+       FROM attendance
+       WHERE emp_id = ?
+         AND date = CURDATE()
+       LIMIT 1`,
+      [currentUser.emp_id],
+    );
+
+    const [myPendingLeaves] = await pool.query(
+      `SELECT COUNT(*) as total
+       FROM leave_requests
+       WHERE emp_id = ?
+         AND status = 'Pending'`,
+      [currentUser.emp_id],
+    );
+
+    const [myPendingOffsets] = await pool.query(
+      `SELECT COUNT(*) as total
+       FROM offset_applications
+       WHERE emp_id = ?
+         AND status IN ('Pending', 'Pending Approval')`,
+      [currentUser.emp_id],
+    );
+
+    const [myPendingResignations] = await pool.query(
+      `SELECT COUNT(*) as total
+       FROM resignations
+       WHERE emp_id = ?
+         AND status = 'Pending Approval'`,
+      [currentUser.emp_id],
+    );
+
+    const personalSummary = {
+      employeeStatus: currentUser.status || "N/A",
+      todayAttendanceStatus:
+        todayAttendanceRows.length > 0
+          ? String(todayAttendanceRows[0].status || "Pending")
+          : "Absent",
+      pendingRequestCount:
+        Number(myPendingLeaves[0]?.total || 0) +
+        Number(myPendingOffsets[0]?.total || 0) +
+        Number(myPendingResignations[0]?.total || 0),
+      leaveBalance: Number(balances[0]?.leave_balance || 0),
+      offsetCredits: Number(balances[0]?.offset_credits || 0),
+      hasMissingDocs: missingDocs.length > 0,
+    };
+
+    let teamSummary = null;
+    let teamAttendanceStatus = [];
+    let teamPendingRequests = [];
+
+    if (isSupervisor) {
+      const [teamMembers] = await pool.query(
+        `SELECT emp_id, first_name, last_name
+         FROM employees
+         WHERE COALESCE(role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND designation = ?
+           AND emp_id <> ?
+           AND status != 'Inactive'`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+
+      const [teamAttendanceRows] = await pool.query(
+        `SELECT a.emp_id, a.status
+         FROM attendance a
+         JOIN employees e ON e.emp_id = a.emp_id
+         WHERE a.date = CURDATE()
+           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.designation = ?
+           AND e.emp_id <> ?`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+
+      const attendanceByEmp = teamAttendanceRows.reduce((acc, row) => {
+        acc[row.emp_id] = String(row.status || "Present");
+        return acc;
+      }, {});
+
+      teamAttendanceStatus = teamMembers.map((member) => {
+        const onLeaveMatch = onLeave.find(
+          (item) => String(item.emp_id) === String(member.emp_id),
+        );
+
+        if (onLeaveMatch) {
+          return {
+            ...member,
+            status: "On Leave",
+          };
+        }
+
+        return {
+          ...member,
+          status: attendanceByEmp[member.emp_id] || "Absent",
+        };
+      });
+
+      const presentCount = teamAttendanceStatus.filter((row) =>
+        String(row.status || "").toLowerCase().includes("present"),
+      ).length;
+      const lateCount = teamAttendanceStatus.filter((row) =>
+        String(row.status || "").toLowerCase().includes("late"),
+      ).length;
+      const onLeaveCount = teamAttendanceStatus.filter(
+        (row) => String(row.status || "").toLowerCase() === "on leave",
+      ).length;
+      const absentCount = teamAttendanceStatus.filter(
+        (row) => String(row.status || "").toLowerCase() === "absent",
+      ).length;
+
+      const [pendingOffsetRows] = await pool.query(
+        `SELECT oa.id, oa.emp_id, oa.days_applied, oa.created_at, e.first_name, e.last_name
+         FROM offset_applications oa
+         JOIN employees e ON e.emp_id = oa.emp_id
+         WHERE oa.status IN ('Pending', 'Pending Approval')
+           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.designation = ?
+           AND e.emp_id <> ?
+         ORDER BY oa.created_at DESC
+         LIMIT 20`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+
+      const [pendingResignationRows] = await pool.query(
+        `SELECT r.id, r.emp_id, r.resignation_type, r.created_at, e.first_name, e.last_name
+         FROM resignations r
+         JOIN employees e ON e.emp_id = r.emp_id
+         WHERE r.status = 'Pending Approval'
+           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.designation = ?
+           AND e.emp_id <> ?
+         ORDER BY r.created_at DESC
+         LIMIT 20`,
+        [currentUser.designation || "", currentUser.emp_id],
+      );
+
+      teamPendingRequests = [
+        ...pending.map((row) => ({
+          id: `leave-${row.id}`,
+          type: "Leave",
+          emp_id: row.emp_id,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          detail: row.leave_type,
+          created_at: row.created_at || row.date_from,
+        })),
+        ...pendingOffsetRows.map((row) => ({
+          id: `offset-${row.id}`,
+          type: "Offset",
+          emp_id: row.emp_id,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          detail: `${Number(row.days_applied || 0)} day(s)`,
+          created_at: row.created_at,
+        })),
+        ...pendingResignationRows.map((row) => ({
+          id: `resignation-${row.id}`,
+          type: "Resignation",
+          emp_id: row.emp_id,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          detail: row.resignation_type,
+          created_at: row.created_at,
+        })),
+      ]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 20);
+
+      teamSummary = {
+        teamSize: teamMembers.length,
+        presentCount,
+        lateCount,
+        absentCount,
+        onLeaveCount,
+        pendingApprovals: teamPendingRequests.length,
+      };
+    }
+
+    if (isRankAndFile) {
+      pending = [];
+      resignations = [];
+      teamAttendanceStatus = [];
+      teamPendingRequests = [];
     }
 
     res.json({
       pendingLeaves: pending,
-      onLeave: onLeave,
-      absents: absents,
-      balances: balances,
-      resignations: resignations,
-      missingDocs: missingDocs,
+      onLeave,
+      absents,
+      balances,
+      resignations,
+      missingDocs,
+      personalSummary,
+      teamSummary,
+      teamAttendanceStatus,
+      teamPendingRequests,
       recentActivities: [],
     });
   } catch (error) {
@@ -947,23 +1792,11 @@ export const getResignations = async (req, res) => {
       query += `
         WHERE r.emp_id = ?
            OR (
-             r.status = 'Pending Approval'
-             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-             AND e.designation = ?
+             e.designation = ?
              AND e.emp_id <> ?
            )
       `;
       params.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    } else if (viewer.role === "HR") {
-      query += `
-        WHERE r.emp_id = ?
-           OR (
-             r.status = 'Pending Approval'
-             AND COALESCE(e.role, '') = 'Supervisor'
-             AND e.emp_id <> ?
-           )
-      `;
-      params.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY r.created_at DESC";
@@ -1024,6 +1857,143 @@ export const fileResignation = async (req, res) => {
   } catch (error) {
     console.error("DB Error in fileResignation:", error);
     res.status(500).json({ message: "Error filing resignation" });
+  }
+};
+
+export const cancelMyResignation = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status FROM resignations WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const request = rows[0];
+    if (String(request.emp_id) !== String(requesterEmpId)) {
+      return res.status(403).json({
+        message: "You can only cancel your own resignation request",
+      });
+    }
+
+    const normalizedStatus = String(request.status || "")
+      .trim()
+      .toLowerCase();
+    if (!["pending", "pending approval"].includes(normalizedStatus)) {
+      return res.status(400).json({
+        message: "Only pending resignation requests can be cancelled",
+      });
+    }
+
+    await pool.query("DELETE FROM resignations WHERE id = ?", [id]);
+    res.json({ message: "Resignation request cancelled successfully" });
+  } catch (error) {
+    console.error("DB Error in cancelMyResignation:", error);
+    res.status(500).json({ message: "Error cancelling resignation request" });
+  }
+};
+
+export const requestMyResignationCancellation = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+  const cancellationReason = String(req.body?.cancellation_reason || "").trim();
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!cancellationReason) {
+    return res.status(400).json({
+      message: "Cancellation reason is required",
+    });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status, effective_date, cancellation_requested_at FROM resignations WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const request = rows[0];
+    if (String(request.emp_id) !== String(requesterEmpId)) {
+      return res.status(403).json({
+        message: "You can only request cancellation for your own resignation",
+      });
+    }
+
+    if (String(request.status || "") !== "Approved") {
+      return res.status(400).json({
+        message: "Only approved resignations can request cancellation",
+      });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effectiveDate = new Date(request.effective_date);
+    effectiveDate.setHours(0, 0, 0, 0);
+    if (effectiveDate <= today) {
+      return res.status(400).json({
+        message:
+          "Cancellation request is only allowed before the effective resignation date",
+      });
+    }
+
+    if (request.cancellation_requested_at) {
+      return res.status(400).json({
+        message: "Cancellation request is already pending approval",
+      });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.query(
+        "UPDATE resignations SET cancellation_requested_at = NOW(), cancellation_reason = ? WHERE id = ?",
+        [cancellationReason, id],
+      );
+
+      const requester = await getEmployeeProfile(connection, requesterEmpId);
+      if (requester) {
+        await notifyApproversForCancellationRequest(connection, {
+          requester,
+          moduleType: "Resignation",
+          requestId: Number(id),
+          fromDate: request.effective_date,
+          toDate: request.effective_date,
+          descriptor: "resignation",
+        });
+      }
+
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+
+    res.json({ message: "Cancellation request submitted for approval" });
+  } catch (error) {
+    console.error("DB Error in requestMyResignationCancellation:", error);
+    res.status(500).json({ message: "Error requesting resignation cancellation" });
   }
 };
 
@@ -1117,6 +2087,57 @@ export const markAllNotificationsRead = async (req, res) => {
   }
 };
 
+export const deleteNotification = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await ensureNotificationsTable();
+
+    const empId = req.user?.emp_id;
+    if (!empId) return res.status(401).json({ message: "Unauthorized" });
+
+    const [result] = await pool.query(
+      `
+        DELETE FROM notifications
+        WHERE id = ?
+          AND emp_id = ?
+      `,
+      [id, empId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.json({ message: "Notification deleted" });
+  } catch (error) {
+    console.error("DB Error in deleteNotification:", error);
+    res.status(500).json({ message: "Error deleting notification" });
+  }
+};
+
+export const deleteAllNotifications = async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const empId = req.user?.emp_id;
+    if (!empId) return res.status(401).json({ message: "Unauthorized" });
+
+    await pool.query(
+      `
+        DELETE FROM notifications
+        WHERE emp_id = ?
+      `,
+      [empId],
+    );
+
+    res.json({ message: "All notifications deleted" });
+  } catch (error) {
+    console.error("DB Error in deleteAllNotifications:", error);
+    res.status(500).json({ message: "Error deleting notifications" });
+  }
+};
+
 // --- LEAVES & ATTENDANCE ---
 export const getAttendance = async (req, res) => {
   try {
@@ -1127,7 +2148,8 @@ export const getAttendance = async (req, res) => {
         e.last_name, 
         e.status AS emp_status, 
         (SELECT COUNT(*) FROM attendance WHERE emp_id = e.emp_id AND status = 'Absent') as total_absences,
-        a.status, 
+        a.status,
+        a.status2,
         lb.leave_balance
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
@@ -1259,23 +2281,11 @@ export const getAllLeaves = async (req, res) => {
       query += `
         WHERE l.emp_id = ?
            OR (
-             l.status = 'Pending'
-             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-             AND e.designation = ?
+             e.designation = ?
              AND e.emp_id <> ?
            )
       `;
       queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    } else if (viewer.role === "HR") {
-      query += `
-        WHERE l.emp_id = ?
-           OR (
-             l.status = 'Pending'
-             AND COALESCE(e.role, '') = 'Supervisor'
-             AND e.emp_id <> ?
-           )
-      `;
-      queryParams.push(viewer.emp_id, viewer.emp_id);
     }
 
     query += " ORDER BY l.id DESC";
@@ -1289,10 +2299,19 @@ export const getAllLeaves = async (req, res) => {
 };
 export const updateLeaveStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, supervisor_remarks, approved_days, approved_dates } =
+  const {
+    status,
+    supervisor_remarks,
+    approved_days,
+    approved_dates,
+    decision_mode,
+  } =
     req.body;
+  const trimmedRemarks = String(supervisor_remarks || "").trim();
 
-  if (!["Pending", "Approved", "Denied", "Partially Approved"].includes(status)) {
+  if (
+    !["Pending", "Approved", "Denied", "Partially Approved"].includes(status)
+  ) {
     return res.status(400).json({ message: "Invalid leave status" });
   }
 
@@ -1313,7 +2332,7 @@ export const updateLeaveStatus = async (req, res) => {
     }
 
     const [rows] = await connection.query(
-      "SELECT id, emp_id, date_from, date_to FROM leave_requests WHERE id = ? LIMIT 1",
+      "SELECT id, emp_id, date_from, date_to, status, approved_days, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
       [id],
     );
 
@@ -1325,6 +2344,31 @@ export const updateLeaveStatus = async (req, res) => {
     const leaveRequest = rows[0];
     const requester = await getEmployeeProfile(connection, leaveRequest.emp_id);
 
+    const totalRequestDays =
+      Math.floor(
+        (new Date(leaveRequest.date_to).getTime() -
+          new Date(leaveRequest.date_from).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    const getEffectiveApprovedDays = (statusValue, approvedDaysValue) => {
+      if (!["Approved", "Partially Approved"].includes(String(statusValue || ""))) {
+        return 0;
+      }
+
+      const parsedValue = Number(approvedDaysValue);
+      if (!Number.isNaN(parsedValue) && parsedValue > 0) {
+        return parsedValue;
+      }
+
+      return String(statusValue || "") === "Approved" ? totalRequestDays : 0;
+    };
+
+    const previousEffectiveApprovedDays = getEffectiveApprovedDays(
+      leaveRequest.status,
+      leaveRequest.approved_days,
+    );
+
     if (!canApproverReviewRequester(approver, requester)) {
       await connection.rollback();
       return res.status(403).json({
@@ -1332,12 +2376,77 @@ export const updateLeaveStatus = async (req, res) => {
       });
     }
 
-    const totalRequestDays =
-      Math.floor(
-        (new Date(leaveRequest.date_to).getTime() -
-          new Date(leaveRequest.date_from).getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
+    if (decision_mode === "cancellation") {
+      if (!["Approved", "Denied"].includes(status)) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Invalid cancellation decision status",
+        });
+      }
+
+      if (!leaveRequest.cancellation_requested_at) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "No cancellation request is pending approval",
+        });
+      }
+
+      if (status === "Denied" && !trimmedRemarks) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Reason is required for denial",
+        });
+      }
+
+      if (!["Approved", "Partially Approved"].includes(leaveRequest.status)) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Only approved leave requests can be cancelled",
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = new Date(leaveRequest.date_from);
+      startDate.setHours(0, 0, 0, 0);
+      if (startDate <= today) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Cannot process cancellation on or after the start date",
+        });
+      }
+
+      if (status === "Approved") {
+        await connection.query("DELETE FROM leave_requests WHERE id = ?", [id]);
+      } else {
+        await connection.query(
+          `
+            UPDATE leave_requests
+            SET cancellation_requested_at = NULL,
+                supervisor_remarks = ?
+            WHERE id = ?
+          `,
+          [trimmedRemarks, id],
+        );
+      }
+
+      await recalculateLeaveBalanceForEmployee(connection, leaveRequest.emp_id);
+
+      await notifyRequesterForCancellationDecision(connection, {
+        requesterEmpId: leaveRequest.emp_id,
+        moduleType: "Leave",
+        status,
+        approverName: `${approver.first_name} ${approver.last_name}`.trim(),
+        fromDate: leaveRequest.date_from,
+        toDate: leaveRequest.date_to,
+        descriptor: "leave request",
+      });
+
+      await connection.commit();
+      return res.json({
+        message: `Leave cancellation ${status.toLowerCase()} successfully`,
+      });
+    }
 
     const parsedApprovedDays =
       approved_days !== undefined && approved_days !== null
@@ -1365,6 +2474,15 @@ export const updateLeaveStatus = async (req, res) => {
         });
       }
     }
+
+    if (status === "Denied" && !trimmedRemarks) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "Reason is required for denial",
+      });
+    }
+
+    const remarksValue = status === "Denied" ? trimmedRemarks : null;
 
     if (status === "Approved" && parsedApprovedDays !== null) {
       if (parsedApprovedDays <= 0 || parsedApprovedDays > totalRequestDays) {
@@ -1408,23 +2526,36 @@ export const updateLeaveStatus = async (req, res) => {
           ? JSON.stringify(parsedApprovedDates)
           : null;
 
+    const nextEffectiveApprovedDays = getEffectiveApprovedDays(
+      status,
+      finalApprovedDays,
+    );
+
+    const leaveBalanceDelta =
+      Number(nextEffectiveApprovedDays || 0) -
+      Number(previousEffectiveApprovedDays || 0);
+
     await connection.query(
       `
         UPDATE leave_requests
         SET status = ?,
             approved_days = ?,
             approved_dates = ?,
-            supervisor_remarks = COALESCE(?, supervisor_remarks)
+            supervisor_remarks = ?
         WHERE id = ?
       `,
       [
         status,
         finalApprovedDays,
         finalApprovedDates,
-        supervisor_remarks || null,
+        remarksValue,
         id,
       ],
     );
+
+    if (leaveBalanceDelta !== 0) {
+      await recalculateLeaveBalanceForEmployee(connection, leaveRequest.emp_id);
+    }
 
     await notifyRequesterForDecision(connection, {
       requesterEmpId: leaveRequest.emp_id,
@@ -1450,6 +2581,31 @@ export const getAllPayroll = async (req, res) => {
   try {
     const { period } = req.query;
     const { periodStart } = parsePeriodRange(period);
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+
+    if (!viewer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    let scopedWhereClause = "p.period_start = ?";
+    const scopedParams = [periodStart];
+
+    if (viewer.role === "RankAndFile") {
+      scopedWhereClause += " AND p.emp_id = ?";
+      scopedParams.push(viewer.emp_id);
+    } else if (viewer.role === "Supervisor") {
+      scopedWhereClause += `
+        AND (
+          p.emp_id = ?
+          OR (
+            COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+            AND e.designation = ?
+            AND e.emp_id <> ?
+          )
+        )
+      `;
+      scopedParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+    }
 
     // FIX: Added the WHERE clause to only fetch payrolls for the selected month!
     const [rows] = await pool.query(
@@ -1516,11 +2672,11 @@ export const getAllPayroll = async (req, res) => {
          WHERE DATE_FORMAT(effective_date, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
          GROUP BY emp_id
        ) adj ON adj.emp_id = p.emp_id
-       WHERE p.period_start = ?
+       WHERE ${scopedWhereClause}
        ORDER BY
          CAST(COALESCE(NULLIF(REGEXP_SUBSTR(p.emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
          p.emp_id ASC`,
-      [periodStart, periodStart],
+      [periodStart, ...scopedParams],
     );
 
     const enrichedRows = rows.map((row) => {
@@ -1867,13 +3023,14 @@ export const getOffsetBalance = async (req, res) => {
 
 export const fileOffsetApplication = async (req, res) => {
   const { emp_id, date_from, date_to, days_applied } = req.body;
+  const resolvedDateTo = date_to || date_from;
 
   const requesterEmpId =
     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
 
-  if (!requesterEmpId || !date_from || !date_to || days_applied === undefined) {
+  if (!requesterEmpId || !date_from || !resolvedDateTo || days_applied === undefined) {
     return res.status(400).json({
-      message: "emp_id, date_from, date_to, and days_applied are required",
+      message: "emp_id, date_from, and days_applied are required",
     });
   }
 
@@ -1898,7 +3055,7 @@ export const fileOffsetApplication = async (req, res) => {
           status
         ) VALUES (?, ?, ?, ?, 'Pending')
       `,
-      [requesterEmpId, date_from, date_to, days_applied],
+      [requesterEmpId, date_from, resolvedDateTo, days_applied],
     );
 
     await notifyApproversForRequest(connection, {
@@ -1950,9 +3107,7 @@ export const getOffsetApplications = async (req, res) => {
       query += `
         WHERE oa.emp_id = ?
            OR (
-             oa.status IN ('Pending', 'Approved', 'Partially Approved', 'Denied')
-             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-             AND e.designation = ?
+             e.designation = ?
              AND e.emp_id <> ?
            )
       `;
@@ -1973,7 +3128,8 @@ export const getOffsetApplications = async (req, res) => {
 
 export const updateOffsetApplicationStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, approved_days, supervisor_remarks } = req.body;
+  const { status, approved_days, supervisor_remarks, decision_mode } = req.body;
+  const trimmedRemarks = String(supervisor_remarks || "").trim();
   const supervisorId = req.user?.emp_id;
 
   if (!supervisorId) {
@@ -2016,12 +3172,91 @@ export const updateOffsetApplicationStatus = async (req, res) => {
       });
     }
 
+    if (decision_mode === "cancellation") {
+      if (!["Approved", "Denied"].includes(status)) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Invalid cancellation decision status",
+        });
+      }
+
+      if (!application.cancellation_requested_at) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "No cancellation request is pending approval",
+        });
+      }
+
+      if (status === "Denied" && !trimmedRemarks) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Reason is required for denial",
+        });
+      }
+
+      if (!["Approved", "Partially Approved"].includes(application.status)) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Only approved offset requests can be cancelled",
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = new Date(application.date_from);
+      startDate.setHours(0, 0, 0, 0);
+      if (startDate <= today) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Cannot process cancellation on or after the start date",
+        });
+      }
+
+      if (status === "Approved") {
+        await connection.query("DELETE FROM offset_applications WHERE id = ?", [id]);
+      } else {
+        await connection.query(
+          `
+            UPDATE offset_applications
+            SET cancellation_requested_at = NULL,
+                supervisor_remarks = ?
+            WHERE id = ?
+          `,
+          [trimmedRemarks, id],
+        );
+      }
+
+      await notifyRequesterForCancellationDecision(connection, {
+        requesterEmpId: application.emp_id,
+        moduleType: "Offset",
+        status,
+        approverName: `${approver.first_name} ${approver.last_name}`.trim(),
+        fromDate: application.date_from,
+        toDate: application.date_to,
+        descriptor: "offset request",
+      });
+
+      await connection.commit();
+      return res.json({
+        message: `Offset cancellation ${status.toLowerCase()} successfully`,
+      });
+    }
+
     if (status === "Partially Approved" && !approved_days) {
       await connection.rollback();
       return res
         .status(400)
         .json({ message: "approved_days required for partial approval" });
     }
+
+    if (status === "Denied" && !trimmedRemarks) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "Reason is required for denial",
+      });
+    }
+
+    const remarksValue = status === "Denied" ? trimmedRemarks : null;
 
     await connection.query(
       `
@@ -2037,7 +3272,7 @@ export const updateOffsetApplicationStatus = async (req, res) => {
         status,
         status === "Partially Approved" ? approved_days : null,
         supervisorId,
-        supervisor_remarks || null,
+        remarksValue,
         status === "Approved" || status === "Partially Approved"
           ? new Date()
           : null,
@@ -2062,6 +3297,145 @@ export const updateOffsetApplicationStatus = async (req, res) => {
     res.status(500).json({ message: "Error updating offset application" });
   } finally {
     connection.release();
+  }
+};
+
+export const cancelMyOffsetApplication = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    await ensureOffsetTables();
+
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status FROM offset_applications WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Offset request not found" });
+    }
+
+    const request = rows[0];
+    if (String(request.emp_id) !== String(requesterEmpId)) {
+      return res
+        .status(403)
+        .json({ message: "You can only cancel your own offset request" });
+    }
+
+    const normalizedStatus = String(request.status || "")
+      .trim()
+      .toLowerCase();
+    if (!["pending", "pending approval"].includes(normalizedStatus)) {
+      return res
+        .status(400)
+        .json({ message: "Only pending offset requests can be cancelled" });
+    }
+
+    await pool.query("DELETE FROM offset_applications WHERE id = ?", [id]);
+    res.json({ message: "Offset request cancelled successfully" });
+  } catch (error) {
+    console.error("DB Error in cancelMyOffsetApplication:", error);
+    res.status(500).json({ message: "Error cancelling offset request" });
+  }
+};
+
+export const requestMyOffsetCancellation = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+  const cancellationReason = String(req.body?.cancellation_reason || "").trim();
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!cancellationReason) {
+    return res.status(400).json({
+      message: "Cancellation reason is required",
+    });
+  }
+
+  try {
+    await ensureOffsetTables();
+
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status, date_from, cancellation_requested_at FROM offset_applications WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Offset request not found" });
+    }
+
+    const request = rows[0];
+    if (String(request.emp_id) !== String(requesterEmpId)) {
+      return res.status(403).json({
+        message: "You can only request cancellation for your own offset request",
+      });
+    }
+
+    if (![
+      "Approved",
+      "Partially Approved",
+    ].includes(String(request.status || ""))) {
+      return res.status(400).json({
+        message: "Only approved offset requests can request cancellation",
+      });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(request.date_from);
+    startDate.setHours(0, 0, 0, 0);
+    if (startDate <= today) {
+      return res.status(400).json({
+        message: "Cancellation request is only allowed before the start date",
+      });
+    }
+
+    if (request.cancellation_requested_at) {
+      return res.status(400).json({
+        message: "Cancellation request is already pending approval",
+      });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.query(
+        "UPDATE offset_applications SET cancellation_requested_at = NOW(), cancellation_reason = ? WHERE id = ?",
+        [cancellationReason, id],
+      );
+
+      const requester = await getEmployeeProfile(connection, requesterEmpId);
+      if (requester) {
+        await notifyApproversForCancellationRequest(connection, {
+          requester,
+          moduleType: "Offset",
+          requestId: Number(id),
+          fromDate: request.date_from,
+          toDate: request.date_to,
+          descriptor: "offset request",
+        });
+      }
+
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+
+    res.json({ message: "Cancellation request submitted for approval" });
+  } catch (error) {
+    console.error("DB Error in requestMyOffsetCancellation:", error);
+    res.status(500).json({ message: "Error requesting offset cancellation" });
   }
 };
 
@@ -2312,6 +3686,15 @@ export const updateBaseSalaryByPosition = async (req, res) => {
   }
 
   try {
+    await ensurePositionSalarySettingsTable();
+
+    await pool.query(
+      `INSERT INTO position_salary_settings (position, amount)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
+      [position, amount],
+    );
+
     // 1. Fixed: Changed 'base_salary' to 'basic_pay' for the employees table
     await pool.query("UPDATE employees SET basic_pay = ? WHERE position = ?", [
       amount,
@@ -2484,13 +3867,14 @@ export const fileLeave = async (req, res) => {
     priority,
     supervisor_remarks,
   } = req.body;
+  const resolvedDateTo = date_to || date_from;
 
   const requesterEmpId =
     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
 
-  if (!requesterEmpId || !leave_type || !date_from || !date_to) {
+  if (!requesterEmpId || !leave_type || !date_from || !resolvedDateTo) {
     return res.status(400).json({
-      message: "emp_id, leave_type, date_from, and date_to are required",
+      message: "emp_id, leave_type, and date_from are required",
     });
   }
 
@@ -2502,6 +3886,20 @@ export const fileLeave = async (req, res) => {
     if (!requester) {
       await connection.rollback();
       return res.status(404).json({ message: "Requester not found" });
+    }
+
+    const normalizedStatus = String(requester.status || "")
+      .trim()
+      .toLowerCase();
+    const normalizedLeaveType = String(leave_type || "")
+      .trim()
+      .toLowerCase();
+
+    if (normalizedStatus === "job order" && normalizedLeaveType === "pgt leave") {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "Job Order employees cannot file PGT Leave",
+      });
     }
 
     const [result] = await connection.query(
@@ -2520,7 +3918,7 @@ export const fileLeave = async (req, res) => {
         requesterEmpId,
         leave_type,
         date_from,
-        date_to,
+        resolvedDateTo,
         priority,
         supervisor_remarks || null,
       ],
@@ -2543,6 +3941,143 @@ export const fileLeave = async (req, res) => {
     res.status(500).json({ message: "Error submitting leave application" });
   } finally {
     connection.release();
+  }
+};
+
+export const cancelMyLeave = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status FROM leave_requests WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    const request = rows[0];
+    if (String(request.emp_id) !== String(requesterEmpId)) {
+      return res
+        .status(403)
+        .json({ message: "You can only cancel your own leave request" });
+    }
+
+    const normalizedStatus = String(request.status || "")
+      .trim()
+      .toLowerCase();
+    if (!["pending", "pending approval"].includes(normalizedStatus)) {
+      return res
+        .status(400)
+        .json({ message: "Only pending leave requests can be cancelled" });
+    }
+
+    await pool.query("DELETE FROM leave_requests WHERE id = ?", [id]);
+    res.json({ message: "Leave request cancelled successfully" });
+  } catch (error) {
+    console.error("DB Error in cancelMyLeave:", error);
+    res.status(500).json({ message: "Error cancelling leave request" });
+  }
+};
+
+export const requestMyLeaveCancellation = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+  const cancellationReason = String(req.body?.cancellation_reason || "").trim();
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!cancellationReason) {
+    return res.status(400).json({
+      message: "Cancellation reason is required",
+    });
+  }
+
+  try {
+    await ensureLeaveApprovalColumns();
+
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status, date_from, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    const request = rows[0];
+    if (String(request.emp_id) !== String(requesterEmpId)) {
+      return res.status(403).json({
+        message: "You can only request cancellation for your own leave request",
+      });
+    }
+
+    if (![
+      "Approved",
+      "Partially Approved",
+    ].includes(String(request.status || ""))) {
+      return res.status(400).json({
+        message: "Only approved leave requests can request cancellation",
+      });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(request.date_from);
+    startDate.setHours(0, 0, 0, 0);
+    if (startDate <= today) {
+      return res.status(400).json({
+        message: "Cancellation request is only allowed before the start date",
+      });
+    }
+
+    if (request.cancellation_requested_at) {
+      return res.status(400).json({
+        message: "Cancellation request is already pending approval",
+      });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.query(
+        "UPDATE leave_requests SET cancellation_requested_at = NOW(), cancellation_reason = ? WHERE id = ?",
+        [cancellationReason, id],
+      );
+
+      const requester = await getEmployeeProfile(connection, requesterEmpId);
+      if (requester) {
+        await notifyApproversForCancellationRequest(connection, {
+          requester,
+          moduleType: "Leave",
+          requestId: Number(id),
+          fromDate: request.date_from,
+          toDate: request.date_to,
+          descriptor: "leave request",
+        });
+      }
+
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+
+    res.json({ message: "Cancellation request submitted for approval" });
+  } catch (error) {
+    console.error("DB Error in requestMyLeaveCancellation:", error);
+    res.status(500).json({ message: "Error requesting leave cancellation" });
   }
 };
 

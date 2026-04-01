@@ -37,10 +37,19 @@ import {
   getResignations,
   fileResignation,
   updateResignationStatus,
+  cancelMyResignation,
+  requestMyResignationCancellation,
   getMyNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
+  deleteAllNotifications,
   resetPayrollData,
+  cancelMyOffsetApplication,
+  cancelMyLeave,
+  requestMyOffsetCancellation,
+  requestMyLeaveCancellation,
+  addHrNoteToPendingRequest,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
@@ -107,6 +116,16 @@ router.put(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   markAllNotificationsRead,
 );
+router.delete(
+  "/notifications/:id",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  deleteNotification,
+);
+router.delete(
+  "/notifications",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  deleteAllNotifications,
+);
 router.put("/leave-balance/:id", authorizeRoles("HR"), adjustLeaveBalance);
 
 router.get(
@@ -147,6 +166,16 @@ router.put(
   authorizeRoles("Admin", "Supervisor", "HR"),
   updateResignationStatus,
 );
+router.delete(
+  "/resignations/:id/cancel",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  cancelMyResignation,
+);
+router.post(
+  "/resignations/:id/request-cancel",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  requestMyResignationCancellation,
+);
 
 router.get(
   "/offset-balance/:emp_id",
@@ -168,6 +197,16 @@ router.put(
   authorizeRoles("Supervisor", "HR"),
   updateOffsetApplicationStatus,
 );
+router.delete(
+  "/offset-applications/:id/cancel",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  cancelMyOffsetApplication,
+);
+router.post(
+  "/offset-applications/:id/request-cancel",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  requestMyOffsetCancellation,
+);
 
 router.get(
   "/leaves",
@@ -183,6 +222,22 @@ router.put(
   "/leaves/:id",
   authorizeRoles("Supervisor", "HR"),
   updateLeaveStatus,
+);
+router.delete(
+  "/leaves/:id/cancel",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  cancelMyLeave,
+);
+router.post(
+  "/leaves/:id/request-cancel",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  requestMyLeaveCancellation,
+);
+
+router.post(
+  "/pending-requests/:module/:id/hr-note",
+  authorizeRoles("HR"),
+  addHrNoteToPendingRequest,
 );
 
 router.get(

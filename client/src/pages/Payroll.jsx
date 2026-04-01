@@ -74,6 +74,25 @@ const fmtSigned = (n) => {
   return `${num >= 0 ? "+" : "-"}${fmt(Math.abs(num))}`;
 };
 
+const sanitizeMoneyInput = (value) => {
+  const cleaned = String(value ?? "").replace(/[^\d.]/g, "");
+  const parts = cleaned.split(".");
+
+  if (parts.length === 1) return parts[0];
+
+  const integerPart = parts[0];
+  const decimalPart = parts.slice(1).join("").slice(0, 2);
+  return `${integerPart}.${decimalPart}`;
+};
+
+const formatMoneyOnBlur = (value) => {
+  const sanitized = sanitizeMoneyInput(value);
+  if (!sanitized) return "";
+  const num = Number(sanitized);
+  if (Number.isNaN(num)) return "";
+  return num.toFixed(2);
+};
+
 const getMonthsInRange = (startPeriod, endPeriod) => {
   if (!/^\d{4}-\d{2}$/.test(String(startPeriod || ""))) return [];
   if (!/^\d{4}-\d{2}$/.test(String(endPeriod || ""))) return [];
@@ -96,11 +115,16 @@ const getMonthsInRange = (startPeriod, endPeriod) => {
   return months;
 };
 
+const getCurrentPeriod = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
 export default function Payroll({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
-  const [period, setPeriod] = useState("2026-03");
+  const [period, setPeriod] = useState(getCurrentPeriod);
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -114,12 +138,15 @@ export default function Payroll({ shortcutMode = false }) {
   // Modal & Form States
   const [adjustmentModal, setAdjustmentModal] = useState(null);
   const [salarySettingsModal, setSalarySettingsModal] = useState(false);
+  const [confirmSalarySettingsModal, setConfirmSalarySettingsModal] =
+    useState(false);
   const [salaryBreakdownModal, setSalaryBreakdownModal] = useState(null);
   const [resetConfirmModal, setResetConfirmModal] = useState(false);
   const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
 
   const [adjustmentType, setAdjustmentType] = useState("Incentive");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
+  const [adjustmentLineItems, setAdjustmentLineItems] = useState([]);
   const [deductionTypes, setDeductionTypes] = useState(() => {
     try {
       const stored = JSON.parse(
@@ -311,6 +338,8 @@ export default function Payroll({ shortcutMode = false }) {
 
       showToast("Base salary updated for selected position.");
       setSalaryForm({ designation: "", position: "", amount: "" });
+      setConfirmSalarySettingsModal(false);
+      setSalarySettingsModal(false);
     },
     onError: () => showToast("Failed to update base salary.", "error"),
   });
@@ -391,8 +420,68 @@ export default function Payroll({ shortcutMode = false }) {
   }, [incentiveTypes, selectedIncentiveType]);
 
   // --- HANDLERS ---
+  const getCurrentAdjustmentDescription = () =>
+    adjustmentType === "Decrease"
+      ? selectedDeductionType
+      : selectedIncentiveType;
+
+  const addCurrentAdjustmentLine = () => {
+    const amountValue = Number(adjustmentAmount);
+    if (!adjustmentAmount || Number.isNaN(amountValue) || amountValue <= 0) {
+      showToast("Enter a valid amount greater than 0.", "error");
+      return;
+    }
+
+    const descriptionValue = getCurrentAdjustmentDescription();
+    if (!descriptionValue) {
+      showToast("Select a type.", "error");
+      return;
+    }
+
+    const nextLine = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      type: adjustmentType,
+      description: descriptionValue,
+      amount: Number(amountValue.toFixed(2)),
+    };
+
+    setAdjustmentLineItems((prev) => [...prev, nextLine]);
+    setAdjustmentAmount("");
+  };
+
+  const removeAdjustmentLine = (lineId) => {
+    setAdjustmentLineItems((prev) => prev.filter((line) => line.id !== lineId));
+  };
+
   const handleAdjustment = async () => {
-    if (!adjustmentAmount) return showToast("Fill in all fields.", "error");
+    const currentAmountValue = Number(adjustmentAmount);
+    const currentDescription = getCurrentAdjustmentDescription();
+    const hasCurrentDraft =
+      !!adjustmentAmount &&
+      !Number.isNaN(currentAmountValue) &&
+      currentAmountValue > 0 &&
+      !!currentDescription;
+
+    const lineItems = [
+      ...adjustmentLineItems,
+      ...(hasCurrentDraft
+        ? [
+            {
+              id: "draft",
+              type: adjustmentType,
+              description: currentDescription,
+              amount: Number(currentAmountValue.toFixed(2)),
+            },
+          ]
+        : []),
+    ];
+
+    if (lineItems.length === 0) {
+      return showToast(
+        "Add at least one adjustment line (incentive or deduction).",
+        "error",
+      );
+    }
 
     if (adjustmentType === "Decrease" && !selectedDeductionType) {
       return showToast("Select a deduction type.", "error");
@@ -424,19 +513,16 @@ export default function Payroll({ shortcutMode = false }) {
       return showToast("No employees selected.", "error");
 
     try {
-      const descriptionValue =
-        adjustmentType === "Decrease"
-          ? selectedDeductionType
-          : selectedIncentiveType;
-
       for (const month of targetPeriods) {
-        await adjustmentMutation.mutateAsync({
-          emp_ids: empIds,
-          type: adjustmentType,
-          amount: adjustmentAmount,
-          description: descriptionValue,
-          date: `${month}-01`,
-        });
+        for (const line of lineItems) {
+          await adjustmentMutation.mutateAsync({
+            emp_ids: empIds,
+            type: line.type,
+            amount: line.amount,
+            description: line.description,
+            date: `${month}-01`,
+          });
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -461,6 +547,11 @@ export default function Payroll({ shortcutMode = false }) {
     e.preventDefault();
     if (!salaryForm.position || !salaryForm.amount)
       return showToast("Fill in all fields.", "error");
+
+    setConfirmSalarySettingsModal(true);
+  };
+
+  const confirmBaseSalaryUpdate = () => {
     updateBaseSalaryMutation.mutate({
       position: salaryForm.position,
       amount: salaryForm.amount,
@@ -470,6 +561,7 @@ export default function Payroll({ shortcutMode = false }) {
   const closeAdjustmentModal = () => {
     setAdjustmentModal(null);
     setAdjustmentAmount("");
+    setAdjustmentLineItems([]);
     setNewDeductionType("");
     setNewIncentiveType("");
     setApplyToOtherMonth(false);
@@ -696,7 +788,7 @@ export default function Payroll({ shortcutMode = false }) {
                 <>
                   <button
                     onClick={() => setSalarySettingsModal(true)}
-                    className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 rounded-lg bg-blue-600 border border-blue-600 text-white text-sm font-semibold cursor-pointer hover:bg-blue-700 transition-colors"
                   >
                     Salary Settings
                   </button>
@@ -706,7 +798,7 @@ export default function Payroll({ shortcutMode = false }) {
                       setBulkAdjustmentMode(!bulkAdjustmentMode);
                       setSelectedEmployees(new Set());
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-gray-900 text-white border-gray-900" : "bg-black text-white border-black hover:bg-gray-800"}`}
                   >
                     {bulkAdjustmentMode ? "Cancel Bulk" : "Adjust Multiple"}
                   </button>
@@ -780,6 +872,20 @@ export default function Payroll({ shortcutMode = false }) {
                   </option>
                 ))}
               </select>
+
+              {isAdmin && bulkAdjustmentMode && selectedEmployees.size > 0 && (
+                <button
+                  onClick={() =>
+                    setAdjustmentModal({
+                      name: `${selectedEmployees.size} Employee(s)`,
+                      isBulk: true,
+                    })
+                  }
+                  className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-bold cursor-pointer hover:bg-green-700 border-0"
+                >
+                  Apply Adjustment to {selectedEmployees.size} Employees
+                </button>
+              )}
             </div>
           </div>
 
@@ -926,21 +1032,6 @@ export default function Payroll({ shortcutMode = false }) {
                 </tbody>
               </table>
             </div>
-            {isAdmin && bulkAdjustmentMode && selectedEmployees.size > 0 && (
-              <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button
-                  onClick={() =>
-                    setAdjustmentModal({
-                      name: `${selectedEmployees.size} Employee(s)`,
-                      isBulk: true,
-                    })
-                  }
-                  className="px-6 py-2 rounded-lg bg-green-600 text-white text-sm font-bold cursor-pointer hover:bg-green-700 border-0"
-                >
-                  Apply Adjustment to {selectedEmployees.size} Employees
-                </button>
-              </div>
-            )}
           </div>
         </>
       )}
@@ -1043,26 +1134,37 @@ export default function Payroll({ shortcutMode = false }) {
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                         New Monthly Base Salary
                       </label>
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={salaryForm.amount}
-                        onChange={(e) =>
-                          setSalaryForm({
-                            ...salaryForm,
-                            amount: e.target.value,
-                          })
-                        }
-                        placeholder="e.g. 25000"
-                        className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                          ₱
+                        </span>
+                        <input
+                          required
+                          type="text"
+                          inputMode="decimal"
+                          value={salaryForm.amount}
+                          onChange={(e) =>
+                            setSalaryForm({
+                              ...salaryForm,
+                              amount: sanitizeMoneyInput(e.target.value),
+                            })
+                          }
+                          onBlur={() =>
+                            setSalaryForm({
+                              ...salaryForm,
+                              amount: formatMoneyOnBlur(salaryForm.amount),
+                            })
+                          }
+                          placeholder="0.00"
+                          className="w-full border border-gray-300 rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
                     <div className="pt-4 flex gap-3">
                       <button
                         type="button"
                         onClick={() => {
+                          setConfirmSalarySettingsModal(false);
                           setSalarySettingsModal(false);
                           setSalaryForm({
                             designation: "",
@@ -1091,6 +1193,55 @@ export default function Payroll({ shortcutMode = false }) {
                   Salary settings are Admin-only and apply per selected
                   position.
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && confirmSalarySettingsModal && (
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-gray-900 text-white">
+              <h3 className="m-0 text-base font-bold">Confirm Salary Update</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="m-0 text-sm text-gray-700 leading-relaxed">
+                Update monthly base salary for
+                <span className="font-bold text-gray-900">
+                  {" "}
+                  {salaryForm.position}
+                </span>
+                to
+                <span className="font-bold text-gray-900">
+                  {" "}
+                  {fmt(salaryForm.amount)}
+                </span>
+                ?
+              </p>
+              <p className="m-0 text-xs text-gray-500">
+                This will apply to all current and future employees with this
+                position.
+              </p>
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmSalarySettingsModal(false)}
+                  disabled={updateBaseSalaryMutation.isPending}
+                  className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600 bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmBaseSalaryUpdate}
+                  disabled={updateBaseSalaryMutation.isPending}
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-semibold cursor-pointer border-0 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updateBaseSalaryMutation.isPending
+                    ? "Updating..."
+                    : "Confirm"}
+                </button>
               </div>
             </div>
           </div>
@@ -1173,7 +1324,7 @@ export default function Payroll({ shortcutMode = false }) {
       {/* Adjustment Modal */}
       {isAdmin && adjustmentModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700 flex justify-between items-center text-white">
               <h2 className="text-lg font-semibold m-0">
                 {bulkAdjustmentMode ? "Bulk Adjustment" : "Adjust Salary"}
@@ -1185,265 +1336,356 @@ export default function Payroll({ shortcutMode = false }) {
                 &times;
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm font-bold text-gray-700">
-                {bulkAdjustmentMode
-                  ? `${selectedEmployees.size} selected`
-                  : `${adjustmentModal.first_name} ${adjustmentModal.last_name}`}
-              </p>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={applyToOtherMonth}
-                    onChange={(e) => setApplyToOtherMonth(e.target.checked)}
-                    className="w-4 h-4 cursor-pointer"
-                  />
-                  Apply to another month
-                </label>
-                {applyToOtherMonth && (
-                  <div className="space-y-2">
+            <div className="max-h-[78vh] overflow-y-auto p-6">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="space-y-4 lg:col-span-7">
+                  <p className="text-sm font-bold text-gray-700">
+                    {bulkAdjustmentMode
+                      ? `${selectedEmployees.size} selected`
+                      : `${adjustmentModal.first_name} ${adjustmentModal.last_name}`}
+                  </p>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
                     <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
                       <input
                         type="checkbox"
-                        checked={applyByRange}
-                        onChange={(e) => setApplyByRange(e.target.checked)}
+                        checked={applyToOtherMonth}
+                        onChange={(e) => setApplyToOtherMonth(e.target.checked)}
                         className="w-4 h-4 cursor-pointer"
                       />
-                      Select month range
+                      Apply to another month
                     </label>
+                    {applyToOtherMonth && (
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={applyByRange}
+                            onChange={(e) => setApplyByRange(e.target.checked)}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          Select month range
+                        </label>
 
-                    {applyByRange ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="month"
-                          value={adjustmentRangeStart}
-                          onChange={(e) =>
-                            setAdjustmentRangeStart(e.target.value)
-                          }
-                          className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
-                        />
-                        <input
-                          type="month"
-                          value={adjustmentRangeEnd}
-                          onChange={(e) =>
-                            setAdjustmentRangeEnd(e.target.value)
-                          }
-                          className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
-                        />
+                        {applyByRange ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="month"
+                              value={adjustmentRangeStart}
+                              onChange={(e) =>
+                                setAdjustmentRangeStart(e.target.value)
+                              }
+                              className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                            />
+                            <input
+                              type="month"
+                              value={adjustmentRangeEnd}
+                              onChange={(e) =>
+                                setAdjustmentRangeEnd(e.target.value)
+                              }
+                              className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                            />
+                          </div>
+                        ) : (
+                          <input
+                            type="month"
+                            value={adjustmentTargetPeriod}
+                            onChange={(e) =>
+                              setAdjustmentTargetPeriod(e.target.value)
+                            }
+                            className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                          />
+                        )}
                       </div>
-                    ) : (
-                      <input
-                        type="month"
-                        value={adjustmentTargetPeriod}
-                        onChange={(e) =>
-                          setAdjustmentTargetPeriod(e.target.value)
-                        }
-                        className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
-                      />
                     )}
                   </div>
-                )}
-              </div>
-              <select
-                value={adjustmentType}
-                onChange={(e) => setAdjustmentType(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
-              >
-                <option value="Incentive">Incentives</option>
-                <option value="Decrease">Deductions</option>
-              </select>
-              {adjustmentType === "Decrease" ? (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Deduction Type and Amount
-                  </label>
-                  <div className="flex gap-2 mb-2">
-                    <select
-                      value={selectedDeductionType}
-                      onChange={(e) => setSelectedDeductionType(e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
-                    >
-                      {deductionTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={adjustmentAmount}
-                      onChange={(e) => setAdjustmentAmount(e.target.value)}
-                      placeholder="Amount (₱)"
-                      className="w-36 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeDeductionType}
-                      className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
-                      title="Remove selected deduction type"
-                    >
-                      -
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newDeductionType}
-                      onChange={(e) => setNewDeductionType(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addDeductionType();
-                        }
-                      }}
-                      placeholder="Add deduction type"
-                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={addDeductionType}
-                      className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
-                      title="Add deduction type"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Incentive Type and Amount
-                  </label>
-                  <div className="flex gap-2 mb-2">
-                    <select
-                      value={selectedIncentiveType}
-                      onChange={(e) => setSelectedIncentiveType(e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
-                    >
-                      {incentiveTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={adjustmentAmount}
-                      onChange={(e) => setAdjustmentAmount(e.target.value)}
-                      placeholder="Amount (₱)"
-                      className="w-36 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeIncentiveType}
-                      className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
-                      title="Remove selected incentive type"
-                    >
-                      -
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newIncentiveType}
-                      onChange={(e) => setNewIncentiveType(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addIncentiveType();
-                        }
-                      }}
-                      placeholder="Add incentive type"
-                      className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={addIncentiveType}
-                      className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
-                      title="Add incentive type"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={closeAdjustmentModal}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAdjustment}
-                  disabled={adjustmentMutation.isPending}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium cursor-pointer border-0 hover:bg-purple-700"
-                >
-                  {adjustmentMutation.isPending
-                    ? "Applying..."
-                    : applyToOtherMonth && applyByRange
-                      ? "Apply to Range"
-                      : "Apply"}
-                </button>
-              </div>
-
-              {!bulkAdjustmentMode && (
-                <div className="pt-2 border-t border-gray-200">
-                  <p className="text-xs font-bold text-gray-700 uppercase mb-2">
-                    Recent Deductions/Incentives (
-                    {applyToOtherMonth
-                      ? applyByRange
-                        ? adjustmentRangeEnd
-                        : adjustmentTargetPeriod
-                      : period}
-                    )
-                  </p>
-                  {currentPeriodHistory.length === 0 ? (
-                    <p className="text-xs text-gray-500">
-                      No editable adjustment records found for this month.
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                      {currentPeriodHistory.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="rounded-md border border-gray-200 bg-gray-50 p-2 flex items-center justify-between gap-2"
+                  <select
+                    value={adjustmentType}
+                    onChange={(e) => setAdjustmentType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                  >
+                    <option value="Incentive">Incentives</option>
+                    <option value="Decrease">Deductions</option>
+                  </select>
+                  {adjustmentType === "Decrease" ? (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                        Deduction Type and Amount
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <select
+                          value={selectedDeductionType}
+                          onChange={(e) =>
+                            setSelectedDeductionType(e.target.value)
+                          }
+                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
                         >
-                          <div className="text-xs text-gray-700">
-                            <span className="font-bold">
-                              {toUiAdjustmentCategory(entry.type) === "Decrease"
-                                ? "Deduction"
-                                : "Incentive"}
-                            </span>
-                            : {entry.description || "No type provided"} ={" "}
-                            {fmt(entry.amount)}
-                          </div>
-                          <div className="flex items-center gap-2">
+                          {deductionTypes.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="relative w-36">
+                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                            ₱
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={adjustmentAmount}
+                            onChange={(e) =>
+                              setAdjustmentAmount(
+                                sanitizeMoneyInput(e.target.value),
+                              )
+                            }
+                            onBlur={() =>
+                              setAdjustmentAmount(
+                                formatMoneyOnBlur(adjustmentAmount),
+                              )
+                            }
+                            placeholder="0.00"
+                            className="w-full border border-gray-300 rounded-lg p-2 pl-6 outline-none focus:ring-2 focus:ring-purple-600"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeDeductionType}
+                          className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
+                          title="Remove selected deduction type"
+                        >
+                          -
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newDeductionType}
+                          onChange={(e) => setNewDeductionType(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addDeductionType();
+                            }
+                          }}
+                          placeholder="Add deduction type"
+                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={addDeductionType}
+                          className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
+                          title="Add deduction type"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                        Incentive Type and Amount
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <select
+                          value={selectedIncentiveType}
+                          onChange={(e) =>
+                            setSelectedIncentiveType(e.target.value)
+                          }
+                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                        >
+                          {incentiveTypes.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="relative w-36">
+                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                            ₱
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={adjustmentAmount}
+                            onChange={(e) =>
+                              setAdjustmentAmount(
+                                sanitizeMoneyInput(e.target.value),
+                              )
+                            }
+                            onBlur={() =>
+                              setAdjustmentAmount(
+                                formatMoneyOnBlur(adjustmentAmount),
+                              )
+                            }
+                            placeholder="0.00"
+                            className="w-full border border-gray-300 rounded-lg p-2 pl-6 outline-none focus:ring-2 focus:ring-purple-600"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeIncentiveType}
+                          className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
+                          title="Remove selected incentive type"
+                        >
+                          -
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newIncentiveType}
+                          onChange={(e) => setNewIncentiveType(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addIncentiveType();
+                            }
+                          }}
+                          placeholder="Add incentive type"
+                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={addIncentiveType}
+                          className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
+                          title="Add incentive type"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 lg:col-span-5">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-600">
+                        Adjustment Lines
+                      </p>
+                      <button
+                        type="button"
+                        onClick={addCurrentAdjustmentLine}
+                        className="rounded-md border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-purple-700 hover:bg-purple-100"
+                      >
+                        Add Line
+                      </button>
+                    </div>
+
+                    {adjustmentLineItems.length === 0 ? (
+                      <p className="m-0 text-xs text-gray-500">
+                        No line items added yet. You can mix incentives and
+                        deductions.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {adjustmentLineItems.map((line, index) => (
+                          <div
+                            key={line.id}
+                            className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-2"
+                          >
+                            <div className="min-w-0">
+                              <p className="m-0 truncate text-xs font-semibold text-gray-800">
+                                {index + 1}.{" "}
+                                {line.type === "Decrease"
+                                  ? "Deduction"
+                                  : "Incentive"}{" "}
+                                - {line.description}
+                              </p>
+                              <p className="m-0 mt-0.5 text-xs font-bold text-gray-700">
+                                ₱{Number(line.amount || 0).toFixed(2)}
+                              </p>
+                            </div>
                             <button
-                              onClick={() => startEditHistoryEntry(entry)}
-                              className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-semibold border-0 cursor-pointer hover:bg-blue-200"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => removeHistoryEntry(entry.id)}
-                              disabled={deleteHistoryEntryMutation.isPending}
-                              className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold border-0 cursor-pointer hover:bg-red-200 disabled:opacity-60"
+                              type="button"
+                              onClick={() => removeAdjustmentLine(line.id)}
+                              className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-100"
                             >
                               Remove
                             </button>
                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-1">
+                    <button
+                      onClick={closeAdjustmentModal}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAdjustment}
+                      disabled={adjustmentMutation.isPending}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium cursor-pointer border-0 hover:bg-purple-700"
+                    >
+                      {adjustmentMutation.isPending
+                        ? "Applying..."
+                        : applyToOtherMonth && applyByRange
+                          ? "Apply to Range"
+                          : "Apply"}
+                    </button>
+                  </div>
+
+                  {!bulkAdjustmentMode && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <p className="text-xs font-bold text-gray-700 uppercase mb-2">
+                        Recent Deductions/Incentives (
+                        {applyToOtherMonth
+                          ? applyByRange
+                            ? adjustmentRangeEnd
+                            : adjustmentTargetPeriod
+                          : period}
+                        )
+                      </p>
+                      {currentPeriodHistory.length === 0 ? (
+                        <p className="text-xs text-gray-500">
+                          No editable adjustment records found for this month.
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                          {currentPeriodHistory.map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="rounded-md border border-gray-200 bg-gray-50 p-2 flex items-center justify-between gap-2"
+                            >
+                              <div className="text-xs text-gray-700">
+                                <span className="font-bold">
+                                  {toUiAdjustmentCategory(entry.type) ===
+                                  "Decrease"
+                                    ? "Deduction"
+                                    : "Incentive"}
+                                </span>
+                                : {entry.description || "No type provided"} ={" "}
+                                {fmt(entry.amount)}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => startEditHistoryEntry(entry)}
+                                  className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-semibold border-0 cursor-pointer hover:bg-blue-200"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => removeHistoryEntry(entry.id)}
+                                  disabled={
+                                    deleteHistoryEntryMutation.isPending
+                                  }
+                                  className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold border-0 cursor-pointer hover:bg-red-200 disabled:opacity-60"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Trash2,
+} from "lucide-react";
 import Sidebar from "./Sidebar";
 import { apiFetch } from "../lib/api";
 import axiosInterceptor from "../hooks/interceptor";
@@ -12,6 +18,7 @@ const STORAGE_USER_KEY = "wah_user";
 export default function MainLayout({ role }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const notificationPanelRef = useRef(null);
   const [openNotifications, setOpenNotifications] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -46,6 +53,28 @@ export default function MainLayout({ role }) {
         method: "PUT",
       });
       if (!res.ok) throw new Error("Failed to mark all notifications as read");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries(["notifications"]),
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await apiFetch(`/api/employees/notifications/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete notification");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries(["notifications"]),
+  });
+
+  const deleteAllNotificationsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch("/api/employees/notifications", {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete notifications");
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
@@ -91,6 +120,27 @@ export default function MainLayout({ role }) {
     processLogout();
   };
 
+  useEffect(() => {
+    if (!openNotifications) return;
+
+    const handlePointerDownOutside = (event) => {
+      if (
+        notificationPanelRef.current &&
+        !notificationPanelRef.current.contains(event.target)
+      ) {
+        setOpenNotifications(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDownOutside);
+    document.addEventListener("touchstart", handlePointerDownOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDownOutside);
+      document.removeEventListener("touchstart", handlePointerDownOutside);
+    };
+  }, [openNotifications]);
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
       <header className="sticky top-0 z-20 border-b border-white/15 bg-gradient-to-r from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] px-4 py-3 text-white shadow-sm backdrop-blur md:px-7">
@@ -121,7 +171,10 @@ export default function MainLayout({ role }) {
               </span>
             </h2>
           </div>
-          <div className="relative flex items-center gap-3">
+          <div
+            ref={notificationPanelRef}
+            className="relative flex items-center gap-3"
+          >
             <button
               type="button"
               onClick={() => setOpenNotifications((prev) => !prev)}
@@ -142,14 +195,30 @@ export default function MainLayout({ role }) {
                   <h3 className="m-0 text-sm font-bold text-slate-900">
                     Notifications
                   </h3>
-                  <button
-                    type="button"
-                    onClick={() => markAllReadMutation.mutate()}
-                    className="inline-flex items-center gap-1 bg-transparent text-xs font-semibold text-violet-700 border-0 cursor-pointer"
-                  >
-                    <CheckCheck className="h-3.5 w-3.5" />
-                    Mark all read
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => markAllReadMutation.mutate()}
+                      className="inline-flex items-center gap-1 bg-transparent text-xs font-semibold text-violet-700 border-0 cursor-pointer"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Mark all read
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          "Delete all notifications?",
+                        );
+                        if (!confirmed) return;
+                        deleteAllNotificationsMutation.mutate();
+                      }}
+                      className="inline-flex items-center gap-1 bg-transparent text-xs font-semibold text-red-700 border-0 cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete all
+                    </button>
+                  </div>
                 </div>
 
                 <div className="max-h-80 overflow-y-auto">
@@ -159,22 +228,38 @@ export default function MainLayout({ role }) {
                     </p>
                   ) : (
                     notifications.map((item) => (
-                      <button
+                      <div
                         key={item.id}
-                        type="button"
-                        onClick={() => handleNotificationClick(item)}
-                        className={`w-full cursor-pointer border-0 bg-transparent px-4 py-3 text-left hover:bg-slate-50 ${item.status === "Unread" ? "bg-violet-50/45" : ""}`}
+                        className={`flex items-start justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 ${item.status === "Unread" ? "bg-violet-50/45" : ""}`}
                       >
-                        <p className="m-0 text-sm font-semibold text-slate-900">
-                          {item.title}
-                        </p>
-                        <p className="m-0 mt-1 text-xs text-slate-600">
-                          {item.message}
-                        </p>
-                        <p className="m-0 mt-1 text-[11px] text-slate-400">
-                          {new Date(item.created_at).toLocaleString()}
-                        </p>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleNotificationClick(item)}
+                          className="flex-1 cursor-pointer border-0 bg-transparent p-0 text-left"
+                        >
+                          <p className="m-0 text-sm font-semibold text-slate-900">
+                            {item.title}
+                          </p>
+                          <p className="m-0 mt-1 text-xs text-slate-600">
+                            {item.message}
+                          </p>
+                          <p className="m-0 mt-1 text-[11px] text-slate-400">
+                            {new Date(item.created_at).toLocaleString()}
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotificationMutation.mutate(item.id);
+                          }}
+                          className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                          title="Delete notification"
+                          aria-label="Delete notification"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     ))
                   )}
                 </div>

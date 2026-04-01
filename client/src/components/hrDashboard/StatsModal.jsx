@@ -7,21 +7,35 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+function parseDateOnly(value) {
+  if (value instanceof Date)
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  const parsed = new Date(raw);
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
 function getDateDiffInclusive(start, end) {
-  const from = new Date(start).setHours(0, 0, 0, 0);
-  const to = new Date(end).setHours(0, 0, 0, 0);
+  const from = parseDateOnly(start).getTime();
+  const to = parseDateOnly(end).getTime();
   return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
 }
 
 function getDateRangeInclusive(start, end) {
   const dates = [];
-  const current = new Date(start);
-  const to = new Date(end);
-  current.setHours(0, 0, 0, 0);
-  to.setHours(0, 0, 0, 0);
+  const current = parseDateOnly(start);
+  const to = parseDateOnly(end);
 
   while (current <= to) {
-    dates.push(current.toISOString().slice(0, 10));
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = String(current.getDate()).padStart(2, "0");
+    dates.push(`${year}-${month}-${day}`);
     current.setDate(current.getDate() + 1);
   }
 
@@ -97,11 +111,19 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
   const submitLeaveDecision = () => {
     if (!reviewConfirm || !mutation) return;
 
+    const remarks = reviewConfirm.remarks?.trim();
+    const isDenyDecision = reviewConfirm.status === "Denied";
+
+    if (isDenyDecision && !remarks) {
+      alert("Reason is required for denial.");
+      return;
+    }
+
     if (reviewConfirm.status === "Denied") {
       mutation.mutate({
         id: reviewConfirm.employee.id,
         status: "Denied",
-        supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+        supervisor_remarks: remarks,
       });
       setReviewConfirm(null);
       return;
@@ -126,7 +148,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
       status: isPartial ? "Partially Approved" : "Approved",
       approved_days: selectedDates.length,
       approved_dates: selectedDates,
-      supervisor_remarks: reviewConfirm.remarks?.trim() || undefined,
+      supervisor_remarks: undefined,
     });
     setReviewConfirm(null);
   };
@@ -262,7 +284,9 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                               ).includes(date)}
                               onChange={() => toggleApprovedDate(date)}
                             />
-                            <span>{new Date(date).toLocaleDateString()}</span>
+                            <span>
+                              {parseDateOnly(date).toLocaleDateString()}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -273,23 +297,25 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                     </div>
                   )}
 
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Remarks (optional)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={reviewConfirm.remarks}
-                    onChange={(e) =>
-                      setReviewConfirm({
-                        ...reviewConfirm,
-                        remarks: e.target.value,
-                      })
-                    }
-                    className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
-                    placeholder="Add remarks for this decision"
-                  />
-                </div>
+                {reviewConfirm.status === "Denied" && (
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Reason (required)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={reviewConfirm.remarks}
+                      onChange={(e) =>
+                        setReviewConfirm({
+                          ...reviewConfirm,
+                          remarks: e.target.value,
+                        })
+                      }
+                      className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter reason for denial"
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -399,9 +425,17 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
   const handleConfirm = () => {
     if (!confirmDecision || !mutation) return;
 
+    const isRejectDecision = confirmDecision.status === "Rejected";
+    const remarks = confirmDecision.review_remarks?.trim();
+    if (isRejectDecision && !remarks) {
+      alert("Reason is required for rejection.");
+      return;
+    }
+
     mutation.mutate({
       id: confirmDecision.id,
       status: confirmDecision.status,
+      review_remarks: isRejectDecision ? remarks : undefined,
     });
     setConfirmDecision(null);
   };
@@ -473,7 +507,8 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
                           onClick={() =>
                             setConfirmDecision({
                               id: r.id,
-                              status: "Denied",
+                              status: "Rejected",
+                              review_remarks: "",
                               first_name: r.first_name,
                               last_name: r.last_name,
                               resignation_type: r.resignation_type,
@@ -504,7 +539,7 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
         <DialogContent className="max-w-[460px] overflow-hidden p-0">
           <DialogHeader className="border-b border-slate-200 bg-white px-4 py-3">
             <DialogTitle className="text-base font-semibold text-slate-900">
-              {confirmDecision?.status === "Denied"
+              {confirmDecision?.status === "Rejected"
                 ? "Confirm Denial"
                 : "Confirm Approval"}
             </DialogTitle>
@@ -528,6 +563,29 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
               Are you sure you want to {confirmDecision?.status?.toLowerCase()}{" "}
               this resignation request?
             </p>
+            {confirmDecision?.status === "Rejected" && (
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Reason (required)
+                </label>
+                <textarea
+                  rows={3}
+                  value={confirmDecision?.review_remarks || ""}
+                  onChange={(e) =>
+                    setConfirmDecision((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            review_remarks: e.target.value,
+                          }
+                        : prev,
+                    )
+                  }
+                  className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder="Enter reason for rejection"
+                />
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3">
             <button
@@ -541,9 +599,9 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
               type="button"
               onClick={handleConfirm}
               disabled={mutation?.isPending}
-              className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${confirmDecision?.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
+              className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${confirmDecision?.status === "Rejected" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
             >
-              {confirmDecision?.status === "Denied"
+              {confirmDecision?.status === "Rejected"
                 ? "Confirm Denial"
                 : "Confirm Approval"}
             </button>
