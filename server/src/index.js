@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import "./config/db.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
+import fileRoutes from "./routes/fileRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
 
@@ -27,9 +28,18 @@ app.use(
 );
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  console.log("Method:", req.method);
+  console.log("URL:", req.url);
+  console.log("Headers:", req.headers);
+  console.log("Body:", req.body);
+  next();
+});
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
+app.use("/api/file", fileRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
