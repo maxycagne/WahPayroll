@@ -7,6 +7,7 @@ import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
+import Settings from "./pages/Settings";
 
 // HR & Reports Pages
 import HRDashboard from "./pages/HRDashboard";
@@ -114,6 +115,7 @@ function AppRoutes({ user }) {
               </RoleProtectedRoute>
             }
           />
+          <Route path="/settings" element={<Settings />} />
 
           {/* PROTECTED: Payroll is only for Admin and Supervisor */}
           <Route

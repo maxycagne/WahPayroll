@@ -41,11 +41,17 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   resetPayrollData,
+  uploadProfilePhoto,
+  updateMyProfile,
+  changeMyPassword,
 } from "../controllers/employeeController.js";
 import {
   authenticateToken,
   authorizeRoles,
 } from "../middleware/authMiddleware.js";
+import multer from "multer"; // <-- THIS IS THE MISSING LINE
+import path from "path"; // <-- Make sure you have this too
+import fs from "fs";
 
 const router = express.Router();
 
@@ -235,5 +241,30 @@ router.put(
   resetEmployeePassword,
 );
 router.delete("/:id", authorizeRoles("Admin"), deleteEmployee);
+
+// Setup Profile Photo Multer
+const photoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/profiles";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(
+      null,
+      `avatar-${req.user.emp_id}-${Date.now()}${path.extname(file.originalname)}`,
+    );
+  },
+});
+const uploadPhoto = multer({ storage: photoStorage });
+
+// ADD THESE ROUTES (Put them under your router.use(authenticateToken) line)
+router.post(
+  "/me/photo",
+  uploadPhoto.single("profile_photo"),
+  uploadProfilePhoto,
+);
+router.put("/me/profile", updateMyProfile);
+router.put("/me/change-password", changeMyPassword);
 
 export default router;

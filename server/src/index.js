@@ -5,6 +5,7 @@ import "./config/db.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
+import path from "path";
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use(
     ],
   }),
 );
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use(express.json());
 app.use(cookieParser());

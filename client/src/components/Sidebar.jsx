@@ -8,6 +8,7 @@ import {
   ReceiptText,
   Users,
   Wallet,
+  Settings, // <-- ADDED THIS
 } from "lucide-react";
 
 const navItems = {
@@ -18,6 +19,7 @@ const navItems = {
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/payroll-reports", icon: BarChart3, label: "Reports" },
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
   Supervisor: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -25,6 +27,7 @@ const navItems = {
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
   HR: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -34,12 +37,14 @@ const navItems = {
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
   RankAndFile: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/my-reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "My Payslips" },
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
 };
 

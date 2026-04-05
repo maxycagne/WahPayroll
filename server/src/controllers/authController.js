@@ -91,12 +91,14 @@ export const login = async (req, res) => {
 
     res.json({
       token,
-
       user: {
         emp_id: user.emp_id,
+        first_name: user.first_name, // <-- Keep these separate so Settings.jsx works automatically!
+        last_name: user.last_name, // <-- Keep these separate
         name: `${user.first_name} ${user.last_name}`,
         email: user.email,
         role,
+        profile_photo: user.profile_photo || null, // <--- ADD THIS LINE!
       },
     });
   } catch (error) {
@@ -121,7 +123,8 @@ export const logout = (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT emp_id, first_name, last_name, email, role FROM employees WHERE emp_id = ?",
+      // ADDED profile_photo TO THE SELECT QUERY
+      "SELECT emp_id, first_name, last_name, email, role, profile_photo FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );
 
@@ -133,9 +136,12 @@ export const getMe = async (req, res) => {
     res.json({
       user: {
         emp_id: user.emp_id,
+        first_name: user.first_name,
+        last_name: user.last_name,
         name: `${user.first_name} ${user.last_name}`,
         email: user.email,
         role: normalizeRole(user.role),
+        profile_photo: user.profile_photo || null, // <--- ADD THIS LINE!
       },
     });
   } catch (error) {

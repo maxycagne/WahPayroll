@@ -5,6 +5,7 @@ import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
+import { User } from "lucide-react";
 
 const designationMap = {
   Operations: [
@@ -85,6 +86,8 @@ export default function Employees() {
       return res.json();
     },
   });
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   // --- MUTATIONS ---
   const addMutation = useMutation({
@@ -302,9 +305,27 @@ export default function Employees() {
                 className="hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                <td className="px-6 py-4 font-semibold text-gray-800">
-                  {emp.last_name}, {emp.first_name}{" "}
-                  {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    {/* The Circular Profile Picture */}
+                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                      {emp.profile_photo ? (
+                        <img
+                          src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
+                          alt="Profile"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+
+                    {/* The Name */}
+                    <div className="font-semibold text-gray-800">
+                      {emp.last_name}, {emp.first_name}{" "}
+                      {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                    </div>
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   <div className="font-medium text-gray-900">
