@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
 import bcrypt from "bcryptjs";
@@ -2732,19 +2734,47 @@ const ensureProfileColumn = async (connection) => {
 // 1. Upload Profile Photo
 export const uploadProfilePhoto = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-    await ensureProfileColumn(pool);
+    // 1. Check if Multer actually saved a file
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
-    const filePath = req.file.path.replace(/\\/g, "/"); // Normalize for windows
-    await pool.query(
-      "UPDATE employees SET profile_photo = ? WHERE emp_id = ?",
-      [filePath, req.user.emp_id],
+    // Normalize path for Windows (\ vs /)
+    const newPhotoPath = req.file.path.replace(/\\/g, "/");
+    const empId = req.user.emp_id;
+
+    // 2. Fetch the old photo path from the database BEFORE we overwrite it
+    const [rows] = await pool.query(
+      "SELECT profile_photo FROM employees WHERE emp_id = ?",
+      [empId],
     );
 
-    res.json({ message: "Photo updated successfully", filePath });
+    const oldPhotoPath = rows.length > 0 ? rows[0].profile_photo : null;
+
+    // 3. The Janitor Logic: If an old photo exists, delete it from the hard drive!
+    if (oldPhotoPath) {
+      // Build the exact absolute path to the old file
+      const fullOldPath = path.join(process.cwd(), oldPhotoPath);
+
+      // Check if the file actually exists on the drive, then delete it
+      if (fs.existsSync(fullOldPath)) {
+        fs.unlinkSync(fullOldPath);
+      }
+    }
+
+    // 4. Update the database with the new photo path
+    await pool.query(
+      "UPDATE employees SET profile_photo = ? WHERE emp_id = ?",
+      [newPhotoPath, empId],
+    );
+
+    res.json({
+      message: "Photo uploaded and old photo deleted!",
+      filePath: newPhotoPath,
+    });
   } catch (error) {
-    console.error("Error uploading photo:", error);
-    res.status(500).json({ message: "Error updating photo" });
+    console.error("Photo Upload Error:", error);
+    res.status(500).json({ message: "Server error during photo upload" });
   }
 };
 

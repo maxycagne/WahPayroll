@@ -62,7 +62,7 @@ export default function Settings() {
   // Profile Update Mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch(`${API_BASE_URL}/api/employees/me/profile`, {
+      const res = await apiFetch("/api/employees/me/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -77,14 +77,11 @@ export default function Settings() {
   // Password Change Mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch(
-        `${API_BASE_URL}/api/employees/me/change-password`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        },
-      );
+      const res = await apiFetch("/api/employees/me/change-password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
       const result = await res.json();
       if (!res.ok)
         throw new Error(result.message || "Failed to change password");
