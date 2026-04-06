@@ -54,7 +54,7 @@ export default function Sidebar({ role, onLogout, isCollapsed = false }) {
 
   // --- ADDED THESE THREE VARIABLES ---
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const displayName =
     currentUser.name ||
     `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() ||

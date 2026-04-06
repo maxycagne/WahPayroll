@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   approved_dates JSON,
   cancellation_requested_at TIMESTAMP NULL,
   cancellation_reason TEXT,
-  supervisor_remarks TEXT,
+  reason TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_emp_status (emp_id, status),

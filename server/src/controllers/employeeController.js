@@ -3993,7 +3993,7 @@ export const fileLeave = async (req, res) => {
           date_to,
           priority,
           status,
-          supervisor_remarks
+          reason
         ) VALUES (?, ?, ?, ?, ?, 'Pending', ?)
       `,
       [

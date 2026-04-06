@@ -11,7 +11,7 @@ export default function Settings() {
   const [currentUser, setCurrentUser] = useState(
     JSON.parse(localStorage.getItem("wah_user") || "{}"),
   );
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const displayFirstName =
     currentUser?.first_name ||
