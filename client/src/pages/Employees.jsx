@@ -885,48 +885,72 @@ function EmployeeModal({
                 Government Details
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  name="philhealth_no"
-                  value={data.philhealth_no || ""}
-                  onChange={onChange}
-                  placeholder="PHILHEALTH No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="tin"
-                  value={data.tin || ""}
-                  onChange={onChange}
-                  placeholder="TIN"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="sss_no"
-                  value={data.sss_no || ""}
-                  onChange={onChange}
-                  placeholder="SSS No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="pag_ibig_mid_no"
-                  value={data.pag_ibig_mid_no || ""}
-                  onChange={onChange}
-                  placeholder="PAG-IBIG MID No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="pag_ibig_rtn"
-                  value={data.pag_ibig_rtn || ""}
-                  onChange={onChange}
-                  placeholder="PAG-IBIG RTN"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="gsis_no"
-                  value={data.gsis_no || ""}
-                  onChange={onChange}
-                  placeholder="GSIS No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PHILHEALTH No.
+                  </label>
+                  <input
+                    name="philhealth_no"
+                    value={data.philhealth_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    TIN
+                  </label>
+                  <input
+                    name="tin"
+                    value={data.tin || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    SSS No.
+                  </label>
+                  <input
+                    name="sss_no"
+                    value={data.sss_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PAG-IBIG MID No.
+                  </label>
+                  <input
+                    name="pag_ibig_mid_no"
+                    value={data.pag_ibig_mid_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PAG-IBIG RTN
+                  </label>
+                  <input
+                    name="pag_ibig_rtn"
+                    value={data.pag_ibig_rtn || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    GSIS No.
+                  </label>
+                  <input
+                    name="gsis_no"
+                    value={data.gsis_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
