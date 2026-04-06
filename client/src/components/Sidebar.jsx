@@ -8,7 +8,8 @@ import {
   ReceiptText,
   Users,
   Wallet,
-  Settings, // <-- ADDED THIS
+  Settings,
+  User, // <-- ADDED THIS IMPORT
 } from "lucide-react";
 
 const navItems = {
@@ -19,7 +20,7 @@ const navItems = {
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/payroll-reports", icon: BarChart3, label: "Reports" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
+    { to: "/settings", icon: Settings, label: "Settings" },
   ],
   Supervisor: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -27,7 +28,7 @@ const navItems = {
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
+    { to: "/settings", icon: Settings, label: "Settings" },
   ],
   HR: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -37,19 +38,27 @@ const navItems = {
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
+    { to: "/settings", icon: Settings, label: "Settings" },
   ],
   RankAndFile: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/my-reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "My Payslips" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
+    { to: "/settings", icon: Settings, label: "Settings" },
   ],
 };
 
 export default function Sidebar({ role, onLogout, isCollapsed = false }) {
   const items = navItems[role] || navItems.RankAndFile;
+
+  // --- ADDED THESE THREE VARIABLES ---
+  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const displayName =
+    currentUser.name ||
+    `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() ||
+    "Employee";
 
   return (
     <aside
@@ -103,14 +112,49 @@ export default function Sidebar({ role, onLogout, isCollapsed = false }) {
         ))}
       </nav>
 
-      <button
-        title="Log out"
-        className={`mb-4 mt-2 flex items-center justify-center rounded-xl border border-white/30 bg-white/8 text-[0.88rem] font-semibold text-white transition-colors duration-150 hover:bg-white/18 ${isCollapsed ? "mx-2 px-2.5 py-2.5" : "mx-4 gap-2 px-3 py-2.5"}`}
-        onClick={onLogout}
+      {/* --- ADDED: USER PROFILE & LOGOUT SECTION --- */}
+      <div
+        className={`mt-auto border-t border-white/15 bg-black/10 ${isCollapsed ? "p-3" : "p-4"}`}
       >
-        <LogOut className="h-4 w-4" />
-        {!isCollapsed && "Log out"}
-      </button>
+        <div
+          className={`mb-4 flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}
+        >
+          {/* Circular Avatar */}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 overflow-hidden ring-2 ring-white/10">
+            {currentUser.profile_photo ? (
+              <img
+                src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
+                alt="Profile"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <User className="h-5 w-5 text-white/70" />
+            )}
+          </div>
+
+          {/* Name & Role (Hidden when collapsed) */}
+          {!isCollapsed && (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-bold text-white">
+                {displayName}
+              </span>
+              <span className="truncate text-[10px] font-bold tracking-widest text-white/50 uppercase mt-0.5">
+                {role}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Existing Logout Button (Styled slightly to fit the new bottom block) */}
+        <button
+          title="Log out"
+          className={`flex w-full items-center justify-center rounded-xl border border-white/20 bg-white/10 text-[0.88rem] font-semibold text-white transition-colors duration-150 hover:bg-white/20 hover:border-white/40 ${isCollapsed ? "py-2.5" : "gap-2 py-2.5"}`}
+          onClick={onLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          {!isCollapsed && "Log out"}
+        </button>
+      </div>
     </aside>
   );
 }
