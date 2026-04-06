@@ -399,7 +399,7 @@ const ensureEmployeeMissingDocsTable = async (connection = pool) => {
   `);
 };
 
-const ensureEmployeeGovernmentColumns = async (connection = pool) => {
+export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
   const governmentColumns = [
     { name: "philhealth_no", type: "VARCHAR(50)", after: "email" },
     { name: "tin", type: "VARCHAR(50)", after: "philhealth_no" },
@@ -407,6 +407,7 @@ const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     { name: "pag_ibig_mid_no", type: "VARCHAR(50)", after: "sss_no" },
     { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
     { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
+    { name: "profile_photo", type: "VARCHAR(255)", after: "gsis_no" },
   ];
 
   for (const column of governmentColumns) {

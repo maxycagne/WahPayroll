@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS employees (
   position VARCHAR(100),
   status VARCHAR(50),
   email VARCHAR(100) UNIQUE,
+  profile_photo VARCHAR(255),
   philhealth_no VARCHAR(50),
   tin VARCHAR(50),
   sss_no VARCHAR(50),
