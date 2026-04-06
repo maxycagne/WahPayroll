@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
+import { useEmail } from "../hooks/useEmail";
 import { useToast } from "../hooks/useToast";
 
 const leaveTypes = [
@@ -1042,22 +1043,33 @@ export default function Leave() {
   });
 
   const reviewLeaveMutation = useMutation({
-    mutationFn: async ({ id, ...payload }) => {
+    // 1. Receive the 'item' in the mutation function
+    mutationFn: async ({ id, item, ...payload }) => {
       const res = await apiFetch(`/api/employees/leaves/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload), // Only sends status/remarks to backend
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || "Failed to update leave");
       return result;
     },
-    onSuccess: () => {
+
+    // 2. Trigger email only on successful database update
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries(["leaves"]);
       showToast("Leave request updated successfully.");
+
+      // variables.item contains the 'email', 'first_name', and 'last_name'
+      // retrieved by your updated SQL JOIN query
+      handleSendUpdate(
+        variables.item,
+        variables.status,
+        variables.supervisor_remarks,
+      );
     },
     onError: (err) =>
-      showToast(err.message || "Failed to update leave request.", "error"),
+      showToast(err.message || "Error updating leave.", "error"),
   });
 
   const reviewOffsetMutation = useMutation({
@@ -1364,6 +1376,20 @@ export default function Leave() {
     });
   };
 
+  //TODO:
+  const { sendLeaveStatusEmail } = useEmail();
+
+  const handleSendUpdate = async (item, status, remarks) => {
+    const header =
+      status === "Denied"
+        ? "Your leave request was not approved at this time."
+        : "Your leave request has been approved. Please ensure proper task endorsement before your leave.";
+
+    const finalContent = remarks ? `${header} \n\nReason: ${remarks}` : header;
+
+    await sendLeaveStatusEmail(item, status, finalContent);
+  };
+
   const submitReviewDecision = () => {
     if (!reviewConfirm) return;
 
@@ -1379,6 +1405,7 @@ export default function Leave() {
       if (reviewConfirm.decisionMode === "cancellation") {
         reviewLeaveMutation.mutate({
           id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
           status: reviewConfirm.status,
           decision_mode: "cancellation",
           supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
@@ -1407,8 +1434,10 @@ export default function Leave() {
         reviewConfirm.isMultiDay &&
         selectedDates.length < requestedDates.length;
 
+      // FINAL MUTATE CALL
       reviewLeaveMutation.mutate({
         id: reviewConfirm.item.id,
+        item: reviewConfirm.item,
         status:
           reviewConfirm.status === "Denied"
             ? "Denied"
@@ -1421,6 +1450,7 @@ export default function Leave() {
           reviewConfirm.status === "Denied" ? null : selectedDates,
         supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
       });
+
       setReviewConfirm(null);
       return;
     }
@@ -1429,6 +1459,7 @@ export default function Leave() {
       if (reviewConfirm.decisionMode === "cancellation") {
         reviewOffsetMutation.mutate({
           id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
           status: reviewConfirm.status,
           decision_mode: "cancellation",
           supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
