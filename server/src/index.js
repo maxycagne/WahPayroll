@@ -31,13 +31,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-  console.log("Method:", req.method);
-  console.log("URL:", req.url);
-  console.log("Headers:", req.headers);
-  console.log("Body:", req.body);
-  next();
-});
+
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
