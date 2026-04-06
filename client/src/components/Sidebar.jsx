@@ -31,7 +31,7 @@ const navItems = {
     { to: "/settings", icon: Settings, label: "Settings" },
   ],
   HR: [
-    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/hr-dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },

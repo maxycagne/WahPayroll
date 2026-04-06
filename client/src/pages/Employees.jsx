@@ -31,7 +31,7 @@ const designationMap = {
   ],
 };
 
-export default function Employees() {
+export default function Employees({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -69,14 +69,17 @@ export default function Employees() {
   });
 
   useEffect(() => {
-    if (searchParams.get("open") !== "add-employee") return;
+    if (shortcutMode) {
+      setIsAddModalOpen(true);
+      return;
+    }
 
-    setIsAddModalOpen(true);
+    if (searchParams.get("open") !== "add-employee") return;
 
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, shortcutMode]);
 
   // --- QUERIES ---
   const { data: employees = [], isLoading } = useQuery({
@@ -232,182 +235,188 @@ export default function Employees() {
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Employee Management
-        </h1>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-        >
-          + Add Employee
-        </button>
-      </div>
+      {!shortcutMode && (
+        <>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Employee Management
+            </h1>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+            >
+              + Add Employee
+            </button>
+          </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <input
-          type="text"
-          placeholder="Search ID or Name..."
-          className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-          value={filterDesignation}
-          onChange={(e) => setFilterDesignation(e.target.value)}
-        >
-          <option value="All">All Designations</option>
-          {Object.keys(designationMap).map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-        <select
-          className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="All">All Status</option>
-          <option value="Permanent">Permanent</option>
-          <option value="Job Order">Job Order</option>
-          <option value="Casual">Casual</option>
-          <option value="PGT Employee">PGT Employee</option>
-        </select>
-      </div>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <input
+              type="text"
+              placeholder="Search ID or Name..."
+              className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select
+              className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              value={filterDesignation}
+              onChange={(e) => setFilterDesignation(e.target.value)}
+            >
+              <option value="All">All Designations</option>
+              {Object.keys(designationMap).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <select
+              className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="All">All Status</option>
+              <option value="Permanent">Permanent</option>
+              <option value="Job Order">Job Order</option>
+              <option value="Casual">Casual</option>
+              <option value="PGT Employee">PGT Employee</option>
+            </select>
+          </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-        <table className="w-full text-left text-sm border-collapse">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 font-bold text-gray-700">ID</th>
-              <th className="px-6 py-3 font-bold text-gray-700">Full Name</th>
-              <th className="px-6 py-3 font-bold text-gray-700">
-                Designation / Position
-              </th>
-              <th className="px-6 py-3 font-bold text-gray-700">
-                Email Address
-              </th>
-              <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-              <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredEmployees.map((emp) => (
-              <tr
-                key={emp.emp_id}
-                onClick={() => setSelectedEmployeeDetails(emp)}
-                className="hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    {/* The Circular Profile Picture */}
-                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                      {emp.profile_photo ? (
-                        <img
-                          src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-5 w-5 text-gray-400" />
-                      )}
-                    </div>
-
-                    {/* The Name */}
-                    <div className="font-semibold text-gray-800">
-                      {emp.last_name}, {emp.first_name}{" "}
-                      {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-gray-600">
-                  <div className="font-medium text-gray-900">
-                    {emp.designation}
-                  </div>
-                  <div className="text-xs opacity-75">{emp.position}</div>
-                </td>
-                <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                <td className="px-6 py-4">
-                  <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                    {emp.status}
-                  </span>
-                </td>
-                <td
-                  className="px-6 py-4 text-center relative"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() =>
-                      setActiveMenu(
-                        activeMenu === emp.emp_id ? null : emp.emp_id,
-                      )
-                    }
-                    className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+          {/* Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 font-bold text-gray-700">ID</th>
+                  <th className="px-6 py-3 font-bold text-gray-700">
+                    Full Name
+                  </th>
+                  <th className="px-6 py-3 font-bold text-gray-700">
+                    Designation / Position
+                  </th>
+                  <th className="px-6 py-3 font-bold text-gray-700">
+                    Email Address
+                  </th>
+                  <th className="px-6 py-3 font-bold text-gray-700">Status</th>
+                  <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredEmployees.map((emp) => (
+                  <tr
+                    key={emp.emp_id}
+                    onClick={() => setSelectedEmployeeDetails(emp)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
                   >
-                    <svg
-                      width="20"
-                      height="20"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                    </svg>
-                  </button>
+                    <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {/* The Circular Profile Picture */}
+                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                          {emp.profile_photo ? (
+                            <img
+                              src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
+                              alt="Profile"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <User className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
 
-                  {/* Action Menu Dropdown */}
-                  {activeMenu === emp.emp_id && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setActiveMenu(null)}
-                      ></div>
-                      <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                        <button
-                          onClick={() => {
-                            setEditEmployee(emp);
-                            setActiveMenu(null);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                        >
-                          Edit Info
-                        </button>
-                        {canResetPassword && (
-                          <button
-                            onClick={() => {
-                              setActiveMenu(null);
-                              setResetConfirm(emp);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
-                          >
-                            Reset Password
-                          </button>
-                        )}
-                        <hr className="my-1 border-gray-100" />
-                        <button
-                          onClick={() => {
-                            setDeleteConfirm(emp);
-                            setActiveMenu(null);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                        >
-                          Delete
-                        </button>
+                        {/* The Name */}
+                        <div className="font-semibold text-gray-800">
+                          {emp.last_name}, {emp.first_name}{" "}
+                          {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                        </div>
                       </div>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      <div className="font-medium text-gray-900">
+                        {emp.designation}
+                      </div>
+                      <div className="text-xs opacity-75">{emp.position}</div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                        {emp.status}
+                      </span>
+                    </td>
+                    <td
+                      className="px-6 py-4 text-center relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() =>
+                          setActiveMenu(
+                            activeMenu === emp.emp_id ? null : emp.emp_id,
+                          )
+                        }
+                        className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          fill="currentColor"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                        </svg>
+                      </button>
+
+                      {/* Action Menu Dropdown */}
+                      {activeMenu === emp.emp_id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setActiveMenu(null)}
+                          ></div>
+                          <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
+                            <button
+                              onClick={() => {
+                                setEditEmployee(emp);
+                                setActiveMenu(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                            >
+                              Edit Info
+                            </button>
+                            {canResetPassword && (
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(null);
+                                  setResetConfirm(emp);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                              >
+                                Reset Password
+                              </button>
+                            )}
+                            <hr className="my-1 border-gray-100" />
+                            <button
+                              onClick={() => {
+                                setDeleteConfirm(emp);
+                                setActiveMenu(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {/* Modals same as before but updated with logic */}
       {isAddModalOpen && !addConfirm && (
