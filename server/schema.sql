@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS offset_applications (
   date_from DATE NOT NULL,
   date_to DATE NOT NULL,
   days_applied DECIMAL(5,2) NOT NULL,
+  reason TEXT COMMENT 'Reason for filing offset application',
   status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
   approved_days DECIMAL(5,2) COMMENT 'Days approved if partially approved',
   supervisor_emp_id VARCHAR(50),

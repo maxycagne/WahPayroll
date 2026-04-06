@@ -125,6 +125,7 @@ const ensureOffsetTables = async (connection = pool) => {
       date_from DATE NOT NULL,
       date_to DATE NOT NULL,
       days_applied DECIMAL(5,2) NOT NULL,
+      reason TEXT,
       status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
       approved_days DECIMAL(5,2),
       supervisor_emp_id ${empIdColumn},
@@ -189,6 +190,23 @@ const ensureOffsetTables = async (connection = pool) => {
   if (offsetHrNoteColumn.length === 0) {
     await connection.query(
       "ALTER TABLE offset_applications ADD COLUMN hr_note TEXT NULL AFTER supervisor_remarks",
+    );
+  }
+
+  const [offsetReasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'offset_applications'
+        AND COLUMN_NAME = 'reason'
+      LIMIT 1
+    `,
+  );
+
+  if (offsetReasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE offset_applications ADD COLUMN reason TEXT NULL AFTER days_applied",
     );
   }
 };
@@ -3056,8 +3074,9 @@ export const getOffsetBalance = async (req, res) => {
 };
 
 export const fileOffsetApplication = async (req, res) => {
-  const { emp_id, date_from, date_to, days_applied } = req.body;
+  const { emp_id, date_from, date_to, days_applied, reason } = req.body;
   const resolvedDateTo = date_to || date_from;
+  const trimmedReason = String(reason || "").trim();
 
   const requesterEmpId =
     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
@@ -3065,6 +3084,12 @@ export const fileOffsetApplication = async (req, res) => {
   if (!requesterEmpId || !date_from || !resolvedDateTo || days_applied === undefined) {
     return res.status(400).json({
       message: "emp_id, date_from, and days_applied are required",
+    });
+  }
+
+  if (!trimmedReason) {
+    return res.status(400).json({
+      message: "Reason is required for offset applications",
     });
   }
 
@@ -3086,10 +3111,11 @@ export const fileOffsetApplication = async (req, res) => {
           date_from,
           date_to,
           days_applied,
+          reason,
           status
-        ) VALUES (?, ?, ?, ?, 'Pending')
+        ) VALUES (?, ?, ?, ?, ?, 'Pending')
       `,
-      [requesterEmpId, date_from, resolvedDateTo, days_applied],
+      [requesterEmpId, date_from, resolvedDateTo, days_applied, trimmedReason],
     );
 
     await notifyApproversForRequest(connection, {
@@ -3917,6 +3943,7 @@ export const fileLeave = async (req, res) => {
     supervisor_remarks,
   } = req.body;
   const resolvedDateTo = date_to || date_from;
+  const trimmedReason = String(supervisor_remarks || "").trim();
 
   const requesterEmpId =
     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
@@ -3924,6 +3951,12 @@ export const fileLeave = async (req, res) => {
   if (!requesterEmpId || !leave_type || !date_from || !resolvedDateTo) {
     return res.status(400).json({
       message: "emp_id, leave_type, and date_from are required",
+    });
+  }
+
+  if (!trimmedReason) {
+    return res.status(400).json({
+      message: "Reason is required for leave applications",
     });
   }
 
@@ -3969,7 +4002,7 @@ export const fileLeave = async (req, res) => {
         date_from,
         resolvedDateTo,
         priority,
-        supervisor_remarks || null,
+        trimmedReason,
       ],
     );
 
