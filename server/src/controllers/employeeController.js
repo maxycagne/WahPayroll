@@ -1,5 +1,8 @@
+import fs from "fs";
+import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
+import bcrypt from "bcryptjs";
 
 const resolveRoleFromProfile = ({ designation, position }) => {
   const normalizedDesignation = String(designation || "")
@@ -2463,7 +2466,8 @@ export const updateLeaveStatus = async (req, res) => {
       if (!parsedApprovedDays || parsedApprovedDays <= 0) {
         await connection.rollback();
         return res.status(400).json({
-          message: "approved_days must be greater than zero for partial approval",
+          message:
+            "approved_days must be greater than zero for partial approval",
         });
       }
 
@@ -3507,7 +3511,10 @@ const recomputePayrollForEmployeesPeriod = async (
   );
 
   for (const row of payrollRows) {
-    const totals = totalsByEmp.get(row.emp_id) || { incentives: 0, deductions: 0 };
+    const totals = totalsByEmp.get(row.emp_id) || {
+      incentives: 0,
+      deductions: 0,
+    };
 
     await connection.query(
       `UPDATE payroll
@@ -3534,11 +3541,15 @@ export const applySalaryAdjustment = async (req, res) => {
   const { emp_ids, type, amount, description, date } = req.body;
 
   if (!Array.isArray(emp_ids) || emp_ids.length === 0) {
-    return res.status(400).json({ message: "At least one employee is required" });
+    return res
+      .status(400)
+      .json({ message: "At least one employee is required" });
   }
 
   if (!type || amount === undefined || amount === null || !date) {
-    return res.status(400).json({ message: "type, amount, and date are required" });
+    return res
+      .status(400)
+      .json({ message: "type, amount, and date are required" });
   }
 
   const normalizedType = normalizeAdjustmentType(type);
@@ -3799,7 +3810,11 @@ export const updateSalaryHistoryEntry = async (req, res) => {
       [normalizedType, numericAmount, description || null, id],
     );
 
-    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+    await recomputePayrollForEmployeesPeriod(
+      connection,
+      [existing.emp_id],
+      period,
+    );
 
     await connection.commit();
     res.json({ message: "Adjustment updated successfully" });
@@ -3845,7 +3860,11 @@ export const deleteSalaryHistoryEntry = async (req, res) => {
 
     await connection.query("DELETE FROM salary_history WHERE id = ?", [id]);
 
-    await recomputePayrollForEmployeesPeriod(connection, [existing.emp_id], period);
+    await recomputePayrollForEmployeesPeriod(
+      connection,
+      [existing.emp_id],
+      period,
+    );
 
     await connection.commit();
     res.json({ message: "Adjustment removed successfully" });
@@ -4232,5 +4251,107 @@ export const resetPayrollData = async (req, res) => {
       .json({ message: "Error resetting payroll data", error: error.message });
   } finally {
     connection.release();
+  }
+};
+
+const ensureProfileColumn = async (connection) => {
+  try {
+    await connection.query(
+      "ALTER TABLE employees ADD COLUMN profile_photo VARCHAR(255) NULL",
+    );
+  } catch (e) {
+    if (e.code !== "ER_DUP_FIELDNAME") throw e;
+  }
+};
+
+// 1. Upload Profile Photo
+export const uploadProfilePhoto = async (req, res) => {
+  try {
+    // 1. Check if Multer actually saved a file
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // Normalize path for Windows (\ vs /)
+    const newPhotoPath = req.file.path.replace(/\\/g, "/");
+    const empId = req.user.emp_id;
+
+    // 2. Fetch the old photo path from the database BEFORE we overwrite it
+    const [rows] = await pool.query(
+      "SELECT profile_photo FROM employees WHERE emp_id = ?",
+      [empId],
+    );
+
+    const oldPhotoPath = rows.length > 0 ? rows[0].profile_photo : null;
+
+    // 3. The Janitor Logic: If an old photo exists, delete it from the hard drive!
+    if (oldPhotoPath) {
+      // Build the exact absolute path to the old file
+      const fullOldPath = path.join(process.cwd(), oldPhotoPath);
+
+      // Check if the file actually exists on the drive, then delete it
+      if (fs.existsSync(fullOldPath)) {
+        fs.unlinkSync(fullOldPath);
+      }
+    }
+
+    // 4. Update the database with the new photo path
+    await pool.query(
+      "UPDATE employees SET profile_photo = ? WHERE emp_id = ?",
+      [newPhotoPath, empId],
+    );
+
+    res.json({
+      message: "Photo uploaded and old photo deleted!",
+      filePath: newPhotoPath,
+    });
+  } catch (error) {
+    console.error("Photo Upload Error:", error);
+    res.status(500).json({ message: "Server error during photo upload" });
+  }
+};
+
+// 2. Update Personal Profile Details
+export const updateMyProfile = async (req, res) => {
+  const { email } = req.body;
+  try {
+    await pool.query("UPDATE employees SET email = ? WHERE emp_id = ?", [
+      email,
+      req.user.emp_id,
+    ]);
+    res.json({ message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Error updating profile" });
+  }
+};
+
+// 3. Change Password
+export const changeMyPassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    const [rows] = await pool.query(
+      "SELECT password FROM employees WHERE emp_id = ?",
+      [req.user.emp_id],
+    );
+    if (rows.length === 0)
+      return res.status(404).json({ message: "User not found" });
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Incorrect current password" });
+
+    // Hash new password and save
+    const hashedPassword = await hashPassword(newPassword);
+    await pool.query("UPDATE employees SET password = ? WHERE emp_id = ?", [
+      hashedPassword,
+      req.user.emp_id,
+    ]);
+
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Error changing password" });
   }
 };
