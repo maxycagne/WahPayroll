@@ -894,12 +894,41 @@ export const createEmployee = async (req, res) => {
       if (positionSalaryRows.length > 0) {
         baseSalary = Number(positionSalaryRows[0].amount);
       } else {
+        // Support older employee schemas that may not have timestamp columns.
+        let employeeOrderColumn = "emp_id";
+
+        const [updatedAtColumnRows] = await pool.query(
+          `SELECT 1
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'employees'
+             AND COLUMN_NAME = 'updated_at'
+           LIMIT 1`,
+        );
+
+        if (updatedAtColumnRows.length > 0) {
+          employeeOrderColumn = "updated_at";
+        } else {
+          const [createdAtColumnRows] = await pool.query(
+            `SELECT 1
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'employees'
+               AND COLUMN_NAME = 'created_at'
+             LIMIT 1`,
+          );
+
+          if (createdAtColumnRows.length > 0) {
+            employeeOrderColumn = "created_at";
+          }
+        }
+
         const [existingPositionRows] = await pool.query(
           `SELECT basic_pay
            FROM employees
            WHERE position = ?
              AND basic_pay IS NOT NULL
-           ORDER BY updated_at DESC
+           ORDER BY ${employeeOrderColumn} DESC
            LIMIT 1`,
           [position],
         );
