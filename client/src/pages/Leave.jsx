@@ -1043,7 +1043,6 @@ export default function Leave() {
   });
 
   const reviewLeaveMutation = useMutation({
-    // 1. Receive the 'item' in the mutation function
     mutationFn: async ({ id, item, ...payload }) => {
       const res = await apiFetch(`/api/employees/leaves/${id}`, {
         method: "PUT",
@@ -1060,8 +1059,6 @@ export default function Leave() {
       queryClient.invalidateQueries(["leaves"]);
       showToast("Leave request updated successfully.");
 
-      // variables.item contains the 'email', 'first_name', and 'last_name'
-      // retrieved by your updated SQL JOIN query
       handleSendUpdate(
         variables.item,
         variables.status,

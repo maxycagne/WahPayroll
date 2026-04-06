@@ -2331,10 +2331,11 @@ export const getAllLeaves = async (req, res) => {
     const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
     if (!viewer) return res.status(401).json({ message: "Unauthorized" });
 
-    // UPDATE: Added e.email to the SELECT list
     let query = `
       SELECT 
         l.*, 
+        DATE_FORMAT(l.date_from, '%Y-%m-%d') as date_from,
+    DATE_FORMAT(l.date_to, '%Y-%m-%d') as date_to,
         e.first_name, 
         e.last_name, 
         e.email,          
@@ -4019,7 +4020,7 @@ export const fileLeave = async (req, res) => {
           date_to,
           priority,
           status,
-          supervisor_remarks
+          reason
         ) VALUES (?, ?, ?, ?, ?, 'Pending', ?)
       `,
       [
