@@ -1214,6 +1214,12 @@ export default function Leave() {
       return;
     }
 
+    const trimmedReason = String(formData.reason || "").trim();
+    if (!trimmedReason) {
+      setFormError("Reason is required.");
+      return;
+    }
+
     const effectiveToDate = formData.toDate || formData.fromDate;
 
     // Automatically calculate the days for Offset since the manual input was removed
@@ -1231,6 +1237,7 @@ export default function Leave() {
       fromDate: formData.fromDate,
       toDate: effectiveToDate,
       daysApplied: computedDays,
+      reason: trimmedReason,
     });
   };
 
@@ -1800,7 +1807,7 @@ export default function Leave() {
 
                     <div className="flex flex-col gap-2 md:col-span-3">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        Reason / Details
+                        Reason / Details <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         rows={3}
@@ -1809,6 +1816,8 @@ export default function Leave() {
                           setFormData({ ...formData, reason: e.target.value })
                         }
                         className="resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Please provide a reason for this request"
+                        required
                       />
                     </div>
 
@@ -2318,6 +2327,7 @@ export default function Leave() {
                       date_from: confirmAction.fromDate,
                       date_to: confirmAction.toDate,
                       days_applied: parseFloat(confirmAction.daysApplied),
+                      reason: confirmAction.reason,
                     });
                   } else {
                     submitLeaveMutation.mutate({
@@ -2326,7 +2336,7 @@ export default function Leave() {
                       date_from: formData.fromDate,
                       date_to: formData.toDate,
                       priority: formData.priority,
-                      supervisor_remarks: formData.reason,
+                      supervisor_remarks: confirmAction.reason,
                     });
                   }
                   setConfirmAction(null);
@@ -2382,6 +2392,19 @@ export default function Leave() {
               </div>
             )}
 
+            {(reviewConfirm.item.supervisor_remarks ||
+              reviewConfirm.item.reason) &&
+              reviewConfirm.decisionMode !== "cancellation" && (
+                <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                  <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-blue-800">
+                    Reason for Submission
+                  </p>
+                  <p className="m-0 mt-1 text-sm text-blue-900">
+                    {reviewConfirm.item.supervisor_remarks ||
+                      reviewConfirm.item.reason}
+                  </p>
+                </div>
+              )}
             {reviewConfirm.module === "leave" &&
               reviewConfirm.decisionMode !== "cancellation" &&
               reviewConfirm.status === "Approved" &&
