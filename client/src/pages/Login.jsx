@@ -12,6 +12,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -27,7 +28,7 @@ export default function Login() {
 
   const login = useMutation({
     mutationFn: async ({ username, password }) => {
-      const res = await axiosInterceptor.post("/api/auth/login", {
+      const res = await axios.post("http://localhost:8000/api/auth/login", {
         username,
         password,
       });

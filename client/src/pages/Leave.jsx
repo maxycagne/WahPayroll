@@ -6,7 +6,6 @@ import {
   getDateDiffInclusive,
   calculateBusinessDays,
   getDateRangeInclusive,
-  isFutureDateString,
 } from "@/features/leave/utils/date.utils";
 import { getOffsetRequestedDays } from "@/features/leave/utils/leave.utils";
 import {
@@ -14,6 +13,7 @@ import {
   resignationTypes,
   leavePolicy,
 } from "@/features/leave/leaveConstants";
+import { useEmail } from "../hooks/useEmail";
 
 import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
 import ActionButtons from "@/features/leave/components/ActionButtons";
@@ -188,6 +188,12 @@ export default function Leave() {
       return;
     }
 
+    const trimmedReason = String(formData.reason || "").trim();
+    if (!trimmedReason) {
+      setFormError("Reason is required.");
+      return;
+    }
+
     const effectiveToDate = formData.toDate || formData.fromDate;
 
     let computedDays = formData.daysApplied;
@@ -206,7 +212,7 @@ export default function Leave() {
       fromDate: formData.fromDate,
       toDate: effectiveToDate,
       daysApplied: computedDays,
-      reason: formData.reason,
+      reason: trimmedReason,
     });
   };
 
@@ -352,6 +358,20 @@ export default function Leave() {
     });
   };
 
+  //TODO:
+  const { sendLeaveStatusEmail } = useEmail();
+
+  const handleSendUpdate = async (item, status, remarks) => {
+    const header =
+      status === "Denied"
+        ? "Your leave request was not approved at this time."
+        : "Your leave request has been approved. Please ensure proper task endorsement before your leave.";
+
+    const finalContent = remarks ? `${header} \n\nReason: ${remarks}` : header;
+
+    await sendLeaveStatusEmail(item, status, finalContent);
+  };
+
   const submitReviewDecision = () => {
     if (!reviewConfirm) return;
 
@@ -367,6 +387,7 @@ export default function Leave() {
       if (reviewConfirm.decisionMode === "cancellation") {
         reviewLeaveMutation.mutate({
           id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
           status: reviewConfirm.status,
           decision_mode: "cancellation",
           supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
@@ -395,8 +416,10 @@ export default function Leave() {
         reviewConfirm.isMultiDay &&
         selectedDates.length < requestedDates.length;
 
+      // FINAL MUTATE CALL
       reviewLeaveMutation.mutate({
         id: reviewConfirm.item.id,
+        item: reviewConfirm.item,
         status:
           reviewConfirm.status === "Denied"
             ? "Denied"
@@ -409,6 +432,7 @@ export default function Leave() {
           reviewConfirm.status === "Denied" ? null : selectedDates,
         supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
       });
+
       setReviewConfirm(null);
       return;
     }
@@ -417,6 +441,7 @@ export default function Leave() {
       if (reviewConfirm.decisionMode === "cancellation") {
         reviewOffsetMutation.mutate({
           id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
           status: reviewConfirm.status,
           decision_mode: "cancellation",
           supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,

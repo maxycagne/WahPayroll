@@ -11,7 +11,7 @@ import path from "path";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 // Updated CORS configuration to allow React and your custom headers
 app.use(

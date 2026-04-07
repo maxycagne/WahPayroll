@@ -125,6 +125,7 @@ const ensureOffsetTables = async (connection = pool) => {
       date_from DATE NOT NULL,
       date_to DATE NOT NULL,
       days_applied DECIMAL(5,2) NOT NULL,
+      reason TEXT,
       status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
       approved_days DECIMAL(5,2),
       supervisor_emp_id ${empIdColumn},
@@ -189,6 +190,23 @@ const ensureOffsetTables = async (connection = pool) => {
   if (offsetHrNoteColumn.length === 0) {
     await connection.query(
       "ALTER TABLE offset_applications ADD COLUMN hr_note TEXT NULL AFTER supervisor_remarks",
+    );
+  }
+
+  const [offsetReasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'offset_applications'
+        AND COLUMN_NAME = 'reason'
+      LIMIT 1
+    `,
+  );
+
+  if (offsetReasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE offset_applications ADD COLUMN reason TEXT NULL AFTER days_applied",
     );
   }
 };
@@ -399,7 +417,7 @@ const ensureEmployeeMissingDocsTable = async (connection = pool) => {
   `);
 };
 
-const ensureEmployeeGovernmentColumns = async (connection = pool) => {
+export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
   const governmentColumns = [
     { name: "philhealth_no", type: "VARCHAR(50)", after: "email" },
     { name: "tin", type: "VARCHAR(50)", after: "philhealth_no" },
@@ -407,6 +425,7 @@ const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     { name: "pag_ibig_mid_no", type: "VARCHAR(50)", after: "sss_no" },
     { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
     { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
+    { name: "profile_photo", type: "VARCHAR(255)", after: "gsis_no" },
   ];
 
   for (const column of governmentColumns) {
@@ -895,12 +914,41 @@ export const createEmployee = async (req, res) => {
       if (positionSalaryRows.length > 0) {
         baseSalary = Number(positionSalaryRows[0].amount);
       } else {
+        // Support older employee schemas that may not have timestamp columns.
+        let employeeOrderColumn = "emp_id";
+
+        const [updatedAtColumnRows] = await pool.query(
+          `SELECT 1
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'employees'
+             AND COLUMN_NAME = 'updated_at'
+           LIMIT 1`,
+        );
+
+        if (updatedAtColumnRows.length > 0) {
+          employeeOrderColumn = "updated_at";
+        } else {
+          const [createdAtColumnRows] = await pool.query(
+            `SELECT 1
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'employees'
+               AND COLUMN_NAME = 'created_at'
+             LIMIT 1`,
+          );
+
+          if (createdAtColumnRows.length > 0) {
+            employeeOrderColumn = "created_at";
+          }
+        }
+
         const [existingPositionRows] = await pool.query(
           `SELECT basic_pay
            FROM employees
            WHERE position = ?
              AND basic_pay IS NOT NULL
-           ORDER BY updated_at DESC
+           ORDER BY ${employeeOrderColumn} DESC
            LIMIT 1`,
           [position],
         );
@@ -2275,6 +2323,7 @@ export const adjustLeaveBalance = async (req, res) => {
   }
 };
 
+//TODO:
 export const getAllLeaves = async (req, res) => {
   try {
     await ensureLeaveApprovalColumns();
@@ -2283,7 +2332,15 @@ export const getAllLeaves = async (req, res) => {
     if (!viewer) return res.status(401).json({ message: "Unauthorized" });
 
     let query = `
-      SELECT l.*, e.first_name, e.last_name, e.designation, COALESCE(e.role, 'RankAndFile') as requester_role
+      SELECT 
+        l.*, 
+        DATE_FORMAT(l.date_from, '%Y-%m-%d') as date_from,
+    DATE_FORMAT(l.date_to, '%Y-%m-%d') as date_to,
+        e.first_name, 
+        e.last_name, 
+        e.email,          
+        e.designation, 
+        COALESCE(e.role, 'RankAndFile') as requester_role
       FROM leave_requests l
       JOIN employees e ON l.emp_id = e.emp_id
     `;
@@ -2312,6 +2369,7 @@ export const getAllLeaves = async (req, res) => {
     res.status(500).json({ message: "Error fetching leaves" });
   }
 };
+
 export const updateLeaveStatus = async (req, res) => {
   const { id } = req.params;
   const {
@@ -3034,7 +3092,6 @@ export const getOffsetBalance = async (req, res) => {
 
 export const fileOffsetApplication = async (req, res) => {
   const { emp_id, date_from, date_to, days_applied, reason } = req.body;
-  console.log(req.body);
   const resolvedDateTo = date_to || date_from;
   const trimmedReason = String(reason || "").trim();
 
@@ -3910,6 +3967,7 @@ export const fileLeave = async (req, res) => {
     supervisor_remarks,
   } = req.body;
   const resolvedDateTo = date_to || date_from;
+  const trimmedReason = String(supervisor_remarks || "").trim();
 
   const requesterEmpId =
     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
@@ -3917,6 +3975,12 @@ export const fileLeave = async (req, res) => {
   if (!requesterEmpId || !leave_type || !date_from || !resolvedDateTo) {
     return res.status(400).json({
       message: "emp_id, leave_type, and date_from are required",
+    });
+  }
+
+  if (!trimmedReason) {
+    return res.status(400).json({
+      message: "Reason is required for leave applications",
     });
   }
 
@@ -3956,7 +4020,7 @@ export const fileLeave = async (req, res) => {
           date_to,
           priority,
           status,
-          supervisor_remarks
+          reason
         ) VALUES (?, ?, ?, ?, ?, 'Pending', ?)
       `,
       [
@@ -3965,7 +4029,7 @@ export const fileLeave = async (req, res) => {
         date_from,
         resolvedDateTo,
         priority,
-        supervisor_remarks || null,
+        trimmedReason,
       ],
     );
 

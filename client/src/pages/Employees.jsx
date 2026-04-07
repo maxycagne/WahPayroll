@@ -750,9 +750,9 @@ function EmployeeModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-4 py-3 bg-gray-900 flex justify-between items-center text-white">
-          <h2 className="text-lg font-bold m-0">{title}</h2>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="px-4 py-2.5 bg-gray-900 flex justify-between items-center text-white">
+          <h2 className="text-base font-bold m-0">{title}</h2>
           <button
             onClick={onClose}
             className="text-white text-2xl bg-transparent border-0 cursor-pointer"
@@ -760,9 +760,9 @@ function EmployeeModal({
             &times;
           </button>
         </div>
-        <form onSubmit={onSubmit} className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
+        <form onSubmit={onSubmit} className="p-3.5 space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Employee ID
               </label>
@@ -775,7 +775,7 @@ function EmployeeModal({
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Email Address
               </label>
@@ -789,9 +789,9 @@ function EmployeeModal({
               />
             </div>
 
-            <div className="flex flex-col gap-1 col-span-2">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-1 flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5 col-span-2">
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     First Name
                   </label>
@@ -803,7 +803,7 @@ function EmployeeModal({
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                <div className="col-span-1 flex flex-col gap-1">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     M.I.
                   </label>
@@ -815,7 +815,7 @@ function EmployeeModal({
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                <div className="col-span-1 flex flex-col gap-1">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     Last Name
                   </label>
@@ -830,7 +830,7 @@ function EmployeeModal({
               </div>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Designation
               </label>
@@ -849,7 +849,7 @@ function EmployeeModal({
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Position
               </label>
@@ -871,7 +871,7 @@ function EmployeeModal({
               </select>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Emp. Status
               </label>
@@ -887,7 +887,7 @@ function EmployeeModal({
                 <option>PGT Employee</option>
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Hired Date
               </label>
@@ -901,59 +901,83 @@ function EmployeeModal({
               />
             </div>
 
-            <div className="flex flex-col gap-1 col-span-2 mt-1">
+            <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Government Details
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  name="philhealth_no"
-                  value={data.philhealth_no || ""}
-                  onChange={onChange}
-                  placeholder="PHILHEALTH No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="tin"
-                  value={data.tin || ""}
-                  onChange={onChange}
-                  placeholder="TIN"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="sss_no"
-                  value={data.sss_no || ""}
-                  onChange={onChange}
-                  placeholder="SSS No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="pag_ibig_mid_no"
-                  value={data.pag_ibig_mid_no || ""}
-                  onChange={onChange}
-                  placeholder="PAG-IBIG MID No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="pag_ibig_rtn"
-                  value={data.pag_ibig_rtn || ""}
-                  onChange={onChange}
-                  placeholder="PAG-IBIG RTN"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="gsis_no"
-                  value={data.gsis_no || ""}
-                  onChange={onChange}
-                  placeholder="GSIS No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PHILHEALTH No.
+                  </label>
+                  <input
+                    name="philhealth_no"
+                    value={data.philhealth_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    TIN
+                  </label>
+                  <input
+                    name="tin"
+                    value={data.tin || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    SSS No.
+                  </label>
+                  <input
+                    name="sss_no"
+                    value={data.sss_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PAG-IBIG MID No.
+                  </label>
+                  <input
+                    name="pag_ibig_mid_no"
+                    value={data.pag_ibig_mid_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PAG-IBIG RTN
+                  </label>
+                  <input
+                    name="pag_ibig_rtn"
+                    value={data.pag_ibig_rtn || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    GSIS No.
+                  </label>
+                  <input
+                    name="gsis_no"
+                    value={data.gsis_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {!isEdit && (
-            <div className="mt-4 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+            <div className="mt-3 rounded-lg border border-purple-100 bg-purple-50 p-2.5">
               <p className="m-0 text-xs text-purple-700 font-semibold">
                 Auto-generated Password:{" "}
                 <span className="font-mono bg-white px-2 py-0.5 rounded border border-purple-200">
@@ -964,18 +988,18 @@ function EmployeeModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="px-8 py-2 bg-purple-600 text-white rounded-lg font-semibold"
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white"
             >
               {isPending
                 ? "Processing..."
