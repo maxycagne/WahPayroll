@@ -6,7 +6,6 @@ export const useEmail = () => {
     const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
     const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
-    // Helper function to format the date
     const formatDate = (dateStr) => {
       if (!dateStr) return "N/A";
       return new Date(dateStr).toLocaleDateString("en-PH", {
@@ -26,6 +25,7 @@ export const useEmail = () => {
       status: status,
       reason: item.reason || "No reason provided",
       leave_type: item.leave_type,
+
       message: message,
     };
 
