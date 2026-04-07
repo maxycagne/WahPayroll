@@ -1,46 +1,41 @@
-import { S3ServiceException, waitUntilObjectExists } from "@aws-sdk/client-s3";
+import {
+  S3,
+  S3ServiceException,
+  waitUntilObjectExists,
+} from "@aws-sdk/client-s3";
 import { Request, Response } from "express";
 import { s3Client } from "../config/s3";
 
-type S3File = Express.Multer.File & {
-  // Key is from multer-3. KEY IS THE NAME OF THE FILE ITSELF!!!!
-  key: string;
-};
+// type S3File = Express.Multer.File & {
+//   // Key is from multer-3. KEY IS THE NAME OF THE FILE ITSELF!!!!
+//   key: string;
+// };
 
-export const fileUpload = async (req: Request, res: Response) => {
-  if (req.files?.length === 0) {
+export const fileUpload = async (
+  req: Request & {
+    file: Express.Multer.File & { key: string };
+  },
+  res: Response,
+) => {
+  if (!req.file) {
     return res.status(400).json({
-      message: "No files uploaded",
+      message: "No file uploaded",
     });
   }
 
   try {
     // Ensure files exist
-    const promises = (req.files as S3File[]).map((file) => {
-      return waitUntilObjectExists(
-        {
-          client: s3Client,
-          // 60 seconds to finish before failing
-          maxWaitTime: 60,
-        },
-        {
-          Bucket: process.env.S3_BUCKET_NAME,
-          Key: file.key,
-        },
-      );
-    });
+
     // Upload all or FAIL
-    await Promise.all(promises);
+
     // Middleware automatically handles file upload
     res.status(200).json({
-      message: "Files uploaded successfully!",
-      files: (req.files as S3File[]).map((file) => {
-        return {
-          fileName: file.originalname,
-          size: file.size,
-          key: file.key,
-        };
-      }),
+      message: "Files uploaded successfully!!!!!!!!!!!!",
+      files: {
+        fileName: req.file.originalname,
+        size: req.file.size,
+        key: req.file.key,
+      },
     });
   } catch (e) {
     if (e instanceof S3ServiceException && e.name === "EntityTooLarge") {

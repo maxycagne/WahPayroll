@@ -1,506 +1,25 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import {
+  parseDateOnly,
+  getDateDiffInclusive,
+  calculateBusinessDays,
+  getDateRangeInclusive,
+  isFutureDateString,
+} from "@/features/leave/utils/date.utils";
+import { getOffsetRequestedDays } from "@/features/leave/utils/leave.utils";
+import {
+  leaveTypes,
+  resignationTypes,
+  leavePolicy,
+  badgeClass,
+} from "@/features/leave/leaveConstants";
 
-const leaveTypes = [
-  "Birthday Leave",
-  "Vacation Leave",
-  "Sick Leave",
-  "PGT Leave",
-  "Offset", // ADDED: Offset as a leave type
-];
-
-const resignationTypes = [
-  "Voluntary Resignation",
-  "Health Reasons",
-  "Relocation",
-  "Career Change",
-  "Further Education",
-  "Other",
-];
-
-function parseDateOnly(value) {
-  if (value instanceof Date)
-    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const raw = String(value || "").trim();
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (match) {
-    const [, y, m, d] = match;
-    return new Date(Number(y), Number(m) - 1, Number(d));
-  }
-  const parsed = new Date(raw);
-  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-}
-
-function isInRange(date, from, to) {
-  const d = parseDateOnly(date).getTime();
-  const f = parseDateOnly(from).getTime();
-  const t = parseDateOnly(to).getTime();
-  return d >= f && d <= t;
-}
-
-function getDaysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function calculateBusinessDays(startDate, endDate) {
-  let count = 0;
-  const current = new Date(startDate);
-  const end = new Date(endDate);
-
-  while (current <= end) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-function getDateDiffInclusive(start, end) {
-  const from = parseDateOnly(start).getTime();
-  const to = parseDateOnly(end).getTime();
-  return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-function getDateRangeInclusive(start, end) {
-  const dates = [];
-  const current = parseDateOnly(start);
-  const to = parseDateOnly(end);
-
-  while (current <= to) {
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, "0");
-    const day = String(current.getDate()).padStart(2, "0");
-    dates.push(`${year}-${month}-${day}`);
-    current.setDate(current.getDate() + 1);
-  }
-
-  return dates;
-}
-
-function getOffsetRequestedDays(item) {
-  const rawDays = Number(item?.days_applied);
-  if (!Number.isNaN(rawDays) && rawDays > 0) {
-    return rawDays;
-  }
-
-  const fromDate = item?.date_from;
-  const toDate = item?.date_to || fromDate;
-  const inferredDays = getDateDiffInclusive(fromDate, toDate);
-  return inferredDays > 0 ? inferredDays : 1;
-}
-
-const leavePolicy = {
-  "Birthday Leave": { maxDays: 1, excludeWeekends: true },
-  "Vacation Leave": { maxDays: 20, excludeWeekends: true },
-  "Sick Leave": { maxDays: 10, excludeWeekends: true },
-  "PGT Leave": { maxDays: 20, excludeWeekends: true },
-  "Job Order MAC Leave": { maxDays: 12, excludeWeekends: true },
-  Offset: { maxDays: 999, excludeWeekends: false }, // Prevent maxDays error for offsets
-};
-
-const badgeClass = {
-  Approved: "bg-green-100 text-green-800",
-  Denied: "bg-red-100 text-red-800",
-  Pending: "bg-yellow-100 text-yellow-800",
-  "Pending Approval": "bg-yellow-100 text-yellow-800",
-  "Cancellation Requested": "bg-amber-100 text-amber-800",
-  Rejected: "bg-red-100 text-red-800",
-  "Partially Approved": "bg-amber-100 text-amber-800",
-};
-
-function isFutureDateString(dateValue) {
-  if (!dateValue) return false;
-  const target = new Date(dateValue);
-  if (Number.isNaN(target.getTime())) return false;
-  target.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return target > today;
-}
-
-// --- CALENDAR COMPONENT ---
-function LeaveCalendar({
-  leaves,
-  attendance,
-  scopeOptions = [],
-  activeScope,
-  onScopeChange,
-}) {
-  const [viewDate, setViewDate] = useState(new Date());
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = new Date(year, month, 1).getDay();
-  const monthName = viewDate.toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
-
-  const [selectedDate, setSelectedDate] = useState(null);
-
-  const statusColors = {
-    Approved: {
-      bg: "bg-green-50",
-      border: "border-l-4 border-l-green-500",
-      text: "text-green-700",
-    },
-    Pending: {
-      bg: "bg-yellow-50",
-      border: "border-l-4 border-l-yellow-500",
-      text: "text-yellow-700",
-    },
-    Denied: {
-      bg: "bg-red-50",
-      border: "border-l-4 border-l-red-500",
-      text: "text-red-700",
-    },
-    "Partially Approved": {
-      bg: "bg-amber-50",
-      border: "border-l-4 border-l-amber-500",
-      text: "text-amber-700",
-    },
-  };
-
-  const attendanceColors = {
-    Present: "text-green-600 bg-green-50",
-    Absent: "text-red-600 bg-red-50",
-    Late: "text-orange-600 bg-orange-50",
-    Undertime: "text-orange-600 bg-orange-50",
-    "Half-Day": "text-purple-600 bg-purple-50",
-  };
-
-  function normalizeDateString(value) {
-    if (!value) return null;
-    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return value;
-    }
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }
-
-  function parseApprovedDates(raw) {
-    if (!raw) return [];
-
-    let parsed = raw;
-    if (typeof raw === "string") {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        parsed = [];
-      }
-    }
-
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.map((item) => normalizeDateString(item)).filter(Boolean);
-  }
-
-  function getLeaveDateStatus(leave, dateStr) {
-    const requestStatus = leave.status || "Pending";
-
-    if (requestStatus === "Approved") return "Approved";
-    if (requestStatus === "Denied") return "Denied";
-    if (requestStatus === "Pending") return "Pending";
-
-    if (requestStatus === "Partially Approved") {
-      const approvedSet = new Set(parseApprovedDates(leave.approved_dates));
-      if (approvedSet.size === 0) return "Pending";
-      return approvedSet.has(dateStr) ? "Approved" : "Denied";
-    }
-
-    return "Pending";
-  }
-
-  function getLeavesForDate(dateStr) {
-    return leaves
-      .filter((l) => isInRange(dateStr, l.date_from, l.date_to))
-      .map((leave) => ({
-        ...leave,
-        calendar_status: getLeaveDateStatus(leave, dateStr),
-      }));
-  }
-
-  function getAttendanceForDate(dateStr) {
-    return attendance.find((a) => {
-      const d = new Date(a.date);
-      const formattedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-      return formattedDate === dateStr;
-    });
-  }
-
-  function pad(n) {
-    return n < 10 ? "0" + n : "" + n;
-  }
-
-  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
-
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const selectedDateStr = selectedDate
-    ? `${year}-${pad(month + 1)}-${pad(selectedDate)}`
-    : null;
-  const selectedLeaves = selectedDateStr
-    ? getLeavesForDate(selectedDateStr)
-    : [];
-  const selectedAttendance = selectedDateStr
-    ? getAttendanceForDate(selectedDateStr)
-    : null;
-
-  return (
-    <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-sky-600 px-4 py-3 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h4 className="m-0 text-base font-bold">Applications Calendar</h4>
-            <p className="m-0 mt-1 text-xs text-white/90">
-              View leave applications and attendance logs by day.
-            </p>
-          </div>
-          {scopeOptions.length > 1 && (
-            <div className="inline-flex rounded-lg border border-white/25 bg-white/10 p-1">
-              {scopeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => onScopeChange?.(option.value)}
-                  className={`rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                    activeScope === option.value
-                      ? "bg-white text-indigo-700"
-                      : "text-white hover:bg-white/15"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-slate-50 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <button
-            className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
-            onClick={prevMonth}
-          >
-            ◀ Prev
-          </button>
-          <h3 className="m-0 text-base font-bold text-slate-800">
-            {monthName}
-          </h3>
-          <button
-            className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
-            onClick={nextMonth}
-          >
-            Next ▶
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-            <div
-              key={d}
-              className="rounded-lg bg-slate-100 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-slate-500"
-            >
-              {d}
-            </div>
-          ))}
-          {cells.map((day, i) => {
-            if (day === null)
-              return <div key={"e" + i} className="min-h-[90px]" />;
-
-            const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-            const dayLeaves = getLeavesForDate(dateStr);
-            const dayAtt = getAttendanceForDate(dateStr);
-            const isSelected = day === selectedDate;
-            const visibleLeaves = dayLeaves.slice(0, 3);
-            const extraLeavesCount = Math.max(
-              dayLeaves.length - visibleLeaves.length,
-              0,
-            );
-
-            const firstLeaveStatus =
-              dayLeaves.length > 0 ? dayLeaves[0].calendar_status : null;
-            const colorConfig = firstLeaveStatus
-              ? statusColors[firstLeaveStatus]
-              : null;
-
-            return (
-              <button
-                key={i}
-                type="button"
-                className={`relative flex min-h-[90px] cursor-pointer flex-col items-start justify-start rounded-xl p-2 text-left transition-all duration-150 ${
-                  dayLeaves.length > 0 && !isSelected
-                    ? colorConfig?.border + " " + colorConfig?.bg
-                    : "border border-slate-200 bg-white"
-                } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
-                onClick={() => setSelectedDate(day)}
-              >
-                <span
-                  className={`mb-0.5 text-xs font-bold ${isSelected ? "text-white" : "text-slate-900"}`}
-                >
-                  {day}
-                </span>
-
-                <div className="mt-0.5 flex w-full flex-col gap-1">
-                  {dayAtt && dayAtt.status !== "On Leave" && (
-                    <span
-                      className={`flex w-fit rounded-md px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${isSelected ? "bg-white/20 text-white" : attendanceColors[dayAtt.status] || "bg-gray-100 text-gray-600"}`}
-                    >
-                      {dayAtt.status}
-                    </span>
-                  )}
-                  {visibleLeaves.map((leave) => (
-                    <div
-                      key={leave.id}
-                      className="mt-0.5 flex w-full flex-col gap-0.5 border-t border-gray-100/50 pt-0.5 text-left"
-                    >
-                      <span
-                        className={`truncate text-[0.6rem] font-bold leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
-                      >
-                        {leave.first_name} {leave.last_name}
-                      </span>
-                      <span
-                        className={`truncate text-[0.55rem] font-semibold leading-tight ${isSelected ? "text-white/90" : "text-gray-600"}`}
-                      >
-                        {leave.leave_type}
-                      </span>
-                      <span
-                        className={`truncate text-[0.55rem] font-semibold uppercase ${isSelected ? "text-purple-200" : statusColors[leave.calendar_status]?.text}`}
-                      >
-                        • {leave.calendar_status}
-                      </span>
-                    </div>
-                  ))}
-                  {extraLeavesCount > 0 && (
-                    <span
-                      className={`mt-0.5 inline-flex w-fit rounded-md px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${
-                        isSelected
-                          ? "bg-white/20 text-white"
-                          : "bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      +{extraLeavesCount} more
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {selectedDate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4"
-          onClick={() => setSelectedDate(null)}
-        >
-          <div
-            className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-700 px-5 py-4 text-white">
-              <div>
-                <h4 className="m-0 text-base font-bold">Date Details</h4>
-                <p className="m-0 mt-1 text-xs text-slate-200">
-                  {new Date(selectedDateStr).toLocaleDateString(undefined, {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(null)}
-                className="cursor-pointer rounded-md border border-white/30 bg-white/10 px-2.5 py-1 text-sm font-bold text-white hover:bg-white/20"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="max-h-[72vh] overflow-y-auto bg-slate-50 p-5">
-              {!selectedAttendance && selectedLeaves.length === 0 ? (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                  No leave or attendance records found for this date.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedAttendance && (
-                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="m-0 text-sm font-bold text-slate-900">
-                            Daily Attendance Record
-                          </p>
-                          <p className="m-0 mt-1 text-xs text-slate-500">
-                            System Log
-                          </p>
-                        </div>
-                        <span
-                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${attendanceColors[selectedAttendance.status] || "bg-gray-200 text-gray-800"}`}
-                        >
-                          {selectedAttendance.status}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedLeaves.map((l) => (
-                    <div
-                      key={l.id}
-                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="m-0 text-sm font-bold text-indigo-700">
-                            {l.first_name} {l.last_name}
-                          </p>
-                          <p className="m-0 mt-1 text-sm font-bold text-slate-900">
-                            {l.leave_type}{" "}
-                            {l.leave_type === "Offset" &&
-                              Number(l.days_applied || 0) > 0 &&
-                              `(${Number(l.days_applied || 0).toFixed(2)} days)`}
-                          </p>
-                          <p className="m-0 mt-1 text-xs text-slate-500">
-                            {new Date(l.date_from).toLocaleDateString()} to{" "}
-                            {new Date(l.date_to).toLocaleDateString()}
-                          </p>
-                          {l.supervisor_remarks && (
-                            <p className="m-0 mt-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs italic text-slate-600">
-                              "{l.supervisor_remarks}"
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badgeClass[l.calendar_status] || "bg-gray-100"}`}
-                        >
-                          {l.calendar_status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import {} from "@/features/leave/utils/calendar.utils";
+import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
 
 // --- MAIN PAGE COMPONENT ---
 export default function Leave() {
@@ -533,7 +52,21 @@ export default function Leave() {
     daysApplied: "", // ADDED: for Offset requests
     reason: "",
     priority: "Low",
+    OCP: undefined,
   });
+
+  const difference = useMemo(() => {
+    const toDate = new Date(formData.toDate);
+    const fromDate = new Date(formData.fromDate);
+
+    // Difference in milliseconds
+    const diffTime = toDate.getTime() - fromDate.getTime();
+
+    // Convert milliseconds to days
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+  }, [formData.fromDate, formData.toDate]);
 
   const [resignationForm, setResignationForm] = useState({
     resignation_type: "Voluntary Resignation",
@@ -1252,9 +785,12 @@ export default function Leave() {
 
   const handleFromDateChange = (e) => {
     const newFromDate = e.target.value;
+    // console.log(newFromDate.slice(newFromDate.length - 2));
+
     const newToDate =
       formData.leaveType === "Birthday Leave" ? newFromDate : "";
     setFormData({ ...formData, fromDate: newFromDate, toDate: newToDate });
+
     setFormError("");
   };
 
@@ -1744,7 +1280,29 @@ export default function Leave() {
                         className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""}`}
                       />
                     </div>
+                    {difference >= 5 && (
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          OCP
+                        </label>
+                        <input
+                          type="file"
+                          required
+                          disabled={formData.leaveType === "Birthday Leave"}
+                          onChange={(e) => {
+                            if (e.target.files.length === 0) return;
 
+                            setFormData((prev) => {
+                              return {
+                                ...prev,
+                                OCP: e.target.files[0],
+                              };
+                            });
+                          }}
+                          className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""}`}
+                        />
+                      </div>
+                    )}
                     {formData.leaveType !== "Offset" && (
                       <div className="flex flex-col gap-2 md:col-span-3">
                         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
