@@ -49,14 +49,16 @@ export const useRequestMutation = ({
 
   // 2
   const fileOffsetMutation = createMutation({
-    mutationFn: (offsetData: any) =>
-      mutationHandler(
+    mutationFn: (offsetData: any) => {
+      console.log(offsetData);
+      return mutationHandler(
         axiosInterceptor.post("/api/employees/offset-applications", {
           emp_id: currentUser?.emp_id,
           ...offsetData,
         }),
         "Failed to file offset",
-      ),
+      );
+    },
     successMsg: "Offset application filed successfully",
     showToast,
     invalidateKeys: ["offset-applications"],
@@ -115,8 +117,19 @@ export const useRequestMutation = ({
     showToast,
     invalidateKeys: ["offset-applications"],
   });
-
   // 6
+  const reviewResignationMutation = createMutation({
+    mutationFn: ({ id, ...payload }: any) =>
+      mutationHandler(
+        axiosInterceptor.put(`/api/employees/resignations/${id}`, payload),
+        "Failed to update resignation",
+      ),
+    successMsg: "Resignation request updated successfully.",
+    showToast,
+    invalidateKeys: ["resignations"],
+  });
+
+  // 7
   const cancelMyPendingRequestMutation = createMutation<
     any,
     {
@@ -138,7 +151,7 @@ export const useRequestMutation = ({
     invalidateKeys: ALL_KEYS,
   });
 
-  // 7
+  // 8
   const requestCancellationApprovalMutation = createMutation<
     any,
     {
@@ -165,7 +178,7 @@ export const useRequestMutation = ({
     invalidateKeys: ALL_KEYS,
   });
 
-  // 8
+  // 9
   const addHrNoteMutation = createMutation<
     any,
     {
@@ -193,6 +206,7 @@ export const useRequestMutation = ({
     fileResignationMutation,
     fileOffsetMutation,
     reviewLeaveMutation,
+    reviewResignationMutation,
     submitLeaveMutation,
     reviewOffsetMutation,
     cancelMyPendingRequestMutation,

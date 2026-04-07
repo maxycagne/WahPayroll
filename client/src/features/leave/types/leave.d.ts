@@ -3,13 +3,14 @@ type ConfirmAction = {
   leaveType: string;
   fromDate: string;
   toDate: string;
-  daysApplied: number;
+  daysApplied: string;
+  reason: string;
 };
 type FormSubmit = {
   emp_id: number;
   fromDate: string;
   toDate: string;
-  daysApplied: number;
+  daysApplied: string;
   leaveType: string;
 };
 

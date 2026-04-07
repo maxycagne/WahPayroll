@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useFormData } from "./useFormData";
 import {
   canApproverReviewRecord,
   isPendingApprovalStatus,
@@ -17,6 +16,7 @@ type UseComputedValues = {
   calendarScope: string;
   isApprover: boolean;
   pendingTypeFilter: string;
+  currentUser: any;
 };
 
 export const useComputedValues = ({
@@ -29,12 +29,9 @@ export const useComputedValues = ({
   isApprover,
   calendarScope,
   pendingTypeFilter,
+  currentUser,
 }: UseComputedValues) => {
-  const {
-    user: { currentUser },
-  } = useFormData();
-
-  //   non memoized values
+  // Non-memoized values
   const myOwnResignations = myResignations.filter(
     (r) => String(r.emp_id) === String(currentUser?.emp_id),
   );
@@ -58,7 +55,7 @@ export const useComputedValues = ({
             { value: "team", label: "Team Calendar" },
           ]
         : [{ value: "own", label: "Own Calendar" }];
-  //   expensive
+
   const myPendingRequests = useMemo(
     () =>
       [
@@ -91,7 +88,6 @@ export const useComputedValues = ({
     [myLeaves, myOffsets, myOwnResignations],
   );
 
-  //   --
   const myApprovedFutureRequests = useMemo(
     () =>
       [
@@ -139,7 +135,6 @@ export const useComputedValues = ({
     [myLeaves, myOffsets, myOwnResignations],
   );
 
-  //   --
   const myCancellationRequestsPending = useMemo(
     () =>
       [
@@ -172,7 +167,6 @@ export const useComputedValues = ({
     [myLeaves, myOffsets, myOwnResignations],
   );
 
-  //   --
   const myRequestRows = useMemo(
     () =>
       [
@@ -207,7 +201,6 @@ export const useComputedValues = ({
     ],
   );
 
-  //   --
   const myRequestHistory = useMemo(
     () =>
       [
@@ -248,10 +241,10 @@ export const useComputedValues = ({
           new Date(b.filed_at || 0).getTime() -
           new Date(a.filed_at || 0).getTime(),
       ),
-    [],
+    // ✅ FIX: Add dependencies
+    [myLeaves, myOffsets, myOwnResignations],
   );
 
-  //   --
   const unifiedMyLeaves = useMemo(
     () => [
       ...myLeaves,
@@ -262,10 +255,10 @@ export const useComputedValues = ({
         last_name: "",
       })),
     ],
-    [myLeaves, myOffsets],
+    // ✅ FIX: Add currentUser to dependencies
+    [myLeaves, myOffsets, currentUser?.name, currentUser?.first_name],
   );
 
-  //   --
   const unifiedAllLeaves = useMemo(
     () => [
       ...leaves,
@@ -273,12 +266,16 @@ export const useComputedValues = ({
     ],
     [leaves, offsetApplications],
   );
-  // --
+
   const unifiedTeamLeaves = useMemo(
-    () => unifiedAllLeaves.filter((item) => isSupervisorTeamMember(item)),
-    [unifiedAllLeaves],
+    () =>
+      unifiedAllLeaves.filter((item) =>
+        isSupervisorTeamMember(item, currentUser?.emp_id),
+      ),
+    // ✅ FIX: Add currentUser?.emp_id to dependencies
+    [unifiedAllLeaves, currentUser?.emp_id],
   );
-  // --
+
   const calendarLeaves =
     calendarScope === "overall"
       ? unifiedAllLeaves
@@ -286,8 +283,6 @@ export const useComputedValues = ({
         ? unifiedTeamLeaves
         : unifiedMyLeaves;
 
-  // --- UNIFIED APPROVAL DATA ---
-  // Merge Pending Leaves and Pending Offsets into one single table
   const pendingLeaveApprovals = useMemo(
     () =>
       isApprover
@@ -301,13 +296,21 @@ export const useComputedValues = ({
                 isHRRole,
                 isAdminRole,
                 isSupervisorRole,
+                currentUser?.emp_id,
               ),
           )
         : [],
-    [leaves, isPendingApprovalStatus, canApproverReviewRecord],
+    // ✅ FIX: Add all dependencies
+    [
+      leaves,
+      isApprover,
+      isHRRole,
+      isAdminRole,
+      isSupervisorRole,
+      currentUser?.emp_id,
+    ],
   );
 
-  //   --
   const pendingOffsetApprovals = useMemo(
     () =>
       isApprover
@@ -321,13 +324,21 @@ export const useComputedValues = ({
                 isHRRole,
                 isAdminRole,
                 isSupervisorRole,
+                currentUser?.emp_id,
               ),
           )
         : [],
-    [offsetApplications, isPendingApprovalStatus, canApproverReviewRecord],
+    // ✅ FIX: Add all dependencies
+    [
+      offsetApplications,
+      isApprover,
+      isHRRole,
+      isAdminRole,
+      isSupervisorRole,
+      currentUser?.emp_id,
+    ],
   );
 
-  //   --
   const unifiedPending = useMemo(
     () =>
       [
@@ -348,7 +359,7 @@ export const useComputedValues = ({
       ),
     [pendingLeaveApprovals, pendingOffsetApprovals],
   );
-  // --
+
   const pendingResignationApprovals = useMemo(
     () =>
       isApprover
@@ -361,10 +372,19 @@ export const useComputedValues = ({
                 isHRRole,
                 isAdminRole,
                 isSupervisorRole,
+                currentUser?.emp_id,
               ),
           )
         : [],
-    [],
+    // ✅ FIX: Add dependencies
+    [
+      myResignations,
+      isApprover,
+      isHRRole,
+      isAdminRole,
+      isSupervisorRole,
+      currentUser?.emp_id,
+    ],
   );
 
   const allPendingRequests = useMemo(
@@ -387,6 +407,7 @@ export const useComputedValues = ({
       ),
     [unifiedPending, pendingResignationApprovals],
   );
+
   const totalPendingCount = allPendingRequests.length;
 
   const filteredPendingRequests = useMemo(
@@ -422,8 +443,6 @@ export const useComputedValues = ({
         history: myRequestHistory,
       },
     },
-
-    // Calendar data
     calendar: {
       options: calendarScopeOptions,
       unified: {
@@ -433,8 +452,6 @@ export const useComputedValues = ({
       },
       filtered: calendarLeaves,
     },
-
-    // Approver data
     approvals: {
       pending: {
         leaves: pendingLeaveApprovals,

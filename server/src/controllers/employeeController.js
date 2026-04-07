@@ -506,7 +506,9 @@ const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
   );
 
   const usedDays = Number(usedRows[0]?.used_days || 0);
-  const computedBalance = Number(Math.max(defaultLeave - usedDays, 0).toFixed(2));
+  const computedBalance = Number(
+    Math.max(defaultLeave - usedDays, 0).toFixed(2),
+  );
 
   await connection.query(
     `INSERT INTO leave_balances (emp_id, leave_balance, offset_credits)
@@ -1094,7 +1096,9 @@ export const updateResignationStatus = async (req, res) => {
       );
 
       if (!rows.length) {
-        return res.status(404).json({ message: "Resignation request not found" });
+        return res
+          .status(404)
+          .json({ message: "Resignation request not found" });
       }
 
       const request = rows[0];
@@ -1247,7 +1251,9 @@ export const addHrNoteToPendingRequest = async (req, res) => {
     }
 
     const requestRow = rows[0];
-    const isPending = config.pendingStatus.includes(String(requestRow.status || ""));
+    const isPending = config.pendingStatus.includes(
+      String(requestRow.status || ""),
+    );
     const isCancellationPending = Boolean(requestRow.cancellation_requested_at);
 
     if (!isPending && !isCancellationPending) {
@@ -1611,10 +1617,14 @@ export const getDashboardSummary = async (req, res) => {
       });
 
       const presentCount = teamAttendanceStatus.filter((row) =>
-        String(row.status || "").toLowerCase().includes("present"),
+        String(row.status || "")
+          .toLowerCase()
+          .includes("present"),
       ).length;
       const lateCount = teamAttendanceStatus.filter((row) =>
-        String(row.status || "").toLowerCase().includes("late"),
+        String(row.status || "")
+          .toLowerCase()
+          .includes("late"),
       ).length;
       const onLeaveCount = teamAttendanceStatus.filter(
         (row) => String(row.status || "").toLowerCase() === "on leave",
@@ -1996,7 +2006,9 @@ export const requestMyResignationCancellation = async (req, res) => {
     res.json({ message: "Cancellation request submitted for approval" });
   } catch (error) {
     console.error("DB Error in requestMyResignationCancellation:", error);
-    res.status(500).json({ message: "Error requesting resignation cancellation" });
+    res
+      .status(500)
+      .json({ message: "Error requesting resignation cancellation" });
   }
 };
 
@@ -2308,8 +2320,7 @@ export const updateLeaveStatus = async (req, res) => {
     approved_days,
     approved_dates,
     decision_mode,
-  } =
-    req.body;
+  } = req.body;
   const trimmedRemarks = String(supervisor_remarks || "").trim();
 
   if (
@@ -2355,7 +2366,9 @@ export const updateLeaveStatus = async (req, res) => {
       ) + 1;
 
     const getEffectiveApprovedDays = (statusValue, approvedDaysValue) => {
-      if (!["Approved", "Partially Approved"].includes(String(statusValue || ""))) {
+      if (
+        !["Approved", "Partially Approved"].includes(String(statusValue || ""))
+      ) {
         return 0;
       }
 
@@ -2548,13 +2561,7 @@ export const updateLeaveStatus = async (req, res) => {
             supervisor_remarks = ?
         WHERE id = ?
       `,
-      [
-        status,
-        finalApprovedDays,
-        finalApprovedDates,
-        remarksValue,
-        id,
-      ],
+      [status, finalApprovedDays, finalApprovedDates, remarksValue, id],
     );
 
     if (leaveBalanceDelta !== 0) {
@@ -3026,15 +3033,28 @@ export const getOffsetBalance = async (req, res) => {
 };
 
 export const fileOffsetApplication = async (req, res) => {
-  const { emp_id, date_from, date_to, days_applied } = req.body;
+  const { emp_id, date_from, date_to, days_applied, reason } = req.body;
+  console.log(req.body);
   const resolvedDateTo = date_to || date_from;
+  const trimmedReason = String(reason || "").trim();
 
   const requesterEmpId =
     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
 
-  if (!requesterEmpId || !date_from || !resolvedDateTo || days_applied === undefined) {
+  if (
+    !requesterEmpId ||
+    !date_from ||
+    !resolvedDateTo ||
+    days_applied === undefined
+  ) {
     return res.status(400).json({
       message: "emp_id, date_from, and days_applied are required",
+    });
+  }
+
+  if (!trimmedReason) {
+    return res.status(400).json({
+      message: "Reason is required for offset applications",
     });
   }
 
@@ -3056,10 +3076,11 @@ export const fileOffsetApplication = async (req, res) => {
           date_from,
           date_to,
           days_applied,
+          reason,
           status
-        ) VALUES (?, ?, ?, ?, 'Pending')
+        ) VALUES (?, ?, ?, ?, ?, 'Pending')
       `,
-      [requesterEmpId, date_from, resolvedDateTo, days_applied],
+      [requesterEmpId, date_from, resolvedDateTo, days_applied, trimmedReason],
     );
 
     await notifyApproversForRequest(connection, {
@@ -3217,7 +3238,9 @@ export const updateOffsetApplicationStatus = async (req, res) => {
       }
 
       if (status === "Approved") {
-        await connection.query("DELETE FROM offset_applications WHERE id = ?", [id]);
+        await connection.query("DELETE FROM offset_applications WHERE id = ?", [
+          id,
+        ]);
       } else {
         await connection.query(
           `
@@ -3378,14 +3401,14 @@ export const requestMyOffsetCancellation = async (req, res) => {
     const request = rows[0];
     if (String(request.emp_id) !== String(requesterEmpId)) {
       return res.status(403).json({
-        message: "You can only request cancellation for your own offset request",
+        message:
+          "You can only request cancellation for your own offset request",
       });
     }
 
-    if (![
-      "Approved",
-      "Partially Approved",
-    ].includes(String(request.status || ""))) {
+    if (
+      !["Approved", "Partially Approved"].includes(String(request.status || ""))
+    ) {
       return res.status(400).json({
         message: "Only approved offset requests can request cancellation",
       });
@@ -3914,7 +3937,10 @@ export const fileLeave = async (req, res) => {
       .trim()
       .toLowerCase();
 
-    if (normalizedStatus === "job order" && normalizedLeaveType === "pgt leave") {
+    if (
+      normalizedStatus === "job order" &&
+      normalizedLeaveType === "pgt leave"
+    ) {
       await connection.rollback();
       return res.status(400).json({
         message: "Job Order employees cannot file PGT Leave",
@@ -4039,10 +4065,9 @@ export const requestMyLeaveCancellation = async (req, res) => {
       });
     }
 
-    if (![
-      "Approved",
-      "Partially Approved",
-    ].includes(String(request.status || ""))) {
+    if (
+      !["Approved", "Partially Approved"].includes(String(request.status || ""))
+    ) {
       return res.status(400).json({
         message: "Only approved leave requests can request cancellation",
       });

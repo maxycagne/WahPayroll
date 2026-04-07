@@ -8,12 +8,20 @@ export const mutationHandler = async (
   promise: Promise<any>,
   errorMsg?: string,
 ) => {
-  const res = await promise;
-  if (res.status !== 200) {
-    throw new Error(errorMsg);
+  try {
+    const res = await promise;
+
+    return res.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      errorMsg ||
+      error.message ||
+      "Something went wrong";
+
+    throw new Error(errorMessage);
   }
-  // Will always return data, change if necessary
-  return res.data;
 };
 
 type CreateMutationProps<Tdata, Tvariables> = {
