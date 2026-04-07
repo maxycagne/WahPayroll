@@ -6,6 +6,84 @@ import ExitClearanceFormDocument from '../components/pdfTemps/ExitClearanceForm.
 import ExitInterviewFormDocument from '../components/pdfTemps/ExitInterviewForm.jsx';
 
 const FileManagement = () => {
+  // Sample data for Resignation Form
+  const sampleResignationData = {
+    name: 'Jane Smith',
+    position: 'Senior Healthcare Specialist',
+    department: 'IT Services',
+    dateOfJoining: '2021-03-15',
+    resignationDate: '2026-04-01',
+    lastWorkingDay: '2026-04-15',
+    checkedReasons: [1, 3], // Array of indices: 1 = "Better career opportunity", 3 = "Poor Health/Physical Disability"
+    otherReason: 'Pursuing further education in healthcare management',
+    employeeSignDate: '2026-04-07',
+    employeeSignName: 'Jane Smith',
+    supervisorSignDate: '2026-04-08',
+    supervisorSignName: 'John Manager'
+  };
+
+  // Sample data for Exit Clearance Form
+  const sampleClearanceData = {
+    employeeNumber: 'EMP-001234',
+    employeeName: 'Jane Smith',
+    supervisorName: 'John Manager',
+    department: 'IT Services',
+    dateOfHire: '2021-03-15',
+    lastWorkingDay: '2026-04-15',
+    effectivityDate: '2026-04-16',
+    clearanceData: [
+      {
+        dep: 'Training - Trainer (HIPP-Supervisor)',
+        items: ['Modules', 'Others'],
+        signature: true,
+        comments: 'Cleared'
+      },
+      {
+        dep: 'Modules (Platform & Innovation Supervisor)',
+        items: [
+          'Laptop / Desktop',
+          'Charger',
+          'Mouse, USB',
+          'Tablet/Modem',
+          'Others'
+        ],
+        signature: true,
+        comments: 'Cleared'
+      },
+      {
+        dep: 'IT Services',
+        items: [
+          'Email',
+          'WAH Account',
+          'Foldex/Induction, EHR',
+        ],
+        signature: true,
+        comments: 'Cleared'
+      },
+      {
+        dep: 'Facilities',
+        items: ['Keys', 'ID Card', 'Table/Chair', 'Others'],
+        signature: true,
+        comments: 'Cleared'
+      },
+      {
+        dep: 'Financial Services',
+        items: ['Company Loan', 'Others'],
+        signature: true,
+        comments: 'Not Cleared - Outstanding Loan'
+      },
+      {
+        dep: 'Human Resources',
+        items: [
+          'Separation Document',
+          'WAH ID'
+        ],
+        signature: true,
+        comments: 'Cleared'
+      }
+    ]
+  };
+
   // Sample answers for Exit Interview Form
   const sampleAnswers = [
     'Better career opportunities and growth potential in a larger organization.',
@@ -29,24 +107,22 @@ const FileManagement = () => {
   return (
     <div>
       <PDFDownloadLink
-        document={<NDADocument /* pass any props you want here */ />}
-        fileName="nda-legal-size.pdf"
-        style={{
-          textDecoration: "none",
-          padding: "8px 18px",
-          color: "#fff",
-          background: "#007bff",
-          border: "none",
-          borderRadius: "4px"
-        }}
-      >
-        {({ blob, url, loading, error }) =>
-          loading ? 'Preparing document...' : 'Download NDA (Legal size)'
+        document={
+          <ResignationFormDocument 
+            name={sampleResignationData.name}
+            position={sampleResignationData.position}
+            department={sampleResignationData.department}
+            dateOfJoining={sampleResignationData.dateOfJoining}
+            resignationDate={sampleResignationData.resignationDate}
+            lastWorkingDay={sampleResignationData.lastWorkingDay}
+            checkedReasons={sampleResignationData.checkedReasons}
+            otherReason={sampleResignationData.otherReason}
+            employeeSignDate={sampleResignationData.employeeSignDate}
+            employeeSignName={sampleResignationData.employeeSignName}
+            supervisorSignDate={sampleResignationData.supervisorSignDate}
+            supervisorSignName={sampleResignationData.supervisorSignName}
+          />
         }
-      </PDFDownloadLink>
-
-      <PDFDownloadLink
-        document={<ResignationFormDocument /* pass any props you want here */ />}
         fileName="resignation-form.pdf"
         style={{
           textDecoration: "none",
@@ -54,7 +130,10 @@ const FileManagement = () => {
           color: "#fff",
           background: "#007bff",
           border: "none",
-          borderRadius: "4px"
+          borderRadius: "4px",
+          marginRight: "10px",
+          marginBottom: "10px",
+          display: "inline-block"
         }}
       >
         {({ blob, url, loading, error }) =>
@@ -63,7 +142,38 @@ const FileManagement = () => {
       </PDFDownloadLink>
 
       <PDFDownloadLink
-        document={<ExitClearanceFormDocument /* pass any props you want here */ />}
+        document={<NDADocument /* pass any props you want here */ />}
+        fileName="nda-legal-size.pdf"
+        style={{
+          textDecoration: "none",
+          padding: "8px 18px",
+          color: "#fff",
+          background: "#007bff",
+          border: "none",
+          borderRadius: "4px",
+          marginRight: "10px",
+          marginBottom: "10px",
+          display: "inline-block"
+        }}
+      >
+        {({ blob, url, loading, error }) =>
+          loading ? 'Preparing document...' : 'Download NDA (Legal size)'
+        }
+      </PDFDownloadLink>
+
+      <PDFDownloadLink
+        document={
+          <ExitClearanceFormDocument 
+            employeeNumber={sampleClearanceData.employeeNumber}
+            employeeName={sampleClearanceData.employeeName}
+            supervisorName={sampleClearanceData.supervisorName}
+            department={sampleClearanceData.department}
+            dateOfHire={sampleClearanceData.dateOfHire}
+            lastWorkingDay={sampleClearanceData.lastWorkingDay}
+            effectivityDate={sampleClearanceData.effectivityDate}
+            clearanceData={sampleClearanceData.clearanceData}
+          />
+        }
         fileName="exit-clearance-form.pdf"
         style={{
           textDecoration: "none",
@@ -71,7 +181,10 @@ const FileManagement = () => {
           color: "#fff",
           background: "#007bff",
           border: "none",
-          borderRadius: "4px"
+          borderRadius: "4px",
+          marginRight: "10px",
+          marginBottom: "10px",
+          display: "inline-block"
         }}
       >
         {({ blob, url, loading, error }) =>
@@ -83,7 +196,7 @@ const FileManagement = () => {
         document={
           <ExitInterviewFormDocument 
             answers={sampleAnswers}
-            name="John Doe"
+            name="Jane Smith"
             position="Senior Healthcare Specialist"
             date="2026-04-07"
           />
@@ -95,7 +208,10 @@ const FileManagement = () => {
           color: "#fff",
           background: "#007bff",
           border: "none",
-          borderRadius: "4px"
+          borderRadius: "4px",
+          marginRight: "10px",
+          marginBottom: "10px",
+          display: "inline-block"
         }}
       >
         {({ blob, url, loading, error }) =>

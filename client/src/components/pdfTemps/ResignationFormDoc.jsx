@@ -94,13 +94,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     textAlign: 'center',
+    backgroundColor: '#000',
+  },
+  checkBoxEmpty: {
+    width: 12,
+    height: 12,
+    border: '1pt solid #111',
+    marginRight: 7,
+    marginTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   checkMark: {
-    fontFamily: 'Helvetica', // Just to be sure!
-    fontSize: 11,
-    color: '#101010',
+    fontFamily: 'Helvetica',
+    fontSize: 8,
+    color: '#fff',
     textAlign: 'center',
-    marginTop: -1,
+    lineHeight: 1,
+    fontWeight: 'bold',
   },
   reasonText: {
     fontSize: 11,
@@ -126,6 +138,18 @@ const styles = StyleSheet.create({
   signColumn: {
     alignItems: 'center',
     width: '45%',
+  },
+  signDateText: {
+    fontSize: 9,
+    textAlign: 'center',
+    marginBottom: 2,
+    fontWeight: 400
+  },
+  signNameText: {
+    fontSize: 10.5,
+    textAlign: 'center',
+    marginBottom: 3,
+    fontWeight: 500
   },
   signLine: {
     borderBottomWidth: 1,
@@ -163,7 +187,20 @@ const REASONS = [
   "Conflict with other employees/Supervisor/Manager"
 ];
 
-const ResignationFormDocument = () => (
+const ResignationFormDocument = ({ 
+  name = '',
+  position = '',
+  department = '',
+  dateOfJoining = '',
+  resignationDate = '',
+  lastWorkingDay = '',
+  checkedReasons = [],
+  otherReason = '',
+  employeeSignDate = '',
+  employeeSignName = '',
+  supervisorSignDate = '',
+  supervisorSignName = ''
+}) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <Image src={header} style={styles.headerImage} />
@@ -178,16 +215,16 @@ const ResignationFormDocument = () => (
           <Text style={{ flex: 1 }}>EMPLOYEE RESIGNATION</Text>
         </View>
         <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Name:</Text>
-          <Text style={styles.tableCell}>Date of Joining:</Text>
+          <Text style={styles.tableCell}>Name: {name}</Text>
+          <Text style={styles.tableCell}>Date of Joining: {dateOfJoining}</Text>
         </View>
         <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Position:</Text>
-          <Text style={styles.tableCell}>Resignation Date:</Text>
+          <Text style={styles.tableCell}>Position: {position}</Text>
+          <Text style={styles.tableCell}>Resignation Date: {resignationDate}</Text>
         </View>
         <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-          <Text style={styles.tableCell}>Department:</Text>
-          <Text style={styles.tableCellLast}>Last Working Day:</Text>
+          <Text style={styles.tableCell}>Department: {department}</Text>
+          <Text style={styles.tableCellLast}>Last Working Day: {lastWorkingDay}</Text>
         </View>
       </View>
 
@@ -195,27 +232,34 @@ const ResignationFormDocument = () => (
       <Text style={styles.reasonTitle}>REASON FOR LEAVING:</Text>
       <Text style={styles.reasonSubtitle}>Select one or more</Text>
       <View style={styles.checkList}>
-        {REASONS.map((reason, idx) => (
-          <View key={reason} style={styles.checkRow}>
-            <View style={styles.checkBox}>
-              <Text style={styles.checkMark}>✓</Text>
+        {REASONS.map((reason, idx) => {
+          const isChecked = checkedReasons.includes(idx);
+          return (
+            <View key={reason} style={styles.checkRow}>
+              <View style={isChecked ? styles.checkBox : styles.checkBoxEmpty}>
+                {isChecked && <Text style={styles.checkMark}>✓</Text>}
+              </View>
+              <Text style={styles.reasonText}>{reason}</Text>
             </View>
-            <Text style={styles.reasonText}>{reason}</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
-      <Text style={styles.reasonText}>Others:</Text>
-      <View style={styles.otherUnderline} />
+      <Text style={styles.reasonText}>Others: {otherReason}</Text>
+      {!otherReason && <View style={styles.otherUnderline} />}
 
       {/* Signatures */}
       <View style={styles.signLineRow}>
         <View style={styles.signColumn}>
+          {employeeSignDate && <Text style={styles.signDateText}>{employeeSignDate}</Text>}
+          {employeeSignName && <Text style={styles.signNameText}>{employeeSignName}</Text>}
           <View style={styles.signLine} />
-          <Text style={styles.signLabel}>Date &amp; Signature of Employee</Text>
+          <Text style={styles.signLabel}>Date & Signature of Employee</Text>
         </View>
         <View style={styles.signColumn}>
+          {supervisorSignDate && <Text style={styles.signDateText}>{supervisorSignDate}</Text>}
+          {supervisorSignName && <Text style={styles.signNameText}>{supervisorSignName}</Text>}
           <View style={styles.signLine} />
-          <Text style={styles.signLabel}>Date &amp; Signature of Supervisor</Text>
+          <Text style={styles.signLabel}>Date & Signature of Supervisor</Text>
         </View>
       </View>
 

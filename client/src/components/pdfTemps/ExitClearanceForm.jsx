@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const clearanceRows = [
+const defaultClearanceRows = [
   {
     dep: 'Training - Trainer (HIPP-Supervisor)',
     items: ['Modules', 'Others', ''],
@@ -143,7 +143,16 @@ const clearanceRows = [
   }
 ];
 
-const ExitClearanceForm = () => (
+const ExitClearanceForm = ({ 
+  employeeNumber = '',
+  employeeName = '',
+  supervisorName = '',
+  department = '',
+  dateOfHire = '',
+  lastWorkingDay = '',
+  effectivityDate = '',
+  clearanceData = defaultClearanceRows
+}) => (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Header: Logo on far left, title centered in remainder of row */}
@@ -155,20 +164,20 @@ const ExitClearanceForm = () => (
         {/* Employee Info Table */}
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <View style={styles.tableCell}><Text>Employee Number:</Text></View>
-            <View style={styles.tableCell}><Text>Department:</Text></View>
+            <View style={styles.tableCell}><Text>Employee Number: {employeeNumber}</Text></View>
+            <View style={styles.tableCell}><Text>Department: {department}</Text></View>
           </View>
           <View style={styles.tableRow}>
-            <View style={styles.tableCell}><Text>Employee Name:</Text></View>
-            <View style={styles.tableCell}><Text>Date of Hire:</Text></View>
+            <View style={styles.tableCell}><Text>Employee Name: {employeeName}</Text></View>
+            <View style={styles.tableCell}><Text>Date of Hire: {dateOfHire}</Text></View>
           </View>
           <View style={styles.tableRow}>
-            <View style={styles.tableCell}><Text>Supervisor Name:</Text></View>
-            <View style={styles.tableCell}><Text>Last Working Day:</Text></View>
+            <View style={styles.tableCell}><Text>Supervisor Name: {supervisorName}</Text></View>
+            <View style={styles.tableCell}><Text>Last Working Day: {lastWorkingDay}</Text></View>
           </View>
           <View style={styles.tableRow}>
             <View style={styles.tableCell}><Text> </Text></View>
-            <View style={{ ...styles.tableCell, ...styles.lastCell }}><Text>Effectivity Date:</Text></View>
+            <View style={{ ...styles.tableCell, ...styles.lastCell }}><Text>Effectivity Date: {effectivityDate}</Text></View>
           </View>
           <View style={[styles.tableRow, { backgroundColor: '#f2f2f2', minHeight: 18 }]}>
             <View style={{ ...styles.tableCell, ...styles.lastCell, flex: 2 }}>
@@ -197,7 +206,7 @@ const ExitClearanceForm = () => (
             </View>
           </View>
           {/* Data rows */}
-          {clearanceRows.map((row, idx) => (
+          {clearanceData.map((row) => (
             <View key={row.dep} style={styles.tableRow}>
               {/* Department */}
               <View style={{ ...styles.tableCell, flex: 1.45 }}>
@@ -215,7 +224,7 @@ const ExitClearanceForm = () => (
               </View>
               {/* Comments */}
               <View style={{ ...styles.tableCell, ...styles.lastCell, flex: 0.9 }}>
-                <Text> </Text>
+                <Text>{row.comments || ' '}</Text>
               </View>
             </View>
           ))}
