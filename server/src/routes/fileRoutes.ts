@@ -1,8 +1,8 @@
 import express from "express";
-import multer, { memoryStorage } from "multer";
+import multer from "multer";
 import multerS3 from "multer-s3";
 import { fileUpload } from "../functions/handleFileUpload";
-import { s3Client } from "../config/s3";
+import { s3BucketName, s3Client } from "../config/s3";
 
 import { retrieveFile } from "../functions/retrieveFile";
 import { sanitizeFile } from "../middleware/sanitizeFile";
@@ -10,13 +10,12 @@ import { authenticateToken } from "../middleware/authMiddleware";
 import { deleteFile } from "../functions/deleteFile";
 import { checkFileExist } from "../middleware/checkFileExist";
 
-// middleware for file upload
-const upload = multer({
+const uploadS3 = multer({
   storage: multerS3({
     // Cloudflare r2 Endpoint
     s3: s3Client,
     // Storage name
-    bucket: "payroll",
+    bucket: s3BucketName,
     contentType: multerS3.AUTO_CONTENT_TYPE,
     metadata: (req, file, cb) => {
       cb(null, { fieldname: file.fieldname });
@@ -39,9 +38,20 @@ const upload = multer({
 const router = express.Router();
 router.use(authenticateToken);
 
+const handleUpload = (req: any, res: any, next: any) => {
+  uploadS3.array("requiredFiles", 10)(req, res, (err: any) => {
+    if (err) {
+      return res.status(500).json({
+        message: err.message || "File upload failed",
+      });
+    }
+    return next();
+  });
+};
+
 router.post(
   "/upload",
-  upload.array("requiredFiles", 10),
+  handleUpload,
   sanitizeFile,
   fileUpload,
 );

@@ -36,9 +36,13 @@ import {
   getMyResignations,
   getResignations,
   fileResignation,
+  getResignationRecipient,
+  getMyResignationDraft,
+  saveMyResignationDraft,
   updateResignationStatus,
   cancelMyResignation,
   requestMyResignationCancellation,
+  uploadResignationClearance,
   getMyNotifications,
   markNotificationRead,
   markAllNotificationsRead,
@@ -100,6 +104,21 @@ router.post(
   "/resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   fileResignation,
+);
+router.get(
+  "/resignations/recipient",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getResignationRecipient,
+);
+router.get(
+  "/resignations/draft",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getMyResignationDraft,
+);
+router.put(
+  "/resignations/draft",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  saveMyResignationDraft,
 );
 router.put(
   "/resignations/:id",
@@ -181,6 +200,11 @@ router.post(
   "/resignations/:id/request-cancel",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   requestMyResignationCancellation,
+);
+router.post(
+  "/resignations/:id/clearance",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  uploadResignationClearance,
 );
 
 router.get(

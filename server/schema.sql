@@ -88,6 +88,17 @@ CREATE TABLE IF NOT EXISTS resignations (
   resignation_type VARCHAR(100) NOT NULL,
   effective_date DATE NOT NULL,
   reason TEXT,
+  resignation_letter TEXT,
+  recipient_name VARCHAR(255),
+  recipient_emp_id VARCHAR(50),
+  resignation_date DATE,
+  last_working_day DATE,
+  leaving_reasons_json JSON,
+  leaving_reason_other TEXT,
+  exit_interview_answers_json JSON,
+  endorsement_file_key VARCHAR(512),
+  clearance_file_key VARCHAR(512),
+  current_step TINYINT DEFAULT 1,
   status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
   reviewed_by VARCHAR(50),
   review_remarks TEXT,
@@ -100,6 +111,26 @@ CREATE TABLE IF NOT EXISTS resignations (
   INDEX idx_resignation_effective_date (effective_date),
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
   FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS resignation_drafts (
+  emp_id VARCHAR(50) PRIMARY KEY,
+  payload_json JSON NOT NULL,
+  current_step TINYINT DEFAULT 1,
+  interview_part TINYINT DEFAULT 1,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS stored_files (
+  storage_key VARCHAR(120) PRIMARY KEY,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(120) NOT NULL,
+  size_bytes INT NOT NULL,
+  content LONGBLOB NOT NULL,
+  created_by VARCHAR(50) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_stored_files_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notifications (

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import mammoth from "mammoth";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useEmail } from "../hooks/useEmail";
@@ -13,14 +14,95 @@ const leaveTypes = [
   "Offset", // ADDED: Offset as a leave type
 ];
 
-const resignationTypes = [
-  "Voluntary Resignation",
-  "Health Reasons",
-  "Relocation",
-  "Career Change",
-  "Further Education",
-  "Other",
+const resignationReasonOptions = [
+  "Family and/or personal reasons",
+  "Better career opportunity",
+  "Pregnancy",
+  "Poor health / physical disability",
+  "Relocation to another city/country",
+  "Termination",
+  "Dissatisfaction with salary/allowances",
+  "Dissatisfaction with type of work",
+  "Conflict with employees/supervisor/manager",
+  "Others",
 ];
+
+const exitInterviewQuestions = [
+  "What caused you to start looking for a new job?",
+  "Why have you decided to leave the company?",
+  "Was a single event responsible for your decision to leave?",
+  "What does your new company offer that influenced your decision?",
+  "What do you value about this company?",
+  "What did you dislike about the company?",
+  "How was your relationship with your manager?",
+  "What could your supervisor improve in their management style?",
+  "What did you like most about your job?",
+  "What did you dislike about your job? What would you change?",
+  "Did you have the resources and support needed to do your job? If not, what was missing?",
+  "Were your goals clear and expectations well defined?",
+  "Did you receive adequate feedback on your performance?",
+  "Did you feel aligned with the company’s mission and goals?",
+  "Any recommendations regarding compensation, benefits, or recognition?",
+  "What would make you consider returning? Would you recommend this company to others?",
+];
+
+const resignationStepLabels = [
+  "Resignation Letter",
+  "Employee Resignation Form",
+  "Exit Interview Form",
+  "Endorsement Form",
+  "Submit Application",
+];
+
+function safeText(value) {
+  const text = String(value || "").trim();
+  const lowered = text.toLowerCase();
+  if (!text) return "";
+  if (
+    lowered === "undefined" ||
+    lowered === "null" ||
+    lowered === "undefined undefined" ||
+    lowered === "null null"
+  ) {
+    return "";
+  }
+  return text;
+}
+
+function toDateInputValue(value) {
+  const normalized = safeText(value);
+  if (!normalized) return "";
+  return normalized.slice(0, 10);
+}
+
+function buildEmployeeDisplayName(currentUser) {
+  const name = safeText(currentUser?.name);
+  if (name) return name;
+  return safeText(
+    `${safeText(currentUser?.first_name)} ${safeText(currentUser?.last_name)}`,
+  );
+}
+
+function getDefaultResignationWizardState(currentUser) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    resignation_letter: "",
+    request_date: today,
+    recipient_name: "Supervisor",
+    recipient_emp_id: "",
+    employee_name: buildEmployeeDisplayName(currentUser) || "Employee",
+    position: safeText(currentUser?.position) || "N/A",
+    designation: safeText(currentUser?.designation) || "N/A",
+    hired_date: toDateInputValue(currentUser?.hired_date),
+    resignation_date: "",
+    last_working_day: "",
+    leaving_reasons: [],
+    leaving_reason_other: "",
+    interview_answers: Array(16).fill(""),
+    endorsement_file_key: "",
+    endorsement_file_name: "",
+  };
+}
 
 function parseDateOnly(value) {
   if (value instanceof Date)
@@ -536,11 +618,23 @@ export default function Leave() {
     priority: "Low",
   });
 
-  const [resignationForm, setResignationForm] = useState({
-    resignation_type: "Voluntary Resignation",
-    effective_date: "",
-    reason: "",
-  });
+  const [resignationStep, setResignationStep] = useState(1);
+  const [resignationInterviewPart, setResignationInterviewPart] = useState(1);
+  const [resignationWizard, setResignationWizard] = useState(
+    getDefaultResignationWizardState(currentUser),
+  );
+  const [resignationWizardError, setResignationWizardError] = useState("");
+  const [isUploadingEndorsement, setIsUploadingEndorsement] = useState(false);
+  const [isUploadingClearanceId, setIsUploadingClearanceId] = useState(null);
+  const [resignationSupervisorReview, setResignationSupervisorReview] =
+    useState(null);
+  const [filePreviewOpen, setFilePreviewOpen] = useState(false);
+  const [filePreviewLoading, setFilePreviewLoading] = useState(false);
+  const [filePreviewTitle, setFilePreviewTitle] = useState("Document Preview");
+  const [filePreviewUrl, setFilePreviewUrl] = useState("");
+  const [filePreviewHtml, setFilePreviewHtml] = useState("");
+  const [filePreviewError, setFilePreviewError] = useState("");
+  const previewBlobUrlRef = useRef("");
 
   const normalizedRole = String(currentUser?.role || "")
     .trim()
@@ -562,9 +656,167 @@ export default function Leave() {
     return normalized === "pending" || normalized === "pending approval";
   };
 
+  const parseJsonArray = (rawValue) => {
+    if (Array.isArray(rawValue)) return rawValue;
+    if (rawValue == null) return [];
+    if (typeof rawValue === "string") {
+      try {
+        const parsed = JSON.parse(rawValue);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const getResignationProgressPercent = (item) => {
+    const totalSteps = resignationStepLabels.length;
+    const step = Math.max(
+      1,
+      Math.min(Number(item?.current_step || totalSteps), totalSteps),
+    );
+    return {
+      step,
+      percent: Math.round((step / totalSteps) * 100),
+      totalSteps,
+    };
+  };
+
   const availableLeaveTypes = isJobOrderEmployee
     ? leaveTypes.filter((type) => type !== "PGT Leave")
     : leaveTypes;
+
+  const [hasLoadedResignationDraft, setHasLoadedResignationDraft] =
+    useState(false);
+  const lastSavedResignationDraftRef = useRef("");
+
+  const { data: resignationRecipient = null } = useQuery({
+    queryKey: ["resignation-recipient", currentUser?.emp_id],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/resignations/recipient");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: Boolean(currentUser?.emp_id),
+  });
+
+  const { data: resignationDraftData = null } = useQuery({
+    queryKey: ["resignation-draft", currentUser?.emp_id],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/resignations/draft");
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to load resignation draft");
+      }
+      return result?.draft || null;
+    },
+    enabled:
+      Boolean(currentUser?.emp_id) &&
+      applicationModalOpen &&
+      applicationType === "resignation",
+    refetchOnWindowFocus: false,
+  });
+
+  const saveResignationDraftMutation = useMutation({
+    mutationFn: async ({ payload, step, interviewPart }) => {
+      const res = await apiFetch("/api/employees/resignations/draft", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload, step, interviewPart }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to save resignation draft");
+      }
+      return result;
+    },
+    onError: (err) =>
+      showToast(err.message || "Failed to auto-save draft.", "error"),
+  });
+
+  useEffect(() => {
+    if (!resignationRecipient) return;
+    const recipientName = safeText(resignationRecipient.recipient_name);
+    setResignationWizard((prev) => ({
+      ...prev,
+      request_date: resignationRecipient.request_date || prev.request_date,
+      recipient_name: recipientName || prev.recipient_name || "Supervisor",
+      recipient_emp_id:
+        resignationRecipient.recipient_emp_id || prev.recipient_emp_id,
+    }));
+  }, [resignationRecipient]);
+
+  useEffect(() => {
+    if (!applicationModalOpen || applicationType !== "resignation") {
+      setHasLoadedResignationDraft(false);
+      return;
+    }
+
+    setHasLoadedResignationDraft(false);
+  }, [applicationModalOpen, applicationType]);
+
+  useEffect(() => {
+    if (!applicationModalOpen || applicationType !== "resignation") return;
+    if (hasLoadedResignationDraft) return;
+
+    if (resignationDraftData?.payload) {
+      const loadedStep = Number(resignationDraftData.step) || 1;
+      const loadedInterviewPart =
+        Number(resignationDraftData.interviewPart) || 1;
+
+      setResignationWizard((prev) => ({
+        ...prev,
+        ...resignationDraftData.payload,
+      }));
+      setResignationStep(loadedStep);
+      setResignationInterviewPart(loadedInterviewPart);
+      lastSavedResignationDraftRef.current = JSON.stringify({
+        payload: resignationDraftData.payload,
+        step: loadedStep,
+        interviewPart: loadedInterviewPart,
+      });
+    }
+
+    setHasLoadedResignationDraft(true);
+  }, [
+    applicationModalOpen,
+    applicationType,
+    hasLoadedResignationDraft,
+    resignationDraftData,
+  ]);
+
+  useEffect(() => {
+    if (!applicationModalOpen || applicationType !== "resignation") return;
+    if (!hasLoadedResignationDraft) return;
+
+    const draftPayload = {
+      payload: resignationWizard,
+      step: resignationStep,
+      interviewPart: resignationInterviewPart,
+    };
+    const draftSignature = JSON.stringify(draftPayload);
+
+    if (lastSavedResignationDraftRef.current === draftSignature) return;
+
+    const timer = setTimeout(() => {
+      saveResignationDraftMutation.mutate(draftPayload, {
+        onSuccess: () => {
+          lastSavedResignationDraftRef.current = draftSignature;
+        },
+      });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [
+    applicationModalOpen,
+    applicationType,
+    hasLoadedResignationDraft,
+    resignationWizard,
+    resignationStep,
+    resignationInterviewPart,
+    saveResignationDraftMutation,
+  ]);
 
   // --- QUERIES ---
   const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
@@ -1026,20 +1278,50 @@ export default function Leave() {
           ...resignationData,
         }),
       });
-      if (!res.ok) throw new Error("Failed to file resignation");
-      return res.json();
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to file resignation");
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["resignations"]);
+      queryClient.invalidateQueries(["dashboardSummary"]);
+      queryClient.invalidateQueries(["resignation-draft", currentUser?.emp_id]);
       showToast("Resignation filed successfully.");
-      setResignationForm({
-        resignation_type: "Voluntary Resignation",
-        effective_date: "",
-        reason: "",
-      });
+      setResignationWizard(getDefaultResignationWizardState(currentUser));
+      setResignationStep(1);
+      setResignationInterviewPart(1);
+      setResignationWizardError("");
+      lastSavedResignationDraftRef.current = "";
       setApplicationModalOpen(false);
     },
-    onError: () => showToast("Error filing resignation.", "error"),
+    onError: (err) =>
+      showToast(err.message || "Error filing resignation.", "error"),
+  });
+
+  const uploadResignationClearanceMutation = useMutation({
+    mutationFn: async ({ id, clearance_file_key }) => {
+      const res = await apiFetch(
+        `/api/employees/resignations/${id}/clearance`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clearance_file_key }),
+        },
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to upload clearance form");
+      }
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["resignations"]);
+      showToast("Clearance form uploaded successfully.");
+    },
+    onError: (err) =>
+      showToast(err.message || "Error uploading clearance form.", "error"),
   });
 
   const reviewLeaveMutation = useMutation({
@@ -1202,6 +1484,279 @@ export default function Leave() {
     onError: (err) =>
       showToast(err.message || "Failed to save HR note.", "error"),
   });
+
+  const uploadRequiredFile = async (file) => {
+    const form = new FormData();
+    form.append("requiredFiles", file);
+
+    const res = await apiFetch("/api/file/upload", {
+      method: "POST",
+      body: form,
+    });
+
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(result.message || "File upload failed");
+    }
+
+    const uploaded = Array.isArray(result.files) ? result.files[0] : null;
+    if (!uploaded?.key) {
+      throw new Error("Upload succeeded but no file key was returned");
+    }
+
+    return uploaded;
+  };
+
+  const clearPreviewBlobUrl = () => {
+    if (previewBlobUrlRef.current) {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+      previewBlobUrlRef.current = "";
+    }
+  };
+
+  const closeFilePreview = () => {
+    clearPreviewBlobUrl();
+    setFilePreviewOpen(false);
+    setFilePreviewLoading(false);
+    setFilePreviewTitle("Document Preview");
+    setFilePreviewUrl("");
+    setFilePreviewHtml("");
+    setFilePreviewError("");
+  };
+
+  const renderPreviewFromBlob = async (blob, fileName, mimeType) => {
+    const normalizedName = String(fileName || "document").trim();
+    const normalizedMime = String(mimeType || blob.type || "").toLowerCase();
+    const lowerName = normalizedName.toLowerCase();
+
+    setFilePreviewTitle(normalizedName || "Document Preview");
+    setFilePreviewError("");
+    setFilePreviewHtml("");
+    setFilePreviewUrl("");
+
+    const isDocx =
+      lowerName.endsWith(".docx")
+      || normalizedMime.includes(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      );
+
+    const isPdf = lowerName.endsWith(".pdf") || normalizedMime.includes("pdf");
+
+    if (isDocx) {
+      const arrayBuffer = await blob.arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      setFilePreviewHtml(result.value || "<p>No preview available.</p>");
+      return;
+    }
+
+    if (isPdf || lowerName.endsWith(".doc")) {
+      clearPreviewBlobUrl();
+      const objectUrl = URL.createObjectURL(blob);
+      previewBlobUrlRef.current = objectUrl;
+      setFilePreviewUrl(objectUrl);
+      return;
+    }
+
+    setFilePreviewError(
+      "This file type cannot be previewed inline. Please upload PDF or DOCX.",
+    );
+  };
+
+  useEffect(() => {
+    return () => {
+      clearPreviewBlobUrl();
+    };
+  }, []);
+
+  const openUploadedFileByKey = async (fileKey) => {
+    const normalizedKey = String(fileKey || "").trim();
+    if (!normalizedKey) return;
+
+    setFilePreviewOpen(true);
+    setFilePreviewLoading(true);
+    setFilePreviewError("");
+    setFilePreviewHtml("");
+    setFilePreviewUrl("");
+
+    try {
+      const res = await apiFetch(
+        `/api/file/get?filename=${encodeURIComponent(normalizedKey)}`,
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to retrieve file link");
+      }
+
+      if (result?.base64Content) {
+        const base64 = String(result.base64Content || "");
+        const mimeType = String(result.mimeType || "application/octet-stream");
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+
+        const blob = new Blob([bytes], { type: mimeType });
+        await renderPreviewFromBlob(
+          blob,
+          result.fileName || normalizedKey,
+          mimeType,
+        );
+        return;
+      }
+
+      if (!result?.url) {
+        throw new Error("Failed to retrieve file link");
+      }
+
+      const remoteResponse = await fetch(result.url);
+      if (!remoteResponse.ok) {
+        throw new Error("Failed to load uploaded file for preview");
+      }
+
+      const remoteBlob = await remoteResponse.blob();
+      await renderPreviewFromBlob(
+        remoteBlob,
+        result.fileName || normalizedKey,
+        remoteBlob.type,
+      );
+    } catch (error) {
+      setFilePreviewError(error.message || "Failed to preview file");
+      throw error;
+    } finally {
+      setFilePreviewLoading(false);
+    }
+  };
+
+  const validateResignationStep = (step) => {
+    if (step === 1) {
+      if (!String(resignationWizard.resignation_letter || "").trim()) {
+        return "Resignation letter body is required.";
+      }
+      return "";
+    }
+
+    if (step === 2) {
+      if (
+        !resignationWizard.resignation_date ||
+        !resignationWizard.last_working_day
+      ) {
+        return "Resignation date and last working day are required.";
+      }
+
+      if (resignationWizard.leaving_reasons.length === 0) {
+        return "Select at least one reason for leaving.";
+      }
+
+      if (
+        resignationWizard.leaving_reasons.includes("Others") &&
+        !String(resignationWizard.leaving_reason_other || "").trim()
+      ) {
+        return "Please provide details for Others.";
+      }
+
+      return "";
+    }
+
+    if (step === 3) {
+      const hasBlankAnswer = (resignationWizard.interview_answers || []).some(
+        (answer) => !String(answer || "").trim(),
+      );
+      if (hasBlankAnswer) {
+        return "All 16 exit interview answers are required.";
+      }
+      return "";
+    }
+
+    if (step === 4) {
+      if (!String(resignationWizard.endorsement_file_key || "").trim()) {
+        return "Upload your completed endorsement form before continuing.";
+      }
+      return "";
+    }
+
+    return "";
+  };
+
+  const goToNextResignationStep = async () => {
+    const validationError = validateResignationStep(resignationStep);
+    if (validationError) {
+      setResignationWizardError(validationError);
+      return;
+    }
+
+    try {
+      await saveResignationDraftMutation.mutateAsync({
+        payload: resignationWizard,
+        step: resignationStep,
+        interviewPart: resignationInterviewPart,
+      });
+      lastSavedResignationDraftRef.current = JSON.stringify({
+        payload: resignationWizard,
+        step: resignationStep,
+        interviewPart: resignationInterviewPart,
+      });
+    } catch {
+      // Keep the wizard usable even if draft save fails.
+    }
+
+    setResignationWizardError("");
+    setResignationStep((prev) => Math.min(prev + 1, 5));
+  };
+
+  const goToPreviousResignationStep = () => {
+    setResignationWizardError("");
+    setResignationStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const submitResignationWizard = async () => {
+    const validationError =
+      validateResignationStep(1) ||
+      validateResignationStep(2) ||
+      validateResignationStep(3) ||
+      validateResignationStep(4);
+
+    if (validationError) {
+      setResignationWizardError(validationError);
+      return;
+    }
+
+    const reasons = resignationWizard.leaving_reasons;
+    const reasonSummary = reasons.includes("Others")
+      ? `${reasons.filter((item) => item !== "Others").join(", ")}; Others: ${String(resignationWizard.leaving_reason_other || "").trim()}`
+      : reasons.join(", ");
+
+    try {
+      await saveResignationDraftMutation.mutateAsync({
+        payload: resignationWizard,
+        step: resignationStep,
+        interviewPart: resignationInterviewPart,
+      });
+      lastSavedResignationDraftRef.current = JSON.stringify({
+        payload: resignationWizard,
+        step: resignationStep,
+        interviewPart: resignationInterviewPart,
+      });
+    } catch {
+      // Proceed to submit even if draft save fails right before final submit.
+    }
+
+    fileResignationMutation.mutate({
+      emp_id: currentUser?.emp_id,
+      resignation_type: "Voluntary Resignation",
+      effective_date: resignationWizard.last_working_day,
+      reason: reasonSummary,
+      resignation_letter: resignationWizard.resignation_letter,
+      recipient_name: resignationWizard.recipient_name,
+      recipient_emp_id: resignationWizard.recipient_emp_id || null,
+      resignation_date: resignationWizard.resignation_date,
+      last_working_day: resignationWizard.last_working_day,
+      leaving_reasons: resignationWizard.leaving_reasons,
+      leaving_reason_other: resignationWizard.leaving_reason_other,
+      exit_interview_answers: resignationWizard.interview_answers,
+      endorsement_file_key: resignationWizard.endorsement_file_key,
+    });
+  };
 
   // --- HANDLERS ---
   const handleSubmitLeave = (e) => {
@@ -1367,6 +1922,30 @@ export default function Leave() {
       item,
       remarks: "",
     });
+  };
+
+  const openResignationSupervisorReview = (item) => {
+    const leavingReasons = parseJsonArray(item?.leaving_reasons_json);
+    const interviewAnswers = parseJsonArray(item?.exit_interview_answers_json);
+    setResignationSupervisorReview({
+      item,
+      leavingReasons,
+      interviewAnswers,
+    });
+  };
+
+  const keepResignationPendingUnderReview = () => {
+    setResignationSupervisorReview(null);
+    showToast("Application kept as Pending (Under Review).");
+  };
+
+  const approveResignationFromReview = () => {
+    if (!resignationSupervisorReview?.item?.id) return;
+    reviewResignationMutation.mutate({
+      id: resignationSupervisorReview.item.id,
+      status: "Approved",
+    });
+    setResignationSupervisorReview(null);
   };
 
   const toggleLeaveApprovedDate = (date) => {
@@ -1681,6 +2260,143 @@ export default function Leave() {
         </div>
       </div>
 
+      {myOwnResignations.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+            <h3 className="m-0 text-sm font-bold text-gray-900">
+              Resignation Clearance Handling
+            </h3>
+          </div>
+          <div className="space-y-3 p-4">
+            {myOwnResignations
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(b.created_at || 0).getTime() -
+                  new Date(a.created_at || 0).getTime(),
+              )
+              .map((resignation) => {
+                const isApproved = resignation.status === "Approved";
+                const isPending = isPendingApprovalStatus(resignation.status);
+
+                return (
+                  <div
+                    key={resignation.id}
+                    className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="m-0 text-sm font-semibold text-gray-800">
+                        {resignation.resignation_type || "Resignation"} ·
+                        Effective{" "}
+                        {resignation.effective_date
+                          ? new Date(
+                              resignation.effective_date,
+                            ).toLocaleDateString()
+                          : "N/A"}
+                      </p>
+                      <span
+                        className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider ${badgeClass[resignation.status] || "bg-gray-100 text-gray-700"}`}
+                      >
+                        {resignation.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <a
+                        href="/forms/Resignee_Exit-Clearance-Form.docx"
+                        download
+                        className={`rounded-md px-3 py-2 text-xs font-bold no-underline ${isApproved ? "bg-blue-600 text-white hover:bg-blue-700" : "pointer-events-none bg-blue-100 text-blue-400"}`}
+                      >
+                        Download Clearance Form (DOC)
+                      </a>
+
+                      <label
+                        className={`rounded-md px-3 py-2 text-xs font-bold ${isApproved ? "cursor-pointer bg-emerald-600 text-white hover:bg-emerald-700" : "cursor-not-allowed bg-emerald-100 text-emerald-400"}`}
+                      >
+                        Upload Clearance Form
+                        <input
+                          type="file"
+                          accept=".doc,.docx,.pdf"
+                          disabled={
+                            !isApproved ||
+                            isUploadingClearanceId === resignation.id
+                          }
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !isApproved) return;
+                            setIsUploadingClearanceId(resignation.id);
+                            try {
+                              const uploaded = await uploadRequiredFile(file);
+                              await uploadResignationClearanceMutation.mutateAsync(
+                                {
+                                  id: resignation.id,
+                                  clearance_file_key: uploaded.key,
+                                },
+                              );
+                            } catch (error) {
+                              showToast(
+                                error.message ||
+                                  "Failed to upload clearance form.",
+                                "error",
+                              );
+                            } finally {
+                              setIsUploadingClearanceId(null);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {isPending && (
+                        <span className="text-xs font-semibold text-amber-700">
+                          Clearance upload is visible but disabled while pending
+                          review.
+                        </span>
+                      )}
+
+                      {!isPending && !isApproved && (
+                        <span className="text-xs font-semibold text-gray-600">
+                          Clearance upload will be available once resignation is
+                          approved.
+                        </span>
+                      )}
+                    </div>
+
+                    {resignation.clearance_file_key && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <p className="m-0 text-xs font-medium text-emerald-700">
+                          Uploaded clearance key:{" "}
+                          {resignation.clearance_file_key}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await openUploadedFileByKey(
+                                resignation.clearance_file_key,
+                              );
+                            } catch (error) {
+                              showToast(
+                                error.message ||
+                                  "Failed to open uploaded clearance form.",
+                                "error",
+                              );
+                            }
+                          }}
+                          className="cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
+                        >
+                          View Uploaded File
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {applicationModalOpen && currentUser?.role !== "Admin" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
           <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
@@ -1836,85 +2552,501 @@ export default function Leave() {
                   </form>
                 </>
               ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    fileResignationMutation.mutate(resignationForm);
-                  }}
-                  className="grid grid-cols-1 gap-3 md:grid-cols-2"
-                >
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                      Resignation Type
-                    </label>
-                    <select
-                      value={resignationForm.resignation_type}
-                      onChange={(e) =>
-                        setResignationForm({
-                          ...resignationForm,
-                          resignation_type: e.target.value,
-                        })
-                      }
-                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      {resignationTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-gray-500">
+                          Resignation Progress
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-gray-900">
+                          Step {resignationStep} of{" "}
+                          {resignationStepLabels.length}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-gray-500">
+                          {resignationStepLabels[resignationStep - 1]}
+                        </p>
+                        <p className="text-sm font-bold text-red-600">
+                          {Math.round(
+                            (resignationStep / resignationStepLabels.length) *
+                              100,
+                          )}
+                          %
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-red-500 via-rose-500 to-orange-400 transition-all duration-300"
+                        style={{
+                          width: `${Math.max(
+                            8,
+                            (resignationStep / resignationStepLabels.length) *
+                              100,
+                          )}%`,
+                        }}
+                      />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
+                      {resignationStepLabels.map((label, index) => {
+                        const stepNumber = index + 1;
+                        const isCurrent = stepNumber === resignationStep;
+                        const isCompleted = stepNumber < resignationStep;
+
+                        return (
+                          <div
+                            key={label}
+                            className={`rounded-lg border px-3 py-2 text-center text-xs font-semibold transition-colors ${
+                              isCurrent
+                                ? "border-red-200 bg-red-50 text-red-700"
+                                : isCompleted
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "border-gray-200 bg-gray-50 text-gray-500"
+                            }`}
+                          >
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em]">
+                              Step {stepNumber}
+                            </div>
+                            <div className="leading-tight">{label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                      Effective Date
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={resignationForm.effective_date}
-                      onChange={(e) =>
-                        setResignationForm({
-                          ...resignationForm,
-                          effective_date: e.target.value,
-                        })
-                      }
-                      className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2 md:col-span-2">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                      Reason / Comments
-                    </label>
-                    <textarea
-                      rows="4"
-                      required
-                      value={resignationForm.reason}
-                      onChange={(e) =>
-                        setResignationForm({
-                          ...resignationForm,
-                          reason: e.target.value,
-                        })
-                      }
-                      className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-end gap-2 md:col-span-2">
+
+                  {resignationWizardError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      {resignationWizardError}
+                    </div>
+                  )}
+
+                  {resignationStep === 1 && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Current Date
+                        </label>
+                        <input
+                          type="date"
+                          value={resignationWizard.request_date}
+                          disabled
+                          className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Recipient (Supervisor)
+                        </label>
+                        <input
+                          type="text"
+                          value={resignationWizard.recipient_name}
+                          disabled
+                          className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2 md:col-span-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Resignation Letter Body
+                        </label>
+                        <textarea
+                          rows={8}
+                          value={resignationWizard.resignation_letter}
+                          onChange={(e) =>
+                            setResignationWizard((prev) => ({
+                              ...prev,
+                              resignation_letter: e.target.value,
+                            }))
+                          }
+                          placeholder="Write your resignation letter here..."
+                          className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {resignationStep === 2 && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          value={resignationWizard.employee_name}
+                          disabled
+                          className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Position
+                        </label>
+                        <input
+                          type="text"
+                          value={resignationWizard.position}
+                          disabled
+                          className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Department / Designation
+                        </label>
+                        <input
+                          type="text"
+                          value={resignationWizard.designation}
+                          disabled
+                          className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Date of Joining
+                        </label>
+                        <input
+                          type="date"
+                          value={resignationWizard.hired_date}
+                          disabled
+                          className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Resignation Date
+                        </label>
+                        <input
+                          type="date"
+                          value={resignationWizard.resignation_date}
+                          onChange={(e) =>
+                            setResignationWizard((prev) => ({
+                              ...prev,
+                              resignation_date: e.target.value,
+                            }))
+                          }
+                          className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Last Working Day
+                        </label>
+                        <input
+                          type="date"
+                          value={resignationWizard.last_working_day}
+                          onChange={(e) =>
+                            setResignationWizard((prev) => ({
+                              ...prev,
+                              last_working_day: e.target.value,
+                            }))
+                          }
+                          className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Reason for Leaving (Select one or more)
+                        </p>
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                          {resignationReasonOptions.map((reasonOption) => {
+                            const checked =
+                              resignationWizard.leaving_reasons.includes(
+                                reasonOption,
+                              );
+                            return (
+                              <label
+                                key={reasonOption}
+                                className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() =>
+                                    setResignationWizard((prev) => {
+                                      const exists =
+                                        prev.leaving_reasons.includes(
+                                          reasonOption,
+                                        );
+                                      return {
+                                        ...prev,
+                                        leaving_reasons: exists
+                                          ? prev.leaving_reasons.filter(
+                                              (item) => item !== reasonOption,
+                                            )
+                                          : [
+                                              ...prev.leaving_reasons,
+                                              reasonOption,
+                                            ],
+                                      };
+                                    })
+                                  }
+                                />
+                                <span>{reasonOption}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {resignationWizard.leaving_reasons.includes(
+                          "Others",
+                        ) && (
+                          <input
+                            type="text"
+                            value={resignationWizard.leaving_reason_other}
+                            onChange={(e) =>
+                              setResignationWizard((prev) => ({
+                                ...prev,
+                                leaving_reason_other: e.target.value,
+                              }))
+                            }
+                            placeholder="Specify other reason"
+                            className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {resignationStep === 3 && (
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
+                        <p className="m-0 font-semibold">Instructions:</p>
+                        <p className="m-0 mt-1">
+                          Please answer each question honestly. Your responses
+                          will help Human Resources improve services and
+                          employee experience. All answers will remain
+                          confidential.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600">
+                        <span>
+                          Exit Interview Part {resignationInterviewPart} of 2
+                        </span>
+                        <span>
+                          Q{resignationInterviewPart === 1 ? "1-8" : "9-16"}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {exitInterviewQuestions
+                          .slice(
+                            resignationInterviewPart === 1 ? 0 : 8,
+                            resignationInterviewPart === 1 ? 8 : 16,
+                          )
+                          .map((question, idx) => {
+                            const questionIndex =
+                              (resignationInterviewPart === 1 ? 0 : 8) + idx;
+                            return (
+                              <div key={question} className="space-y-1">
+                                <label className="block text-xs font-bold text-gray-600">
+                                  {questionIndex + 1}. {question}
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  value={
+                                    resignationWizard.interview_answers[
+                                      questionIndex
+                                    ] || ""
+                                  }
+                                  onChange={(e) =>
+                                    setResignationWizard((prev) => {
+                                      const nextAnswers = [
+                                        ...prev.interview_answers,
+                                      ];
+                                      nextAnswers[questionIndex] =
+                                        e.target.value;
+                                      return {
+                                        ...prev,
+                                        interview_answers: nextAnswers,
+                                      };
+                                    })
+                                  }
+                                  className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                />
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      <div className="flex justify-end">
+                        {resignationInterviewPart === 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setResignationInterviewPart(2)}
+                            className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+                          >
+                            Proceed to Part 2
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setResignationInterviewPart(1)}
+                            className="cursor-pointer rounded-lg bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"
+                          >
+                            Back to Part 1
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {resignationStep === 4 && (
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        Download the endorsement form, complete it offline, then
+                        upload the signed copy.
+                      </div>
+                      <a
+                        href="/forms/Resignee_Endorsement-Form.docx"
+                        download
+                        className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white no-underline hover:bg-blue-700"
+                      >
+                        Download Endorsement Form (DOC)
+                      </a>
+
+                      <div className="rounded-md border border-gray-200 bg-white p-3">
+                        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">
+                          Upload Completed Endorsement Form
+                        </label>
+                        <input
+                          type="file"
+                          accept=".doc,.docx,.pdf"
+                          disabled={isUploadingEndorsement}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setIsUploadingEndorsement(true);
+                            try {
+                              const uploaded = await uploadRequiredFile(file);
+                              setResignationWizard((prev) => ({
+                                ...prev,
+                                endorsement_file_key: uploaded.key,
+                                endorsement_file_name:
+                                  uploaded.fileName || file.name,
+                              }));
+                              setResignationWizardError("");
+                              showToast("Endorsement form uploaded.");
+                            } catch (error) {
+                              showToast(
+                                error.message ||
+                                  "Failed to upload endorsement form.",
+                                "error",
+                              );
+                            } finally {
+                              setIsUploadingEndorsement(false);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="block w-full text-sm"
+                        />
+                        {resignationWizard.endorsement_file_key && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <p className="m-0 text-xs font-medium text-emerald-700">
+                              Uploaded:{" "}
+                              {resignationWizard.endorsement_file_name}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await openUploadedFileByKey(
+                                    resignationWizard.endorsement_file_key,
+                                  );
+                                } catch (error) {
+                                  showToast(
+                                    error.message ||
+                                      "Failed to open uploaded endorsement form.",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              className="cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
+                            >
+                              View Uploaded File
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {resignationStep === 5 && (
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        Review your details below, then click Submit Application
+                        for supervisor approval.
+                      </div>
+                      <div className="rounded-md border border-gray-200 bg-white p-3 text-sm">
+                        <p className="m-0">
+                          <span className="font-semibold">Recipient:</span>{" "}
+                          {resignationWizard.recipient_name}
+                        </p>
+                        <p className="m-0 mt-1">
+                          <span className="font-semibold">
+                            Resignation Date:
+                          </span>{" "}
+                          {resignationWizard.resignation_date || "-"}
+                        </p>
+                        <p className="m-0 mt-1">
+                          <span className="font-semibold">
+                            Last Working Day:
+                          </span>{" "}
+                          {resignationWizard.last_working_day || "-"}
+                        </p>
+                        <p className="m-0 mt-1">
+                          <span className="font-semibold">
+                            Reasons Selected:
+                          </span>{" "}
+                          {resignationWizard.leaving_reasons.join(", ") || "-"}
+                        </p>
+                        <p className="m-0 mt-1">
+                          <span className="font-semibold">Endorsement:</span>{" "}
+                          {resignationWizard.endorsement_file_name ||
+                            "Not uploaded"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex justify-between gap-2">
                     <button
                       type="button"
-                      onClick={() => setApplicationModalOpen(false)}
+                      onClick={() => {
+                        if (resignationStep === 1) {
+                          setApplicationModalOpen(false);
+                        } else {
+                          goToPreviousResignationStep();
+                        }
+                      }}
                       className="cursor-pointer rounded-lg bg-gray-200 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"
                     >
-                      Cancel
+                      {resignationStep === 1 ? "Cancel" : "Back"}
                     </button>
-                    <button
-                      type="submit"
-                      disabled={fileResignationMutation.isPending}
-                      className="cursor-pointer rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
-                    >
-                      Submit Resignation
-                    </button>
+
+                    {resignationStep < 5 ? (
+                      <button
+                        type="button"
+                        onClick={goToNextResignationStep}
+                        className="cursor-pointer rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-700"
+                      >
+                        Next
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={fileResignationMutation.isPending}
+                        onClick={submitResignationWizard}
+                        className="cursor-pointer rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Submit Application
+                      </button>
+                    )}
                   </div>
-                </form>
+                </div>
               )}
             </div>
           </div>
@@ -2045,76 +3177,90 @@ export default function Leave() {
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             {canDirectDecision ? (
-                              <div className="inline-flex gap-1.5">
+                              item.request_group === "resignation" &&
+                              !isCancellationRequest ? (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const decisionMode = isCancellationRequest
-                                      ? "cancellation"
-                                      : "application";
-                                    if (item.request_group === "resignation") {
-                                      openResignationDecisionConfirm(
-                                        item,
-                                        "Approved",
-                                        decisionMode,
-                                      );
-                                      setPendingModalOpen(false);
-                                      return;
-                                    }
-                                    item.isOffset
-                                      ? openOffsetDecisionConfirm(
-                                          item,
-                                          "Approved",
-                                          decisionMode,
-                                        )
-                                      : openLeaveDecisionConfirm(
+                                    openResignationSupervisorReview(item);
+                                    setPendingModalOpen(false);
+                                  }}
+                                  className="rounded-md border border-amber-200 bg-amber-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-800 hover:bg-amber-200"
+                                >
+                                  Review Application
+                                </button>
+                              ) : (
+                                <div className="inline-flex gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const decisionMode = isCancellationRequest
+                                        ? "cancellation"
+                                        : "application";
+                                      if (item.request_group === "resignation") {
+                                        openResignationDecisionConfirm(
                                           item,
                                           "Approved",
                                           decisionMode,
                                         );
-                                    setPendingModalOpen(false);
-                                  }}
-                                  className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200"
-                                >
-                                  {isCancellationRequest
-                                    ? "Approve Cancel"
-                                    : "Approve"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const decisionMode = isCancellationRequest
-                                      ? "cancellation"
-                                      : "application";
-                                    if (item.request_group === "resignation") {
-                                      openResignationDecisionConfirm(
-                                        item,
-                                        "Denied",
-                                        decisionMode,
-                                      );
+                                        setPendingModalOpen(false);
+                                        return;
+                                      }
+                                      item.isOffset
+                                        ? openOffsetDecisionConfirm(
+                                            item,
+                                            "Approved",
+                                            decisionMode,
+                                          )
+                                        : openLeaveDecisionConfirm(
+                                            item,
+                                            "Approved",
+                                            decisionMode,
+                                          );
                                       setPendingModalOpen(false);
-                                      return;
-                                    }
-                                    item.isOffset
-                                      ? openOffsetDecisionConfirm(
-                                          item,
-                                          "Denied",
-                                          decisionMode,
-                                        )
-                                      : openLeaveDecisionConfirm(
+                                    }}
+                                    className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200"
+                                  >
+                                    {isCancellationRequest
+                                      ? "Approve Cancel"
+                                      : "Approve"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const decisionMode = isCancellationRequest
+                                        ? "cancellation"
+                                        : "application";
+                                      if (item.request_group === "resignation") {
+                                        openResignationDecisionConfirm(
                                           item,
                                           "Denied",
                                           decisionMode,
                                         );
-                                    setPendingModalOpen(false);
-                                  }}
-                                  className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200"
-                                >
-                                  {isCancellationRequest
-                                    ? "Keep Request"
-                                    : "Deny"}
-                                </button>
-                              </div>
+                                        setPendingModalOpen(false);
+                                        return;
+                                      }
+                                      item.isOffset
+                                        ? openOffsetDecisionConfirm(
+                                            item,
+                                            "Denied",
+                                            decisionMode,
+                                          )
+                                        : openLeaveDecisionConfirm(
+                                            item,
+                                            "Denied",
+                                            decisionMode,
+                                          );
+                                      setPendingModalOpen(false);
+                                    }}
+                                    className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200"
+                                  >
+                                    {isCancellationRequest
+                                      ? "Keep Request"
+                                      : "Deny"}
+                                  </button>
+                                </div>
+                              )
                             ) : (
                               <button
                                 type="button"
@@ -2497,6 +3643,207 @@ export default function Leave() {
         </div>
       )}
 
+      {resignationSupervisorReview && (
+        <div className="fixed inset-0 z-[72] flex items-center justify-center bg-black/55 p-4">
+          <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-5 py-3">
+              <div>
+                <h3 className="m-0 text-base font-bold text-gray-900">
+                  Resignation Supervisor Review
+                </h3>
+                <p className="m-0 mt-1 text-xs font-medium text-gray-600">
+                  {resignationSupervisorReview.item.first_name}{" "}
+                  {resignationSupervisorReview.item.last_name} •{" "}
+                  {resignationSupervisorReview.item.resignation_type ||
+                    "Resignation"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResignationSupervisorReview(null)}
+                className="cursor-pointer rounded-md border-0 bg-transparent px-2 py-1 text-lg text-gray-500 hover:text-gray-700"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-auto p-5">
+              {(() => {
+                const progress = getResignationProgressPercent(
+                  resignationSupervisorReview.item,
+                );
+                return (
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="m-0 text-sm font-semibold text-gray-800">
+                        Current Progress: Step {progress.step} of{" "}
+                        {progress.totalSteps}
+                      </p>
+                      <span
+                        className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badgeClass[resignationSupervisorReview.item.status] || "bg-gray-100 text-gray-700"}`}
+                      >
+                        {resignationSupervisorReview.item.status ||
+                          "Pending Approval"}
+                      </span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500"
+                        style={{ width: `${progress.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Step 1 • Resignation Letter
+                </p>
+                <p className="m-0 mt-2 whitespace-pre-wrap text-sm text-gray-800">
+                  {resignationSupervisorReview.item.resignation_letter ||
+                    "No resignation letter provided."}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Step 2 • Employee Resignation Form
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-gray-800 md:grid-cols-2">
+                  <p className="m-0">
+                    <span className="font-semibold">Recipient:</span>{" "}
+                    {resignationSupervisorReview.item.recipient_name || "-"}
+                  </p>
+                  <p className="m-0">
+                    <span className="font-semibold">Resignation Date:</span>{" "}
+                    {resignationSupervisorReview.item.resignation_date
+                      ? new Date(
+                          resignationSupervisorReview.item.resignation_date,
+                        ).toLocaleDateString()
+                      : "-"}
+                  </p>
+                  <p className="m-0">
+                    <span className="font-semibold">Last Working Day:</span>{" "}
+                    {resignationSupervisorReview.item.last_working_day
+                      ? new Date(
+                          resignationSupervisorReview.item.last_working_day,
+                        ).toLocaleDateString()
+                      : "-"}
+                  </p>
+                  <p className="m-0">
+                    <span className="font-semibold">Effective Date:</span>{" "}
+                    {resignationSupervisorReview.item.effective_date
+                      ? new Date(
+                          resignationSupervisorReview.item.effective_date,
+                        ).toLocaleDateString()
+                      : "-"}
+                  </p>
+                </div>
+
+                <div className="mt-3">
+                  <p className="m-0 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Reasons for Leaving
+                  </p>
+                  {resignationSupervisorReview.leavingReasons.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {resignationSupervisorReview.leavingReasons.map((reason) => (
+                        <span
+                          key={reason}
+                          className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800"
+                        >
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="m-0 mt-2 text-sm text-gray-600">-</p>
+                  )}
+                  {resignationSupervisorReview.item.leaving_reason_other && (
+                    <p className="m-0 mt-2 text-sm text-gray-700">
+                      <span className="font-semibold">Others:</span>{" "}
+                      {resignationSupervisorReview.item.leaving_reason_other}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Step 3 • Exit Interview Responses
+                </p>
+                <p className="m-0 mt-2 text-sm text-gray-700">
+                  Completed answers: {resignationSupervisorReview.interviewAnswers.filter((answer) => String(answer || "").trim()).length}/16
+                </p>
+                <div className="mt-3 space-y-2">
+                  {exitInterviewQuestions.map((question, index) => (
+                    <div key={question} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                      <p className="m-0 text-xs font-semibold text-gray-700">
+                        {index + 1}. {question}
+                      </p>
+                      <p className="m-0 mt-1 whitespace-pre-wrap text-sm text-gray-800">
+                        {resignationSupervisorReview.interviewAnswers[index] ||
+                          "No response."}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Step 4 • Endorsement Form Submission
+                </p>
+                <p className="m-0 mt-2 text-sm text-gray-800">
+                  <span className="font-semibold">File Key:</span>{" "}
+                  {resignationSupervisorReview.item.endorsement_file_key ||
+                    "Not uploaded"}
+                </p>
+                {resignationSupervisorReview.item.endorsement_file_key && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await openUploadedFileByKey(
+                          resignationSupervisorReview.item.endorsement_file_key,
+                        );
+                      } catch (error) {
+                        showToast(
+                          error.message ||
+                            "Failed to preview uploaded endorsement form.",
+                          "error",
+                        );
+                      }
+                    }}
+                    className="mt-2 rounded-md border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+                  >
+                    Preview Endorsement File
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-5 py-3">
+              <button
+                type="button"
+                onClick={keepResignationPendingUnderReview}
+                className="rounded-md border border-amber-300 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-200"
+              >
+                Keep Pending (Under Review)
+              </button>
+              <button
+                type="button"
+                disabled={reviewResignationMutation.isPending}
+                onClick={approveResignationFromReview}
+                className="rounded-md border border-emerald-700 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Final Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cancelApprovalConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4">
           <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-xl">
@@ -2655,6 +4002,56 @@ export default function Leave() {
               >
                 Save & Notify
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filePreviewOpen && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/60 p-4">
+          <div className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+              <h3 className="m-0 text-sm font-bold text-gray-900">
+                {filePreviewTitle || "Document Preview"}
+              </h3>
+              <button
+                type="button"
+                onClick={closeFilePreview}
+                className="cursor-pointer rounded-md border-0 bg-transparent px-2 py-1 text-lg text-gray-500 hover:text-gray-700"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto bg-white p-4">
+              {filePreviewLoading && (
+                <div className="flex h-full items-center justify-center text-sm font-semibold text-gray-600">
+                  Loading preview...
+                </div>
+              )}
+
+              {!filePreviewLoading && filePreviewError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                  {filePreviewError}
+                </div>
+              )}
+
+              {!filePreviewLoading && !filePreviewError && filePreviewHtml && (
+                <div className="docx-preview rounded-lg border border-gray-200 bg-white p-4 text-sm leading-relaxed text-gray-800">
+                  <div dangerouslySetInnerHTML={{ __html: filePreviewHtml }} />
+                </div>
+              )}
+
+              {!filePreviewLoading &&
+                !filePreviewError &&
+                !filePreviewHtml &&
+                filePreviewUrl && (
+                  <iframe
+                    title="Uploaded document preview"
+                    src={filePreviewUrl}
+                    className="h-full min-h-[68vh] w-full rounded-lg border border-gray-200"
+                  />
+                )}
             </div>
           </div>
         </div>

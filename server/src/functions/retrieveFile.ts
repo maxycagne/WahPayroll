@@ -1,21 +1,23 @@
 import { Request, Response } from "express";
-import { s3Client } from "../config/s3";
+import { s3BucketName, s3Client } from "../config/s3";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const retrieveFile = async (req: Request, res: Response) => {
-  const { filename }: { filename: string } = req.body;
+  const filenameFromBody = req.body?.filename;
+  const filenameFromQuery =
+    typeof req.query?.filename === "string" ? req.query.filename : "";
+  const filename: string = String(filenameFromBody || filenameFromQuery || "");
   if (!filename) {
     return res.status(400).json({
       message: "No filename",
     });
   }
+
   try {
     const response = new GetObjectCommand({
-      Bucket: "payroll",
+      Bucket: s3BucketName,
       Key: filename,
-      // send response as file
-      ResponseContentType: "application/octet-stream",
     });
 
     // make signed url that will only be for a certain amount of time
@@ -25,7 +27,7 @@ export const retrieveFile = async (req: Request, res: Response) => {
     });
   } catch (e) {
     return res.status(500).json({
-      message: "Internal server error",
+      message: e instanceof Error ? e.message : "Internal server error",
     });
   }
 };

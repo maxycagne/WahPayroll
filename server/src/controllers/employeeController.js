@@ -314,6 +314,17 @@ const ensureResignationsTable = async (connection = pool) => {
       resignation_type VARCHAR(100) NOT NULL,
       effective_date DATE NOT NULL,
       reason TEXT,
+      resignation_letter TEXT,
+      recipient_name VARCHAR(255),
+      recipient_emp_id ${empIdColumn} NULL,
+      resignation_date DATE NULL,
+      last_working_day DATE NULL,
+      leaving_reasons_json JSON NULL,
+      leaving_reason_other TEXT NULL,
+      exit_interview_answers_json JSON NULL,
+      endorsement_file_key VARCHAR(512) NULL,
+      clearance_file_key VARCHAR(512) NULL,
+      current_step TINYINT DEFAULT 1,
       status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
       reviewed_by ${empIdColumn} NULL,
       review_remarks TEXT,
@@ -379,6 +390,97 @@ const ensureResignationsTable = async (connection = pool) => {
       "ALTER TABLE resignations ADD COLUMN hr_note TEXT NULL AFTER review_remarks",
     );
   }
+
+  const optionalColumns = [
+    {
+      name: "resignation_letter",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN resignation_letter TEXT NULL AFTER reason",
+    },
+    {
+      name: "recipient_name",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN recipient_name VARCHAR(255) NULL AFTER resignation_letter",
+    },
+    {
+      name: "recipient_emp_id",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN recipient_emp_id VARCHAR(50) NULL AFTER recipient_name",
+    },
+    {
+      name: "resignation_date",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN resignation_date DATE NULL AFTER recipient_emp_id",
+    },
+    {
+      name: "last_working_day",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN last_working_day DATE NULL AFTER resignation_date",
+    },
+    {
+      name: "leaving_reasons_json",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN leaving_reasons_json JSON NULL AFTER last_working_day",
+    },
+    {
+      name: "leaving_reason_other",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN leaving_reason_other TEXT NULL AFTER leaving_reasons_json",
+    },
+    {
+      name: "exit_interview_answers_json",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN exit_interview_answers_json JSON NULL AFTER leaving_reason_other",
+    },
+    {
+      name: "endorsement_file_key",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN endorsement_file_key VARCHAR(512) NULL AFTER exit_interview_answers_json",
+    },
+    {
+      name: "clearance_file_key",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN clearance_file_key VARCHAR(512) NULL AFTER endorsement_file_key",
+    },
+    {
+      name: "current_step",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN current_step TINYINT DEFAULT 1 AFTER clearance_file_key",
+    },
+  ];
+
+  for (const column of optionalColumns) {
+    const [columnRows] = await connection.query(
+      `
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'resignations'
+          AND COLUMN_NAME = ?
+        LIMIT 1
+      `,
+      [column.name],
+    );
+
+    if (columnRows.length === 0) {
+      await connection.query(column.alter);
+    }
+  }
+};
+
+const ensureResignationDraftsTable = async (connection = pool) => {
+  const empIdColumn = await getEmpIdColumnDefinition(connection);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS resignation_drafts (
+      emp_id ${empIdColumn} PRIMARY KEY,
+      payload_json JSON NOT NULL,
+      current_step TINYINT DEFAULT 1,
+      interview_part TINYINT DEFAULT 1,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+    )
+  `);
 };
 
 const ensureNotificationsTable = async (connection = pool) => {
@@ -566,10 +668,11 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
   if (requester.role === "Supervisor") {
     const [rows] = await connection.query(
       `
-        SELECT emp_id
+        SELECT emp_id, first_name, last_name, designation
         FROM employees
-        WHERE COALESCE(role, '') = 'HR'
+        WHERE LOWER(COALESCE(role, '')) = 'hr'
           AND emp_id <> ?
+        ORDER BY first_name ASC, last_name ASC
       `,
       [requester.emp_id],
     );
@@ -588,11 +691,15 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
 
   const [rows] = await connection.query(
     `
-      SELECT emp_id
+      SELECT emp_id, first_name, last_name, designation
       FROM employees
-      WHERE COALESCE(role, '') = 'Supervisor'
-        AND designation = ?
+      WHERE (
+          LOWER(COALESCE(role, '')) = 'supervisor'
+          OR LOWER(COALESCE(position, '')) LIKE 'supervisor(%'
+        )
+        AND LOWER(TRIM(COALESCE(designation, ''))) = LOWER(TRIM(?))
         AND emp_id <> ?
+      ORDER BY first_name ASC, last_name ASC
     `,
     [requester.designation, requester.emp_id],
   );
@@ -1870,8 +1977,125 @@ export const getResignations = async (req, res) => {
   }
 };
 
+export const getResignationRecipient = async (req, res) => {
+  try {
+    const requester = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!requester) {
+      return res.status(404).json({ message: "Requester not found" });
+    }
+
+    const supervisors = await getSupervisorApproversForRequester(pool, requester);
+    const primaryRecipient = supervisors[0] || null;
+    const firstName = String(primaryRecipient?.first_name || "").trim();
+    const lastName = String(primaryRecipient?.last_name || "").trim();
+    const candidateName = `${firstName} ${lastName}`.trim();
+    const recipientName =
+      candidateName && !["undefined", "null", "undefined undefined", "null null"].includes(candidateName.toLowerCase())
+        ? candidateName
+        : "Supervisor";
+
+    return res.json({
+      recipient_name: recipientName,
+      recipient_emp_id: primaryRecipient?.emp_id || null,
+      recipient_designation: primaryRecipient?.designation || null,
+      request_date: new Date().toISOString().slice(0, 10),
+    });
+  } catch (error) {
+    console.error("DB Error in getResignationRecipient:", error);
+    return res.status(500).json({ message: "Error loading resignation recipient" });
+  }
+};
+
+export const getMyResignationDraft = async (req, res) => {
+  const requesterEmpId = req.user?.emp_id;
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    await ensureResignationDraftsTable();
+
+    const [rows] = await pool.query(
+      `SELECT payload_json, current_step, interview_part, updated_at
+       FROM resignation_drafts
+       WHERE emp_id = ?
+       LIMIT 1`,
+      [requesterEmpId],
+    );
+
+    if (!rows.length) {
+      return res.json({ draft: null });
+    }
+
+    return res.json({
+      draft: {
+        payload: rows[0].payload_json || {},
+        step: Number(rows[0].current_step || 1),
+        interviewPart: Number(rows[0].interview_part || 1),
+        updated_at: rows[0].updated_at || null,
+      },
+    });
+  } catch (error) {
+    console.error("DB Error in getMyResignationDraft:", error);
+    return res.status(500).json({ message: "Error fetching resignation draft" });
+  }
+};
+
+export const saveMyResignationDraft = async (req, res) => {
+  const requesterEmpId = req.user?.emp_id;
+  const payload = req.body?.payload || {};
+  const currentStep = Number(req.body?.step || 1);
+  const interviewPart = Number(req.body?.interviewPart || 1);
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!Number.isFinite(currentStep) || currentStep < 1 || currentStep > 5) {
+    return res.status(400).json({ message: "Invalid step" });
+  }
+
+  if (!Number.isFinite(interviewPart) || ![1, 2].includes(interviewPart)) {
+    return res.status(400).json({ message: "Invalid interview part" });
+  }
+
+  try {
+    await ensureResignationDraftsTable();
+
+    await pool.query(
+      `INSERT INTO resignation_drafts (emp_id, payload_json, current_step, interview_part)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         payload_json = VALUES(payload_json),
+         current_step = VALUES(current_step),
+         interview_part = VALUES(interview_part),
+         updated_at = CURRENT_TIMESTAMP`,
+      [requesterEmpId, JSON.stringify(payload || {}), currentStep, interviewPart],
+    );
+
+    return res.json({ message: "Draft saved" });
+  } catch (error) {
+    console.error("DB Error in saveMyResignationDraft:", error);
+    return res.status(500).json({ message: "Error saving resignation draft" });
+  }
+};
+
 export const fileResignation = async (req, res) => {
-  const { emp_id, resignation_type, effective_date, reason } = req.body;
+  const {
+    emp_id,
+    resignation_type,
+    effective_date,
+    reason,
+    resignation_letter,
+    recipient_name,
+    recipient_emp_id,
+    resignation_date,
+    last_working_day,
+    leaving_reasons,
+    leaving_reason_other,
+    exit_interview_answers,
+    endorsement_file_key,
+  } = req.body;
   try {
     const requesterEmpId =
       req.user?.role === "Admin" && emp_id
@@ -1884,10 +2108,48 @@ export const fileResignation = async (req, res) => {
       });
     }
 
+    const trimmedReason = String(reason || "").trim();
+    const trimmedLetter = String(resignation_letter || "").trim();
+
+    if (!trimmedLetter) {
+      return res.status(400).json({
+        message: "Resignation letter is required",
+      });
+    }
+
+    if (!trimmedReason) {
+      return res.status(400).json({
+        message: "Reason is required",
+      });
+    }
+
+    const parsedReasons = Array.isArray(leaving_reasons)
+      ? leaving_reasons
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      : [];
+
+    if (parsedReasons.length === 0) {
+      return res.status(400).json({
+        message: "At least one reason for leaving is required",
+      });
+    }
+
+    const parsedInterviewAnswers = Array.isArray(exit_interview_answers)
+      ? exit_interview_answers.map((item) => String(item || "").trim())
+      : [];
+
+    if (parsedInterviewAnswers.length !== 16 || parsedInterviewAnswers.some((item) => !item)) {
+      return res.status(400).json({
+        message: "All 16 exit interview answers are required",
+      });
+    }
+
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
       await ensureResignationsTable(connection);
+      await ensureResignationDraftsTable(connection);
 
       const requester = await getEmployeeProfile(connection, requesterEmpId);
       if (!requester) {
@@ -1895,9 +2157,78 @@ export const fileResignation = async (req, res) => {
         return res.status(404).json({ message: "Requester not found" });
       }
 
+      const parsedResignationDate = new Date(resignation_date);
+      const parsedLastWorkingDay = new Date(last_working_day);
+      const parsedEffectiveDate = new Date(effective_date);
+
+      if (
+        Number.isNaN(parsedResignationDate.getTime()) ||
+        Number.isNaN(parsedLastWorkingDay.getTime()) ||
+        Number.isNaN(parsedEffectiveDate.getTime())
+      ) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Resignation date and last working day must be valid dates",
+        });
+      }
+
+      if (parsedResignationDate > parsedLastWorkingDay) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Last working day must be on or after resignation date",
+        });
+      }
+
+      if (String(effective_date) !== String(last_working_day)) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Effective date must match last working day",
+        });
+      }
+
+      if (requester?.hired_date) {
+        const parsedHireDate = new Date(requester.hired_date);
+        if (!Number.isNaN(parsedHireDate.getTime()) && parsedResignationDate < parsedHireDate) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Resignation date cannot be earlier than date of joining",
+          });
+        }
+      }
+
       const [result] = await connection.query(
-        "INSERT INTO resignations (emp_id, resignation_type, effective_date, reason, status) VALUES (?, ?, ?, ?, 'Pending Approval')",
-        [requesterEmpId, resignation_type, effective_date, reason || null],
+        `INSERT INTO resignations (
+           emp_id,
+           resignation_type,
+           effective_date,
+           reason,
+           resignation_letter,
+           recipient_name,
+           recipient_emp_id,
+           resignation_date,
+           last_working_day,
+           leaving_reasons_json,
+           leaving_reason_other,
+           exit_interview_answers_json,
+           endorsement_file_key,
+           current_step,
+           status
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 5, 'Pending Approval')`,
+        [
+          requesterEmpId,
+          resignation_type,
+          effective_date,
+          trimmedReason,
+          trimmedLetter,
+          recipient_name || null,
+          recipient_emp_id || null,
+          resignation_date || null,
+          last_working_day || null,
+          JSON.stringify(parsedReasons),
+          String(leaving_reason_other || "").trim() || null,
+          JSON.stringify(parsedInterviewAnswers),
+          endorsement_file_key || null,
+        ],
       );
 
       await notifyApproversForRequest(connection, {
@@ -1905,6 +2236,11 @@ export const fileResignation = async (req, res) => {
         moduleType: "Resignation",
         requestId: result.insertId,
       });
+
+      await connection.query(
+        "DELETE FROM resignation_drafts WHERE emp_id = ?",
+        [requesterEmpId],
+      );
 
       await connection.commit();
     } catch (txError) {
@@ -1918,6 +2254,56 @@ export const fileResignation = async (req, res) => {
   } catch (error) {
     console.error("DB Error in fileResignation:", error);
     res.status(500).json({ message: "Error filing resignation" });
+  }
+};
+
+export const uploadResignationClearance = async (req, res) => {
+  const { id } = req.params;
+  const requesterEmpId = req.user?.emp_id;
+  const clearanceFileKey = String(req.body?.clearance_file_key || "").trim();
+
+  if (!requesterEmpId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!clearanceFileKey) {
+    return res.status(400).json({ message: "clearance_file_key is required" });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      "SELECT id, emp_id, status FROM resignations WHERE id = ? LIMIT 1",
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const resignation = rows[0];
+    if (String(resignation.emp_id) !== String(requesterEmpId)) {
+      return res.status(403).json({
+        message: "You can only upload clearance for your own resignation",
+      });
+    }
+
+    if (String(resignation.status || "") !== "Approved") {
+      return res.status(400).json({
+        message: "Clearance upload is only allowed for approved resignations",
+      });
+    }
+
+    await pool.query(
+      "UPDATE resignations SET clearance_file_key = ? WHERE id = ?",
+      [clearanceFileKey, id],
+    );
+
+    return res.json({ message: "Clearance file uploaded successfully" });
+  } catch (error) {
+    console.error("DB Error in uploadResignationClearance:", error);
+    return res.status(500).json({ message: "Error uploading clearance file" });
   }
 };
 

@@ -1,6 +1,6 @@
 import { S3ServiceException, waitUntilObjectExists } from "@aws-sdk/client-s3";
 import { Request, Response } from "express";
-import { s3Client } from "../config/s3";
+import { s3BucketName, s3Client } from "../config/s3";
 
 type S3File = Express.Multer.File & {
   // Key is from multer-3. KEY IS THE NAME OF THE FILE ITSELF!!!!
@@ -24,7 +24,7 @@ export const fileUpload = async (req: Request, res: Response) => {
           maxWaitTime: 60,
         },
         {
-          Bucket: process.env.S3_BUCKET_NAME,
+          Bucket: s3BucketName,
           Key: file.key,
         },
       );
@@ -45,16 +45,16 @@ export const fileUpload = async (req: Request, res: Response) => {
   } catch (e) {
     if (e instanceof S3ServiceException && e.name === "EntityTooLarge") {
       return res.status(500).json({
-        message: `Error from S3 while uploading object to ${process.env.S3_BUCKET_NAME}. The file was too large. Upload directly to the console `,
+        message: `Error from S3 while uploading object to ${s3BucketName}. The file was too large. Upload directly to the console `,
       });
     }
     if (e instanceof S3ServiceException) {
       return res.status(500).json({
-        message: `Error form S3 uploading to ${process.env.S3_BUCKET_NAME}. ${e.name}: ${e.message}`,
+        message: `Error form S3 uploading to ${s3BucketName}. ${e.name}: ${e.message}`,
       });
     }
     return res.status(500).json({
-      message: "Internal Server Error",
+      message: e instanceof Error ? e.message : "Internal Server Error",
     });
   }
 };

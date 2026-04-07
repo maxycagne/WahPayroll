@@ -5,7 +5,7 @@ export const sanitizeFile = (
   res: Response,
   next: NextFunction,
 ) => {
-  const fileExtensions = [".docx", ".pdf"];
+  const fileExtensions = [".doc", ".docx", ".pdf"];
   const uploadedFiles = req.files as Express.Multer.File[];
   if (uploadedFiles.length === 0 || uploadedFiles === undefined) {
     return res.status(400).json({
@@ -26,7 +26,7 @@ export const sanitizeFile = (
       });
     }
     if (file.size > 1024 * 1024 * 10) {
-      res.status(400).json({
+      return res.status(400).json({
         error: `File is too large.File name: ${file.originalname} File size: ${file.size}. Allowed: 10MB`,
       });
     }
