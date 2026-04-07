@@ -17,7 +17,7 @@ const badgeClass = {
   "": "bg-gray-100 text-gray-500", // Fallback styling for None
 };
 
-export default function Attendance() {
+export default function Attendance({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
@@ -37,6 +37,8 @@ export default function Attendance() {
     }
   }, []);
   const isAdmin = currentUser?.role === "Admin";
+  const canEditAttendance =
+    currentUser?.role === "Admin" || currentUser?.role === "HR";
   const canConfigureWorkweek =
     currentUser?.role === "Admin" || currentUser?.role === "HR";
 
@@ -56,13 +58,14 @@ export default function Attendance() {
 
   // Daily Form & Bulk Action State
   const [dailySearch, setDailySearch] = useState("");
+  const [dailyStatusFilter, setDailyStatusFilter] = useState("All");
   const [attendanceForm, setAttendanceForm] = useState({});
   const [secondaryStatusForm, setSecondaryStatusForm] = useState({});
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
   const [bulkStatus, setBulkStatus] = useState("Present");
 
   useEffect(() => {
-    if (searchParams.get("open") !== "take-attendance") return;
+    if (!shortcutMode && searchParams.get("open") !== "take-attendance") return;
 
     const now = new Date();
     const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -70,10 +73,12 @@ export default function Attendance() {
     setSelectedDate(localDate);
     setDailyModalOpen(true);
 
+    if (shortcutMode) return;
+
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, shortcutMode]);
 
   // --- QUERIES ---
   const { data: attendance = [], isLoading } = useQuery({
@@ -250,6 +255,11 @@ export default function Attendance() {
   // --- HANDLERS ---
   const handleDailySubmit = (e) => {
     e.preventDefault();
+    if (!canEditAttendance) {
+      showToast("View-only access: you cannot modify attendance.", "error");
+      return;
+    }
+
     const records = Object.entries(attendanceForm)
       .filter(([_, status]) => status !== "" && status !== "Pending")
       .map(([emp_id, status]) => {
@@ -266,6 +276,8 @@ export default function Attendance() {
   };
 
   const markAllPresent = () => {
+    if (!canEditAttendance) return;
+
     const updated = { ...attendanceForm };
     dailyList.forEach((emp) => {
       // CHANGED: Check for "" (none) as well as "Pending"
@@ -276,13 +288,58 @@ export default function Attendance() {
     setAttendanceForm(updated);
   };
 
-  const filteredDaily = dailyList.filter((a) =>
-    `${a.first_name} ${a.last_name} ${a.emp_id}`
+  const filteredDaily = dailyList.filter((a) => {
+    const matchesSearch = `${a.first_name} ${a.last_name} ${a.emp_id}`
       .toLowerCase()
-      .includes(dailySearch.toLowerCase()),
-  );
+      .includes(dailySearch.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (dailyStatusFilter === "All") return true;
+
+    const primary = attendanceForm[a.emp_id] || "None";
+    const secondary = secondaryStatusForm[a.emp_id] || "None";
+
+    if (dailyStatusFilter === "None") {
+      return primary === "None" && secondary === "None";
+    }
+
+    return primary === dailyStatusFilter || secondary === dailyStatusFilter;
+  });
+
+  const dailyModalOverview = useMemo(() => {
+    return filteredDaily.reduce(
+      (acc, emp) => {
+        const primary = attendanceForm[emp.emp_id] || "";
+        const secondary = secondaryStatusForm[emp.emp_id] || "";
+
+        if (primary === "Present") acc.present += 1;
+        if (primary === "Absent") acc.absent += 1;
+        if (primary === "On Leave") acc.onLeave += 1;
+        if (!primary && !secondary) acc.unassigned += 1;
+        if (secondary === "Late") acc.late += 1;
+        if (secondary === "Undertime") acc.undertime += 1;
+        if (secondary === "Half-Day") acc.halfDay += 1;
+        if (primary || secondary) acc.assigned += 1;
+
+        return acc;
+      },
+      {
+        total: filteredDaily.length,
+        assigned: 0,
+        unassigned: 0,
+        present: 0,
+        absent: 0,
+        onLeave: 0,
+        late: 0,
+        undertime: 0,
+        halfDay: 0,
+      },
+    );
+  }, [filteredDaily, attendanceForm, secondaryStatusForm]);
 
   const toggleEmployeeSelection = (empId) => {
+    if (!canEditAttendance) return;
+
     const newSelected = new Set(selectedEmployees);
     if (newSelected.has(empId)) newSelected.delete(empId);
     else newSelected.add(empId);
@@ -290,6 +347,8 @@ export default function Attendance() {
   };
 
   const toggleAllSelected = () => {
+    if (!canEditAttendance) return;
+
     if (selectedEmployees.size === filteredDaily.length) {
       setSelectedEmployees(new Set());
     } else {
@@ -298,6 +357,7 @@ export default function Attendance() {
   };
 
   const applyBulkStatus = () => {
+    if (!canEditAttendance) return;
     if (selectedEmployees.size === 0) return;
     const updated = { ...attendanceForm };
     selectedEmployees.forEach((id) => {
@@ -378,249 +438,445 @@ export default function Attendance() {
       .includes(search.toLowerCase()),
   );
 
+  const overviewStats = useMemo(() => {
+    return attendance.reduce(
+      (acc, row) => {
+        const primary = row.status || "Pending";
+        if (primary === "Present") acc.present += 1;
+        if (primary === "Absent") acc.absent += 1;
+        if (primary === "On Leave") acc.onLeave += 1;
+        if (primary === "Pending") acc.pending += 1;
+        if (row.status2) acc.withSecondary += 1;
+        return acc;
+      },
+      {
+        total: attendance.length,
+        present: 0,
+        absent: 0,
+        onLeave: 0,
+        pending: 0,
+        withSecondary: 0,
+      },
+    );
+  }, [attendance]);
+
   if (isLoading)
     return <div className="p-6 font-bold">Loading Attendance...</div>;
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <h1 className="m-0 text-lg font-bold text-gray-900">
-          Attendance Management
-        </h1>
-        {canConfigureWorkweek && (
-          <button
-            onClick={() => setWorkweekModalOpen(true)}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm cursor-pointer hover:bg-indigo-700 border-0 transition-colors"
-          >
-            ⚙️ Workweek Setup
-          </button>
-        )}
-      </div>
-
-      {/* --- INLINE CALENDAR VIEW --- */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-        <div className="bg-purple-700 px-4 py-2 text-white">
-          <h2 className="text-base font-bold m-0">
-            Select Date to Take Attendance
-          </h2>
-        </div>
-        <div className="p-3 bg-gray-50">
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={() => setViewDate(new Date(year, month - 1, 1))}
-              className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
-            >
-              ◀ Prev
-            </button>
-            <h3 className="m-0 text-base font-bold">
-              {viewDate.toLocaleString("default", {
-                month: "long",
-                year: "numeric",
-              })}
-            </h3>
-            <button
-              onClick={() => setViewDate(new Date(year, month + 1, 1))}
-              className="px-3 py-1 border rounded bg-white font-medium text-sm cursor-pointer hover:bg-gray-100 transition-colors"
-            >
-              Next ▶
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-              <div
-                key={d}
-                className="text-center text-xs font-bold text-gray-500 py-1"
+      {!shortcutMode && (
+        <>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            {canConfigureWorkweek && (
+              <button
+                onClick={() => setWorkweekModalOpen(true)}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm cursor-pointer hover:bg-indigo-700 border-0 transition-colors"
               >
-                {d}
-              </div>
-            ))}
-            {cells.map((day, i) => {
-              if (!day) return <div key={`empty-${i}`} />;
-              const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-              const isToday =
-                today.getFullYear() === year &&
-                today.getMonth() === month &&
-                today.getDate() === day;
-
-              const dayData = calendarSummary.find((s) => {
-                const dbDate = new Date(s.date);
-                return (
-                  dbDate.getFullYear() === year &&
-                  dbDate.getMonth() === month &&
-                  dbDate.getDate() === day
-                );
-              });
-
-              return (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setSelectedDate(dateStr);
-                    setDailyModalOpen(true);
-                    setSelectedEmployees(new Set());
-                  }}
-                  className={`min-h-[60px] border rounded p-1 flex flex-col items-start bg-white cursor-pointer hover:border-purple-500 hover:shadow-md transition-all ${isToday ? "border-purple-600 bg-purple-50" : "border-gray-200"}`}
-                >
-                  <span
-                    className={`font-bold text-xs ${isToday ? "text-purple-700" : "text-gray-700"}`}
-                  >
-                    {day}
-                  </span>
-                  {dayData && (
-                    <div className="mt-auto w-full space-y-0.5 flex flex-col gap-0.5">
-                      {/* NEW STATUSES ADDED HERE */}
-                      {dayData.present_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-green-700 bg-green-50 rounded px-1 w-full text-left truncate border border-green-100">
-                          • {dayData.present_count} Present
-                        </div>
-                      )}
-                      {dayData.leave_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-purple-700 bg-purple-50 rounded px-1 w-full text-left truncate border border-purple-100">
-                          • {dayData.leave_count} On Leave
-                        </div>
-                      )}
-                      {dayData.absent_count > 0 && (
-                        <div className="text-[0.6rem] font-bold text-red-700 bg-red-50 rounded px-1 w-full text-left truncate border border-red-100">
-                          • {dayData.absent_count} Absent
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+                ⚙️ Workweek Setup
+              </button>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* --- ALL EMPLOYEES SUMMARY TABLE --- */}
-      <h2 className="m-0 text-base font-bold text-gray-900 mb-2">
-        Overall Attendance Overview
-      </h2>
-      <div className="mb-2">
-        <input
-          type="text"
-          className="w-full max-w-[280px] px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-purple-500"
-          placeholder="Search by name or ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+          {/* --- INLINE CALENDAR VIEW --- */}
+          <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-sky-600 px-4 py-3 text-white">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="m-0 text-base font-bold">
+                    Attendance Calendar
+                  </h2>
+                  <p className="m-0 mt-1 text-xs text-white/90">
+                    Select a date to review or record daily attendance.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-50 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <button
+                  onClick={() => setViewDate(new Date(year, month - 1, 1))}
+                  className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                >
+                  ◀ Prev
+                </button>
+                <h3 className="m-0 text-base font-bold text-slate-800">
+                  {viewDate.toLocaleString("default", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </h3>
+                <button
+                  onClick={() => setViewDate(new Date(year, month + 1, 1))}
+                  className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                >
+                  Next ▶
+                </button>
+              </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Employee ID
-                </th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Name
-                </th>
-                <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
-                  Absences
-                </th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredMain.map((a, index) => (
-                <tr key={`${a.emp_id}-${index}`} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 text-xs">{a.emp_id}</td>
-                  <td className="px-3 py-2 font-semibold text-xs">
-                    {a.first_name} {a.last_name}
-                  </td>
-                  <td className="px-3 py-2 text-center text-xs">
-                    {a.total_absences || 0}
-                  </td>
+              <div className="grid grid-cols-7 gap-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                  <div
+                    key={d}
+                    className="rounded-lg bg-slate-100 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-slate-500"
+                  >
+                    {d}
+                  </div>
+                ))}
+                {cells.map((day, i) => {
+                  if (!day)
+                    return <div key={`empty-${i}`} className="min-h-[88px]" />;
+                  const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+                  const isToday =
+                    today.getFullYear() === year &&
+                    today.getMonth() === month &&
+                    today.getDate() === day;
 
-                  <td className="px-3 py-2">
-                    <span
-                      className={`inline-flex items-center border border-transparent rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass[a.status] || "bg-gray-100 text-gray-800"}`}
+                  const dayData = calendarSummary.find((s) => {
+                    const dbDate = new Date(s.date);
+                    return (
+                      dbDate.getFullYear() === year &&
+                      dbDate.getMonth() === month &&
+                      dbDate.getDate() === day
+                    );
+                  });
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setSelectedDate(dateStr);
+                        setDailyModalOpen(true);
+                        setSelectedEmployees(new Set());
+                      }}
+                      className={`min-h-[88px] cursor-pointer rounded-xl border bg-white p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${isToday ? "border-indigo-600 ring-2 ring-indigo-200" : "border-slate-200 hover:border-indigo-300"}`}
                     >
-                      {a.status || "No Data"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      <div className="mb-1 flex w-full items-center justify-between">
+                        <span
+                          className={`text-xs font-bold ${isToday ? "text-indigo-700" : "text-slate-700"}`}
+                        >
+                          {day}
+                        </span>
+                      </div>
+                      {dayData && (
+                        <div className="mt-auto flex w-full flex-col gap-1">
+                          {dayData.present_count > 0 && (
+                            <div className="w-full truncate rounded-md border border-green-200 bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+                              • {dayData.present_count} Present
+                            </div>
+                          )}
+                          {dayData.late_count > 0 && (
+                            <div className="w-full truncate rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                              • {dayData.late_count} Late
+                            </div>
+                          )}
+                          {dayData.undertime_count > 0 && (
+                            <div className="w-full truncate rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                              • {dayData.undertime_count} Undertime
+                            </div>
+                          )}
+                          {dayData.halfday_count > 0 && (
+                            <div className="w-full truncate rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">
+                              • {dayData.halfday_count} Half-Day
+                            </div>
+                          )}
+                          {dayData.leave_count > 0 && (
+                            <div className="w-full truncate rounded-md border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
+                              • {dayData.leave_count} On Leave
+                            </div>
+                          )}
+                          {dayData.absent_count > 0 && (
+                            <div className="w-full truncate rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                              • {dayData.absent_count} Absent
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* --- OVERALL ATTENDANCE OVERVIEW --- */}
+          <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="m-0 text-base font-bold text-gray-900">
+                Attendance Overview
+              </h2>
+              <input
+                type="text"
+                className="w-full max-w-[280px] px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Search by name or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="m-0 text-[11px] font-semibold text-gray-500">
+                  Total
+                </p>
+                <p className="m-0 text-sm font-bold text-gray-900">
+                  {overviewStats.total}
+                </p>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                <p className="m-0 text-[11px] font-semibold text-green-700">
+                  Present
+                </p>
+                <p className="m-0 text-sm font-bold text-green-800">
+                  {overviewStats.present}
+                </p>
+              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                <p className="m-0 text-[11px] font-semibold text-red-700">
+                  Absent
+                </p>
+                <p className="m-0 text-sm font-bold text-red-800">
+                  {overviewStats.absent}
+                </p>
+              </div>
+              <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
+                <p className="m-0 text-[11px] font-semibold text-purple-700">
+                  On Leave
+                </p>
+                <p className="m-0 text-sm font-bold text-purple-800">
+                  {overviewStats.onLeave}
+                </p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="m-0 text-[11px] font-semibold text-amber-700">
+                  Pending
+                </p>
+                <p className="m-0 text-sm font-bold text-amber-800">
+                  {overviewStats.pending}
+                </p>
+              </div>
+              <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+                <p className="m-0 text-[11px] font-semibold text-sky-700">
+                  With Status 2
+                </p>
+                <p className="m-0 text-sm font-bold text-sky-800">
+                  {overviewStats.withSecondary}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Employee
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Employment
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Primary Status
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
+                      Status 2
+                    </th>
+                    <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
+                      Absences
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {filteredMain.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-3 py-4 text-center text-gray-500"
+                      >
+                        No matching records.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredMain.map((a, index) => (
+                      <tr
+                        key={`${a.emp_id}-${index}`}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-3 py-2">
+                          <p className="m-0 font-semibold text-gray-900">
+                            {a.first_name} {a.last_name}
+                          </p>
+                          <p className="m-0 text-[11px] text-gray-500">
+                            {a.emp_id}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2 text-gray-700">
+                          {a.emp_status || "N/A"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass[a.status || "Pending"] || "bg-gray-100 text-gray-800"}`}
+                          >
+                            {a.status || "Pending"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass[a.status2 || ""] || "bg-gray-100 text-gray-500"}`}
+                          >
+                            {a.status2 || "--"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center font-semibold text-gray-700">
+                          {a.total_absences || 0}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* --- MODAL: DAILY ATTENDANCE FORM --- */}
       {dailyModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
           onClick={() => setDailyModalOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh]"
+            className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-purple-700 px-4 py-3 flex justify-between items-center text-white shrink-0">
-              <h2 className="text-base font-bold m-0">
-                Attendance for {selectedDate}
-              </h2>
-              <button
-                onClick={() => setDailyModalOpen(false)}
-                className="text-white hover:text-gray-200 text-xl border-0 bg-transparent cursor-pointer"
-              >
-                &times;
-              </button>
+            <div className="shrink-0 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-700 px-5 py-3 text-white">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="m-0 text-base font-bold">
+                    Attendance for {selectedDate}
+                  </h2>
+                  <p className="m-0 mt-0.5 text-[11px] text-white/80">
+                    Review, filter, and manage personnel attendance records.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/90">
+                    {canEditAttendance ? "Edit Mode" : "View Mode"}
+                  </div>
+                  <button
+                    onClick={() => setDailyModalOpen(false)}
+                    className="cursor-pointer rounded-md border border-white/20 bg-white/5 px-2 py-0.5 text-lg text-white transition-colors hover:bg-white/10 hover:text-slate-200"
+                    aria-label="Close attendance modal"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div className="p-4 flex-1 overflow-hidden flex flex-col">
-              <div className="flex justify-between items-center mb-2 shrink-0">
+            <div className="flex flex-1 flex-col overflow-hidden bg-slate-50/60 p-3">
+              {!canEditAttendance && (
+                <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                  View-only mode: Supervisors can view attendance records but
+                  cannot edit them.
+                </div>
+              )}
+
+              <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
+                <div className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">
+                  Total: {dailyModalOverview.total}
+                </div>
+                <div className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                  Assigned: {dailyModalOverview.assigned}
+                </div>
+                <div className="shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700">
+                  Unassigned: {dailyModalOverview.unassigned}
+                </div>
+                <div className="shrink-0 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-[11px] font-semibold text-green-700">
+                  Present: {dailyModalOverview.present}
+                </div>
+                <div className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700">
+                  Absent: {dailyModalOverview.absent}
+                </div>
+                <div className="shrink-0 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                  On Leave: {dailyModalOverview.onLeave}
+                </div>
+                <div className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                  Late: {dailyModalOverview.late}
+                </div>
+                <div className="shrink-0 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+                  Under/Half:{" "}
+                  {dailyModalOverview.undertime + dailyModalOverview.halfDay}
+                </div>
+              </div>
+
+              <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2">
                 <input
                   type="text"
                   placeholder="Search personnel..."
                   value={dailySearch}
                   onChange={(e) => setDailySearch(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 w-56 text-sm"
+                  className="w-56 rounded-lg border border-slate-300 px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+                <select
+                  value={dailyStatusFilter}
+                  onChange={(e) => setDailyStatusFilter(e.target.value)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="All">All Status Types</option>
+                  <option value="None">Unassigned</option>
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Late">Late</option>
+                  <option value="Undertime">Undertime</option>
+                  <option value="Half-Day">Half-Day</option>
+                </select>
               </div>
 
-              <div className="bg-purple-50 border border-purple-100 rounded-lg p-2 flex flex-wrap items-center justify-between mb-2 shrink-0 gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-purple-800">
-                    Selected: {selectedEmployees.size}
-                  </span>
-                  <select
-                    value={bulkStatus}
-                    onChange={(e) => setBulkStatus(e.target.value)}
-                    className="px-2 py-1 rounded border border-gray-300 text-xs font-medium outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">-- Select --</option>
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="On Leave">On Leave</option>
-                  </select>
+              {canEditAttendance ? (
+                <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-indigo-800">
+                      Selected: {selectedEmployees.size}
+                    </span>
+                    <select
+                      value={bulkStatus}
+                      onChange={(e) => setBulkStatus(e.target.value)}
+                      className="rounded border border-slate-300 px-2 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">-- Select --</option>
+                      <option value="Present">Present</option>
+                      <option value="Absent">Absent</option>
+                      <option value="On Leave">On Leave</option>
+                    </select>
+                    <button
+                      onClick={applyBulkStatus}
+                      disabled={selectedEmployees.size === 0}
+                      className="cursor-pointer rounded bg-indigo-600 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      Apply
+                    </button>
+                  </div>
                   <button
-                    onClick={applyBulkStatus}
-                    disabled={selectedEmployees.size === 0}
-                    className="px-3 py-1 bg-purple-600 text-white rounded text-xs font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer border-0 transition-opacity"
+                    onClick={markAllPresent}
+                    className="cursor-pointer rounded border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-200"
                   >
-                    Apply
+                    ✓ Mark Unassigned as Present
                   </button>
                 </div>
-                <button
-                  onClick={markAllPresent}
-                  className="px-3 py-1 bg-green-100 text-green-800 font-bold text-xs rounded border border-green-200 hover:bg-green-200 cursor-pointer transition-colors"
-                >
-                  ✓ Mark Unassigned as Present
-                </button>
-              </div>
+              ) : (
+                <div className="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600">
+                  Bulk update tools are disabled in view-only mode.
+                </div>
+              )}
 
-              <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
+              <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
                     <tr>
-                      <th className="px-3 py-2 w-10 text-center">
+                      <th className="px-3 py-1.5 w-10 text-center">
                         <input
                           type="checkbox"
                           checked={
@@ -628,19 +884,20 @@ export default function Attendance() {
                             selectedEmployees.size === filteredDaily.length
                           }
                           onChange={toggleAllSelected}
-                          className="w-4 h-4 cursor-pointer"
+                          disabled={!canEditAttendance}
+                          className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                         />
                       </th>
-                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
+                      <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
                         Employee
                       </th>
-                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
+                      <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
                         Designation
                       </th>
-                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
+                      <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
                         Primary Status
                       </th>
-                      <th className="px-3 py-2 font-semibold text-gray-700 uppercase text-[11px]">
+                      <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
                         Secondary (Opt.)
                       </th>
                     </tr>
@@ -661,19 +918,20 @@ export default function Attendance() {
                         return (
                           <tr
                             key={`${emp.emp_id}-${index}`}
-                            className={`hover:bg-gray-50 transition-colors text-xs ${isChecked ? "bg-purple-50" : ""}`}
+                            className={`text-xs transition-colors hover:bg-slate-50 ${isChecked ? "bg-indigo-50/60" : ""}`}
                           >
-                            <td className="px-3 py-2 text-center">
+                            <td className="px-3 py-1.5 text-center">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() =>
                                   toggleEmployeeSelection(emp.emp_id)
                                 }
-                                className="w-4 h-4 cursor-pointer"
+                                disabled={!canEditAttendance}
+                                className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                               />
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-1.5">
                               <p className="font-bold m-0 text-gray-900 text-xs">
                                 {emp.first_name} {emp.last_name}
                               </p>
@@ -681,21 +939,32 @@ export default function Attendance() {
                                 {emp.emp_id}
                               </p>
                             </td>
-                            <td className="px-3 py-2 text-gray-600 text-xs">
+                            <td className="px-3 py-1.5 text-gray-600 text-xs">
                               {emp.emp_status}
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-1.5">
                               <select
                                 // CHANGED: Default is now ""
                                 value={attendanceForm[emp.emp_id] || ""}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  if (!canEditAttendance) return;
+                                  const nextPrimary = e.target.value;
                                   setAttendanceForm({
                                     ...attendanceForm,
-                                    [emp.emp_id]: e.target.value,
-                                  })
-                                }
+                                    [emp.emp_id]: nextPrimary,
+                                  });
+
+                                  // Keep status2 empty when primary is Absent.
+                                  if (nextPrimary === "Absent") {
+                                    setSecondaryStatusForm({
+                                      ...secondaryStatusForm,
+                                      [emp.emp_id]: "",
+                                    });
+                                  }
+                                }}
+                                disabled={!canEditAttendance}
                                 // CHANGED: Pull fallback style correctly from badgeClass
-                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass[""]}`}
+                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs disabled:cursor-not-allowed disabled:opacity-60 ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass[""]}`}
                               >
                                 <option value="">-- None --</option>
                                 <option value="Present">Present</option>
@@ -703,7 +972,7 @@ export default function Attendance() {
                                 <option value="On Leave">On Leave</option>
                               </select>
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-1.5">
                               <select
                                 value={secondaryStatusForm[emp.emp_id] || ""}
                                 onChange={(e) =>
@@ -712,7 +981,11 @@ export default function Attendance() {
                                     [emp.emp_id]: e.target.value,
                                   })
                                 }
-                                className="border p-1 rounded outline-none font-semibold max-w-[90px] bg-white text-gray-700 text-xs"
+                                disabled={
+                                  !canEditAttendance ||
+                                  attendanceForm[emp.emp_id] === "Absent"
+                                }
+                                className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs disabled:cursor-not-allowed disabled:opacity-60 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
                               >
                                 <option value="">-- None --</option>
                                 <option value="Late">Late</option>
@@ -728,21 +1001,25 @@ export default function Attendance() {
                 </table>
               </div>
 
-              <div className="mt-3 pt-3 border-t flex justify-end gap-2 shrink-0">
+              <div className="mt-2 flex shrink-0 justify-end gap-2 border-t border-slate-200 pt-2">
                 <button
                   onClick={() => setDailyModalOpen(false)}
-                  className="px-4 py-1.5 border rounded-lg font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer text-sm"
+                  className="cursor-pointer rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100"
                 >
-                  Back
+                  Close
                 </button>
                 <button
                   onClick={handleDailySubmit}
-                  disabled={saveDailyAttendanceMutation.isPending}
-                  className="px-4 py-1.5 bg-purple-700 text-white rounded-lg font-bold hover:bg-purple-800 cursor-pointer border-0 disabled:opacity-50 text-sm"
+                  disabled={
+                    !canEditAttendance || saveDailyAttendanceMutation.isPending
+                  }
+                  className="cursor-pointer rounded-lg border-0 bg-indigo-700 px-4 py-1.5 text-sm font-bold text-white transition-colors hover:bg-indigo-800 disabled:opacity-50"
                 >
-                  {saveDailyAttendanceMutation.isPending
-                    ? "Saving..."
-                    : "Save Attendance"}
+                  {!canEditAttendance
+                    ? "View Only"
+                    : saveDailyAttendanceMutation.isPending
+                      ? "Saving..."
+                      : "Save Attendance"}
                 </button>
               </div>
             </div>

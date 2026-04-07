@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Camera, Lock, User } from "lucide-react";
+import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
@@ -34,6 +34,17 @@ export default function Settings() {
     confirmPassword: "",
   });
 
+  // --- NEW: State to track password visibility ---
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
+  const togglePasswordVisibility = (field) => {
+    setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
   // Photo Upload Mutation
   const uploadPhotoMutation = useMutation({
     mutationFn: async (file) => {
@@ -50,7 +61,6 @@ export default function Settings() {
       return res.json();
     },
     onSuccess: (data) => {
-      // Update local storage so the new photo shows everywhere
       const updatedUser = { ...currentUser, profile_photo: data.filePath };
       localStorage.setItem("wah_user", JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
@@ -62,7 +72,7 @@ export default function Settings() {
   // Profile Update Mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch("/api/employees/me/profile", {
+      const res = await apiFetch(`/api/employees/me/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -77,7 +87,7 @@ export default function Settings() {
   // Password Change Mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch("/api/employees/me/change-password", {
+      const res = await apiFetch(`/api/employees/me/change-password`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -266,59 +276,104 @@ export default function Settings() {
                   onSubmit={handlePasswordSubmit}
                   className="space-y-4 max-w-md"
                 >
+                  {/* --- Current Password --- */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                       Current Password
                     </label>
-                    <input
-                      type="password"
-                      required
-                      value={passwordForm.currentPassword}
-                      onChange={(e) =>
-                        setPasswordForm({
-                          ...passwordForm,
-                          currentPassword: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.current ? "text" : "password"}
+                        required
+                        value={passwordForm.currentPassword}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            currentPassword: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility("current")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      >
+                        {showPassword.current ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* --- New Password --- */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                       New Password
                     </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={passwordForm.newPassword}
-                      onChange={(e) =>
-                        setPasswordForm({
-                          ...passwordForm,
-                          newPassword: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.new ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={passwordForm.newPassword}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            newPassword: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility("new")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      >
+                        {showPassword.new ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* --- Confirm New Password --- */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                       Confirm New Password
                     </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) =>
-                        setPasswordForm({
-                          ...passwordForm,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.confirm ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            confirmPassword: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility("confirm")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      >
+                        {showPassword.confirm ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
+
                   <div className="pt-4 flex justify-end">
                     <button
                       type="submit"

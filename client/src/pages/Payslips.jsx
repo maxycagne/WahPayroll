@@ -110,7 +110,7 @@ export default function Payslips() {
         },
         {
           key: "deductions",
-          label: `Deductions (Absences: ${Number(currentSlip.absences_count || 0)} day/s)`,
+          label: "Deductions",
           amount: Number(currentSlip.absence_deductions || 0),
           tone: "text-red-700",
           prefix: "-",
@@ -317,7 +317,43 @@ export default function Payslips() {
                   {payItems.map((item) => (
                     <tr key={item.key}>
                       <td className="px-4 py-2.5 text-slate-700">
-                        {item.label}
+                        <p className="m-0">{item.label}</p>
+                        {item.key === "deductions" && (
+                          <div className="mt-1 space-y-0.5">
+                            {deductionTypeLines.length === 0 ? (
+                              <p className="m-0 text-[11px] text-red-700/80">
+                                Deduction types: None
+                              </p>
+                            ) : (
+                              deductionTypeLines.map((line, index) => (
+                                <p
+                                  key={`deduction-type-inline-${index}`}
+                                  className="m-0 text-[11px] text-red-700/80"
+                                >
+                                  - {line}
+                                </p>
+                              ))
+                            )}
+                          </div>
+                        )}
+                        {item.key === "incentives" && (
+                          <div className="mt-1 space-y-0.5">
+                            {incentiveTypeLines.length === 0 ? (
+                              <p className="m-0 text-[11px] text-emerald-700/80">
+                                Incentive types: None
+                              </p>
+                            ) : (
+                              incentiveTypeLines.map((line, index) => (
+                                <p
+                                  key={`incentive-type-inline-${index}`}
+                                  className="m-0 text-[11px] text-emerald-700/80"
+                                >
+                                  + {line}
+                                </p>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td
                         className={`px-4 py-2.5 text-right font-semibold ${item.tone}`}
@@ -337,47 +373,6 @@ export default function Payslips() {
                   </tr>
                 </tbody>
               </table>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-800">
-                  Deduction Types
-                </p>
-                {deductionTypeLines.length === 0 ? (
-                  <p className="m-0 mt-1 text-xs text-red-900">None</p>
-                ) : (
-                  <div className="mt-1 space-y-1">
-                    {deductionTypeLines.map((line, index) => (
-                      <p
-                        key={`deduction-type-${index}`}
-                        className="m-0 text-xs text-red-900"
-                      >
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
-                  Incentive Types
-                </p>
-                {incentiveTypeLines.length === 0 ? (
-                  <p className="m-0 mt-1 text-xs text-emerald-900">None</p>
-                ) : (
-                  <div className="mt-1 space-y-1">
-                    {incentiveTypeLines.map((line, index) => (
-                      <p
-                        key={`incentive-type-${index}`}
-                        className="m-0 text-xs text-emerald-900"
-                      >
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="mt-8 hidden print:block">

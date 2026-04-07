@@ -31,7 +31,7 @@ const designationMap = {
   ],
 };
 
-export default function Employees() {
+export default function Employees({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -69,14 +69,17 @@ export default function Employees() {
   });
 
   useEffect(() => {
-    if (searchParams.get("open") !== "add-employee") return;
+    if (shortcutMode) {
+      setIsAddModalOpen(true);
+      return;
+    }
 
-    setIsAddModalOpen(true);
+    if (searchParams.get("open") !== "add-employee") return;
 
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, shortcutMode]);
 
   // --- QUERIES ---
   const { data: employees = [], isLoading } = useQuery({
@@ -232,182 +235,188 @@ export default function Employees() {
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Employee Management
-        </h1>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-        >
-          + Add Employee
-        </button>
-      </div>
+      {!shortcutMode && (
+        <>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Employee Management
+            </h1>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+            >
+              + Add Employee
+            </button>
+          </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <input
-          type="text"
-          placeholder="Search ID or Name..."
-          className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-          value={filterDesignation}
-          onChange={(e) => setFilterDesignation(e.target.value)}
-        >
-          <option value="All">All Designations</option>
-          {Object.keys(designationMap).map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-        <select
-          className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="All">All Status</option>
-          <option value="Permanent">Permanent</option>
-          <option value="Job Order">Job Order</option>
-          <option value="Casual">Casual</option>
-          <option value="PGT Employee">PGT Employee</option>
-        </select>
-      </div>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <input
+              type="text"
+              placeholder="Search ID or Name..."
+              className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select
+              className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              value={filterDesignation}
+              onChange={(e) => setFilterDesignation(e.target.value)}
+            >
+              <option value="All">All Designations</option>
+              {Object.keys(designationMap).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <select
+              className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="All">All Status</option>
+              <option value="Permanent">Permanent</option>
+              <option value="Job Order">Job Order</option>
+              <option value="Casual">Casual</option>
+              <option value="PGT Employee">PGT Employee</option>
+            </select>
+          </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-        <table className="w-full text-left text-sm border-collapse">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 font-bold text-gray-700">ID</th>
-              <th className="px-6 py-3 font-bold text-gray-700">Full Name</th>
-              <th className="px-6 py-3 font-bold text-gray-700">
-                Designation / Position
-              </th>
-              <th className="px-6 py-3 font-bold text-gray-700">
-                Email Address
-              </th>
-              <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-              <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredEmployees.map((emp) => (
-              <tr
-                key={emp.emp_id}
-                onClick={() => setSelectedEmployeeDetails(emp)}
-                className="hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    {/* The Circular Profile Picture */}
-                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                      {emp.profile_photo ? (
-                        <img
-                          src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-5 w-5 text-gray-400" />
-                      )}
-                    </div>
-
-                    {/* The Name */}
-                    <div className="font-semibold text-gray-800">
-                      {emp.last_name}, {emp.first_name}{" "}
-                      {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-gray-600">
-                  <div className="font-medium text-gray-900">
-                    {emp.designation}
-                  </div>
-                  <div className="text-xs opacity-75">{emp.position}</div>
-                </td>
-                <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                <td className="px-6 py-4">
-                  <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                    {emp.status}
-                  </span>
-                </td>
-                <td
-                  className="px-6 py-4 text-center relative"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() =>
-                      setActiveMenu(
-                        activeMenu === emp.emp_id ? null : emp.emp_id,
-                      )
-                    }
-                    className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+          {/* Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 font-bold text-gray-700">ID</th>
+                  <th className="px-6 py-3 font-bold text-gray-700">
+                    Full Name
+                  </th>
+                  <th className="px-6 py-3 font-bold text-gray-700">
+                    Designation / Position
+                  </th>
+                  <th className="px-6 py-3 font-bold text-gray-700">
+                    Email Address
+                  </th>
+                  <th className="px-6 py-3 font-bold text-gray-700">Status</th>
+                  <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredEmployees.map((emp) => (
+                  <tr
+                    key={emp.emp_id}
+                    onClick={() => setSelectedEmployeeDetails(emp)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
                   >
-                    <svg
-                      width="20"
-                      height="20"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                    </svg>
-                  </button>
+                    <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {/* The Circular Profile Picture */}
+                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                          {emp.profile_photo ? (
+                            <img
+                              src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
+                              alt="Profile"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <User className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
 
-                  {/* Action Menu Dropdown */}
-                  {activeMenu === emp.emp_id && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setActiveMenu(null)}
-                      ></div>
-                      <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                        <button
-                          onClick={() => {
-                            setEditEmployee(emp);
-                            setActiveMenu(null);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                        >
-                          Edit Info
-                        </button>
-                        {canResetPassword && (
-                          <button
-                            onClick={() => {
-                              setActiveMenu(null);
-                              setResetConfirm(emp);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
-                          >
-                            Reset Password
-                          </button>
-                        )}
-                        <hr className="my-1 border-gray-100" />
-                        <button
-                          onClick={() => {
-                            setDeleteConfirm(emp);
-                            setActiveMenu(null);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                        >
-                          Delete
-                        </button>
+                        {/* The Name */}
+                        <div className="font-semibold text-gray-800">
+                          {emp.last_name}, {emp.first_name}{" "}
+                          {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                        </div>
                       </div>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      <div className="font-medium text-gray-900">
+                        {emp.designation}
+                      </div>
+                      <div className="text-xs opacity-75">{emp.position}</div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                        {emp.status}
+                      </span>
+                    </td>
+                    <td
+                      className="px-6 py-4 text-center relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() =>
+                          setActiveMenu(
+                            activeMenu === emp.emp_id ? null : emp.emp_id,
+                          )
+                        }
+                        className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          fill="currentColor"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                        </svg>
+                      </button>
+
+                      {/* Action Menu Dropdown */}
+                      {activeMenu === emp.emp_id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setActiveMenu(null)}
+                          ></div>
+                          <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
+                            <button
+                              onClick={() => {
+                                setEditEmployee(emp);
+                                setActiveMenu(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                            >
+                              Edit Info
+                            </button>
+                            {canResetPassword && (
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(null);
+                                  setResetConfirm(emp);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                              >
+                                Reset Password
+                              </button>
+                            )}
+                            <hr className="my-1 border-gray-100" />
+                            <button
+                              onClick={() => {
+                                setDeleteConfirm(emp);
+                                setActiveMenu(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {/* Modals same as before but updated with logic */}
       {isAddModalOpen && !addConfirm && (
@@ -741,9 +750,9 @@ function EmployeeModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-4 py-3 bg-gray-900 flex justify-between items-center text-white">
-          <h2 className="text-lg font-bold m-0">{title}</h2>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="px-4 py-2.5 bg-gray-900 flex justify-between items-center text-white">
+          <h2 className="text-base font-bold m-0">{title}</h2>
           <button
             onClick={onClose}
             className="text-white text-2xl bg-transparent border-0 cursor-pointer"
@@ -751,9 +760,9 @@ function EmployeeModal({
             &times;
           </button>
         </div>
-        <form onSubmit={onSubmit} className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
+        <form onSubmit={onSubmit} className="p-3.5 space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Employee ID
               </label>
@@ -766,7 +775,7 @@ function EmployeeModal({
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Email Address
               </label>
@@ -780,9 +789,9 @@ function EmployeeModal({
               />
             </div>
 
-            <div className="flex flex-col gap-1 col-span-2">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-1 flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5 col-span-2">
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     First Name
                   </label>
@@ -794,7 +803,7 @@ function EmployeeModal({
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                <div className="col-span-1 flex flex-col gap-1">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     M.I.
                   </label>
@@ -806,7 +815,7 @@ function EmployeeModal({
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                <div className="col-span-1 flex flex-col gap-1">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     Last Name
                   </label>
@@ -821,7 +830,7 @@ function EmployeeModal({
               </div>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Designation
               </label>
@@ -840,7 +849,7 @@ function EmployeeModal({
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Position
               </label>
@@ -862,7 +871,7 @@ function EmployeeModal({
               </select>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Emp. Status
               </label>
@@ -878,7 +887,7 @@ function EmployeeModal({
                 <option>PGT Employee</option>
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Hired Date
               </label>
@@ -892,59 +901,83 @@ function EmployeeModal({
               />
             </div>
 
-            <div className="flex flex-col gap-1 col-span-2 mt-1">
+            <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Government Details
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  name="philhealth_no"
-                  value={data.philhealth_no || ""}
-                  onChange={onChange}
-                  placeholder="PHILHEALTH No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="tin"
-                  value={data.tin || ""}
-                  onChange={onChange}
-                  placeholder="TIN"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="sss_no"
-                  value={data.sss_no || ""}
-                  onChange={onChange}
-                  placeholder="SSS No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="pag_ibig_mid_no"
-                  value={data.pag_ibig_mid_no || ""}
-                  onChange={onChange}
-                  placeholder="PAG-IBIG MID No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="pag_ibig_rtn"
-                  value={data.pag_ibig_rtn || ""}
-                  onChange={onChange}
-                  placeholder="PAG-IBIG RTN"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-                <input
-                  name="gsis_no"
-                  value={data.gsis_no || ""}
-                  onChange={onChange}
-                  placeholder="GSIS No."
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PHILHEALTH No.
+                  </label>
+                  <input
+                    name="philhealth_no"
+                    value={data.philhealth_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    TIN
+                  </label>
+                  <input
+                    name="tin"
+                    value={data.tin || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    SSS No.
+                  </label>
+                  <input
+                    name="sss_no"
+                    value={data.sss_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PAG-IBIG MID No.
+                  </label>
+                  <input
+                    name="pag_ibig_mid_no"
+                    value={data.pag_ibig_mid_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    PAG-IBIG RTN
+                  </label>
+                  <input
+                    name="pag_ibig_rtn"
+                    value={data.pag_ibig_rtn || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
+                    GSIS No.
+                  </label>
+                  <input
+                    name="gsis_no"
+                    value={data.gsis_no || ""}
+                    onChange={onChange}
+                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {!isEdit && (
-            <div className="mt-4 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+            <div className="mt-3 rounded-lg border border-purple-100 bg-purple-50 p-2.5">
               <p className="m-0 text-xs text-purple-700 font-semibold">
                 Auto-generated Password:{" "}
                 <span className="font-mono bg-white px-2 py-0.5 rounded border border-purple-200">
@@ -955,18 +988,18 @@ function EmployeeModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="px-8 py-2 bg-purple-600 text-white rounded-lg font-semibold"
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white"
             >
               {isPending
                 ? "Processing..."

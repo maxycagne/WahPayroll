@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 import { createAccessToken, createRefreshToken } from "../helper/jwt.js";
+import { ensureEmployeeGovernmentColumns } from "./employeeController.js";
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_wah_key";
 const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || "";
 
@@ -122,8 +123,9 @@ export const logout = (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
+    await ensureEmployeeGovernmentColumns();
+
     const [rows] = await pool.query(
-      // ADDED profile_photo TO THE SELECT QUERY
       "SELECT emp_id, first_name, last_name, email, role, profile_photo FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS employees (
   position VARCHAR(100),
   status VARCHAR(50),
   email VARCHAR(100) UNIQUE,
+  profile_photo VARCHAR(255),
   philhealth_no VARCHAR(50),
   tin VARCHAR(50),
   sss_no VARCHAR(50),
@@ -71,6 +72,8 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
   approved_days DECIMAL(5,2),
   approved_dates JSON,
+  cancellation_requested_at TIMESTAMP NULL,
+  cancellation_reason TEXT,
   supervisor_remarks TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -89,6 +92,8 @@ CREATE TABLE IF NOT EXISTS resignations (
   reviewed_by VARCHAR(50),
   review_remarks TEXT,
   reviewed_at TIMESTAMP NULL,
+  cancellation_requested_at TIMESTAMP NULL,
+  cancellation_reason TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_resignation_emp_status (emp_id, status),
@@ -150,6 +155,7 @@ CREATE TABLE IF NOT EXISTS offset_applications (
   date_from DATE NOT NULL,
   date_to DATE NOT NULL,
   days_applied DECIMAL(5,2) NOT NULL,
+  reason TEXT COMMENT 'Reason for filing offset application',
   status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
   approved_days DECIMAL(5,2) COMMENT 'Days approved if partially approved',
   supervisor_emp_id VARCHAR(50),
@@ -157,6 +163,8 @@ CREATE TABLE IF NOT EXISTS offset_applications (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   approved_at TIMESTAMP NULL,
+  cancellation_requested_at TIMESTAMP NULL,
+  cancellation_reason TEXT,
   INDEX idx_emp_status (emp_id, status),
   INDEX idx_date_range (date_from, date_to),
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
@@ -191,4 +199,12 @@ CREATE TABLE IF NOT EXISTS salary_history (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_emp_date (emp_id, effective_date),
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS position_salary_settings (
+  position VARCHAR(100) PRIMARY KEY,
+  amount DECIMAL(12,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_position_salary_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

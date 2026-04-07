@@ -13,11 +13,23 @@ export const updateMutationDoc = mutationOptions({
 });
 
 export const updateResignationMutationOptions = mutationOptions({
-  mutationFn: async ({ id, status }: { id: number; status: string }) => {
+  mutationFn: async ({
+    id,
+    status,
+    review_remarks,
+  }: {
+    id: number;
+    status: string;
+    review_remarks?: string;
+  }) => {
     const res = await axiosInterceptor.put(
       `/api/employees/resignations/${id}`,
-      { status },
+      {
+        status,
+        ...(review_remarks ? { review_remarks } : {}),
+      },
     );
+    return res.data;
   },
   onError: () => alert("Error updating resignation"),
 });

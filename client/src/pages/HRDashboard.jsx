@@ -16,7 +16,6 @@ import {
 
 import MissingDocsTracker from "@/components/hrDashboard/MissingDocsTracker";
 import UpdateDocsModal from "@/components/hrDashboard/UpdateDocsModal";
-import StatCard from "@/components/hrDashboard/StatCard";
 import {
   AbsentModal,
   OnLeaveModal,
@@ -143,22 +142,53 @@ export default function HRDashboard() {
     amber: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800",
   };
 
+  const stats = dashboardData?.stats || [];
+
   return (
-    <div className="max-w-full">
+    <div className="max-w-full space-y-4">
       {/* Toast Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <h1 className="mb-3 text-[1.2rem] font-bold text-slate-900 md:text-[1.3rem]">
-        HR Dashboard
-      </h1>
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <h1 className="m-0 text-[1.3rem] font-bold text-slate-900">
+          HR Dashboard
+        </h1>
+        <p className="m-0 mt-0.5 text-xs text-slate-500">
+          Workforce approvals, attendance signals, and document compliance in
+          one view.
+        </p>
+      </div>
 
-      <StatCard stats={dashboardData.stats} onCardClick={setActiveModal} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <button
+            key={stat.label}
+            type="button"
+            onClick={() => setActiveModal(stat.modalKey)}
+            className="group relative rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+            style={{ boxShadow: `inset 0 3px 0 0 ${stat.borderColor}` }}
+          >
+            <div className="p-3.5 text-left">
+              <p className="m-0 mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                {stat.label}
+              </p>
+              <p
+                className="m-0 text-2xl font-black"
+                style={{ color: stat.borderColor }}
+              >
+                {stat.value}
+              </p>
+              <p className="m-0 mt-1 text-[10px] text-slate-400 transition-colors group-hover:text-slate-500">
+                Click to view
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
 
       {/* Quick Actions */}
-      <section className="mb-5">
-        <h2 className="mb-3 text-base font-semibold text-slate-900">
-          Quick Actions
-        </h2>
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-bold text-slate-900">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {HR_DASHBOARD_QUICK_ACCESS.map(
             ({ icon, label, sub, path, color }) => (
