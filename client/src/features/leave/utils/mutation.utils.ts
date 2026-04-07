@@ -3,6 +3,9 @@ import {
   createMutation,
   mutationHandler,
 } from "../hooks/createMutationHandler";
+import { useEmailNotifications } from "../hooks/useEmailNotifications ";
+
+//T
 
 export const useRequestMutation = ({
   showToast,
@@ -17,6 +20,7 @@ export const useRequestMutation = ({
     resignation: "/api/employees/resignations",
   };
 
+  const handleSendUpdate = useEmailNotifications();
   const ALL_KEYS = ["leaves", "offset-applications", "resignations"];
 
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -101,6 +105,14 @@ export const useRequestMutation = ({
     successMsg: "Leave request updated successfully.",
     showToast,
     invalidateKeys: ["leaves"],
+    callback: async (data, variables) => {
+      console.log("hit!!!!");
+      await handleSendUpdate(
+        variables.item,
+        variables.status,
+        variables.supervisor_remarks,
+      );
+    },
   });
 
   // 5

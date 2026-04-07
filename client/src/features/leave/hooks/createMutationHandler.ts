@@ -30,6 +30,7 @@ type CreateMutationProps<Tdata, Tvariables> = {
   invalidateKeys: string[];
   showToast: (message: any, type?: string, duration?: number) => void;
   successExtra?: () => void;
+  callback?: (data: Tdata, variables: Tvariables) => Promise<void>;
 };
 
 export const createMutation = <Tdata, Tvariables>({
@@ -39,12 +40,22 @@ export const createMutation = <Tdata, Tvariables>({
   invalidateKeys = [],
 
   successExtra,
+  callback,
 }: CreateMutationProps<Tdata, Tvariables>) => {
   const qr = useQueryClient();
 
   return useMutation({
     mutationFn,
-    onSuccess: async () => {
+    onSuccess: async (data, variables) => {
+      // for emailCallback
+      if (callback) {
+        await callback(data, variables);
+        try {
+        } catch (e) {
+          console.error("Email notification failed:", e);
+        }
+      }
+
       await Promise.all(
         invalidateKeys.map((key, index) =>
           qr.invalidateQueries({ queryKey: [key] }),

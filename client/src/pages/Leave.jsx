@@ -358,20 +358,6 @@ export default function Leave() {
     });
   };
 
-  //TODO:
-  const { sendLeaveStatusEmail } = useEmail();
-
-  const handleSendUpdate = async (item, status, remarks) => {
-    const header =
-      status === "Denied"
-        ? "Your leave request was not approved at this time."
-        : "Your leave request has been approved. Please ensure proper task endorsement before your leave.";
-
-    const finalContent = remarks ? `${header} \n\nReason: ${remarks}` : header;
-
-    await sendLeaveStatusEmail(item, status, finalContent);
-  };
-
   const submitReviewDecision = () => {
     if (!reviewConfirm) return;
 
@@ -416,8 +402,7 @@ export default function Leave() {
         reviewConfirm.isMultiDay &&
         selectedDates.length < requestedDates.length;
 
-      // FINAL MUTATE CALL
-      reviewLeaveMutation.mutate({
+      const payload = {
         id: reviewConfirm.item.id,
         item: reviewConfirm.item,
         status:
@@ -426,13 +411,19 @@ export default function Leave() {
             : isPartialApproval
               ? "Partially Approved"
               : "Approved",
-        approved_days:
-          reviewConfirm.status === "Denied" ? null : selectedDates.length,
-        approved_dates:
-          reviewConfirm.status === "Denied" ? null : selectedDates,
-        supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
-      });
+      };
 
+      if (isPartialApproval) {
+        payload.approved_days = selectedDates.length;
+        payload.approved_dates = selectedDates;
+      }
+
+      // ✅ Only include remarks if denied
+      if (isDenyDecision) {
+        payload.supervisor_remarks = trimmedRemarks;
+      }
+
+      reviewLeaveMutation.mutate(payload);
       setReviewConfirm(null);
       return;
     }
@@ -453,6 +444,7 @@ export default function Leave() {
       if (reviewConfirm.status === "Approved") {
         const approvedDays = Number(reviewConfirm.approvedDays || 0);
         const totalDays = getOffsetRequestedDays(reviewConfirm.item);
+
         if (!approvedDays || approvedDays <= 0 || approvedDays > totalDays) {
           showToast(
             "Approved days must be between 0 and requested days.",
@@ -460,16 +452,24 @@ export default function Leave() {
           );
           return;
         }
+
         const isPartial = approvedDays < totalDays;
-        reviewOffsetMutation.mutate({
+
+        const payload = {
           id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
           status: isPartial ? "Partially Approved" : "Approved",
-          approved_days: isPartial ? approvedDays : null,
-          supervisor_remarks: undefined,
-        });
+        };
+
+        if (isPartial) {
+          payload.approved_days = approvedDays;
+        }
+
+        reviewOffsetMutation.mutate(payload);
       } else {
         reviewOffsetMutation.mutate({
           id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
           status: "Denied",
           supervisor_remarks: trimmedRemarks,
         });
@@ -481,6 +481,7 @@ export default function Leave() {
     if (reviewConfirm.module === "resignation") {
       reviewResignationMutation.mutate({
         id: reviewConfirm.item.id,
+        item: reviewConfirm.item,
         status: reviewConfirm.status === "Denied" ? "Rejected" : "Approved",
         review_remarks: isDenyDecision ? trimmedRemarks : undefined,
         decision_mode:
