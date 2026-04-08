@@ -2683,6 +2683,7 @@ export const getAllPayroll = async (req, res) => {
          e.first_name,
          e.last_name,
          e.designation,
+         e.profile_photo,
          e.position,
          COALESCE(adj.total_incentives, p.incentives, 0) AS recalculated_incentives,
          COALESCE(adj.total_deductions, p.absence_deductions, 0) AS recalculated_deductions,

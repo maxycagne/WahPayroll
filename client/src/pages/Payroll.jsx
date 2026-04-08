@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import { User } from "lucide-react"; // <-- ADDED IMPORT
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -125,6 +126,10 @@ export default function Payroll({ shortcutMode = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState(getCurrentPeriod);
+
+  // <-- ADDED API URL FOR IMAGES
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -977,11 +982,27 @@ export default function Payroll({ shortcutMode = false }) {
                         )}
                         <td className="px-6 py-4">{p.emp_id}</td>
                         <td className="px-6 py-4">
-                          <div className="font-bold text-gray-900">
-                            {p.first_name} {p.last_name}
-                          </div>
-                          <div className="text-xs text-gray-500 font-normal mt-0.5">
-                            {p.position}
+                          {/* --- PERFECTED AVATAR WRAPPER --- */}
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                              {p.profile_photo ? (
+                                <img
+                                  src={`${API_BASE_URL}/${p.profile_photo.replace(/^\/+/, "")}`}
+                                  alt="Profile"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <User className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900">
+                                {p.first_name} {p.last_name}
+                              </div>
+                              <div className="text-xs text-gray-500 font-normal mt-0.5">
+                                {p.position}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
