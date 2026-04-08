@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { badgeClass } from "@/features/leave/leaveConstants";
 
 export default function MyPendingRequestsTableRow({
@@ -8,6 +9,7 @@ export default function MyPendingRequestsTableRow({
   requestCancellationApprovalMutation,
   setCancelApprovalConfirm,
 }) {
+  console.log(item);
   return (
     <tr className="transition-colors hover:bg-gray-50/50">
       <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
@@ -37,6 +39,19 @@ export default function MyPendingRequestsTableRow({
         {item.cancellation_requested_at
           ? new Date(item.cancellation_requested_at).toLocaleString()
           : "-"}
+      </td>
+      <td className="px-4 py-2.5 text-xs font-medium text-gray-600">
+        {item.ocp ? (
+          <a
+            download
+            href={`${item.ocp}`}
+            className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700 hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Download
+          </a>
+        ) : (
+          "N/A"
+        )}
       </td>
       <td className="px-4 py-2.5 text-right">
         {item.row_action === "cancel_pending" && (

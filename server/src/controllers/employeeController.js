@@ -211,7 +211,7 @@ const ensureOffsetTables = async (connection = pool) => {
   }
 };
 
-const ensureLeaveApprovalColumns = async (connection = pool) => {
+export const ensureLeaveApprovalColumns = async (connection = pool) => {
   // Align status options for existing databases.
   await connection.query(`
     ALTER TABLE leave_requests
@@ -539,7 +539,7 @@ const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
   return computedBalance;
 };
 
-const getEmployeeProfile = async (connection, empId) => {
+export const getEmployeeProfile = async (connection, empId) => {
   const [rows] = await connection.query(
     `
       SELECT emp_id, first_name, last_name, designation, status, COALESCE(role, 'RankAndFile') as role
@@ -653,7 +653,7 @@ const createNotification = async (
   );
 };
 
-const notifyApproversForRequest = async (
+export const notifyApproversForRequest = async (
   connection,
   { requester, moduleType, requestId },
 ) => {
@@ -3958,101 +3958,101 @@ export const deleteSalaryHistoryEntry = async (req, res) => {
   }
 };
 
-export const fileLeave = async (req, res) => {
-  const {
-    emp_id,
-    leave_type,
-    date_from,
-    date_to,
-    priority,
-    supervisor_remarks,
-  } = req.body;
-  const resolvedDateTo = date_to || date_from;
-  const trimmedReason = String(supervisor_remarks || "").trim();
+// export const fileLeave = async (req, res) => {
+//   const {
+//     emp_id,
+//     leave_type,
+//     date_from,
+//     date_to,
+//     priority,
+//     supervisor_remarks,
+//   } = req.body;
+//   const resolvedDateTo = date_to || date_from;
+//   const trimmedReason = String(supervisor_remarks || "").trim();
 
-  const requesterEmpId =
-    req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
+//   const requesterEmpId =
+//     req.user?.role === "Admin" && emp_id ? emp_id : req.user?.emp_id || emp_id;
 
-  if (!requesterEmpId || !leave_type || !date_from || !resolvedDateTo) {
-    return res.status(400).json({
-      message: "emp_id, leave_type, and date_from are required",
-    });
-  }
+//   if (!requesterEmpId || !leave_type || !date_from || !resolvedDateTo) {
+//     return res.status(400).json({
+//       message: "emp_id, leave_type, and date_from are required",
+//     });
+//   }
 
-  if (!trimmedReason) {
-    return res.status(400).json({
-      message: "Reason is required for leave applications",
-    });
-  }
+//   if (!trimmedReason) {
+//     return res.status(400).json({
+//       message: "Reason is required for leave applications",
+//     });
+//   }
 
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
+//   const connection = await pool.getConnection();
+//   try {
+//     await connection.beginTransaction();
 
-    const requester = await getEmployeeProfile(connection, requesterEmpId);
-    if (!requester) {
-      await connection.rollback();
-      return res.status(404).json({ message: "Requester not found" });
-    }
+//     const requester = await getEmployeeProfile(connection, requesterEmpId);
+//     if (!requester) {
+//       await connection.rollback();
+//       return res.status(404).json({ message: "Requester not found" });
+//     }
 
-    const normalizedStatus = String(requester.status || "")
-      .trim()
-      .toLowerCase();
-    const normalizedLeaveType = String(leave_type || "")
-      .trim()
-      .toLowerCase();
+//     const normalizedStatus = String(requester.status || "")
+//       .trim()
+//       .toLowerCase();
+//     const normalizedLeaveType = String(leave_type || "")
+//       .trim()
+//       .toLowerCase();
 
-    if (
-      normalizedStatus === "job order" &&
-      normalizedLeaveType === "pgt leave"
-    ) {
-      await connection.rollback();
-      return res.status(400).json({
-        message: "Job Order employees cannot file PGT Leave",
-      });
-    }
+//     if (
+//       normalizedStatus === "job order" &&
+//       normalizedLeaveType === "pgt leave"
+//     ) {
+//       await connection.rollback();
+//       return res.status(400).json({
+//         message: "Job Order employees cannot file PGT Leave",
+//       });
+//     }
 
-    const [result] = await connection.query(
-      `
-        INSERT INTO leave_requests (
-          emp_id,
-          leave_type,
-          date_from,
-          date_to,
-          priority,
-          status,
-          reason
-        ) VALUES (?, ?, ?, ?, ?, 'Pending', ?)
-      `,
-      [
-        requesterEmpId,
-        leave_type,
-        date_from,
-        resolvedDateTo,
-        priority,
-        trimmedReason,
-      ],
-    );
+//     const [result] = await connection.query(
+//       `
+//         INSERT INTO leave_requests (
+//           emp_id,
+//           leave_type,
+//           date_from,
+//           date_to,
+//           priority,
+//           status,
+//           reason
+//         ) VALUES (?, ?, ?, ?, ?, 'Pending', ?)
+//       `,
+//       [
+//         requesterEmpId,
+//         leave_type,
+//         date_from,
+//         resolvedDateTo,
+//         priority,
+//         trimmedReason,
+//       ],
+//     );
 
-    await notifyApproversForRequest(connection, {
-      requester,
-      moduleType: "Leave",
-      requestId: result.insertId,
-    });
+//     await notifyApproversForRequest(connection, {
+//       requester,
+//       moduleType: "Leave",
+//       requestId: result.insertId,
+//     });
 
-    await connection.commit();
+//     await connection.commit();
 
-    res
-      .status(201)
-      .json({ message: "Leave application submitted successfully" });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in fileLeave:", error);
-    res.status(500).json({ message: "Error submitting leave application" });
-  } finally {
-    connection.release();
-  }
-};
+//     res
+//       .status(201)
+//       .json({ message: "Leave application submitted successfully" });
+//   } catch (error) {
+//     await connection.rollback();
+//     console.error("DB Error in fileLeave:", error);
+//     res.status(500).json({ message: "Error submitting leave application" });
+//   } finally {
+//     connection.release();
+//   }
+// };
 
 export const cancelMyLeave = async (req, res) => {
   const { id } = req.params;

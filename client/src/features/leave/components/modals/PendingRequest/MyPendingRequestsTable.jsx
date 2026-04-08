@@ -24,6 +24,9 @@ export default function MyPendingRequestsTable({
           <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
             Cancel Requested At
           </th>
+          <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            OCP
+          </th>
           <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
             Action
           </th>

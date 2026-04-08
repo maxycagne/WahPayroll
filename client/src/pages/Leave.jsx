@@ -31,6 +31,7 @@ import {
   resignationQueryOptions,
 } from "@/features/leave/utils/query.utils";
 import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
+import { useHandleSubmiisions } from "@/features/leave/hooks/useHandleSubmissions";
 
 // --- MAIN PAGE COMPONENT ---
 export default function Leave() {
@@ -180,41 +181,11 @@ export default function Leave() {
     return roleValue === "supervisor";
   };
 
-  // --- HANDLERS ---
-  const handleSubmitLeave = (e) => {
-    e.preventDefault();
-    if (!formData.emp_id || !formData.fromDate) {
-      setFormError("Please fill all required fields.");
-      return;
-    }
-
-    const trimmedReason = String(formData.reason || "").trim();
-    if (!trimmedReason) {
-      setFormError("Reason is required.");
-      return;
-    }
-
-    const effectiveToDate = formData.toDate || formData.fromDate;
-
-    let computedDays = formData.daysApplied;
-    if (formData.leaveType === "Offset") {
-      if (formData.fromDate && effectiveToDate) {
-        const diff = getDateDiffInclusive(formData.fromDate, effectiveToDate);
-        computedDays = !isNaN(diff) ? Math.max(diff, 1) : 1;
-      } else {
-        computedDays = 0;
-      }
-    }
-
-    setConfirmAction({
-      type: "leave",
-      leaveType: formData.leaveType,
-      fromDate: formData.fromDate,
-      toDate: effectiveToDate,
-      daysApplied: computedDays,
-      reason: trimmedReason,
-    });
-  };
+  const { handleSubmitLeave } = useHandleSubmiisions({
+    formData,
+    setFormError,
+    setConfirmAction,
+  });
 
   const handleLeaveTypeChange = (e) => {
     const newLeaveType = e.target.value;

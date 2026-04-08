@@ -10,7 +10,7 @@ export const leavesQueryOptions = queryOptions({
   queryKey: ["leaves"],
   queryFn: () =>
     mutationHandler(
-      axiosInterceptor.get("/api/employees/leaves"),
+      axiosInterceptor.get("/api/leaves"),
       "Failed to fetch leaves",
     ),
 });
