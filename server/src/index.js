@@ -7,6 +7,7 @@ import fileRoutes from "./routes/fileRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
 import path from "path";
+import hrReportsRoutes from "./routes/hrReportRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -34,6 +35,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/file", fileRoutes);
+app.use("/api/hr-reports", hrReportsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
