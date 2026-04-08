@@ -7,7 +7,7 @@ import {
   deleteEmployee,
   getAllLeaves,
   updateLeaveStatus,
-  fileLeave,
+  // fileLeave,
   getAllPayroll,
   generatePayroll,
   getAttendance,
@@ -214,16 +214,16 @@ router.post(
   requestMyOffsetCancellation,
 );
 
-router.get(
-  "/leaves",
-  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
-  getAllLeaves,
-);
-router.post(
-  "/leaves",
-  authorizeRoles("Supervisor", "HR", "RankAndFile"),
-  fileLeave,
-);
+// router.get(
+//   "/leaves",
+//   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+//   getAllLeaves,
+// );
+// router.post(
+//   "/leaves",
+//   authorizeRoles("Supervisor", "HR", "RankAndFile"),
+//   fileLeave,
+// );
 router.put(
   "/leaves/:id",
   authorizeRoles("Supervisor", "HR"),

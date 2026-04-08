@@ -27,6 +27,7 @@ export default function LeaveConfirmationModalFooter({
             });
           } else {
             submitLeaveMutation.mutate({
+              Ocp: formData.OCP,
               emp_id: formData.emp_id,
               leave_type: formData.leaveType,
               date_from: formData.fromDate,
