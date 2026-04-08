@@ -14,7 +14,7 @@ const axiosInterceptor = axios.create({
 
 axiosInterceptor.interceptors.request.use((config) => {
   const token = getAccessToken();
-  console.log("intercepted!");
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -36,7 +36,8 @@ axiosInterceptor.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== "/api/auth/refresh"
+      !originalRequest.url?.includes("/auth/login") &&
+      !originalRequest.url?.includes("/auth/refresh")
     ) {
       originalRequest._retry = true;
 
@@ -46,6 +47,7 @@ axiosInterceptor.interceptors.response.use(
         const newToken = refreshResponse.data.token;
 
         setAccessToken(newToken);
+        console.log("intercepted!");
 
         console.log("New Token: ", newToken);
         console.log(
@@ -62,6 +64,7 @@ axiosInterceptor.interceptors.response.use(
         window.location.href = "/";
       }
     }
+    console.log("reject");
     return Promise.reject(error);
   },
 );

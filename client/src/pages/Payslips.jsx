@@ -13,6 +13,19 @@ const fmt = (n) => {
         });
 };
 
+const fmtPeso = (n) => {
+  const num = Number(n);
+  return isNaN(num)
+    ? "₱0.00"
+    : `₱${num.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+};
+
+      const TOP_PDF_LOGO = "/images/wah-top-logo.png";
+      const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
+
 export default function Payslips() {
   const currentUser = useMemo(() => {
     try {
@@ -93,6 +106,21 @@ export default function Payslips() {
         .filter(Boolean)
     : [];
 
+  const deductionDisplayItems =
+    deductionTypeLines.length > 0
+      ? deductionTypeLines.map((line) => {
+          const [rawLabel, rawAmount] = line.split("=").map((part) => part?.trim());
+
+          return {
+            label: rawLabel || line,
+            amount: rawAmount || "",
+          };
+        })
+      : [
+          { label: "Pag-IBIG Loan", amount: "₱1,000.00" },
+          { label: "SSS", amount: "₱2,000.00" },
+        ];
+
   const payItems = currentSlip
     ? [
         {
@@ -139,11 +167,14 @@ export default function Payslips() {
               z-index: 9999;
               width: 100%;
               max-width: 100%;
-              border: none !important;
+              border: 1.5px solid #334155 !important;
               box-shadow: none !important;
               border-radius: 0 !important;
               padding: 0 !important;
               margin: 0 !important;
+            }
+            .print-watermark {
+              opacity: 0.06 !important;
             }
           }
         `}
@@ -239,158 +270,116 @@ export default function Payslips() {
             </div>
           </div>
 
-          <div className="print-container max-w-[860px] rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4">
-              <div className="flex items-center gap-3">
+          <div
+            className="print-container relative max-w-[860px] overflow-hidden rounded-none border border-gray-700 bg-white p-0 shadow-sm"
+            style={{ fontFamily: '"Courier New", Courier, monospace' }}
+          >
+            <img
+              src="/images/wah-logo.png"
+              alt="WAH watermark"
+              className="print-watermark pointer-events-none absolute left-1/2 top-1/2 z-0 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 object-contain"
+              style={{ opacity: 0.06 }}
+            />
+
+            <div className="relative z-10 flex items-center border-b border-gray-700 px-4 py-5">
+              <div className="flex items-center justify-start pl-1">
                 <img
-                  src="/images/wah-logo.png"
+                  src={TOP_PDF_LOGO}
                   alt="WAH"
-                  className="h-11 w-11 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = DEFAULT_PDF_LOGO;
+                  }}
+                  className="h-28 w-auto max-w-[220px] object-contain"
                 />
-                <div>
-                  <h2 className="m-0 text-lg font-bold text-slate-900">
-                    WAH Payroll System
-                  </h2>
-                  <p className="m-0 mt-0.5 text-xs font-medium uppercase tracking-wider text-slate-500">
-                    Employee Payslip
-                  </p>
+              </div>
+              <p className="absolute left-1/2 m-0 -translate-x-1/2 text-center text-[15px] font-semibold text-gray-900">
+                Wireless for Health Initiative, Inc.
+              </p>
+            </div>
+
+            <div className="relative z-10 border-b border-gray-700 px-6 py-5 text-[32px]">
+              <p className="m-0 text-[15px]">
+                <span className="font-bold">PAYROLL PERIOD:</span> {payPeriodLabel}
+              </p>
+              <p className="m-0 mt-1 text-[15px]">
+                <span className="font-bold">EMPLOYEE NAME:</span>{" "}
+                {currentSlip.last_name}, {currentSlip.first_name}
+              </p>
+            </div>
+
+            <div className="relative z-10 grid grid-cols-2 border-b border-gray-700 text-[14px]">
+              <div className="border-r border-gray-700 px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="m-0 text-[14px] font-bold">EARNINGS & ALLOWANCES</p>
+                  <p className="m-0 text-[14px] font-bold">PHP</p>
+                </div>
+
+                <div className="space-y-1 text-[15px]">
+                  <div className="flex items-start justify-between gap-3">
+                    <span>Basic Pay</span>
+                    <span>{fmtPeso(currentSlip.basic_pay || 0)}</span>
+                  </div>
+
+                  {Number(currentSlip.incentives || 0) > 0 && (
+                    <div className="flex items-start justify-between gap-3">
+                      <span>
+                        {incentiveTypeLines.length > 0
+                          ? incentiveTypeLines.join(", ")
+                          : "Incentives"}
+                      </span>
+                      <span>{fmtPeso(currentSlip.incentives || 0)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="text-right">
-                <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Pay Period
-                </p>
-                <p className="m-0 mt-1 text-sm font-semibold text-slate-900">
-                  {payPeriodLabel}
-                </p>
-              </div>
-            </div>
 
-            <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Employee Name
-                </p>
-                <p className="m-0 mt-1 font-semibold text-slate-900">
-                  {currentSlip.first_name} {currentSlip.last_name}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Employee ID
-                </p>
-                <p className="m-0 mt-1 font-semibold text-slate-900">
-                  {currentSlip.emp_id}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Designation
-                </p>
-                <p className="m-0 mt-1 font-semibold text-slate-900">
-                  {currentSlip.designation || "N/A"}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Position
-                </p>
-                <p className="m-0 mt-1 font-semibold text-slate-900">
-                  {currentSlip.position || "N/A"}
-                </p>
-              </div>
-            </div>
+              <div className="px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="m-0 text-[14px] font-bold">DEDUCTIONS (IOU)</p>
+                  <p className="m-0 text-[14px]">PHP</p>
+                </div>
 
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="bg-slate-50">
-                    <th className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Description
-                    </th>
-                    <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {payItems.map((item) => (
-                    <tr key={item.key}>
-                      <td className="px-4 py-2.5 text-slate-700">
-                        <p className="m-0">{item.label}</p>
-                        {item.key === "deductions" && (
-                          <div className="mt-1 space-y-0.5">
-                            {deductionTypeLines.length === 0 ? (
-                              <p className="m-0 text-[11px] text-red-700/80">
-                                Deduction types: None
-                              </p>
-                            ) : (
-                              deductionTypeLines.map((line, index) => (
-                                <p
-                                  key={`deduction-type-inline-${index}`}
-                                  className="m-0 text-[11px] text-red-700/80"
-                                >
-                                  - {line}
-                                </p>
-                              ))
-                            )}
-                          </div>
-                        )}
-                        {item.key === "incentives" && (
-                          <div className="mt-1 space-y-0.5">
-                            {incentiveTypeLines.length === 0 ? (
-                              <p className="m-0 text-[11px] text-emerald-700/80">
-                                Incentive types: None
-                              </p>
-                            ) : (
-                              incentiveTypeLines.map((line, index) => (
-                                <p
-                                  key={`incentive-type-inline-${index}`}
-                                  className="m-0 text-[11px] text-emerald-700/80"
-                                >
-                                  + {line}
-                                </p>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td
-                        className={`px-4 py-2.5 text-right font-semibold ${item.tone}`}
+                <div className="space-y-1 text-[15px]">
+                  <div className="space-y-1 pl-1 text-[15px]">
+                    {deductionDisplayItems.map((item, index) => (
+                      <div
+                        key={`deduction-line-${index}`}
+                        className="flex items-start justify-between gap-3"
                       >
-                        {item.prefix || ""}
-                        {fmt(item.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-slate-50">
-                    <td className="px-4 py-3 text-sm font-bold uppercase tracking-wide text-slate-700">
-                      Net Pay
-                    </td>
-                    <td className="px-4 py-3 text-right text-base font-black text-emerald-700">
-                      {fmt(currentSlip.net_pay)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-8 hidden print:block">
-              <div className="flex items-center justify-between">
-                <div className="w-60 text-center">
-                  <div className="mb-2 border-b border-gray-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Employer Signature
-                  </span>
-                </div>
-                <div className="w-60 text-center">
-                  <div className="mb-2 border-b border-gray-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Employee Signature
-                  </span>
+                        <span>{item.label}</span>
+                        <span>{item.amount}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
+
+            <div className="relative z-10 border-b border-gray-700 px-6 py-4">
+              <div className="mx-auto w-fit text-[16px]">
+                <div className="mb-1 flex items-center justify-between gap-8">
+                  <span className="font-bold">PAY SUMMARY</span>
+                  <span className="font-bold">PHP</span>
+                </div>
+                <div className="flex items-center justify-between gap-8">
+                  <span>Total Gross</span>
+                  <span>{fmtPeso(currentSlip.gross_pay || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-8">
+                  <span>Total Deductions</span>
+                  <span>{fmtPeso(currentSlip.absence_deductions || 0)}</span>
+                </div>
+                <div className="mt-5 flex items-center justify-between gap-8">
+                  <span>NET SALARY & WAGES:</span>
+                  <span>{fmtPeso(currentSlip.net_pay || 0)}</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="relative z-10 m-0 px-6 py-3 text-center text-[14px] tracking-wide text-gray-800">
+              *** WAH Confidential - Maximum Restrictions ***
+            </p>
           </div>
         </>
       )}

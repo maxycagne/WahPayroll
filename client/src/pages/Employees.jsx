@@ -108,7 +108,7 @@ export default function Employees({ shortcutMode = false }) {
       resetForm();
       showToast("Employee added successfully.");
     },
-    onError: () => showToast("Failed to add employee.", "error"),
+    onError: (e) => showToast("Failed to add employee. ", e.message, "error"),
   });
 
   const updateMutation = useMutation({

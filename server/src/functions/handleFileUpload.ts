@@ -3,44 +3,52 @@ import { Request, Response } from "express";
 import { s3BucketName, s3Client } from "../config/s3";
 
 type S3File = Express.Multer.File & {
-  // Key is from multer-3. KEY IS THE NAME OF THE FILE ITSELF!!!!
   key: string;
 };
 
-export const fileUpload = async (req: Request, res: Response) => {
-  if (req.files?.length === 0) {
+export const fileUpload = async (
+  req: Request & {
+    file: Express.Multer.File & { key: string };
+    files?: Express.Multer.File[];
+  },
+  res: Response,
+) => {
+  const uploadedFiles = [
+    ...(Array.isArray(req.files) ? (req.files as S3File[]) : []),
+    ...(req.file ? [req.file as S3File] : []),
+  ];
+
+  if (uploadedFiles.length === 0) {
     return res.status(400).json({
-      message: "No files uploaded",
+      message: "No file uploaded",
     });
   }
 
   try {
     // Ensure files exist
-    const promises = (req.files as S3File[]).map((file) => {
-      return waitUntilObjectExists(
-        {
-          client: s3Client,
-          // 60 seconds to finish before failing
-          maxWaitTime: 60,
-        },
-        {
-          Bucket: s3BucketName,
-          Key: file.key,
-        },
-      );
-    });
-    // Upload all or FAIL
-    await Promise.all(promises);
+    await Promise.all(
+      uploadedFiles.map((file) =>
+        waitUntilObjectExists(
+          {
+            client: s3Client,
+            maxWaitTime: 60,
+          },
+          {
+            Bucket: s3BucketName,
+            Key: file.key,
+          },
+        ),
+      ),
+    );
+
     // Middleware automatically handles file upload
     res.status(200).json({
       message: "Files uploaded successfully!",
-      files: (req.files as S3File[]).map((file) => {
-        return {
-          fileName: file.originalname,
-          size: file.size,
-          key: file.key,
-        };
-      }),
+      files: uploadedFiles.map((file) => ({
+        fileName: file.originalname,
+        size: file.size,
+        key: file.key,
+      })),
     });
   } catch (e) {
     if (e instanceof S3ServiceException && e.name === "EntityTooLarge") {

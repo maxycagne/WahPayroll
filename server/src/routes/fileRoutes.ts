@@ -6,9 +6,10 @@ import { s3BucketName, s3Client } from "../config/s3";
 
 import { retrieveFile } from "../functions/retrieveFile";
 import { sanitizeFile } from "../middleware/sanitizeFile";
-import { authenticateToken } from "../middleware/authMiddleware";
 import { deleteFile } from "../functions/deleteFile";
 import { checkFileExist } from "../middleware/checkFileExist";
+import { upload } from "../middleware/upload";
+import { uploadProfile } from "../functions/uploadProfile";
 
 const uploadS3 = multer({
   storage: multerS3({
@@ -36,7 +37,7 @@ const uploadS3 = multer({
 });
 
 const router = express.Router();
-router.use(authenticateToken);
+// router.use(authenticateToken);
 
 const handleUpload = (req: any, res: any, next: any) => {
   uploadS3.array("requiredFiles", 10)(req, res, (err: any) => {
@@ -53,8 +54,16 @@ router.post(
   "/upload",
   handleUpload,
   sanitizeFile,
-  fileUpload,
+  fileUpload as any,
 );
 router.get("/get", retrieveFile);
 router.delete("/delete", checkFileExist, deleteFile);
+
+router.post(
+  "/uploadProfile",
+  upload.single("profile-picture"),
+  // checkFileExist,
+  uploadProfile,
+);
+
 export default router;
