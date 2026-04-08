@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import { Eye, EyeOff } from "lucide-react"; // <-- ADDED ICON IMPORTS
+import { Eye, EyeOff } from "lucide-react";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -21,7 +21,7 @@ const STORAGE_USER_KEY = "wah_user";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // <-- ADDED STATE
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLocalLogin = (token, nextUser) => {
     localStorage.setItem(STORAGE_TOKEN_KEY, token);
@@ -43,10 +43,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#3d0d74] via-[#50109a] to-[#6c2eb9] p-4 md:p-8">
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-white/20 bg-white/95 shadow-2xl md:min-h-[calc(100vh-4rem)] md:grid-cols-2">
+      {}
+      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-white/20 bg-white/95 shadow-2xl md:h-[calc(100vh-4rem)] md:grid-cols-2">
         <section className="relative hidden md:flex flex-col justify-between overflow-hidden bg-[#4a148c] p-10 text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.16),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.10),transparent_30%)]" />
-          <div className="relative">
+
+          {}
+          <div className="relative shrink-0">
             <div className="mb-10 flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
                 <img
@@ -74,12 +77,23 @@ export default function Login() {
             </p>
           </div>
 
-          <p className="relative m-0 text-xs uppercase tracking-[0.18em] text-white/60">
+          {}
+          <div className="relative flex-1 min-h-0 flex items-center justify-center my-1 px-0">
+            <img
+              src="/images/JuWaH.png"
+              alt="WAH Illustration"
+              className="h-full w-full object-contain drop-shadow-2xl"
+            />
+          </div>
+
+          {}
+          <p className="relative shrink-0 m-0 text-xs uppercase tracking-[0.18em] text-white/60">
             Internal Access Only
           </p>
         </section>
 
-        <section className="flex items-center justify-center bg-white p-6 md:p-10">
+        {}
+        <section className="flex items-center justify-center overflow-y-auto bg-white p-6 md:p-10">
           <Card className="w-full max-w-md border border-slate-200 shadow-none">
             <CardHeader className="space-y-2 pb-4">
               <CardTitle className="text-2xl font-semibold text-slate-900">
@@ -118,7 +132,6 @@ export default function Login() {
                     />
                   </Field>
 
-                  {/* UPDATED PASSWORD FIELD */}
                   <Field className="space-y-2">
                     <FieldLabel
                       htmlFor="password"
@@ -134,7 +147,6 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        // Added pr-10 so the text doesn't hide under the icon
                         className="h-11 w-full rounded-lg border-slate-300 bg-white pr-10"
                       />
                       <button
