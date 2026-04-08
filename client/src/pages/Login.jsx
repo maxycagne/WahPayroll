@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
+import { Eye, EyeOff } from "lucide-react"; // <-- ADDED ICON IMPORTS
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -20,6 +21,7 @@ const STORAGE_USER_KEY = "wah_user";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // <-- ADDED STATE
 
   const handleLocalLogin = (token, nextUser) => {
     localStorage.setItem(STORAGE_TOKEN_KEY, token);
@@ -116,6 +118,7 @@ export default function Login() {
                     />
                   </Field>
 
+                  {/* UPDATED PASSWORD FIELD */}
                   <Field className="space-y-2">
                     <FieldLabel
                       htmlFor="password"
@@ -123,15 +126,32 @@ export default function Login() {
                     >
                       Password
                     </FieldLabel>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="h-11 rounded-lg border-slate-300 bg-white"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        // Added pr-10 so the text doesn't hide under the icon
+                        className="h-11 w-full rounded-lg border-slate-300 bg-white pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none"
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </Field>
 
                   {login.error && (
