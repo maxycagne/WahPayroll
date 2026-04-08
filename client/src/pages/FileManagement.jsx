@@ -6,6 +6,28 @@ import ExitClearanceFormDocument from '../components/pdfTemps/ExitClearanceForm.
 import ExitInterviewFormDocument from '../components/pdfTemps/ExitInterviewForm.jsx';
 
 const FileManagement = () => {
+  // Sample data for NDA Document
+  const sampleNDAData = {
+    employeeName: 'Filson John L. Bequibel',
+    employeeId: 'EMP-001',
+    employeeAddress: '123 Main Street, Tarlac City, Philippines',
+    signatureDay: '08',
+    signatureMonth: 'April',
+    signatureYear: '2026',
+    signatureCity: 'Tarlac City',
+    dpoName: 'Kevin Greg Alvarado',
+    dpoTitle: 'Data Protection Officer',
+    witness1Name: 'Ms. Jhuvy C. Dizon',
+    witness1Title: 'Admin & Operations Officer',
+    witness2Name: 'Robert Michael Martinez',
+    witness2Title: 'Supervising Partner for Network and System',
+    firstPartyName: 'WIRELESS ACCESS FOR HEALTH INITIATIVE, INC. (WAH-NGO)',
+    firstPartyAddress: '2nd Floor, Room 2, Diwa ng Tarlac, Romulo Blvd, San Vicente, Tarlac City, Philippines',
+    firstPartyRepName: 'Robert Michael Martinez',
+    firstPartyRepTitle: 'Supervising Partner for Network and System Partner',
+    partnerInstitution: 'Tarlac State University'
+  };
+
   // Sample data for Resignation Form
   const sampleResignationData = {
     name: 'Jane Smith',
@@ -106,6 +128,49 @@ const FileManagement = () => {
 
   return (
     <div>
+      <h1>File Management</h1>
+      
+      <PDFDownloadLink
+        document={
+          <NDADocument
+            employeeName={sampleNDAData.employeeName}
+            employeeId={sampleNDAData.employeeId}
+            employeeAddress={sampleNDAData.employeeAddress}
+            signatureDay={sampleNDAData.signatureDay}
+            signatureMonth={sampleNDAData.signatureMonth}
+            signatureYear={sampleNDAData.signatureYear}
+            signatureCity={sampleNDAData.signatureCity}
+            dpoName={sampleNDAData.dpoName}
+            dpoTitle={sampleNDAData.dpoTitle}
+            witness1Name={sampleNDAData.witness1Name}
+            witness1Title={sampleNDAData.witness1Title}
+            witness2Name={sampleNDAData.witness2Name}
+            witness2Title={sampleNDAData.witness2Title}
+            firstPartyName={sampleNDAData.firstPartyName}
+            firstPartyAddress={sampleNDAData.firstPartyAddress}
+            firstPartyRepName={sampleNDAData.firstPartyRepName}
+            firstPartyRepTitle={sampleNDAData.firstPartyRepTitle}
+            partnerInstitution={sampleNDAData.partnerInstitution}
+          />
+        }
+        fileName="nda-legal-size.pdf"
+        style={{
+          textDecoration: "none",
+          padding: "8px 18px",
+          color: "#fff",
+          background: "#007bff",
+          border: "none",
+          borderRadius: "4px",
+          marginRight: "10px",
+          marginBottom: "10px",
+          display: "inline-block"
+        }}
+      >
+        {({ blob, url, loading, error }) =>
+          loading ? 'Preparing document...' : 'Download NDA (Legal size)'
+        }
+      </PDFDownloadLink>
+
       <PDFDownloadLink
         document={
           <ResignationFormDocument 
@@ -138,26 +203,6 @@ const FileManagement = () => {
       >
         {({ blob, url, loading, error }) =>
           loading ? 'Preparing document...' : 'Download Resignation Form'
-        }
-      </PDFDownloadLink>
-
-      <PDFDownloadLink
-        document={<NDADocument /* pass any props you want here */ />}
-        fileName="nda-legal-size.pdf"
-        style={{
-          textDecoration: "none",
-          padding: "8px 18px",
-          color: "#fff",
-          background: "#007bff",
-          border: "none",
-          borderRadius: "4px",
-          marginRight: "10px",
-          marginBottom: "10px",
-          display: "inline-block"
-        }}
-      >
-        {({ blob, url, loading, error }) =>
-          loading ? 'Preparing document...' : 'Download NDA (Legal size)'
         }
       </PDFDownloadLink>
 
@@ -218,8 +263,6 @@ const FileManagement = () => {
           loading ? 'Preparing document...' : 'Download Exit Interview Form'
         }
       </PDFDownloadLink>
-
-      <h1>File Management</h1>
     </div>
   )
 }
