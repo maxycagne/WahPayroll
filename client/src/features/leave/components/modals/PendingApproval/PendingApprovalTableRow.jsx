@@ -41,6 +41,19 @@ export default function PendingApprovalTableRow({
           ? new Date(item.cancellation_requested_at).toLocaleString()
           : "-"}
       </td>
+      <td className="px-4 py-2.5 text-xs font-medium text-gray-600">
+        {item.ocp ? (
+          <a
+            download
+            href={`${item.ocp}`}
+            className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700 hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Download
+          </a>
+        ) : (
+          "N/A"
+        )}
+      </td>
       <td className="px-4 py-2.5 text-right">
         {canDirectDecision ? (
           <div className="inline-flex gap-1.5">
