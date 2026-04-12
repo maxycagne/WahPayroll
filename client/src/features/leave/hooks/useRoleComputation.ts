@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useFormData } from "./useFormData";
 
-export const useRoleComputation = () => {
+export const useRoleComputation = (injectedCurrentUser?: any) => {
   const {
     user: { currentUser },
   } = useFormData();
+  const activeUser = injectedCurrentUser || currentUser;
 
-  const normalizedRole = String(currentUser?.role || "")
+  const normalizedRole = String(activeUser?.role || "")
     .trim()
     .toLowerCase();
   const isAdminRole = normalizedRole === "admin";

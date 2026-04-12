@@ -3,7 +3,7 @@ import {
   createMutation,
   mutationHandler,
 } from "../hooks/createMutationHandler";
-import { useEmailNotifications } from "../hooks/useEmailNotifications ";
+import { useEmailNotifications } from "../hooks/useEmailNotifications";
 
 //T
 
@@ -86,11 +86,13 @@ export const useRequestMutation = ({
     showToast,
     invalidateKeys: ["resignations"],
     successExtra: () => {
-      setResignationForm({
-        resignation_type: "Voluntary Resignation",
-        effective_date: "",
-        reason: "",
-      });
+      if (typeof setResignationForm === "function") {
+        setResignationForm({
+          resignation_type: "Voluntary Resignation",
+          effective_date: "",
+          reason: "",
+        });
+      }
       setApplicationModalOpen(false);
     },
   });
