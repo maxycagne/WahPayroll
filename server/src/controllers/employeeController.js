@@ -379,6 +379,228 @@ const ensureResignationsTable = async (connection = pool) => {
       "ALTER TABLE resignations ADD COLUMN hr_note TEXT NULL AFTER review_remarks",
     );
   }
+
+  // Multi-step workflow columns
+  const [currentStepColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'current_step'
+      LIMIT 1
+    `,
+  );
+
+  if (currentStepColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN current_step INT DEFAULT 1 AFTER hr_note",
+    );
+  }
+
+  const [resignationLetterColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'resignation_letter'
+      LIMIT 1
+    `,
+  );
+
+  if (resignationLetterColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN resignation_letter LONGTEXT NULL AFTER current_step",
+    );
+  }
+
+  const [resignationDateColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'resignation_date'
+      LIMIT 1
+    `,
+  );
+
+  if (resignationDateColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN resignation_date DATE NULL AFTER resignation_letter",
+    );
+  }
+
+  const [lastWorkingDayColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'last_working_day'
+      LIMIT 1
+    `,
+  );
+
+  if (lastWorkingDayColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN last_working_day DATE NULL AFTER resignation_date",
+    );
+  }
+
+  const [recipientSupervisorsColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'recipient_supervisors'
+      LIMIT 1
+    `,
+  );
+
+  if (recipientSupervisorsColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN recipient_supervisors JSON NULL AFTER last_working_day",
+    );
+  }
+
+  const [reasonsJsonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'reasons_json'
+      LIMIT 1
+    `,
+  );
+
+  if (reasonsJsonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN reasons_json JSON NULL AFTER recipient_supervisors",
+    );
+  }
+
+  const [otherReasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'other_reason'
+      LIMIT 1
+    `,
+  );
+
+  if (otherReasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN other_reason VARCHAR(1000) NULL AFTER reasons_json",
+    );
+  }
+
+  const [exitInterviewAnswersColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'exit_interview_answers'
+      LIMIT 1
+    `,
+  );
+
+  if (exitInterviewAnswersColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN exit_interview_answers JSON NULL AFTER other_reason",
+    );
+  }
+
+  const [endorsementFileKeyColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'endorsement_file_key'
+      LIMIT 1
+    `,
+  );
+
+  if (endorsementFileKeyColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN endorsement_file_key VARCHAR(500) NULL AFTER exit_interview_answers",
+    );
+  }
+
+  const [clearanceFileKeyColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'clearance_file_key'
+      LIMIT 1
+    `,
+  );
+
+  if (clearanceFileKeyColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN clearance_file_key VARCHAR(500) NULL AFTER endorsement_file_key",
+    );
+  }
+
+  const [clearanceStatusColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'clearance_status'
+      LIMIT 1
+    `,
+  );
+
+  if (clearanceStatusColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN clearance_status ENUM('Disabled', 'Pending', 'Enabled') DEFAULT 'Disabled' AFTER clearance_file_key",
+    );
+  }
+
+  const [assignedSupervisorColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'assigned_supervisor_emp_id'
+      LIMIT 1
+    `,
+  );
+
+  if (assignedSupervisorColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN assigned_supervisor_emp_id VARCHAR(50) NULL AFTER clearance_status",
+    );
+  }
+
+  const [submittedAtColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'submitted_at'
+      LIMIT 1
+    `,
+  );
+
+  if (submittedAtColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN submitted_at TIMESTAMP NULL AFTER assigned_supervisor_emp_id",
+    );
+  }
 };
 
 const ensureNotificationsTable = async (connection = pool) => {
@@ -1805,7 +2027,300 @@ export const updateMissingDocs = async (req, res) => {
 };
 
 // --- RESIGNATIONS ---
+
+// Helper: Get all recipient supervisors by employee designation
+const getRecipientSupervisorsByDesignation = async (connection, requester) => {
+  if (!requester || !requester.designation) return [];
+
+  if (requester.role === "Supervisor") {
+    // Supervisor resignations go to HR
+    const [rows] = await connection.query(
+      `
+        SELECT emp_id, first_name, last_name
+        FROM employees
+        WHERE COALESCE(role, '') = 'HR'
+          AND emp_id <> ?
+        ORDER BY created_at ASC
+      `,
+      [requester.emp_id],
+    );
+    return rows.map((row) => ({
+      emp_id: row.emp_id,
+      name: `${row.first_name} ${row.last_name}`.trim(),
+    }));
+  }
+
+  // RankAndFile/HR/Admin resignations go to Supervisors with same designation
+  const [rows] = await connection.query(
+    `
+      SELECT emp_id, first_name, last_name
+      FROM employees
+      WHERE COALESCE(role, '') = 'Supervisor'
+        AND designation = ?
+        AND emp_id <> ?
+      ORDER BY created_at ASC
+    `,
+    [requester.designation, requester.emp_id],
+  );
+
+  return rows.map((row) => ({
+    emp_id: row.emp_id,
+    name: `${row.first_name} ${row.last_name}`.trim(),
+  }));
+};
+
+// Autosave resignation step (creates draft or updates existing draft)
+export const autosaveResignationStep = async (req, res) => {
+  const resignationId = req.params.id;
+  const { step, stepData } = req.body;
+  const empId = req.user?.emp_id;
+
+  if (!empId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!step || !stepData) {
+    return res.status(400).json({ message: "Step and stepData required" });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await ensureResignationsTable(connection);
+
+      const requester = await getEmployeeProfile(connection, empId);
+      if (!requester) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Employee profile not found" });
+      }
+
+      // If creating new draft (no id), insert initial record
+      if (!resignationId) {
+        const recipientSupervisors = await getRecipientSupervisorsByDesignation(
+          connection,
+          requester,
+        );
+
+        const [result] = await connection.query(
+          `INSERT INTO resignations 
+          (emp_id, current_step, status, recipient_supervisors)
+          VALUES (?, ?, 'Pending Approval', ?)`,
+          [empId, step, JSON.stringify(recipientSupervisors)],
+        );
+
+        await connection.commit();
+        return res.status(201).json({
+          message: "Resignation draft created",
+          id: result.insertId,
+          recipientSupervisors,
+        });
+      }
+
+      // Verify ownership and update existing draft
+      const [existing] = await connection.query(
+        `SELECT emp_id, submitted_at FROM resignations WHERE id = ? LIMIT 1`,
+        [resignationId],
+      );
+
+      if (existing.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Resignation not found" });
+      }
+
+      if (existing[0].emp_id !== empId) {
+        await connection.rollback();
+        return res
+          .status(403)
+          .json({ message: "Can only edit your own resignation" });
+      }
+
+      if (existing[0].submitted_at) {
+        await connection.rollback();
+        return res
+          .status(400)
+          .json({ message: "Cannot edit submitted resignation" });
+      }
+
+      // Build update based on step
+      const updateFields = { current_step: step };
+      if (step >= 1 && stepData.resignationLetter !== undefined) {
+        updateFields.resignation_letter = stepData.resignationLetter;
+      }
+      if (step >= 2) {
+        if (stepData.resignationDate)
+          updateFields.resignation_date = stepData.resignationDate;
+        if (stepData.lastWorkingDay)
+          updateFields.last_working_day = stepData.lastWorkingDay;
+        if (stepData.reasons) updateFields.reasons_json = JSON.stringify(stepData.reasons);
+        if (stepData.otherReason !== undefined)
+          updateFields.other_reason = stepData.otherReason;
+      }
+      if (step >= 3 && stepData.exitInterviewAnswers) {
+        updateFields.exit_interview_answers = JSON.stringify(
+          stepData.exitInterviewAnswers,
+        );
+      }
+      if (step >= 4 && stepData.endorsementFileKey) {
+        updateFields.endorsement_file_key = stepData.endorsementFileKey;
+      }
+
+      const setClause = Object.keys(updateFields)
+        .map((key) => `${key} = ?`)
+        .join(", ");
+      const values = Object.values(updateFields);
+
+      await connection.query(
+        `UPDATE resignations SET ${setClause}, updated_at = NOW() WHERE id = ?`,
+        [...values, resignationId],
+      );
+
+      await connection.commit();
+      res.json({ message: "Resignation step saved", id: resignationId });
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("DB Error in autosaveResignationStep:", error);
+    res.status(500).json({ message: "Error saving resignation step" });
+  }
+};
+
+// Final submission of resignation application (marks submitted_at and triggers notifications)
+export const submitResignationApplication = async (req, res) => {
+  const resignationId = req.params.id;
+  const { selectedSupervisorEmpId } = req.body;
+  const empId = req.user?.emp_id;
+
+  if (!empId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!resignationId) {
+    return res.status(400).json({
+      message: "Resignation ID is required",
+    });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await ensureResignationsTable(connection);
+
+      const [existing] = await connection.query(
+        `SELECT emp_id, submitted_at, resignation_letter, resignation_date, last_working_day, reasons_json, exit_interview_answers, endorsement_file_key
+         FROM resignations WHERE id = ? LIMIT 1`,
+        [resignationId],
+      );
+
+      if (existing.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Resignation not found" });
+      }
+
+      if (existing[0].emp_id !== empId) {
+        await connection.rollback();
+        return res
+          .status(403)
+          .json({ message: "Can only submit your own resignation" });
+      }
+
+      if (existing[0].submitted_at) {
+        await connection.rollback();
+        return res
+          .status(400)
+          .json({
+            message: "Resignation already submitted",
+          });
+      }
+
+      // Validate required fields are filled
+      if (
+        !existing[0].resignation_letter ||
+        !existing[0].resignation_date ||
+        !existing[0].last_working_day ||
+        !existing[0].reasons_json ||
+        !existing[0].exit_interview_answers ||
+        !existing[0].endorsement_file_key
+      ) {
+        await connection.rollback();
+        return res.status(400).json({
+          message:
+            "All resignation steps must be completed before submission",
+        });
+      }
+
+      const requester = await getEmployeeProfile(connection, empId);
+      const recipientSupervisors = await getRecipientSupervisorsByDesignation(
+        connection,
+        requester,
+      );
+      const fallbackSupervisorEmpId = recipientSupervisors[0]?.emp_id || null;
+      const finalSupervisorEmpId =
+        selectedSupervisorEmpId ||
+        existing[0].assigned_supervisor_emp_id ||
+        fallbackSupervisorEmpId;
+
+      if (!finalSupervisorEmpId) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "No supervisor is assigned for this designation",
+        });
+      }
+
+      // Mark as submitted with assigned supervisor
+      await connection.query(
+        `UPDATE resignations 
+         SET submitted_at = NOW(),
+             assigned_supervisor_emp_id = ?,
+             clearance_status = 'Pending',
+             updated_at = NOW()
+         WHERE id = ?`,
+        [finalSupervisorEmpId, resignationId],
+      );
+
+      const requesterName = requester
+        ? `${requester.first_name} ${requester.last_name}`.trim()
+        : "an employee";
+
+      // Notify assigned supervisor
+      await connection.query(
+        `INSERT INTO notifications (emp_id, notification_type, title, message, reference_type, reference_id)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          finalSupervisorEmpId,
+          "resignation_submitted",
+          "New Resignation Application",
+          `${requesterName} has submitted a resignation application for review.`,
+          "resignation",
+          resignationId,
+        ],
+      );
+
+      await connection.commit();
+      res.json({
+        message:
+          "Resignation application submitted successfully. Awaiting supervisor review.",
+        id: resignationId,
+      });
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("DB Error in submitResignationApplication:", error);
+    res.status(500).json({ message: "Error submitting resignation" });
+  }
+};
+
 export const getMyResignations = async (req, res) => {
+
   try {
     await ensureResignationsTable();
 
@@ -1870,17 +2385,77 @@ export const getResignations = async (req, res) => {
   }
 };
 
+export const getResignationById = async (req, res) => {
+  try {
+    await ensureResignationsTable();
+
+    const resignationId = req.params.id;
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
+
+    const [rows] = await pool.query(
+      `SELECT
+        r.*,
+        e.first_name,
+        e.last_name,
+        e.designation,
+        COALESCE(e.role, 'RankAndFile') as requester_role,
+        rv.first_name as reviewer_first_name,
+        rv.last_name as reviewer_last_name
+      FROM resignations r
+      JOIN employees e ON r.emp_id = e.emp_id
+      LEFT JOIN employees rv ON r.reviewed_by = rv.emp_id
+      WHERE r.id = ?
+      LIMIT 1`,
+      [resignationId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation not found" });
+    }
+
+    const record = rows[0];
+    const canView =
+      viewer.role === "Admin" ||
+      viewer.role === "HR" ||
+      String(record.emp_id) === String(viewer.emp_id) ||
+      (viewer.role === "Supervisor" &&
+        String(record.designation || "") === String(viewer.designation || ""));
+
+    if (!canView) {
+      return res.status(403).json({ message: "Not allowed to view this resignation" });
+    }
+
+    return res.json(record);
+  } catch (error) {
+    console.error("DB Error in getResignationById:", error);
+    return res.status(500).json({ message: "Error fetching resignation detail" });
+  }
+};
+
 export const fileResignation = async (req, res) => {
-  const { emp_id, resignation_type, effective_date, reason } = req.body;
+  const {
+    emp_id,
+    resignation_type,
+    effective_date,
+    reason,
+    resignationDate,
+    lastWorkingDay,
+  } = req.body;
   try {
     const requesterEmpId =
       req.user?.role === "Admin" && emp_id
         ? emp_id
         : req.user?.emp_id || emp_id;
 
-    if (!requesterEmpId || !resignation_type || !effective_date) {
+    const resolvedEffectiveDate =
+      effective_date || resignationDate || lastWorkingDay || null;
+    const resolvedResignationType =
+      resignation_type || "Resignation";
+
+    if (!requesterEmpId || !resolvedEffectiveDate) {
       return res.status(400).json({
-        message: "emp_id, resignation_type, and effective_date are required",
+        message: "emp_id and effective_date are required",
       });
     }
 
@@ -1897,7 +2472,12 @@ export const fileResignation = async (req, res) => {
 
       const [result] = await connection.query(
         "INSERT INTO resignations (emp_id, resignation_type, effective_date, reason, status) VALUES (?, ?, ?, ?, 'Pending Approval')",
-        [requesterEmpId, resignation_type, effective_date, reason || null],
+        [
+          requesterEmpId,
+          resolvedResignationType,
+          resolvedEffectiveDate,
+          reason || null,
+        ],
       );
 
       await notifyApproversForRequest(connection, {

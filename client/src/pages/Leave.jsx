@@ -165,6 +165,10 @@ export default function Leave() {
     requestCancellationApprovalMutation,
     addHrNoteMutation,
     reviewResignationMutation,
+    autosaveResignationDraftMutation,
+    submitResignationApplicationMutation,
+    approveResignationMutation,
+    rejectResignationMutation,
   } = useRequestMutation({
     showToast,
     setApplicationModalOpen,
@@ -515,6 +519,8 @@ export default function Leave() {
         setResignationForm={setResignationForm}
         resignationTypes={resignationTypes}
         fileResignationMutation={fileResignationMutation}
+        autosaveResignationMutation={autosaveResignationDraftMutation}
+        submitResignationMutation={submitResignationApplicationMutation}
         pendingModalOpen={pendingModalOpen}
         isApprover={isApprover}
         setPendingModalOpen={setPendingModalOpen}
@@ -532,6 +538,9 @@ export default function Leave() {
         openLeaveDecisionConfirm={openLeaveDecisionConfirm}
         openOffsetDecisionConfirm={openOffsetDecisionConfirm}
         setHrNoteConfirm={setHrNoteConfirm}
+        approveResignationMutation={approveResignationMutation}
+        rejectResignationMutation={rejectResignationMutation}
+        reviewResignationMutation={reviewResignationMutation}
         myPendingModalOpen={myPendingModalOpen}
         setMyPendingModalOpen={setMyPendingModalOpen}
         myRequestRows={myRequestRows}

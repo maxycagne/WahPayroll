@@ -10,8 +10,9 @@ export default function PendingApprovalTable({
   openOffsetDecisionConfirm,
   setHrNoteConfirm,
   setPendingModalOpen,
+  setResignationReviewOpen,
+  setSelectedResignation,
 }) {
-  console.log(filteredPendingRequests);
   return (
     <table className="w-full text-sm text-left">
       <thead className="sticky top-[43px] z-10 bg-white">
@@ -43,7 +44,7 @@ export default function PendingApprovalTable({
         {filteredPendingRequests.length === 0 ? (
           <tr>
             <td
-              colSpan="6"
+              colSpan="7"
               className="px-4 py-8 text-center text-sm font-medium text-gray-500"
             >
               No pending requests for the selected filter.
@@ -62,6 +63,8 @@ export default function PendingApprovalTable({
               openOffsetDecisionConfirm={openOffsetDecisionConfirm}
               setHrNoteConfirm={setHrNoteConfirm}
               setPendingModalOpen={setPendingModalOpen}
+              setResignationReviewOpen={setResignationReviewOpen}
+              setSelectedResignation={setSelectedResignation}
             />
           ))
         )}

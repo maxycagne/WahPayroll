@@ -28,8 +28,54 @@ export const useFormData = () => {
     OCP: undefined,
   });
   const [resignationForm, setResignationForm] = useState({
-    resignation_type: "Voluntary Resignation",
-    effective_date: "",
+    // Multi-step wizard state
+    resignationId: null,
+    currentStep: 1,
+    autosaveLoading: false,
+    submitLoading: false,
+
+    // Step 1: Resignation Letter
+    resignationLetter: "",
+
+    // Step 2: Details & Reasons
+    resignationDate: "",
+    lastWorkingDay: "",
+    reasons: [],
+    otherReason: "",
+
+    // Step 3: Exit Interview (16 questions)
+    exitInterviewAnswers: {
+      q1: "",
+      q2: "",
+      q3: "",
+      q4: "",
+      q5: "",
+      q6: "",
+      q7: "",
+      q8: "",
+      q9: "",
+      q10: "",
+      q11: "",
+      q12: "",
+      q13: "",
+      q14: "",
+      q15: "",
+      q16: "",
+    },
+
+    // Step 4: Endorsements
+    endorsementFileKey: "",
+    endorsementFileName: "",
+
+    // Step 5: Status handling and clearance upload
+    status: "Pending",
+    clearanceFileKey: "",
+    clearanceFileName: "",
+
+    // Step 5: Review & Submit
+    selectedSupervisor: null,
+    recipientSupervisors: [],
+
     reason: "",
   });
   const { toast, showToast, clearToast } = useToast();

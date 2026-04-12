@@ -35,10 +35,13 @@ import {
   updateMissingDocs,
   getMyResignations,
   getResignations,
+  getResignationById,
   fileResignation,
   updateResignationStatus,
   cancelMyResignation,
   requestMyResignationCancellation,
+  autosaveResignationStep,
+  submitResignationApplication,
   getMyNotifications,
   markNotificationRead,
   markAllNotificationsRead,
@@ -96,10 +99,25 @@ router.get(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getResignations,
 );
+router.get(
+  "/resignations/:id",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getResignationById,
+);
 router.post(
   "/resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   fileResignation,
+);
+router.patch(
+  "/resignations/:id/draft",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  autosaveResignationStep,
+);
+router.put(
+  "/resignations/:id/submit",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  submitResignationApplication,
 );
 router.put(
   "/resignations/:id",

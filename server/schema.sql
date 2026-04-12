@@ -94,12 +94,28 @@ CREATE TABLE IF NOT EXISTS resignations (
   reviewed_at TIMESTAMP NULL,
   cancellation_requested_at TIMESTAMP NULL,
   cancellation_reason TEXT,
+  current_step INT DEFAULT 1,
+  resignation_letter LONGTEXT,
+  resignation_date DATE,
+  last_working_day DATE,
+  recipient_supervisors JSON,
+  reasons_json JSON,
+  other_reason VARCHAR(1000),
+  exit_interview_answers JSON,
+  endorsement_file_key VARCHAR(500),
+  clearance_file_key VARCHAR(500),
+  clearance_status ENUM('Disabled', 'Pending', 'Enabled') DEFAULT 'Disabled',
+  assigned_supervisor_emp_id VARCHAR(50),
+  submitted_at TIMESTAMP NULL,
+  hr_note TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_resignation_emp_status (emp_id, status),
   INDEX idx_resignation_effective_date (effective_date),
+  INDEX idx_resignation_submitted (submitted_at),
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
-  FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
+  FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL,
+  FOREIGN KEY (assigned_supervisor_emp_id) REFERENCES employees(emp_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notifications (

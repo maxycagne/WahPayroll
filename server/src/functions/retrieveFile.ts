@@ -1,31 +1,77 @@
 import { Request, Response } from "express";
-import { s3Client } from "../config/s3";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { s3Client, s3BucketName } from "../config/s3";
+import { GetObjectCommand, S3ServiceException } from "@aws-sdk/client-s3";
+import { Readable } from "stream";
 
 export const retrieveFile = async (req: Request, res: Response) => {
-  const { filename }: { filename: string } = req.body;
+  const filenameFromBody = req.body?.filename;
+  const filenameFromQuery =
+    typeof req.query?.filename === "string" ? req.query.filename : "";
+  const filename: string = String(filenameFromBody || filenameFromQuery || "");
   if (!filename) {
     return res.status(400).json({
       message: "No filename",
     });
   }
-  try {
-    const response = new GetObjectCommand({
-      Bucket: "payroll",
-      Key: filename,
-      // send response as file
-      ResponseContentType: "application/octet-stream",
-    });
 
-    // make signed url that will only be for a certain amount of time
-    const url = await getSignedUrl(s3Client, response, { expiresIn: 3600 });
-    return res.status(200).json({
-      url: url,
-    });
+  try {
+    const response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: s3BucketName,
+        Key: filename,
+      }),
+    );
+
+    // Set headers for preview (inline display)
+    res.setHeader("Content-Type", response.ContentType || "application/octet-stream");
+    res.setHeader("Content-Length", response.ContentLength || "0");
+    res.setHeader("Content-Disposition", `inline; filename="${filename.split("_").pop()}"`);
+
+    // Stream the file to the response
+    if (response.Body) {
+      const stream = response.Body as any;
+      if (typeof stream.pipe === "function") {
+        // Node.js stream
+        stream.pipe(res);
+      } else if (stream instanceof Readable) {
+        // Already a readable stream
+        stream.pipe(res);
+      } else {
+        // Convert Blob to stream
+        const reader = stream.getReader?.();
+        if (reader) {
+          (async () => {
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                res.write(value);
+              }
+              res.end();
+            } catch (error) {
+              res.status(500).json({ message: "Error streaming file" });
+            }
+          })();
+        } else {
+          res.status(500).json({ message: "Unable to stream file body" });
+        }
+      }
+    } else {
+      res.status(500).json({ message: "File body is empty" });
+    }
   } catch (e) {
+    if (e instanceof S3ServiceException && e.name === "NoSuchKey") {
+      return res.status(404).json({
+        message: "File not found",
+      });
+    }
+    if (e instanceof S3ServiceException) {
+      return res.status(500).json({
+        message: `Error retrieving file from S3: ${e.message}`,
+      });
+    }
     return res.status(500).json({
-      message: "Internal server error",
+      message: e instanceof Error ? e.message : "Internal server error",
     });
   }
 };

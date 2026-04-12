@@ -21,6 +21,8 @@ export default function FileApplicationModal({
   setResignationForm,
   resignationTypes,
   fileResignationMutation,
+  autosaveResignationMutation,
+  submitResignationMutation,
 }) {
   return (
     <>
@@ -85,6 +87,8 @@ export default function FileApplicationModal({
                   resignationTypes={resignationTypes}
                   setApplicationModalOpen={setApplicationModalOpen}
                   fileResignationMutation={fileResignationMutation}
+                  autosaveResignationMutation={autosaveResignationMutation}
+                  submitResignationMutation={submitResignationMutation}
                 />
               )}
             </div>

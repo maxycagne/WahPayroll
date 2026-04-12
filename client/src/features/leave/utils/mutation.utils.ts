@@ -100,8 +100,26 @@ export const useRequestMutation = ({
     invalidateKeys: ["resignations"],
     successExtra: () => {
       setResignationForm({
-        resignation_type: "Voluntary Resignation",
-        effective_date: "",
+        resignationId: null,
+        currentStep: 1,
+        autosaveLoading: false,
+        submitLoading: false,
+        resignationLetter: "",
+        resignationDate: "",
+        lastWorkingDay: "",
+        reasons: [],
+        otherReason: "",
+        exitInterviewAnswers: {
+          q1: "", q2: "", q3: "", q4: "", q5: "", q6: "", q7: "", q8: "",
+          q9: "", q10: "", q11: "", q12: "", q13: "", q14: "", q15: "", q16: "",
+        },
+        endorsementFileKey: "",
+        endorsementFileName: "",
+        status: "Pending",
+        clearanceFileKey: "",
+        clearanceFileName: "",
+        selectedSupervisor: null,
+        recipientSupervisors: [],
         reason: "",
       });
       setApplicationModalOpen(false);
@@ -227,6 +245,158 @@ export const useRequestMutation = ({
     invalidateKeys: ALL_KEYS,
   });
 
+  // 10 - Multi-step Resignation Autosave
+  const autosaveResignationDraftMutation = createMutation({
+    mutationFn: ({ resignationId, step, data }: any) =>
+      mutationHandler(
+        axiosInterceptor.patch(
+          `/api/employees/resignations/${resignationId}/draft`,
+          {
+            step,
+            ...data,
+            emp_id: currentUser?.emp_id,
+          },
+        ),
+        "Failed to save resignation draft",
+      ),
+    successMsg: "Resignation draft saved",
+    showToast,
+    invalidateKeys: ["resignations"],
+  });
+
+  // 11 - Multi-step Resignation Final Submit
+  const submitResignationApplicationMutation = createMutation({
+    mutationFn: (resignationData: any) => {
+      const { resignationId, ...submitData } = resignationData;
+
+      const mappedPayload = {
+        ...submitData,
+        selectedSupervisorEmpId:
+          submitData?.selectedSupervisor?.emp_id ||
+          submitData?.assigned_supervisor?.emp_id ||
+          null,
+        effective_date:
+          submitData?.effective_date ||
+          submitData?.lastWorkingDay ||
+          submitData?.resignationDate ||
+          null,
+        reason:
+          submitData?.reason ||
+          submitData?.otherReason ||
+          "Resignation submitted via multi-step form",
+      };
+
+      // If resignationId exists, use PUT submit endpoint, otherwise use POST to create
+      if (resignationId) {
+        return mutationHandler(
+          axiosInterceptor.put(
+            `/api/employees/resignations/${resignationId}/submit`,
+            {
+              ...mappedPayload,
+              emp_id: currentUser?.emp_id,
+            },
+          ),
+          "Failed to submit resignation",
+        );
+      } else {
+        // Fallback to original POST endpoint for backward compatibility
+        return mutationHandler(
+          axiosInterceptor.post("/api/employees/resignations", {
+            emp_id: currentUser?.emp_id,
+            ...mappedPayload,
+          }),
+          "Failed to submit resignation",
+        );
+      }
+    },
+    successMsg: "Resignation submitted successfully",
+    showToast,
+    invalidateKeys: ["resignations"],
+    successExtra: () => {
+      // Reset form state
+      setResignationForm({
+        resignationId: null,
+        currentStep: 1,
+        autosaveLoading: false,
+        submitLoading: false,
+        resignationLetter: "",
+        resignationDate: "",
+        lastWorkingDay: "",
+        reasons: [],
+        otherReason: "",
+        exitInterviewAnswers: {
+          q1: "", q2: "", q3: "", q4: "", q5: "", q6: "", q7: "", q8: "",
+          q9: "", q10: "", q11: "", q12: "", q13: "", q14: "", q15: "", q16: "",
+        },
+        endorsementFileKey: "",
+        endorsementFileName: "",
+        status: "Pending",
+        clearanceFileKey: "",
+        clearanceFileName: "",
+        selectedSupervisor: null,
+        recipientSupervisors: [],
+        reason: "",
+      });
+      setApplicationModalOpen(false);
+    },
+  });
+
+  // 12 - Update Clearance Status (Supervisor)
+  const updateResignationClearanceStatusMutation = createMutation({
+    mutationFn: ({ resignationId, clearanceStatus, remarks }: any) =>
+      mutationHandler(
+        axiosInterceptor.patch(
+          `/api/employees/resignations/${resignationId}/clearance`,
+          {
+            clearance_status: clearanceStatus,
+            supervisor_remarks: remarks,
+          },
+        ),
+        "Failed to update clearance status",
+      ),
+    successMsg: "Clearance status updated",
+    showToast,
+    invalidateKeys: ["resignations"],
+  });
+
+  // 13 - Approve Resignation (Supervisor)
+  const approveResignationMutation = createMutation({
+    mutationFn: ({ resignationId, clearanceStatus, remarks }: any) =>
+      mutationHandler(
+        axiosInterceptor.put(
+          `/api/employees/resignations/${resignationId}/approve`,
+          {
+            status: "Approved",
+            clearance_status: clearanceStatus,
+            supervisor_remarks: remarks,
+          },
+        ),
+        "Failed to approve resignation",
+      ),
+    successMsg: "Resignation approved successfully",
+    showToast,
+    invalidateKeys: ["resignations"],
+  });
+
+  // 14 - Reject Resignation (Supervisor)
+  const rejectResignationMutation = createMutation({
+    mutationFn: ({ resignationId, clearanceStatus, remarks }: any) =>
+      mutationHandler(
+        axiosInterceptor.put(
+          `/api/employees/resignations/${resignationId}/reject`,
+          {
+            status: "Rejected",
+            clearance_status: clearanceStatus,
+            supervisor_remarks: remarks,
+          },
+        ),
+        "Failed to reject resignation",
+      ),
+    successMsg: "Resignation rejected",
+    showToast,
+    invalidateKeys: ["resignations"],
+  });
+
   return {
     fileResignationMutation,
     fileOffsetMutation,
@@ -237,5 +407,10 @@ export const useRequestMutation = ({
     cancelMyPendingRequestMutation,
     requestCancellationApprovalMutation,
     addHrNoteMutation,
+    autosaveResignationDraftMutation,
+    submitResignationApplicationMutation,
+    updateResignationClearanceStatusMutation,
+    approveResignationMutation,
+    rejectResignationMutation,
   };
 };

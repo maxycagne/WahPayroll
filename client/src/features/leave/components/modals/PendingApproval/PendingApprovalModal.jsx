@@ -1,6 +1,10 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import PendingApprovalFilterTabs from "./PendingApprovalFilterTabs";
 import PendingApprovalModalHeader from "./PendingApprovalHeader";
 import PendingApprovalTable from "./PendingApprovalTable";
+import ResignationReviewModal from "../ResignationReview/ResignationReviewModal";
+import axiosInterceptor from "@/hooks/interceptor";
 
 export default function PendingApprovalModal({
   pendingModalOpen,
@@ -20,7 +24,47 @@ export default function PendingApprovalModal({
   openLeaveDecisionConfirm,
   openOffsetDecisionConfirm,
   setHrNoteConfirm,
+  approveResignationMutation,
+  reviewResignationMutation,
 }) {
+  const [resignationReviewOpen, setResignationReviewOpen] = useState(false);
+  const [selectedResignation, setSelectedResignation] = useState(null);
+
+  const { data: latestResignationData } = useQuery({
+    queryKey: ["resignation-review-detail", selectedResignation?.id],
+    enabled: Boolean(resignationReviewOpen && selectedResignation?.id),
+    queryFn: async () => {
+      const response = await axiosInterceptor.get(
+        `/api/employees/resignations/${selectedResignation?.id}`,
+      );
+      return response?.data || selectedResignation;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  const handleApproveResignation = (resignation, clearanceStatus, remarks) => {
+    approveResignationMutation.mutate({
+      resignationId: resignation.id,
+      clearanceStatus,
+      remarks,
+    });
+    setResignationReviewOpen(false);
+  };
+
+  const handleKeepPendingResignation = (
+    resignation,
+    clearanceStatus,
+    remarks,
+  ) => {
+    reviewResignationMutation.mutate({
+      id: resignation.id,
+      status: "Pending Approval",
+      clearance_status: clearanceStatus || "pending",
+      supervisor_remarks: remarks || "",
+    });
+    setResignationReviewOpen(false);
+  };
   return (
     <>
       {pendingModalOpen && isApprover && (
@@ -39,6 +83,8 @@ export default function PendingApprovalModal({
                 pendingResignationApprovals={pendingResignationApprovals}
               />
               <PendingApprovalTable
+                setResignationReviewOpen={setResignationReviewOpen}
+                setSelectedResignation={setSelectedResignation}
                 filteredPendingRequests={filteredPendingRequests}
                 isHRRole={isHRRole}
                 canHrDirectDecision={canHrDirectDecision}
@@ -53,6 +99,18 @@ export default function PendingApprovalModal({
           </div>
         </div>
       )}
+
+      <ResignationReviewModal
+        resignationReviewOpen={resignationReviewOpen}
+        setResignationReviewOpen={setResignationReviewOpen}
+        selectedResignation={latestResignationData || selectedResignation}
+        onFinalApprove={handleApproveResignation}
+        onKeepPending={handleKeepPendingResignation}
+        isProcessing={
+          approveResignationMutation?.isPending ||
+          reviewResignationMutation?.isPending
+        }
+      />
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import { s3Client } from "../config/s3";
+import { s3Client, s3BucketName } from "../config/s3";
 import {
   DeleteObjectCommand,
   S3ServiceException,
@@ -13,7 +13,7 @@ export const deleteFile = async (req: Request, res: Response) => {
     // Delete the file
     await s3Client.send(
       new DeleteObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
+        Bucket: s3BucketName,
         Key: filename,
       }),
     );
@@ -26,7 +26,7 @@ export const deleteFile = async (req: Request, res: Response) => {
       },
       //   Targets the bucket
       {
-        Bucket: process.env.S3_BUCKET_NAME,
+        Bucket: s3BucketName,
         Key: filename,
       },
     );
@@ -35,11 +35,11 @@ export const deleteFile = async (req: Request, res: Response) => {
   } catch (e) {
     if (e instanceof S3ServiceException && e.name === "NoSuchBucket")
       return res.status(500).json({
-        message: `Error from S3 while deleting object from ${process.env.S3_BUCKET_NAME}. The bucket doesn't exist.`,
+        message: `Error from S3 while deleting object from ${s3BucketName}. The bucket doesn't exist.`,
       });
     if (e instanceof S3ServiceException) {
       return res.status(500).json({
-        message: `Error form S3 while deleting object from${process.env.S3_BUCKET_NAME}. ${e.name} : ${e.message}`,
+        message: `Error form S3 while deleting object from ${s3BucketName}. ${e.name} : ${e.message}`,
       });
     }
     return res.status(500).json({

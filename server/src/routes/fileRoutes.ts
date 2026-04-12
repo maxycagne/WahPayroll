@@ -9,8 +9,9 @@ import { sanitizeFile } from "../middleware/sanitizeFile";
 import { authenticateToken } from "../middleware/authMiddleware";
 import { deleteFile } from "../functions/deleteFile";
 import { checkFileExist } from "../middleware/checkFileExist";
-import { upload } from "../middleware/upload";
+import { upload, resignationDocumentUpload } from "../middleware/upload";
 import { uploadProfile } from "../functions/uploadProfile";
+import { uploadResignationDocument } from "../functions/uploadResignationDocument";
 import { FileHandle } from "fs/promises";
 
 const router = express.Router();
@@ -30,6 +31,14 @@ router.post(
   upload.single("profile-picture"),
   // checkFileExist,
   uploadProfile,
+);
+
+// Resignation document uploads (endorsement and clearance forms)
+router.post(
+  "/resignations/upload-document",
+  authenticateToken,
+  resignationDocumentUpload.single("document"),
+  uploadResignationDocument as any,
 );
 
 export default router;

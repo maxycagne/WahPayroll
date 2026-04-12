@@ -56,6 +56,53 @@ const checkPassword = async (inputPassword, user) => {
   return inputPassword === generatedFallback;
 };
 
+const getAssignedSupervisorByDesignation = async ({ designation, emp_id }) => {
+  if (!designation) return null;
+
+  const [rows] = await pool.query(
+    `SELECT emp_id, first_name, last_name, designation, position
+     FROM employees
+     WHERE role = 'Supervisor'
+       AND designation = ?
+       AND emp_id <> ?
+     ORDER BY emp_id ASC
+     LIMIT 1`,
+    [designation, emp_id],
+  );
+
+  if (!rows.length) return null;
+  const sup = rows[0];
+  return {
+    emp_id: sup.emp_id,
+    name: `${sup.first_name || ""} ${sup.last_name || ""}`.trim(),
+    designation: sup.designation || null,
+    position: sup.position || null,
+  };
+};
+
+const buildUserPayload = async (user) => {
+  const role = normalizeRole(user.role);
+  const assignedSupervisor = await getAssignedSupervisorByDesignation({
+    designation: user.designation,
+    emp_id: user.emp_id,
+  });
+
+  return {
+    emp_id: user.emp_id,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    name: `${user.first_name} ${user.last_name}`,
+    email: user.email,
+    role,
+    profile_photo: user.profile_photo || null,
+    designation: user.designation || null,
+    position: user.position || null,
+    department: user.designation || null,
+    date_hired: user.hired_date || null,
+    assigned_supervisor: assignedSupervisor,
+  };
+};
+
 export const login = async (req, res) => {
   const { username, password } = req.body;
 
@@ -90,16 +137,13 @@ export const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    const fullUser = await buildUserPayload(user);
+
     res.json({
       token,
       user: {
-        emp_id: user.emp_id,
-        first_name: user.first_name, // <-- Keep these separate so Settings.jsx works automatically!
-        last_name: user.last_name, // <-- Keep these separate
-        name: `${user.first_name} ${user.last_name}`,
-        email: user.email,
+        ...fullUser,
         role,
-        profile_photo: user.profile_photo || null, // <--- ADD THIS LINE!
       },
     });
   } catch (error) {
@@ -126,7 +170,7 @@ export const getMe = async (req, res) => {
     await ensureEmployeeGovernmentColumns();
 
     const [rows] = await pool.query(
-      "SELECT emp_id, first_name, last_name, email, role, profile_photo FROM employees WHERE emp_id = ?",
+      "SELECT emp_id, first_name, last_name, email, role, profile_photo, designation, position, hired_date FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );
 
@@ -135,16 +179,10 @@ export const getMe = async (req, res) => {
     }
 
     const user = rows[0];
+    const fullUser = await buildUserPayload(user);
+
     res.json({
-      user: {
-        emp_id: user.emp_id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        name: `${user.first_name} ${user.last_name}`,
-        email: user.email,
-        role: normalizeRole(user.role),
-        profile_photo: user.profile_photo || null, // <--- ADD THIS LINE!
-      },
+      user: fullUser,
     });
   } catch (error) {
     console.error("Me Error:", error);

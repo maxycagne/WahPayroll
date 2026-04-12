@@ -8,7 +8,30 @@ export default function PendingApprovalTableRow({
   openOffsetDecisionConfirm,
   setHrNoteConfirm,
   setPendingModalOpen,
+  setResignationReviewOpen,
+  setSelectedResignation,
 }) {
+  const normalizedStatus = String(item.status || "")
+    .trim()
+    .toLowerCase();
+  const resignationStatusLabel =
+    item.request_group === "resignation"
+      ? normalizedStatus === "approved"
+        ? "Approved"
+        : normalizedStatus === "rejected"
+          ? "Rejected"
+          : "Pending (Under Review)"
+      : null;
+
+  const resignationStatusClass =
+    item.request_group === "resignation"
+      ? normalizedStatus === "approved"
+        ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+        : normalizedStatus === "rejected"
+          ? "border-red-200 bg-red-100 text-red-700"
+          : "border-amber-200 bg-amber-100 text-amber-700"
+      : "";
+
   const isCancellationRequest =
     Boolean(item.cancellation_requested_at) &&
     !isPendingApprovalStatus(item.status);
@@ -55,7 +78,25 @@ export default function PendingApprovalTableRow({
         )}
       </td>
       <td className="px-4 py-2.5 text-right">
-        {canDirectDecision ? (
+        {item.request_group === "resignation" && !isCancellationRequest ? (
+          <div className="inline-flex flex-col items-end gap-1.5">
+            <span
+              className={`rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${resignationStatusClass}`}
+            >
+              {resignationStatusLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedResignation(item);
+                setResignationReviewOpen(true);
+              }}
+              className="rounded-md border border-blue-200 bg-blue-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-700 hover:bg-blue-200"
+            >
+              Review
+            </button>
+          </div>
+        ) : canDirectDecision ? (
           <div className="inline-flex gap-1.5">
             <button
               type="button"

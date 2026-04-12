@@ -27,6 +27,8 @@ export default function ModalsContainer({
   setResignationForm,
   resignationTypes,
   fileResignationMutation,
+  autosaveResignationMutation,
+  submitResignationMutation,
   pendingModalOpen,
   isApprover,
   setPendingModalOpen,
@@ -46,6 +48,9 @@ export default function ModalsContainer({
   setHrNoteConfirm,
   myPendingModalOpen,
   setMyPendingModalOpen,
+  approveResignationMutation,
+  rejectResignationMutation,
+  reviewResignationMutation,
   myRequestRows,
   cancelMyPendingRequestMutation,
   setCancelPendingConfirm,
@@ -91,6 +96,8 @@ export default function ModalsContainer({
         setResignationForm={setResignationForm}
         resignationTypes={resignationTypes}
         fileResignationMutation={fileResignationMutation}
+        autosaveResignationMutation={autosaveResignationMutation}
+        submitResignationMutation={submitResignationMutation}
       />
       <PendingApprovalModal
         pendingModalOpen={pendingModalOpen}
@@ -110,6 +117,9 @@ export default function ModalsContainer({
         openLeaveDecisionConfirm={openLeaveDecisionConfirm}
         openOffsetDecisionConfirm={openOffsetDecisionConfirm}
         setHrNoteConfirm={setHrNoteConfirm}
+        approveResignationMutation={approveResignationMutation}
+        rejectResignationMutation={rejectResignationMutation}
+        reviewResignationMutation={reviewResignationMutation}
       />
       <MyPendingRequestsModal
         myPendingModalOpen={myPendingModalOpen}
