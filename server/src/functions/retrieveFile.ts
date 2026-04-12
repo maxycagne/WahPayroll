@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { s3BucketName, s3Client } from "../config/s3";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { GetObjectCommand, S3ServiceException } from "@aws-sdk/client-s3";
 
 export const retrieveFile = async (req: Request, res: Response) => {
   const filenameFromBody = req.body?.filename;
@@ -15,17 +14,35 @@ export const retrieveFile = async (req: Request, res: Response) => {
   }
 
   try {
-    const response = new GetObjectCommand({
-      Bucket: s3BucketName,
-      Key: filename,
-    });
+    const response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: s3BucketName,
+        Key: filename,
+      }),
+    );
 
-    // make signed url that will only be for a certain amount of time
-    const url = await getSignedUrl(s3Client, response, { expiresIn: 3600 });
-    return res.status(200).json({
-      url: url,
-    });
+    // Set headers for preview (inline display)
+    res.setHeader("Content-Type", response.ContentType || "application/octet-stream");
+    res.setHeader("Content-Length", response.ContentLength || "0");
+    res.setHeader("Content-Disposition", `inline; filename="${filename.split("_").pop()}"`);
+
+    // Stream the file to the response
+    if (response.Body) {
+      response.Body.pipe(res);
+    } else {
+      res.status(500).json({ message: "File body is empty" });
+    }
   } catch (e) {
+    if (e instanceof S3ServiceException && e.name === "NoSuchKey") {
+      return res.status(404).json({
+        message: "File not found",
+      });
+    }
+    if (e instanceof S3ServiceException) {
+      return res.status(500).json({
+        message: `Error retrieving file from S3: ${e.message}`,
+      });
+    }
     return res.status(500).json({
       message: e instanceof Error ? e.message : "Internal server error",
     });

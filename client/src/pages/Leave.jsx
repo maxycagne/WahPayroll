@@ -1,45 +1,18 @@
-<<<<<<< HEAD
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import mammoth from "mammoth";
 import { apiFetch } from "../lib/api";
-=======
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
->>>>>>> 62c03e700dac0fd4c393cd0ea7ebf2314b727bc5
 import Toast from "../components/Toast";
-import {
-  parseDateOnly,
-  getDateDiffInclusive,
-  calculateBusinessDays,
-  getDateRangeInclusive,
-} from "@/features/leave/utils/date.utils";
-import { getOffsetRequestedDays } from "@/features/leave/utils/leave.utils";
-import {
-  leaveTypes,
-  resignationTypes,
-  leavePolicy,
-} from "@/features/leave/leaveConstants";
 import { useEmail } from "../hooks/useEmail";
+import { useToast } from "../hooks/useToast";
 
-import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
-import ActionButtons from "@/features/leave/components/ActionButtons";
-import OffsetBalanceCard from "@/features/leave/components/OffsetBalanceCard";
-import RequestHistoryTable from "@/features/leave/components/RequestHistoryTable";
-import ModalsContainer from "@/features/leave/components/modals/ModalsContainer";
-import { useFormData } from "@/features/leave/hooks/useFormData";
-import { useRoleComputation } from "@/features/leave/hooks/useRoleComputation";
-import { useComputedValues } from "@/features/leave/hooks/useLeaveComputedValues"; // ✅ ADD THIS
-import {
-  leavesQueryOptions,
-  myAttendanceQueryOptions,
-  offsetApplicationsQueryOptions,
-  offsetBalanceQueryOptions,
-  resignationQueryOptions,
-} from "@/features/leave/utils/query.utils";
-import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
+const leaveTypes = [
+  "Birthday Leave",
+  "Vacation Leave",
+  "Sick Leave",
+  "PGT Leave",
+  "Offset", // Offset as a leave type
+];
 
-<<<<<<< HEAD
 const resignationReasonOptions = [
   "Family and/or personal reasons",
   "Better career opportunity",
@@ -264,68 +237,364 @@ function LeaveCalendar({
       bg: "bg-yellow-50",
       border: "border-l-4 border-l-yellow-500",
       text: "text-yellow-700",
-=======
+    },
+    Denied: {
+      bg: "bg-red-50",
+      border: "border-l-4 border-l-red-500",
+      text: "text-red-700",
+    },
+    "Partially Approved": {
+      bg: "bg-amber-50",
+      border: "border-l-4 border-l-amber-500",
+      text: "text-amber-700",
+    },
+  };
+
+  const attendanceColors = {
+    Present: "text-green-600 bg-green-50",
+    Absent: "text-red-600 bg-red-50",
+    Late: "text-orange-600 bg-orange-50",
+    Undertime: "text-orange-600 bg-orange-50",
+    "Half-Day": "text-purple-600 bg-purple-50",
+  };
+
+  function normalizeDateString(value) {
+    if (!value) return null;
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function parseApprovedDates(raw) {
+    if (!raw) return [];
+
+    let parsed = raw;
+    if (typeof raw === "string") {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = [];
+      }
+    }
+
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((item) => normalizeDateString(item)).filter(Boolean);
+  }
+
+  function getLeaveDateStatus(leave, dateStr) {
+    const requestStatus = leave.status || "Pending";
+
+    if (requestStatus === "Approved") return "Approved";
+    if (requestStatus === "Denied") return "Denied";
+    if (requestStatus === "Pending") return "Pending";
+
+    if (requestStatus === "Partially Approved") {
+      const approvedSet = new Set(parseApprovedDates(leave.approved_dates));
+      if (approvedSet.size === 0) return "Pending";
+      return approvedSet.has(dateStr) ? "Approved" : "Denied";
+    }
+
+    return "Pending";
+  }
+
+  function getLeavesForDate(dateStr) {
+    return leaves
+      .filter((l) => isInRange(dateStr, l.date_from, l.date_to))
+      .map((leave) => ({
+        ...leave,
+        calendar_status: getLeaveDateStatus(leave, dateStr),
+      }));
+  }
+
+  function getAttendanceForDate(dateStr) {
+    return attendance.find((a) => {
+      const d = new Date(a.date);
+      const formattedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      return formattedDate === dateStr;
+    });
+  }
+
+  function pad(n) {
+    return n < 10 ? "0" + n : "" + n;
+  }
+
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const selectedDateStr = selectedDate
+    ? `${year}-${pad(month + 1)}-${pad(selectedDate)}`
+    : null;
+  const selectedLeaves = selectedDateStr
+    ? getLeavesForDate(selectedDateStr)
+    : [];
+  const selectedAttendance = selectedDateStr
+    ? getAttendanceForDate(selectedDateStr)
+    : null;
+
+  return (
+    <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-sky-600 px-4 py-3 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="m-0 text-base font-bold">Applications Calendar</h4>
+            <p className="m-0 mt-1 text-xs text-white/90">
+              View leave applications and attendance logs by day.
+            </p>
+          </div>
+          {scopeOptions.length > 1 && (
+            <div className="inline-flex rounded-lg border border-white/25 bg-white/10 p-1">
+              {scopeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onScopeChange?.(option.value)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                    activeScope === option.value
+                      ? "bg-white text-indigo-700"
+                      : "text-white hover:bg-white/15"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-slate-50 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <button
+            className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+            onClick={prevMonth}
+          >
+            ◀ Prev
+          </button>
+          <h3 className="m-0 text-base font-bold text-slate-800">
+            {monthName}
+          </h3>
+          <button
+            className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+            onClick={nextMonth}
+          >
+            Next ▶
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            <div
+              key={d}
+              className="rounded-lg bg-slate-100 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-slate-500"
+            >
+              {d}
+            </div>
+          ))}
+          {cells.map((day, i) => {
+            if (day === null)
+              return <div key={"e" + i} className="min-h-[90px]" />;
+
+            const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+            const dayLeaves = getLeavesForDate(dateStr);
+            const dayAtt = getAttendanceForDate(dateStr);
+            const isSelected = day === selectedDate;
+            const visibleLeaves = dayLeaves.slice(0, 3);
+            const extraLeavesCount = Math.max(
+              dayLeaves.length - visibleLeaves.length,
+              0,
+            );
+
+            const firstLeaveStatus =
+              dayLeaves.length > 0 ? dayLeaves[0].calendar_status : null;
+            const colorConfig = firstLeaveStatus
+              ? statusColors[firstLeaveStatus]
+              : null;
+
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`relative flex min-h-[90px] cursor-pointer flex-col items-start justify-start rounded-xl p-2 text-left transition-all duration-150 ${
+                  dayLeaves.length > 0 && !isSelected
+                    ? colorConfig?.border + " " + colorConfig?.bg
+                    : "border border-slate-200 bg-white"
+                } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
+                onClick={() => setSelectedDate(day)}
+              >
+                <span
+                  className={`mb-0.5 text-xs font-bold ${isSelected ? "text-white" : "text-slate-900"}`}
+                >
+                  {day}
+                </span>
+
+                <div className="mt-0.5 flex w-full flex-col gap-1">
+                  {dayAtt && dayAtt.status !== "On Leave" && (
+                    <span
+                      className={`flex w-fit rounded-md px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${isSelected ? "bg-white/20 text-white" : attendanceColors[dayAtt.status] || "bg-gray-100 text-gray-600"}`}
+                    >
+                      {dayAtt.status}
+                    </span>
+                  )}
+                  {visibleLeaves.map((leave) => (
+                    <div
+                      key={leave.id}
+                      className="mt-0.5 flex w-full flex-col gap-0.5 border-t border-gray-100/50 pt-0.5 text-left"
+                    >
+                      <span
+                        className={`truncate text-[0.6rem] font-bold leading-tight ${isSelected ? "text-white" : "text-purple-800"}`}
+                      >
+                        {leave.first_name} {leave.last_name}
+                      </span>
+                      <span
+                        className={`truncate text-[0.55rem] font-semibold leading-tight ${isSelected ? "text-white/90" : "text-gray-600"}`}
+                      >
+                        {leave.leave_type}
+                      </span>
+                      <span
+                        className={`truncate text-[0.55rem] font-semibold uppercase ${isSelected ? "text-purple-200" : statusColors[leave.calendar_status]?.text}`}
+                      >
+                        • {leave.calendar_status}
+                      </span>
+                    </div>
+                  ))}
+                  {extraLeavesCount > 0 && (
+                    <span
+                      className={`mt-0.5 inline-flex w-fit rounded-md px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${
+                        isSelected
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      +{extraLeavesCount} more
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {selectedDate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4"
+          onClick={() => setSelectedDate(null)}
+        >
+          <div
+            className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-700 px-5 py-4 text-white">
+              <div>
+                <h4 className="m-0 text-base font-bold">Date Details</h4>
+                <p className="m-0 mt-1 text-xs text-slate-200">
+                  {new Date(selectedDateStr).toLocaleDateString(undefined, {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(null)}
+                className="cursor-pointer rounded-md border border-white/30 bg-white/10 px-2.5 py-1 text-sm font-bold text-white hover:bg-white/20"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="max-h-[72vh] overflow-y-auto bg-slate-50 p-5">
+              {!selectedAttendance && selectedLeaves.length === 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                  No leave or attendance records found for this date.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedAttendance && (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="m-0 text-sm font-bold text-slate-900">
+                            Daily Attendance Record
+                          </p>
+                          <p className="m-0 mt-1 text-xs text-slate-500">
+                            System Log
+                          </p>
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${attendanceColors[selectedAttendance.status] || "bg-gray-200 text-gray-800"}`}
+                        >
+                          {selectedAttendance.status}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedLeaves.map((l) => (
+                    <div
+                      key={l.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="m-0 text-sm font-bold text-indigo-700">
+                            {l.first_name} {l.last_name}
+                          </p>
+                          <p className="m-0 mt-1 text-sm font-bold text-slate-900">
+                            {l.leave_type}{" "}
+                            {l.leave_type === "Offset" &&
+                              Number(l.days_applied || 0) > 0 &&
+                              `(${Number(l.days_applied || 0).toFixed(2)} days)`}
+                          </p>
+                          <p className="m-0 mt-1 text-xs text-slate-500">
+                            {new Date(l.date_from).toLocaleDateString()} to{" "}
+                            {new Date(l.date_to).toLocaleDateString()}
+                          </p>
+                          {l.supervisor_remarks && (
+                            <p className="m-0 mt-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs italic text-slate-600">
+                              "{l.supervisor_remarks}"
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badgeClass[l.calendar_status] || "bg-gray-100"}`}
+                        >
+                          {l.calendar_status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- MAIN PAGE COMPONENT ---
 export default function Leave() {
-  const formDataState = useFormData();
-  const roleComputationState = useRoleComputation();
+  const queryClient = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
 
-  // Extract form data
-  const {
-    user: { currentUser },
-    form: {
-      data: formData,
-      setData: setFormData,
-      error: formError,
-      setError: setFormError,
-      resignation: resignationForm,
-      setResignation: setResignationForm,
->>>>>>> 62c03e700dac0fd4c393cd0ea7ebf2314b727bc5
-    },
-    modals: {
-      application: {
-        isOpen: applicationModalOpen,
-        setOpen: setApplicationModalOpen,
-        type: applicationType,
-        setType: setApplicationType,
-      },
-      myPending: { isOpen: myPendingModalOpen, setOpen: setMyPendingModalOpen },
-      pending: {
-        isOpen: pendingModalOpen,
-        setOpen: setPendingModalOpen,
-        typeFilter: pendingTypeFilter,
-        setTypeFilter: setPendingTypeFilter,
-      },
-    },
-    confirmations: {
-      action: confirmAction,
-      setAction: setConfirmAction,
-      review: reviewConfirm,
-      setReview: setReviewConfirm,
-      cancelApproval: cancelApprovalConfirm,
-      setCancelApproval: setCancelApprovalConfirm,
-      cancelPending: cancelPendingConfirm,
-      setCancelPending: setCancelPendingConfirm,
-      hrNote: hrNoteConfirm,
-      setHrNote: setHrNoteConfirm,
-    },
-    toast: { instance: toast, show: showToast, clear: clearToast },
-    computed: { dateDifference: difference },
-  } = formDataState;
-
-  // Extract role data
-  const {
-    roles: { isAdminRole, isHRRole, isSupervisorRole, isApprover },
-    calendar: { calendarScope, setCalendarScope },
-  } = roleComputationState;
-
-  // Simple computations
+  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const normalizedEmploymentStatus = String(currentUser?.status || "")
     .trim()
     .toLowerCase();
   const isJobOrderEmployee = normalizedEmploymentStatus === "job order";
 
-<<<<<<< HEAD
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
   const [applicationType, setApplicationType] = useState("leave");
   const [myPendingModalOpen, setMyPendingModalOpen] = useState(false);
@@ -363,6 +632,7 @@ export default function Leave() {
   const [filePreviewTitle, setFilePreviewTitle] = useState("Document Preview");
   const [filePreviewUrl, setFilePreviewUrl] = useState("");
   const [filePreviewHtml, setFilePreviewHtml] = useState("");
+  const [filePreviewFileType, setFilePreviewFileType] = useState("");
   const [filePreviewError, setFilePreviewError] = useState("");
   const previewBlobUrlRef = useRef("");
 
@@ -379,8 +649,6 @@ export default function Leave() {
   const isApprover = isHRRole || isSupervisorRole;
   const [hrNoteConfirm, setHrNoteConfirm] = useState(null);
 
-=======
->>>>>>> 62c03e700dac0fd4c393cd0ea7ebf2314b727bc5
   const isPendingApprovalStatus = (status) => {
     const normalized = String(status || "")
       .trim()
@@ -551,76 +819,384 @@ export default function Leave() {
   ]);
 
   // --- QUERIES ---
-  const { data: leaves = [], isLoading: isLoadingLeaves } =
-    useQuery(leavesQueryOptions);
+  const { data: leaves = [], isLoading: isLoadingLeaves } = useQuery({
+    queryKey: ["leaves"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/employees/leaves");
+      if (!res.ok) throw new Error("Failed to fetch leaves");
+      return res.json();
+    },
+  });
 
-  const { data: myAttendance = [] } = useQuery(
-    myAttendanceQueryOptions(currentUser?.emp_id || ""),
-  );
+  const { data: myAttendance = [] } = useQuery({
+    queryKey: ["my-attendance", currentUser?.emp_id],
+    queryFn: async () => {
+      if (!currentUser?.emp_id) return [];
+      try {
+        const res = await apiFetch(`/api/employees/my-attendance`);
+        if (!res.ok) return [];
+        return await res.json();
+      } catch (err) {
+        console.error("Failed to fetch attendance:", err);
+        return [];
+      }
+    },
+  });
 
   const { data: offsetApplications = [], isLoading: isLoadingOffsets } =
-    useQuery(offsetApplicationsQueryOptions);
+    useQuery({
+      queryKey: ["offset-applications"],
+      queryFn: async () => {
+        const res = await apiFetch("/api/employees/offset-applications");
+        if (!res.ok) throw new Error("Failed to fetch offset applications");
+        return res.json();
+      },
+    });
 
-  const { data: offsetBalance = {} } = useQuery(
-    offsetBalanceQueryOptions(currentUser?.emp_id || ""),
-  );
+  const { data: offsetBalance = {} } = useQuery({
+    queryKey: ["offset-balance", currentUser?.emp_id],
+    queryFn: async () => {
+      if (!currentUser?.emp_id) return {};
+      const res = await apiFetch(
+        `/api/employees/offset-balance/${currentUser.emp_id}`,
+      );
+      if (!res.ok) return {};
+      return res.json();
+    },
+  });
 
   const { data: myResignations = [], isLoading: isLoadingResignations } =
-    useQuery(resignationQueryOptions);
-
-  // ✅ CALL useComputedValues
-  const {
-    user: {
-      requests: { rows: myRequestRows, history: myRequestHistory },
-    },
-    calendar: {
-      options: calendarScopeOptions,
-
-      filtered: calendarLeaves,
-    },
-    approvals: {
-      pending: {
-        leaves: pendingLeaveApprovals,
-        offsets: pendingOffsetApprovals,
-        resignations: pendingResignationApprovals,
+    useQuery({
+      queryKey: ["resignations"],
+      queryFn: async () => {
+        const res = await apiFetch(`/api/employees/resignations`);
+        const result = await res.json();
+        if (!res.ok) return [];
+        return result;
       },
-      all: allPendingRequests,
-      filtered: filteredPendingRequests,
-      total: totalPendingCount,
-    },
-  } = useComputedValues({
-    leaves,
-    offsetApplications,
-    myResignations,
-    isAdminRole,
-    isHRRole,
-    isSupervisorRole,
-    isApprover,
-    calendarScope,
-    pendingTypeFilter,
-    currentUser,
+    });
+
+  const myOwnResignations = myResignations.filter(
+    (r) => String(r.emp_id) === String(currentUser?.emp_id),
+  );
+
+  // --- UNIFIED CALENDAR DATA ---
+  // Merge Leaves and Offsets so they both show on the calendar view
+  const myLeaves = leaves.filter((l) => l.emp_id === currentUser?.emp_id);
+  const myOffsets = offsetApplications.filter(
+    (o) => o.emp_id === currentUser?.emp_id,
+  );
+
+  const myPendingRequests = [
+    ...myLeaves
+      .filter((l) => isPendingApprovalStatus(l.status))
+      .map((l) => ({
+        ...l,
+        request_group: "leave",
+        unified_type: l.leave_type,
+      })),
+    ...myOffsets
+      .filter((o) => isPendingApprovalStatus(o.status))
+      .map((o) => ({
+        ...o,
+        request_group: "offset",
+        unified_type: "Offset",
+      })),
+    ...myOwnResignations
+      .filter((r) => isPendingApprovalStatus(r.status))
+      .map((r) => ({
+        ...r,
+        request_group: "resignation",
+        unified_type: r.resignation_type || "Resignation",
+      })),
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+
+  const myApprovedFutureRequests = [
+    ...myLeaves
+      .filter(
+        (l) =>
+          ["Approved", "Partially Approved"].includes(l.status) &&
+          !l.cancellation_requested_at &&
+          isFutureDateString(l.date_from),
+      )
+      .map((l) => ({
+        ...l,
+        request_group: "leave",
+        unified_type: l.leave_type,
+      })),
+    ...myOffsets
+      .filter(
+        (o) =>
+          ["Approved", "Partially Approved"].includes(o.status) &&
+          !o.cancellation_requested_at &&
+          isFutureDateString(o.date_from),
+      )
+      .map((o) => ({
+        ...o,
+        request_group: "offset",
+        unified_type: "Offset",
+      })),
+    ...myOwnResignations
+      .filter(
+        (r) =>
+          r.status === "Approved" &&
+          !r.cancellation_requested_at &&
+          isFutureDateString(r.effective_date),
+      )
+      .map((r) => ({
+        ...r,
+        request_group: "resignation",
+        unified_type: r.resignation_type || "Resignation",
+      })),
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+
+  const myCancellationRequestsPending = [
+    ...myLeaves
+      .filter((l) => Boolean(l.cancellation_requested_at))
+      .map((l) => ({
+        ...l,
+        request_group: "leave",
+        unified_type: l.leave_type,
+      })),
+    ...myOffsets
+      .filter((o) => Boolean(o.cancellation_requested_at))
+      .map((o) => ({
+        ...o,
+        request_group: "offset",
+        unified_type: "Offset",
+      })),
+    ...myOwnResignations
+      .filter((r) => Boolean(r.cancellation_requested_at))
+      .map((r) => ({
+        ...r,
+        request_group: "resignation",
+        unified_type: r.resignation_type || "Resignation",
+      })),
+  ].sort(
+    (a, b) =>
+      new Date(b.cancellation_requested_at || b.created_at || 0).getTime() -
+      new Date(a.cancellation_requested_at || a.created_at || 0).getTime(),
+  );
+
+  const myRequestRows = [
+    ...myPendingRequests.map((item) => ({
+      ...item,
+      row_action: "cancel_pending",
+      row_status: item.status,
+    })),
+    ...myApprovedFutureRequests.map((item) => ({
+      ...item,
+      row_action: "request_cancel_approval",
+      row_status: item.status,
+    })),
+    ...myCancellationRequestsPending.map((item) => ({
+      ...item,
+      row_action: "cancel_waiting_approval",
+      row_status: "Cancellation Requested",
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(
+        b.cancellation_requested_at || b.updated_at || b.created_at || 0,
+      ).getTime() -
+      new Date(
+        a.cancellation_requested_at || a.updated_at || a.created_at || 0,
+      ).getTime(),
+  );
+
+  const myRequestHistory = [
+    ...myLeaves.map((l) => ({
+      id: `leave-${l.id}`,
+      request_type: l.leave_type,
+      schedule: `${new Date(l.date_from).toLocaleDateString()} - ${new Date(l.date_to).toLocaleDateString()}`,
+      filed_at: l.created_at,
+      final_status: l.cancellation_requested_at
+        ? "Cancellation Requested"
+        : l.status,
+    })),
+    ...myOffsets.map((o) => ({
+      id: `offset-${o.id}`,
+      request_type:
+        Number(o.days_applied || 0) > 0
+          ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
+          : "Offset",
+      schedule: `${new Date(o.date_from).toLocaleDateString()} - ${new Date(o.date_to).toLocaleDateString()}`,
+      filed_at: o.created_at,
+      final_status: o.cancellation_requested_at
+        ? "Cancellation Requested"
+        : o.status,
+    })),
+    ...myOwnResignations.map((r) => ({
+      id: `resignation-${r.id}`,
+      request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
+      schedule: r.effective_date
+        ? new Date(r.effective_date).toLocaleDateString()
+        : "N/A",
+      filed_at: r.created_at,
+      final_status: r.cancellation_requested_at
+        ? "Cancellation Requested"
+        : r.status,
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.filed_at || 0).getTime() - new Date(a.filed_at || 0).getTime(),
+  );
+
+  const unifiedMyLeaves = [
+    ...myLeaves,
+    ...myOffsets.map((o) => ({
+      ...o,
+      leave_type: "Offset",
+      first_name: currentUser?.name || currentUser?.first_name,
+      last_name: "",
+    })),
+  ];
+
+  const unifiedAllLeaves = [
+    ...leaves,
+    ...offsetApplications.map((o) => ({ ...o, leave_type: "Offset" })),
+  ];
+
+  const isSupervisorTeamMember = (item) => {
+    return String(item?.emp_id) !== String(currentUser?.emp_id);
+  };
+
+  const canApproverReviewRecord = (item) => {
+    if (!item) return false;
+    if (String(item.emp_id) === String(currentUser?.emp_id)) return false;
+
+    const roleValue = String(item.requester_role || "")
+      .trim()
+      .toLowerCase();
+
+    if (isHRRole) {
+      return true;
+    }
+
+    if (isAdminRole) {
+      return roleValue !== "admin";
+    }
+
+    if (isSupervisorRole) {
+      return isSupervisorTeamMember(item);
+    }
+
+    return false;
+  };
+
+  const unifiedTeamLeaves = unifiedAllLeaves.filter((item) =>
+    isSupervisorTeamMember(item),
+  );
+
+  const calendarScopeOptions = isAdminRole
+    ? [{ value: "overall", label: "Overall Calendar" }]
+    : isHRRole
+      ? [
+          { value: "own", label: "Own Calendar" },
+          { value: "overall", label: "Overall Calendar" },
+        ]
+      : isSupervisorRole
+        ? [
+            { value: "own", label: "Own Calendar" },
+            { value: "team", label: "Team Calendar" },
+          ]
+        : [{ value: "own", label: "Own Calendar" }];
+
+  const calendarLeaves =
+    calendarScope === "overall"
+      ? unifiedAllLeaves
+      : calendarScope === "team"
+        ? unifiedTeamLeaves
+        : unifiedMyLeaves;
+
+  // --- UNIFIED APPROVAL DATA ---
+  // Merge Pending Leaves and Pending Offsets into one single table
+  const pendingLeaveApprovals = isApprover
+    ? leaves.filter(
+        (l) =>
+          (isPendingApprovalStatus(l.status) ||
+            (l.cancellation_requested_at &&
+              ["Approved", "Partially Approved"].includes(l.status))) &&
+          canApproverReviewRecord(l),
+      )
+    : [];
+
+  const pendingOffsetApprovals = isApprover
+    ? offsetApplications.filter(
+        (oa) =>
+          (isPendingApprovalStatus(oa.status) ||
+            (oa.cancellation_requested_at &&
+              ["Approved", "Partially Approved"].includes(oa.status))) &&
+          canApproverReviewRecord(oa),
+      )
+    : [];
+
+  const unifiedPending = [
+    ...pendingLeaveApprovals.map((l) => ({
+      ...l,
+      unified_type: l.leave_type,
+      isOffset: false,
+    })),
+    ...pendingOffsetApprovals.map((o) => ({
+      ...o,
+      unified_type: "Offset",
+      isOffset: true,
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+
+  const pendingResignationApprovals = isApprover
+    ? myResignations.filter(
+        (r) =>
+          (isPendingApprovalStatus(r.status) ||
+            (r.cancellation_requested_at && r.status === "Approved")) &&
+          canApproverReviewRecord(r),
+      )
+    : [];
+
+  const allPendingRequests = [
+    ...unifiedPending.map((item) => ({
+      ...item,
+      request_group: "leave_offset",
+    })),
+    ...pendingResignationApprovals.map((item) => ({
+      ...item,
+      request_group: "resignation",
+      unified_type: item.resignation_type || "Resignation",
+      isOffset: false,
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+  const totalPendingCount = allPendingRequests.length;
+
+  const filteredPendingRequests = allPendingRequests.filter((item) => {
+    if (pendingTypeFilter === "all") return true;
+    if (pendingTypeFilter === "resignation") {
+      return item.request_group === "resignation";
+    }
+    if (pendingTypeFilter === "offset") {
+      return item.request_group === "leave_offset" && item.isOffset;
+    }
+    if (pendingTypeFilter === "leave") {
+      return item.request_group === "leave_offset" && !item.isOffset;
+    }
+    return true;
   });
 
-  // --- MUTATIONS ---
-  const {
-    submitLeaveMutation,
-    fileOffsetMutation,
-    fileResignationMutation,
-    reviewLeaveMutation,
-    reviewOffsetMutation,
-    cancelMyPendingRequestMutation,
-    requestCancellationApprovalMutation,
-    addHrNoteMutation,
-    reviewResignationMutation,
-  } = useRequestMutation({
-    showToast,
-    setApplicationModalOpen,
-    setResignationForm,
-    setFormData,
-    formData,
-  });
-
-  // --- HELPER FUNCTIONS ---
   const canHrDirectDecision = (item) => {
     const roleValue = String(item?.requester_role || "")
       .trim()
@@ -628,7 +1204,6 @@ export default function Leave() {
     return roleValue === "supervisor";
   };
 
-<<<<<<< HEAD
   // --- MUTATIONS ---
   const submitLeaveMutation = useMutation({
     mutationFn: async (newLeave) => {
@@ -947,6 +1522,7 @@ export default function Leave() {
     setFilePreviewUrl("");
     setFilePreviewHtml("");
     setFilePreviewError("");
+    setFilePreviewFileType("");
   };
 
   const renderPreviewFromBlob = async (blob, fileName, mimeType) => {
@@ -958,27 +1534,31 @@ export default function Leave() {
     setFilePreviewError("");
     setFilePreviewHtml("");
     setFilePreviewUrl("");
+    setFilePreviewFileType("");
 
     const isDocx =
-      lowerName.endsWith(".docx")
-      || normalizedMime.includes(
+      lowerName.endsWith(".docx") ||
+      normalizedMime.includes(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       );
 
     const isPdf = lowerName.endsWith(".pdf") || normalizedMime.includes("pdf");
-
-    if (isDocx) {
-      const arrayBuffer = await blob.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      setFilePreviewHtml(result.value || "<p>No preview available.</p>");
-      return;
-    }
 
     if (isPdf || lowerName.endsWith(".doc")) {
       clearPreviewBlobUrl();
       const objectUrl = URL.createObjectURL(blob);
       previewBlobUrlRef.current = objectUrl;
       setFilePreviewUrl(objectUrl);
+      setFilePreviewFileType("pdf");
+      return;
+    }
+
+    if (isDocx) {
+      clearPreviewBlobUrl();
+      const objectUrl = URL.createObjectURL(blob);
+      previewBlobUrlRef.current = objectUrl;
+      setFilePreviewUrl(objectUrl);
+      setFilePreviewFileType("docx");
       return;
     }
 
@@ -1002,49 +1582,36 @@ export default function Leave() {
     setFilePreviewError("");
     setFilePreviewHtml("");
     setFilePreviewUrl("");
+    setFilePreviewFileType("");
 
     try {
       const res = await apiFetch(
         `/api/file/get?filename=${encodeURIComponent(normalizedKey)}`,
       );
-      const result = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error(result.message || "Failed to retrieve file link");
+        const error = await res
+          .json()
+          .catch(() => ({ message: "Failed to retrieve file" }));
+        throw new Error(error.message || "Failed to retrieve file");
       }
 
-      if (result?.base64Content) {
-        const base64 = String(result.base64Content || "");
-        const mimeType = String(result.mimeType || "application/octet-stream");
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) {
-          bytes[i] = binary.charCodeAt(i);
+      // Response is now a blob stream directly from backend
+      const blob = await res.blob();
+      const contentType =
+        res.headers.get("content-type") || "application/octet-stream";
+
+      // Extract filename from Content-Disposition header or use the key
+      const contentDisposition = res.headers.get("content-disposition");
+      let displayFileName = normalizedKey;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (match) {
+          displayFileName = match[1];
         }
-
-        const blob = new Blob([bytes], { type: mimeType });
-        await renderPreviewFromBlob(
-          blob,
-          result.fileName || normalizedKey,
-          mimeType,
-        );
-        return;
       }
 
-      if (!result?.url) {
-        throw new Error("Failed to retrieve file link");
-      }
-
-      const remoteResponse = await fetch(result.url);
-      if (!remoteResponse.ok) {
-        throw new Error("Failed to load uploaded file for preview");
-      }
-
-      const remoteBlob = await remoteResponse.blob();
-      await renderPreviewFromBlob(
-        remoteBlob,
-        result.fileName || normalizedKey,
-        remoteBlob.type,
-      );
+      await renderPreviewFromBlob(blob, displayFileName, contentType);
     } catch (error) {
       setFilePreviewError(error.message || "Failed to preview file");
       throw error;
@@ -1183,8 +1750,6 @@ export default function Leave() {
     });
   };
 
-=======
->>>>>>> 62c03e700dac0fd4c393cd0ea7ebf2314b727bc5
   // --- HANDLERS ---
   const handleSubmitLeave = (e) => {
     e.preventDefault();
@@ -1201,14 +1766,13 @@ export default function Leave() {
 
     const effectiveToDate = formData.toDate || formData.fromDate;
 
+    // Automatically calculate the days for Offset since the manual input was removed
     let computedDays = formData.daysApplied;
     if (formData.leaveType === "Offset") {
-      if (formData.fromDate && effectiveToDate) {
-        const diff = getDateDiffInclusive(formData.fromDate, effectiveToDate);
-        computedDays = !isNaN(diff) ? Math.max(diff, 1) : 1;
-      } else {
-        computedDays = 0;
-      }
+      computedDays = Math.max(
+        getDateDiffInclusive(formData.fromDate, effectiveToDate),
+        1,
+      );
     }
 
     setConfirmAction({
@@ -1387,6 +1951,20 @@ export default function Leave() {
     });
   };
 
+  //TODO:
+  const { sendLeaveStatusEmail } = useEmail();
+
+  const handleSendUpdate = async (item, status, remarks) => {
+    const header =
+      status === "Denied"
+        ? "Your leave request was not approved at this time."
+        : "Your leave request has been approved. Please ensure proper task endorsement before your leave.";
+
+    const finalContent = remarks ? `${header} \n\nReason: ${remarks}` : header;
+
+    await sendLeaveStatusEmail(item, status, finalContent);
+  };
+
   const submitReviewDecision = () => {
     if (!reviewConfirm) return;
 
@@ -1431,7 +2009,8 @@ export default function Leave() {
         reviewConfirm.isMultiDay &&
         selectedDates.length < requestedDates.length;
 
-      const payload = {
+      // FINAL MUTATE CALL
+      reviewLeaveMutation.mutate({
         id: reviewConfirm.item.id,
         item: reviewConfirm.item,
         status:
@@ -1440,19 +2019,13 @@ export default function Leave() {
             : isPartialApproval
               ? "Partially Approved"
               : "Approved",
-      };
+        approved_days:
+          reviewConfirm.status === "Denied" ? null : selectedDates.length,
+        approved_dates:
+          reviewConfirm.status === "Denied" ? null : selectedDates,
+        supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
+      });
 
-      if (isPartialApproval) {
-        payload.approved_days = selectedDates.length;
-        payload.approved_dates = selectedDates;
-      }
-
-      // ✅ Only include remarks if denied
-      if (isDenyDecision) {
-        payload.supervisor_remarks = trimmedRemarks;
-      }
-
-      reviewLeaveMutation.mutate(payload);
       setReviewConfirm(null);
       return;
     }
@@ -1473,7 +2046,6 @@ export default function Leave() {
       if (reviewConfirm.status === "Approved") {
         const approvedDays = Number(reviewConfirm.approvedDays || 0);
         const totalDays = getOffsetRequestedDays(reviewConfirm.item);
-
         if (!approvedDays || approvedDays <= 0 || approvedDays > totalDays) {
           showToast(
             "Approved days must be between 0 and requested days.",
@@ -1481,24 +2053,16 @@ export default function Leave() {
           );
           return;
         }
-
         const isPartial = approvedDays < totalDays;
-
-        const payload = {
+        reviewOffsetMutation.mutate({
           id: reviewConfirm.item.id,
-          item: reviewConfirm.item,
           status: isPartial ? "Partially Approved" : "Approved",
-        };
-
-        if (isPartial) {
-          payload.approved_days = approvedDays;
-        }
-
-        reviewOffsetMutation.mutate(payload);
+          approved_days: isPartial ? approvedDays : null,
+          supervisor_remarks: undefined,
+        });
       } else {
         reviewOffsetMutation.mutate({
           id: reviewConfirm.item.id,
-          item: reviewConfirm.item,
           status: "Denied",
           supervisor_remarks: trimmedRemarks,
         });
@@ -1510,7 +2074,6 @@ export default function Leave() {
     if (reviewConfirm.module === "resignation") {
       reviewResignationMutation.mutate({
         id: reviewConfirm.item.id,
-        item: reviewConfirm.item,
         status: reviewConfirm.status === "Denied" ? "Rejected" : "Approved",
         review_remarks: isDenyDecision ? trimmedRemarks : undefined,
         decision_mode:
@@ -1529,19 +2092,48 @@ export default function Leave() {
 
   return (
     <div className="max-w-full">
-      <ActionButtons
-        currentUser={currentUser}
-        isAdminRole={isAdminRole}
-        isApprover={isApprover}
-        myRequestRows={myRequestRows}
-        totalPendingCount={totalPendingCount}
-        onFileNewApplication={() => {
-          setApplicationType("leave");
-          setApplicationModalOpen(true);
-        }}
-        onShowMyPending={() => setMyPendingModalOpen(true)}
-        onShowPendingApproval={() => setPendingModalOpen(true)}
-      />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {currentUser?.role !== "Admin" && (
+          <button
+            className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:opacity-95"
+            onClick={() => {
+              setApplicationType("leave");
+              setApplicationModalOpen(true);
+            }}
+          >
+            + File New Application
+          </button>
+        )}
+
+        {!isAdminRole && (
+          <button
+            className="cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+            onClick={() => setMyPendingModalOpen(true)}
+          >
+            My Pending Requests
+            {myRequestRows.length > 0 && (
+              <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-black text-slate-800">
+                {myRequestRows.length}
+              </span>
+            )}
+          </button>
+        )}
+
+        {isApprover && (
+          <button
+            className="cursor-pointer rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800 shadow-sm hover:bg-amber-100"
+            onClick={() => setPendingModalOpen(true)}
+          >
+            Pending Approval Requests
+            {totalPendingCount > 0 && (
+              <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-black text-amber-900">
+                {totalPendingCount}
+              </span>
+            )}
+          </button>
+        )}
+      </div>
+
       <LeaveCalendar
         leaves={calendarLeaves}
         attendance={isAdminRole ? [] : myAttendance}
@@ -1549,11 +2141,116 @@ export default function Leave() {
         activeScope={calendarScope}
         onScopeChange={setCalendarScope}
       />
+
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <OffsetBalanceCard offsetBalance={offsetBalance} />
-        <RequestHistoryTable myRequestHistory={myRequestHistory} />
+        <div className="overflow-hidden rounded-xl border border-indigo-100 bg-indigo-50 shadow-sm">
+          <div className="border-b border-indigo-200 px-4 py-3">
+            <h3 className="m-0 text-sm font-bold text-indigo-900">
+              Monthly Offset Balance
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 p-4 text-sm md:grid-cols-4">
+            <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+              <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-indigo-600">
+                Working Days
+              </p>
+              <p className="text-lg font-black text-indigo-900">
+                {Number(offsetBalance.workingDaysCompleted || 0).toFixed(1)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+              <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-indigo-600">
+                Baseline
+              </p>
+              <p className="text-lg font-black text-indigo-900">
+                {offsetBalance.baselineDays || 22}
+              </p>
+            </div>
+            <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+              <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-green-600">
+                Earned Offsets
+              </p>
+              <p className="text-lg font-black text-green-700">
+                +{Number(offsetBalance.offsetEarned || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-indigo-50 bg-white p-2.5 text-center shadow-sm">
+              <p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-purple-600">
+                End Balance
+              </p>
+              <p className="text-lg font-black text-purple-700">
+                {Number(offsetBalance.finalBalance || 0).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+            <h3 className="m-0 text-sm font-bold text-gray-900">
+              History of Leave / Offset / Resignation
+            </h3>
+          </div>
+          <div className="max-h-72 overflow-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-gray-200 bg-white">
+                  <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    Request Type
+                  </th>
+                  <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    Schedule / Effective Date
+                  </th>
+                  <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    Date Filed
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {myRequestHistory.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="4"
+                      className="px-4 py-6 text-center text-sm font-medium text-gray-500"
+                    >
+                      No request history records.
+                    </td>
+                  </tr>
+                ) : (
+                  myRequestHistory.map((entry) => (
+                    <tr
+                      key={entry.id}
+                      className="transition-colors hover:bg-gray-50/50"
+                    >
+                      <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
+                        {entry.request_type}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
+                        {entry.schedule}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
+                        {entry.filed_at
+                          ? new Date(entry.filed_at).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${badgeClass[entry.final_status] || "bg-gray-100 text-gray-700"}`}
+                        >
+                          {entry.final_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-<<<<<<< HEAD
 
       {myOwnResignations.length > 0 && (
         <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -2492,7 +3189,9 @@ export default function Leave() {
                                       const decisionMode = isCancellationRequest
                                         ? "cancellation"
                                         : "application";
-                                      if (item.request_group === "resignation") {
+                                      if (
+                                        item.request_group === "resignation"
+                                      ) {
                                         openResignationDecisionConfirm(
                                           item,
                                           "Approved",
@@ -2526,7 +3225,9 @@ export default function Leave() {
                                       const decisionMode = isCancellationRequest
                                         ? "cancellation"
                                         : "application";
-                                      if (item.request_group === "resignation") {
+                                      if (
+                                        item.request_group === "resignation"
+                                      ) {
                                         openResignationDecisionConfirm(
                                           item,
                                           "Denied",
@@ -3042,14 +3743,16 @@ export default function Leave() {
                   </p>
                   {resignationSupervisorReview.leavingReasons.length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {resignationSupervisorReview.leavingReasons.map((reason) => (
-                        <span
-                          key={reason}
-                          className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800"
-                        >
-                          {reason}
-                        </span>
-                      ))}
+                      {resignationSupervisorReview.leavingReasons.map(
+                        (reason) => (
+                          <span
+                            key={reason}
+                            className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800"
+                          >
+                            {reason}
+                          </span>
+                        ),
+                      )}
                     </div>
                   ) : (
                     <p className="m-0 mt-2 text-sm text-gray-600">-</p>
@@ -3068,11 +3771,20 @@ export default function Leave() {
                   Step 3 • Exit Interview Responses
                 </p>
                 <p className="m-0 mt-2 text-sm text-gray-700">
-                  Completed answers: {resignationSupervisorReview.interviewAnswers.filter((answer) => String(answer || "").trim()).length}/16
+                  Completed answers:{" "}
+                  {
+                    resignationSupervisorReview.interviewAnswers.filter(
+                      (answer) => String(answer || "").trim(),
+                    ).length
+                  }
+                  /16
                 </p>
                 <div className="mt-3 space-y-2">
                   {exitInterviewQuestions.map((question, index) => (
-                    <div key={question} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                    <div
+                      key={question}
+                      className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
+                    >
                       <p className="m-0 text-xs font-semibold text-gray-700">
                         {index + 1}. {question}
                       </p>
@@ -3341,83 +4053,35 @@ export default function Leave() {
                 !filePreviewError &&
                 !filePreviewHtml &&
                 filePreviewUrl && (
-                  <iframe
-                    title="Uploaded document preview"
-                    src={filePreviewUrl}
-                    className="h-full min-h-[68vh] w-full rounded-lg border border-gray-200"
-                  />
+                  <>
+                    {filePreviewFileType === "pdf" && (
+                      <embed
+                        src={filePreviewUrl}
+                        type="application/pdf"
+                        className="h-full min-h-[68vh] w-full rounded-lg border border-gray-200"
+                      />
+                    )}
+                    {filePreviewFileType === "docx" && (
+                      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-8 min-h-[68vh]">
+                        <p className="mb-4 text-gray-600">
+                          DOCX files cannot be previewed in browser
+                        </p>
+                        <a
+                          href={filePreviewUrl}
+                          download={filePreviewTitle}
+                          className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                        >
+                          Download to View
+                        </a>
+                      </div>
+                    )}
+                  </>
                 )}
             </div>
           </div>
         </div>
       )}
 
-=======
-      <ModalsContainer
-        applicationModalOpen={applicationModalOpen}
-        currentUser={currentUser}
-        setApplicationModalOpen={setApplicationModalOpen}
-        applicationType={applicationType}
-        setApplicationType={setApplicationType}
-        formError={formError}
-        handleFromDateChange={handleFromDateChange}
-        handleLeaveTypeChange={handleLeaveTypeChange}
-        handleToDateChange={handleToDateChange}
-        getMaxToDate={getMaxToDate}
-        formData={formData}
-        setFormData={setFormData}
-        availableLeaveTypes={availableLeaveTypes}
-        difference={difference}
-        handleSubmitLeave={handleSubmitLeave}
-        resignationForm={resignationForm}
-        setResignationForm={setResignationForm}
-        resignationTypes={resignationTypes}
-        fileResignationMutation={fileResignationMutation}
-        pendingModalOpen={pendingModalOpen}
-        isApprover={isApprover}
-        setPendingModalOpen={setPendingModalOpen}
-        pendingTypeFilter={pendingTypeFilter}
-        setPendingTypeFilter={setPendingTypeFilter}
-        allPendingRequests={allPendingRequests}
-        pendingLeaveApprovals={pendingLeaveApprovals}
-        pendingOffsetApprovals={pendingOffsetApprovals}
-        pendingResignationApprovals={pendingResignationApprovals}
-        filteredPendingRequests={filteredPendingRequests}
-        isHRRole={isHRRole}
-        canHrDirectDecision={canHrDirectDecision}
-        isPendingApprovalStatus={isPendingApprovalStatus}
-        openResignationDecisionConfirm={openResignationDecisionConfirm}
-        openLeaveDecisionConfirm={openLeaveDecisionConfirm}
-        openOffsetDecisionConfirm={openOffsetDecisionConfirm}
-        setHrNoteConfirm={setHrNoteConfirm}
-        myPendingModalOpen={myPendingModalOpen}
-        setMyPendingModalOpen={setMyPendingModalOpen}
-        myRequestRows={myRequestRows}
-        cancelMyPendingRequestMutation={cancelMyPendingRequestMutation}
-        setCancelPendingConfirm={setCancelPendingConfirm}
-        requestCancellationApprovalMutation={
-          requestCancellationApprovalMutation
-        }
-        setCancelApprovalConfirm={setCancelApprovalConfirm}
-        confirmAction={confirmAction}
-        setConfirmAction={setConfirmAction}
-        fileOffsetMutation={fileOffsetMutation}
-        submitLeaveMutation={submitLeaveMutation}
-        reviewConfirm={reviewConfirm}
-        setReviewConfirm={setReviewConfirm}
-        getDateRangeInclusive={getDateRangeInclusive}
-        toggleLeaveApprovedDate={toggleLeaveApprovedDate}
-        parseDateOnly={parseDateOnly}
-        getOffsetRequestedDays={getOffsetRequestedDays}
-        submitReviewDecision={submitReviewDecision}
-        cancelApprovalConfirm={cancelApprovalConfirm}
-        cancelPendingConfirm={cancelPendingConfirm}
-        hrNoteConfirm={hrNoteConfirm}
-        addHrNoteMutation={addHrNoteMutation}
-        showToast={showToast}
-        submitCancellationRequest={submitCancellationRequest}
-      />
->>>>>>> 62c03e700dac0fd4c393cd0ea7ebf2314b727bc5
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );
