@@ -185,7 +185,8 @@ export default function ResignationForm({
       ...prev,
       request_date: resignationRecipient.request_date || prev.request_date,
       recipient_name: recipientName || prev.recipient_name || "Supervisor",
-      recipient_emp_id: resignationRecipient.recipient_emp_id || prev.recipient_emp_id,
+      recipient_emp_id:
+        resignationRecipient.recipient_emp_id || prev.recipient_emp_id,
     }));
   }, [resignationRecipient, setForm]);
 
@@ -197,7 +198,8 @@ export default function ResignationForm({
     if (hasLoadedResignationDraft) return;
     if (resignationDraftData?.payload) {
       const loadedStep = Number(resignationDraftData.step) || 1;
-      const loadedInterviewPart = Number(resignationDraftData.interviewPart) || 1;
+      const loadedInterviewPart =
+        Number(resignationDraftData.interviewPart) || 1;
 
       setForm((prev) => ({
         ...prev,
@@ -410,7 +412,10 @@ export default function ResignationForm({
               {resignationStepLabels[resignationStep - 1]}
             </p>
             <p className="text-sm font-bold text-red-600">
-              {Math.round((resignationStep / resignationStepLabels.length) * 100)}%
+              {Math.round(
+                (resignationStep / resignationStepLabels.length) * 100,
+              )}
+              %
             </p>
           </div>
         </div>
@@ -560,7 +565,9 @@ export default function ResignationForm({
             </p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {resignationReasonOptions.map((reasonOption) => {
-                const checked = (form.leaving_reasons || []).includes(reasonOption);
+                const checked = (form.leaving_reasons || []).includes(
+                  reasonOption,
+                );
                 return (
                   <label
                     key={reasonOption}
@@ -571,11 +578,15 @@ export default function ResignationForm({
                       checked={checked}
                       onChange={() =>
                         setForm((prev) => {
-                          const exists = (prev.leaving_reasons || []).includes(reasonOption);
+                          const exists = (prev.leaving_reasons || []).includes(
+                            reasonOption,
+                          );
                           return {
                             ...prev,
                             leaving_reasons: exists
-                              ? prev.leaving_reasons.filter((item) => item !== reasonOption)
+                              ? prev.leaving_reasons.filter(
+                                  (item) => item !== reasonOption,
+                                )
                               : [...(prev.leaving_reasons || []), reasonOption],
                           };
                         })
@@ -621,9 +632,13 @@ export default function ResignationForm({
 
           <div className="space-y-3">
             {exitInterviewQuestions
-              .slice(resignationInterviewPart === 1 ? 0 : 8, resignationInterviewPart === 1 ? 8 : 16)
+              .slice(
+                resignationInterviewPart === 1 ? 0 : 8,
+                resignationInterviewPart === 1 ? 8 : 16,
+              )
               .map((question, idx) => {
-                const questionIndex = (resignationInterviewPart === 1 ? 0 : 8) + idx;
+                const questionIndex =
+                  (resignationInterviewPart === 1 ? 0 : 8) + idx;
                 return (
                   <div key={question} className="space-y-1">
                     <label className="block text-xs font-bold text-gray-600">
@@ -634,7 +649,9 @@ export default function ResignationForm({
                       value={form.interview_answers?.[questionIndex] || ""}
                       onChange={(e) =>
                         setForm((prev) => {
-                          const nextAnswers = [...(prev.interview_answers || Array(16).fill(""))];
+                          const nextAnswers = [
+                            ...(prev.interview_answers || Array(16).fill("")),
+                          ];
                           nextAnswers[questionIndex] = e.target.value;
                           return {
                             ...prev,

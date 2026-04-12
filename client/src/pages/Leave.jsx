@@ -118,10 +118,7 @@ export default function Leave() {
     user: {
       requests: { rows: myRequestRows, history: myRequestHistory },
     },
-    calendar: {
-      options: calendarScopeOptions,
-      filtered: calendarLeaves,
-    },
+    calendar: { options: calendarScopeOptions, filtered: calendarLeaves },
     approvals: {
       pending: {
         leaves: pendingLeaveApprovals,
@@ -529,7 +526,9 @@ export default function Leave() {
         myRequestRows={myRequestRows}
         cancelMyPendingRequestMutation={cancelMyPendingRequestMutation}
         setCancelPendingConfirm={setCancelPendingConfirm}
-        requestCancellationApprovalMutation={requestCancellationApprovalMutation}
+        requestCancellationApprovalMutation={
+          requestCancellationApprovalMutation
+        }
         setCancelApprovalConfirm={setCancelApprovalConfirm}
         confirmAction={confirmAction}
         setConfirmAction={setConfirmAction}
