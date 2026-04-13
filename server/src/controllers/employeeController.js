@@ -26,6 +26,24 @@ export const getPayrollByEmployee = async (connection, emp_id, period) => {
   return rows[0];
 };
 
+export const getPayrollForBulk = async (connection, period) => {
+  const [rows] = await connection.query(
+    `
+    SELECT 
+      e.first_name, 
+      e.last_name, 
+      e.email, 
+      p.*
+    FROM payroll p
+    JOIN employees e ON p.emp_id = e.emp_id
+    WHERE p.period_start LIKE ?
+    `,
+    [`${period}%`],
+  );
+
+  return rows; // Returns an array of all payroll objects for that month/period
+};
+
 const resolveRoleFromProfile = ({ designation, position }) => {
   const normalizedDesignation = String(designation || "")
     .trim()

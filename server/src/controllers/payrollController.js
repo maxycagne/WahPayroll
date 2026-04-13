@@ -1,9 +1,14 @@
-import { getPayrollByEmployee } from "./employeeController.js";
+import {
+  getPayrollByEmployee,
+  getPayrollForBulk,
+} from "./employeeController.js";
 import emailService from "../services/emailService.js";
 import pool from "../config/db.js";
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
+
+// --- HELPERS ---
 
 const getBase64Image = (fileName) => {
   try {
@@ -16,79 +21,57 @@ const getBase64Image = (fileName) => {
   }
 };
 
-export const sendPayslip = async (req, res) => {
-  let browser;
-  try {
-    const { emp_id } = req.params;
-    const { period } = req.body;
+/**
+ * Shared logic to generate PDF and send Email
+ * Reused by both single and bulk functions
+ */
+const processSinglePayslip = async (payrollRecord, period, browser) => {
+  const fmtPeso = (n) =>
+    `₱${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    const payrollRecord = await getPayrollByEmployee(pool, emp_id, period);
+  const payPeriodLabel = new Date(
+    payrollRecord.period_start || `${period}-01`,
+  ).toLocaleString("default", { month: "long", year: "numeric" });
 
-    if (!payrollRecord)
-      return res.status(404).json({ message: "Payroll record not found" });
-    if (!payrollRecord.email)
-      return res.status(400).json({ message: "Employee email not found." });
+  // Data Prep: Deductions
+  let deductionItems = payrollRecord.deduction_reasons
+    ? String(payrollRecord.deduction_reasons)
+        .split(" | ")
+        .map((line) => {
+          const [label, amount] = line.split("=").map((p) => p?.trim());
+          return { label: label || line, amount: amount || "" };
+        })
+    : [];
 
-    const fmtPeso = (n) =>
-      `₱${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    const payPeriodLabel = new Date(
-      payrollRecord.period_start || `${period}-01`,
-    ).toLocaleString("default", {
-      month: "long",
-      year: "numeric",
-    });
-
-    let deductionItems = payrollRecord.deduction_reasons
-      ? String(payrollRecord.deduction_reasons)
-          .split(" | ")
-          .map((line) => {
-            const [label, amount] = line.split("=").map((p) => p?.trim());
-            return { label: label || line, amount: amount || "" };
-          })
-      : [];
-
-    // Sync numerical absence deductions into the itemized list
-    const totalAbsenceVal = Number(payrollRecord.absence_deductions || 0);
-    if (totalAbsenceVal > 0) {
-      const alreadyListed = deductionItems.some(
-        (item) =>
-          item.label.toLowerCase().includes("absence") ||
-          item.label.toLowerCase().includes("undertime"),
-      );
-
-      if (!alreadyListed) {
-        deductionItems.unshift({
-          label: "Absences / Undertime",
-          amount: fmtPeso(totalAbsenceVal),
-        });
-      }
+  const totalAbsenceVal = Number(payrollRecord.absence_deductions || 0);
+  if (totalAbsenceVal > 0) {
+    const alreadyListed = deductionItems.some(
+      (item) =>
+        item.label.toLowerCase().includes("absence") ||
+        item.label.toLowerCase().includes("undertime"),
+    );
+    if (!alreadyListed) {
+      deductionItems.unshift({
+        label: "Absences / Undertime",
+        amount: fmtPeso(totalAbsenceVal),
+      });
     }
+  }
 
-    // --- DATA PREPARATION: INCENTIVES ---
-    const incentiveLines = payrollRecord.incentive_reasons
-      ? String(payrollRecord.incentive_reasons)
-          .split(" | ")
-          .filter(Boolean)
-          .join(", ")
-      : "Incentives";
+  // Data Prep: Incentives
+  const incentiveLines = payrollRecord.incentive_reasons
+    ? String(payrollRecord.incentive_reasons)
+        .split(" | ")
+        .filter(Boolean)
+        .join(", ")
+    : "Incentives";
 
-    const logoBase64 = getBase64Image("wah-logo.png");
-    const topLogoBase64 = getBase64Image("wah-top-logo.png");
+  const logoBase64 = getBase64Image("wah-logo.png");
+  const topLogoBase64 = getBase64Image("wah-top-logo.png");
 
-    // --- STEP 1: Generate the PDF ---
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-      ],
-    });
-
-    const page = await browser.newPage();
-
-    const pdfHtmlContent = `
+  // PDF Generation
+  const page = await browser.newPage();
+  const pdfHtmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -161,18 +144,16 @@ export const sendPayslip = async (req, res) => {
       </html>
     `;
 
-    await page.setContent(pdfHtmlContent, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+  await page.setContent(pdfHtmlContent, { waitUntil: "networkidle0" });
+  const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+  await page.close();
 
-    await page.close();
-    await browser.close();
-
-    // --- STEP 2: Send Email ---
-    const emailResponse = await emailService.send({
-      to: payrollRecord.email,
-      subject: `Payslip for ${payPeriodLabel}`,
-      html: `
-        <div style="font-family: sans-serif; color: #333; line-height: 1.5;">
+  // Email Sending
+  return await emailService.send({
+    to: payrollRecord.email,
+    subject: `Payslip for ${payPeriodLabel}`,
+    html: `
+       <div style="font-family: sans-serif; color: #333; line-height: 1.5;">
   <p>Good day!</p>
   
   <p>Kindly see the attached <b>Payslip</b> for your reference.</p>
@@ -201,22 +182,98 @@ export const sendPayslip = async (req, res) => {
     <strong>CONFIDENTIALITY NOTICE:</strong> This email message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and/or privileged information. Any unauthorized review, use or disclosure, or distribution is prohibited. If you are not the intended recipient, please contact the sender immediately and destroy all copies of the original message.
   </div>
 </div>`,
-      attachments: [
-        {
-          filename: `Payslip_${payrollRecord.last_name}_${period}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
+    attachments: [
+      {
+        filename: `Payslip_${payrollRecord.last_name}_${period}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+  });
+};
+
+// --- EXPORTED CONTROLLERS ---
+
+export const sendBulkPayslips = async (req, res) => {
+  let browser;
+  try {
+    const { period } = req.body;
+    const payrolls = await getPayrollForBulk(pool, period);
+
+    if (!payrolls || payrolls.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No payroll records found for this period." });
+    }
+
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
       ],
     });
 
-    if (!emailResponse) throw new Error("Email service failed.");
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const record of payrolls) {
+      try {
+        if (!record.email) {
+          failureCount++;
+          continue;
+        }
+        await processSinglePayslip(record, period, browser);
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to send to ${record.last_name}:`, err);
+        failureCount++;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Bulk processing complete.`,
+      details: { sent: successCount, failed: failureCount },
+    });
+  } catch (error) {
+    console.error("Bulk Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  } finally {
+    if (browser) await browser.close();
+  }
+};
+
+export const sendPayslip = async (req, res) => {
+  let browser;
+  try {
+    const { emp_id } = req.params;
+    const { period } = req.body;
+
+    const payrollRecord = await getPayrollByEmployee(pool, emp_id, period);
+
+    if (!payrollRecord)
+      return res.status(404).json({ message: "Payroll record not found" });
+    if (!payrollRecord.email)
+      return res.status(400).json({ message: "Employee email not found." });
+
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+      ],
+    });
+
+    await processSinglePayslip(payrollRecord, period, browser);
 
     res
       .status(200)
       .json({ success: true, message: "Payslip sent successfully." });
   } catch (error) {
-    console.error("Critical Error:", error);
+    console.error("Single Send Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   } finally {
     if (browser) await browser.close();

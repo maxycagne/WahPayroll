@@ -3,8 +3,8 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "cagnemaverick@gmail.com",
-    pass: "",
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -12,6 +12,7 @@ const emailService = {
   send: async ({ to, subject, html, attachments }) => {
     try {
       const info = await transporter.sendMail({
+        // TODO : CHANGE TO Finance email
         from: '"WAHEMS Payroll" <cagnemaverick@gmail.com>',
         to,
         subject,
