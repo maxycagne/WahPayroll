@@ -95,10 +95,7 @@ export default function Reports() {
       </div>
     );
 
-  const {
-    activeEmployees = 0,
-    monthlySummary = [],
-  } = reportData || {};
+  const { activeEmployees = 0, monthlySummary = [] } = reportData || {};
 
   const monthlySummaryUpToCurrentMonth = monthlySummary.filter((row) => {
     const sortMonth = String(row.sortMonth || "").slice(0, 7);
