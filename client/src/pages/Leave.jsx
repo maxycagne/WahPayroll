@@ -545,6 +545,7 @@ export default function Leave() {
         cancelPendingConfirm={cancelPendingConfirm}
         hrNoteConfirm={hrNoteConfirm}
         addHrNoteMutation={addHrNoteMutation}
+        reviewResignationMutation={reviewResignationMutation}
         showToast={showToast}
         submitCancellationRequest={submitCancellationRequest}
       />

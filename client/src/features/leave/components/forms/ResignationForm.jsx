@@ -117,9 +117,23 @@ export default function ResignationForm({
   const [resignationInterviewPart, setResignationInterviewPart] = useState(1);
   const [resignationWizardError, setResignationWizardError] = useState("");
   const [isUploadingEndorsement, setIsUploadingEndorsement] = useState(false);
+  const [isEndorsementActionsOpen, setIsEndorsementActionsOpen] =
+    useState(false);
   const [hasLoadedResignationDraft, setHasLoadedResignationDraft] =
     useState(false);
   const lastSavedResignationDraftRef = useRef("");
+  const endorsementObjectUrlRef = useRef("");
+
+  const revokeEndorsementObjectUrl = () => {
+    if (endorsementObjectUrlRef.current) {
+      window.URL.revokeObjectURL(endorsementObjectUrlRef.current);
+      endorsementObjectUrlRef.current = "";
+    }
+  };
+
+  useEffect(() => {
+    return () => revokeEndorsementObjectUrl();
+  }, []);
 
   useEffect(() => {
     setForm((prev) => {
@@ -266,6 +280,39 @@ export default function ResignationForm({
     }
 
     return uploaded;
+  };
+
+  const loadUploadedEndorsementObjectUrl = async () => {
+    const fileKey = String(form.endorsement_file_key || "").trim();
+    if (!fileKey) {
+      throw new Error("No uploaded endorsement file found.");
+    }
+
+    const res = await apiFetch(
+      `/api/file/get?filename=${encodeURIComponent(fileKey)}`,
+    );
+    if (!res.ok) {
+      throw new Error("Failed to retrieve uploaded endorsement file.");
+    }
+
+    const blob = await res.blob();
+    revokeEndorsementObjectUrl();
+    endorsementObjectUrlRef.current = window.URL.createObjectURL(blob);
+    return endorsementObjectUrlRef.current;
+  };
+
+  const downloadUploadedEndorsement = async () => {
+    try {
+      const objectUrl = await loadUploadedEndorsementObjectUrl();
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = form.endorsement_file_name || "endorsement-file";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    } catch (error) {
+      showToast(error.message || "Unable to download uploaded file.", "error");
+    }
   };
 
   const validateResignationStep = (step) => {
@@ -736,10 +783,53 @@ export default function ResignationForm({
               className="block w-full text-sm"
             />
             {form.endorsement_file_key && (
-              <p className="mt-2 text-xs font-medium text-emerald-700">
-                Uploaded: {form.endorsement_file_name}
-              </p>
+              <div className="mt-2 space-y-2">
+                <p className="text-xs font-medium text-emerald-700">
+                  Uploaded: {form.endorsement_file_name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsEndorsementActionsOpen(true)}
+                  className="rounded-md border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+                >
+                  View Uploaded File
+                </button>
+              </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {isEndorsementActionsOpen && (
+        <div className="fixed inset-0 z-[72] flex items-center justify-center bg-black/55 p-4">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="m-0 text-sm font-bold text-gray-900">
+                  Uploaded Endorsement File
+                </p>
+                <p className="m-0 mt-1 text-xs text-gray-600">
+                  {form.endorsement_file_name || "endorsement-file"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEndorsementActionsOpen(false)}
+                className="rounded-md border-0 bg-transparent px-2 py-1 text-gray-500 hover:text-gray-700"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={downloadUploadedEndorsement}
+                className="rounded-md border border-blue-200 bg-blue-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-blue-700 hover:bg-blue-200"
+              >
+                Download File
+              </button>
+            </div>
           </div>
         </div>
       )}

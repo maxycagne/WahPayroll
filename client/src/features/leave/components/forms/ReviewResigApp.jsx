@@ -212,7 +212,7 @@ export default function ReviewResigApp({
                 }
                 className="mt-2 rounded-md border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
               >
-                Preview Endorsement File
+                Download Endorsement File
               </button>
             )}
           </div>
