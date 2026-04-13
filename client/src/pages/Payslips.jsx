@@ -27,8 +27,6 @@ const fmtPeso = (n) => {
 
 const TOP_PDF_LOGO = "/images/wah-top-logo.png";
 const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
-const TOP_PDF_LOGO = "/images/wah-top-logo.png";
-const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
 
 function parseReasonAmountPair(rawLine) {
   const line = String(rawLine || "").trim();
