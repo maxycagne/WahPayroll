@@ -32,16 +32,29 @@ export const useRequestMutation = ({
       toDate: "",
       reason: "",
       daysApplied: "",
+      OCP: undefined,
     });
   };
 
   // 1
   const submitLeaveMutation = createMutation({
-    mutationFn: (newLeave: any) =>
-      mutationHandler(
-        axiosInterceptor.post("/api/employees/leaves", newLeave),
+    mutationFn: (newLeave: any) => {
+      const toFormData = new FormData();
+
+      Object.entries(newLeave).forEach(([key, value]) => {
+        // check if file
+        if (value instanceof File) {
+          toFormData.append(key, value);
+        } else if (value !== undefined && value !== null) {
+          toFormData.append(key, String(value));
+        }
+      });
+
+      return mutationHandler(
+        axiosInterceptor.post("/api/leaves/", toFormData),
         "Failed to submit leave",
-      ),
+      );
+    },
     successMsg: "Leave application submitted successfully",
     showToast,
     invalidateKeys: ["leaves"],

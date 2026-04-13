@@ -44,7 +44,7 @@ const LeaveCalendarHeader = ({
         >
           ◀ Prev
         </button>
-        <h3 className="m-0 text-base font-bold text-slate-800">{monthName}</h3>
+        <h3 className="m-0 text-white font-bold text-slate-800">{monthName}</h3>
         <button
           className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
           onClick={nextMonth}

@@ -16,7 +16,7 @@ type FormSubmit = {
 
 type SubmitLeave = {
   e: FormDataEvent;
-  formData: FormSubmit;
+  formData: FormDataType;
   setFormError: Dispatch<SetStateAction<string>>;
   setConfirmAction: Dispatch<SetStateAction<ConfirmAction>>;
 };

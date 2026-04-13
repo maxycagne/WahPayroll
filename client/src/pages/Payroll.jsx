@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -125,6 +126,9 @@ export default function Payroll({ shortcutMode = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState(getCurrentPeriod);
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("wah_user") || "{}");
@@ -191,14 +195,12 @@ export default function Payroll({ shortcutMode = false }) {
   const [search, setSearch] = useState("");
   const [designationFilter, setDesignationFilter] = useState("All");
 
-  // Salary Settings State (Added designation for cascading dropdowns)
   const [salaryForm, setSalaryForm] = useState({
     designation: "",
     position: "",
     amount: "",
   });
 
-  // Local Cache for Position Salaries so the table updates even if no employees hold the role yet
   const [positionSalaries, setPositionSalaries] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("wah_position_salaries") || "{}");
@@ -208,7 +210,6 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- QUERIES ---
-  // 1. Fetch Payroll (Monthly Snapshot)
   const { data: payrollData = [], isLoading: isLoadingPayroll } = useQuery({
     queryKey: ["payroll", period],
     queryFn: async () => {
@@ -218,7 +219,6 @@ export default function Payroll({ shortcutMode = false }) {
     },
   });
 
-  // 2. Fetch Employees (Master Data - Needed for the Live Preview Table)
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
@@ -246,6 +246,42 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- MUTATIONS ---
+
+  // NEW: Individual Email Mutation
+  const sendPayslipMutation = useMutation({
+    mutationFn: async (emp_id) => {
+      const res = await apiFetch(
+        `/api/employees/payroll/${emp_id}/send-payslip`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ period }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to send payslip");
+      return res.json();
+    },
+    onSuccess: () => showToast("Payslip sent successfully!"),
+    onError: () =>
+      showToast("Failed to send payslip. Check server logs.", "error"),
+  });
+
+  // NEW: Bulk Email Mutation
+  const sendBulkPayslipsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch(`/api/employees/payroll/send-bulk-payslips`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      });
+      if (!res.ok) throw new Error("Failed to send bulk payslips");
+      return res.json();
+    },
+    onSuccess: () => showToast(`All payslips for ${period} sent successfully!`),
+    onError: () =>
+      showToast("Failed to send payslips. Check server logs.", "error"),
+  });
+
   const adjustmentMutation = useMutation({
     mutationFn: async (payload) => {
       const res = await apiFetch("/api/employees/salary-adjustment", {
@@ -321,11 +357,9 @@ export default function Payroll({ shortcutMode = false }) {
       return res.json();
     },
     onSuccess: (_, variables) => {
-      // 1. Refresh server data
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
       queryClient.invalidateQueries({ queryKey: ["employees"] });
 
-      // 2. Save to our local UI Cache so the table updates INSTANTLY
       const updatedSalaries = {
         ...positionSalaries,
         [variables.position]: Number(variables.amount),
@@ -793,6 +827,29 @@ export default function Payroll({ shortcutMode = false }) {
                     Salary Settings
                   </button>
 
+                  {/* NEW: Bulk Email Button */}
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Are you sure you want to send payslips to all employees for the period of ${period}?`,
+                        )
+                      ) {
+                        sendBulkPayslipsMutation.mutate();
+                      }
+                    }}
+                    disabled={
+                      sendBulkPayslipsMutation.isPending ||
+                      filteredPayroll.length === 0
+                    }
+                    className="px-4 py-2 rounded-lg bg-indigo-600 border border-indigo-600 text-white text-sm font-semibold cursor-pointer hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Mail className="w-4 h-4" />
+                    {sendBulkPayslipsMutation.isPending
+                      ? "Sending..."
+                      : "Email All"}
+                  </button>
+
                   <button
                     onClick={() => {
                       setBulkAdjustmentMode(!bulkAdjustmentMode);
@@ -977,11 +1034,26 @@ export default function Payroll({ shortcutMode = false }) {
                         )}
                         <td className="px-6 py-4">{p.emp_id}</td>
                         <td className="px-6 py-4">
-                          <div className="font-bold text-gray-900">
-                            {p.first_name} {p.last_name}
-                          </div>
-                          <div className="text-xs text-gray-500 font-normal mt-0.5">
-                            {p.position}
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                              {p.profile_photo ? (
+                                <img
+                                  src={`${API_BASE_URL}/${p.profile_photo.replace(/^\/+/, "")}`}
+                                  alt="Profile"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <User className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900">
+                                {p.first_name} {p.last_name}
+                              </div>
+                              <div className="text-xs text-gray-500 font-normal mt-0.5">
+                                {p.position}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -1011,6 +1083,23 @@ export default function Payroll({ shortcutMode = false }) {
                         {isAdmin && !bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {/* NEW: Individual Email Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  sendPayslipMutation.mutate(p.emp_id);
+                                }}
+                                disabled={
+                                  sendPayslipMutation.isPending &&
+                                  sendPayslipMutation.variables === p.emp_id
+                                }
+                                className="px-3 py-1.5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-bold border-0 cursor-pointer hover:bg-indigo-200 flex items-center gap-1.5"
+                                title="Send Email"
+                              >
+                                <Mail className="w-3 h-3" />
+                                Email
+                              </button>
+
                               <button
                                 onClick={() => setSalaryBreakdownModal(p)}
                                 className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200"
