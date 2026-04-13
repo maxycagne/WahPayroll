@@ -12,10 +12,35 @@ export const parseDateOnly = (value: DateInput) => {
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 };
 // ----
-export const getDateDiffInclusive = ({ start, end }: DateDiffInclusive) => {
+const getDateDiffInclusiveCore = ({ start, end }: DateDiffInclusive) => {
   const from = parseDateOnly(start).getTime();
   const to = parseDateOnly(end).getTime();
   return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
+};
+export const getDateDiffInclusive = (
+  arg1: DateDiffInclusive | DateInput,
+  arg2?: DateInput,
+) => {
+  if (arg1 && typeof arg1 === "object" && "start" in arg1 && "end" in arg1) {
+    return getDateDiffInclusiveCore(arg1 as DateDiffInclusive);
+  }
+  return getDateDiffInclusiveCore({
+    start: arg1 as DateInput,
+    end: arg2 as DateInput,
+  });
+};
+// Compatibility shim: supports both getDateDiffInclusive({ start, end }) and getDateDiffInclusive(start, end).
+export const getDateDiffInclusiveCompat = (
+  arg1: DateDiffInclusive | DateInput,
+  arg2?: DateInput,
+) => {
+  if (arg1 && typeof arg1 === "object" && "start" in arg1 && "end" in arg1) {
+    return getDateDiffInclusiveCore(arg1 as DateDiffInclusive);
+  }
+  return getDateDiffInclusiveCore({
+    start: arg1 as DateInput,
+    end: arg2 as DateInput,
+  });
 };
 // ----
 export const isInRange = ({ date, from, to }: IsInRange): boolean => {
@@ -35,7 +60,7 @@ export function getDaysInMonth({
   return new Date(year, month + 1, 0).getDate();
 }
 // ----
-export function calculateBusinessDays({
+function calculateBusinessDaysCore({
   startDate,
   endDate,
 }: {
@@ -56,8 +81,43 @@ export function calculateBusinessDays({
   }
   return count;
 }
+export function calculateBusinessDays(
+  arg1:
+    | {
+        startDate: DateInput;
+        endDate: DateInput;
+      }
+    | DateInput,
+  arg2?: DateInput,
+) {
+  if (arg1 && typeof arg1 === "object" && "startDate" in arg1) {
+    return calculateBusinessDaysCore(arg1 as { startDate: DateInput; endDate: DateInput });
+  }
+  return calculateBusinessDaysCore({
+    startDate: arg1 as DateInput,
+    endDate: arg2 as DateInput,
+  });
+}
+// Compatibility shim: supports both calculateBusinessDays({ startDate, endDate }) and calculateBusinessDays(startDate, endDate).
+export function calculateBusinessDaysCompat(
+  arg1:
+    | {
+        startDate: DateInput;
+        endDate: DateInput;
+      }
+    | DateInput,
+  arg2?: DateInput,
+) {
+  if (arg1 && typeof arg1 === "object" && "startDate" in arg1) {
+    return calculateBusinessDaysCore(arg1 as { startDate: DateInput; endDate: DateInput });
+  }
+  return calculateBusinessDaysCore({
+    startDate: arg1 as DateInput,
+    endDate: arg2 as DateInput,
+  });
+}
 // --
-export function getDateRangeInclusive({ start, end }: DateDiffInclusive) {
+function getDateRangeInclusiveCore({ start, end }: DateDiffInclusive) {
   const dates = [];
   const current = parseDateOnly(start);
   const to = parseDateOnly(end);
@@ -71,6 +131,31 @@ export function getDateRangeInclusive({ start, end }: DateDiffInclusive) {
   }
 
   return dates;
+}
+export function getDateRangeInclusive(
+  arg1: DateDiffInclusive | DateInput,
+  arg2?: DateInput,
+) {
+  if (arg1 && typeof arg1 === "object" && "start" in arg1 && "end" in arg1) {
+    return getDateRangeInclusiveCore(arg1 as DateDiffInclusive);
+  }
+  return getDateRangeInclusiveCore({
+    start: arg1 as DateInput,
+    end: arg2 as DateInput,
+  });
+}
+// Compatibility shim: supports both getDateRangeInclusive({ start, end }) and getDateRangeInclusive(start, end).
+export function getDateRangeInclusiveCompat(
+  arg1: DateDiffInclusive | DateInput,
+  arg2?: DateInput,
+) {
+  if (arg1 && typeof arg1 === "object" && "start" in arg1 && "end" in arg1) {
+    return getDateRangeInclusiveCore(arg1 as DateDiffInclusive);
+  }
+  return getDateRangeInclusiveCore({
+    start: arg1 as DateInput,
+    end: arg2 as DateInput,
+  });
 }
 
 // --

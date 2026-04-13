@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 
 const fmt = (n) => {
+  if (n === null || n === undefined || n === "") return "-";
   const num = Number(n);
   return isNaN(num)
-    ? "₱0.00"
+    ? "-"
     : "₱" +
         num.toLocaleString(undefined, {
           minimumFractionDigits: 2,
@@ -14,17 +15,40 @@ const fmt = (n) => {
 };
 
 const fmtPeso = (n) => {
+  if (n === null || n === undefined || n === "") return "-";
   const num = Number(n);
   return isNaN(num)
-    ? "₱0.00"
+    ? "-"
     : `₱${num.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`;
 };
 
-      const TOP_PDF_LOGO = "/images/wah-top-logo.png";
-      const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
+const TOP_PDF_LOGO = "/images/wah-top-logo.png";
+const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
+
+function parseReasonAmountPair(rawLine) {
+  const line = String(rawLine || "").trim();
+  if (!line) return { label: "", amount: null };
+
+  const parts = line.split("=");
+  if (parts.length >= 2) {
+    const label = parts.shift()?.trim() || "";
+    const rawAmount = parts
+      .join("=")
+      .trim()
+      .replace(/^₱/, "")
+      .replace(/,/g, "");
+    const numericAmount = Number(rawAmount);
+    return {
+      label,
+      amount: Number.isFinite(numericAmount) ? numericAmount : null,
+    };
+  }
+
+  return { label: line, amount: null };
+}
 
 export default function Payslips() {
   const currentUser = useMemo(() => {
@@ -106,20 +130,13 @@ export default function Payslips() {
         .filter(Boolean)
     : [];
 
-  const deductionDisplayItems =
-    deductionTypeLines.length > 0
-      ? deductionTypeLines.map((line) => {
-          const [rawLabel, rawAmount] = line.split("=").map((part) => part?.trim());
+  const incentiveDisplayItems = incentiveTypeLines
+    .map((line) => parseReasonAmountPair(line))
+    .filter((item) => item.label);
 
-          return {
-            label: rawLabel || line,
-            amount: rawAmount || "",
-          };
-        })
-      : [
-          { label: "Pag-IBIG Loan", amount: "₱1,000.00" },
-          { label: "SSS", amount: "₱2,000.00" },
-        ];
+  const deductionDisplayItems = deductionTypeLines
+    .map((line) => parseReasonAmountPair(line))
+    .filter((item) => item.label);
 
   const payItems = currentSlip
     ? [
@@ -300,7 +317,8 @@ export default function Payslips() {
 
             <div className="relative z-10 border-b border-gray-700 px-6 py-5 text-[32px]">
               <p className="m-0 text-[15px]">
-                <span className="font-bold">PAYROLL PERIOD:</span> {payPeriodLabel}
+                <span className="font-bold">PAYROLL PERIOD:</span>{" "}
+                {payPeriodLabel}
               </p>
               <p className="m-0 mt-1 text-[15px]">
                 <span className="font-bold">EMPLOYEE NAME:</span>{" "}
@@ -311,7 +329,9 @@ export default function Payslips() {
             <div className="relative z-10 grid grid-cols-2 border-b border-gray-700 text-[14px]">
               <div className="border-r border-gray-700 px-4 py-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="m-0 text-[14px] font-bold">EARNINGS & ALLOWANCES</p>
+                  <p className="m-0 text-[14px] font-bold">
+                    EARNINGS & ALLOWANCES
+                  </p>
                   <p className="m-0 text-[14px] font-bold">PHP</p>
                 </div>
 
@@ -321,16 +341,24 @@ export default function Payslips() {
                     <span>{fmtPeso(currentSlip.basic_pay || 0)}</span>
                   </div>
 
-                  {Number(currentSlip.incentives || 0) > 0 && (
-                    <div className="flex items-start justify-between gap-3">
-                      <span>
-                        {incentiveTypeLines.length > 0
-                          ? incentiveTypeLines.join(", ")
-                          : "Incentives"}
-                      </span>
-                      <span>{fmtPeso(currentSlip.incentives || 0)}</span>
-                    </div>
-                  )}
+                  {incentiveDisplayItems.length > 0
+                    ? incentiveDisplayItems.map((item, index) => (
+                        <div
+                          key={`incentive-line-${index}`}
+                          className="flex items-start justify-between gap-3"
+                        >
+                          <span>{item.label}</span>
+                          <span>
+                            {item.amount == null ? "-" : fmtPeso(item.amount)}
+                          </span>
+                        </div>
+                      ))
+                    : Number(currentSlip.incentives || 0) > 0 && (
+                        <div className="flex items-start justify-between gap-3">
+                          <span>Incentives</span>
+                          <span>{fmtPeso(currentSlip.incentives || 0)}</span>
+                        </div>
+                      )}
                 </div>
               </div>
 
@@ -342,15 +370,23 @@ export default function Payslips() {
 
                 <div className="space-y-1 text-[15px]">
                   <div className="space-y-1 pl-1 text-[15px]">
-                    {deductionDisplayItems.map((item, index) => (
-                      <div
-                        key={`deduction-line-${index}`}
-                        className="flex items-start justify-between gap-3"
-                      >
-                        <span>{item.label}</span>
-                        <span>{item.amount}</span>
-                      </div>
-                    ))}
+                    {deductionDisplayItems.length === 0 ? (
+                      <p className="m-0 text-[14px] text-gray-500">
+                        No deduction breakdown available.
+                      </p>
+                    ) : (
+                      deductionDisplayItems.map((item, index) => (
+                        <div
+                          key={`deduction-line-${index}`}
+                          className="flex items-start justify-between gap-3"
+                        >
+                          <span>{item.label}</span>
+                          <span>
+                            {item.amount == null ? "-" : fmtPeso(item.amount)}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

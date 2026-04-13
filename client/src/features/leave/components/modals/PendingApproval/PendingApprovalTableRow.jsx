@@ -4,6 +4,7 @@ export default function PendingApprovalTableRow({
   canHrDirectDecision,
   isPendingApprovalStatus,
   openResignationDecisionConfirm,
+  openResignationReview,
   openLeaveDecisionConfirm,
   openOffsetDecisionConfirm,
   setHrNoteConfirm,
@@ -56,52 +57,66 @@ export default function PendingApprovalTableRow({
       </td>
       <td className="px-4 py-2.5 text-right">
         {canDirectDecision ? (
-          <div className="inline-flex gap-1.5">
+          item.request_group === "resignation" && !isCancellationRequest ? (
             <button
               type="button"
-              onClick={() => {
-                const decisionMode = isCancellationRequest
-                  ? "cancellation"
-                  : "application";
-                if (item.request_group === "resignation") {
-                  openResignationDecisionConfirm(
-                    item,
-                    "Approved",
-                    decisionMode,
-                  );
-                  setPendingModalOpen(false);
-                  return;
-                }
-                item.isOffset
-                  ? openOffsetDecisionConfirm(item, "Approved", decisionMode)
-                  : openLeaveDecisionConfirm(item, "Approved", decisionMode);
-                setPendingModalOpen(false);
-              }}
-              className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200"
+              onClick={() => openResignationReview(item)}
+              className="rounded-md border border-indigo-200 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
             >
-              {isCancellationRequest ? "Approve Cancel" : "Approve"}
+              Review Application
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const decisionMode = isCancellationRequest
-                  ? "cancellation"
-                  : "application";
-                if (item.request_group === "resignation") {
-                  openResignationDecisionConfirm(item, "Denied", decisionMode);
+          ) : (
+            <div className="inline-flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const decisionMode = isCancellationRequest
+                    ? "cancellation"
+                    : "application";
+                  if (item.request_group === "resignation") {
+                    openResignationDecisionConfirm(
+                      item,
+                      "Approved",
+                      decisionMode,
+                    );
+                    setPendingModalOpen(false);
+                    return;
+                  }
+                  item.isOffset
+                    ? openOffsetDecisionConfirm(item, "Approved", decisionMode)
+                    : openLeaveDecisionConfirm(item, "Approved", decisionMode);
                   setPendingModalOpen(false);
-                  return;
-                }
-                item.isOffset
-                  ? openOffsetDecisionConfirm(item, "Denied", decisionMode)
-                  : openLeaveDecisionConfirm(item, "Denied", decisionMode);
-                setPendingModalOpen(false);
-              }}
-              className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200"
-            >
-              {isCancellationRequest ? "Keep Request" : "Deny"}
-            </button>
-          </div>
+                }}
+                className="rounded-md border border-green-200 bg-green-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-green-700 hover:bg-green-200"
+              >
+                {isCancellationRequest ? "Approve Cancel" : "Approve"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const decisionMode = isCancellationRequest
+                    ? "cancellation"
+                    : "application";
+                  if (item.request_group === "resignation") {
+                    openResignationDecisionConfirm(
+                      item,
+                      "Denied",
+                      decisionMode,
+                    );
+                    setPendingModalOpen(false);
+                    return;
+                  }
+                  item.isOffset
+                    ? openOffsetDecisionConfirm(item, "Denied", decisionMode)
+                    : openLeaveDecisionConfirm(item, "Denied", decisionMode);
+                  setPendingModalOpen(false);
+                }}
+                className="rounded-md border border-red-200 bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-200"
+              >
+                {isCancellationRequest ? "Keep Request" : "Deny"}
+              </button>
+            </div>
+          )
         ) : (
           <button
             type="button"

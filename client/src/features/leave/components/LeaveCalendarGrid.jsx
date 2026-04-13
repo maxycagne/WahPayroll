@@ -11,6 +11,7 @@ import LeaveCalendarModal from "./LeaveCalendarModal";
 const LeaveCalendarGrid = ({
   cells,
   leaves,
+  attendance,
   selectedDate,
   setSelectedDate,
   month,
@@ -37,7 +38,7 @@ const LeaveCalendarGrid = ({
 
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
             const dayLeaves = getLeavesForDate(dateStr, leaves);
-            const dayAtt = getAttendanceForDate(dateStr, leaves);
+            const dayAtt = getAttendanceForDate(dateStr, attendance);
             const isSelected = day === selectedDate;
             const visibleLeaves = dayLeaves.slice(0, 3);
             const extraLeavesCount = Math.max(

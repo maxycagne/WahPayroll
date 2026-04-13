@@ -266,20 +266,35 @@ export default function Payroll({ shortcutMode = false }) {
       showToast("Failed to send payslip. Check server logs.", "error"),
   });
 
-  // NEW: Bulk Email Mutation
   const sendBulkPayslipsMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (selectedPeriod) => {
       const res = await apiFetch(`/api/employees/payroll/send-bulk-payslips`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ period: selectedPeriod }),
       });
-      if (!res.ok) throw new Error("Failed to send bulk payslips");
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to send bulk payslips");
+      }
+
       return res.json();
     },
-    onSuccess: () => showToast(`All payslips for ${period} sent successfully!`),
-    onError: () =>
-      showToast("Failed to send payslips. Check server logs.", "error"),
+    onSuccess: (data) => {
+      // Using the period from the mutation argument or state
+      showToast(
+        `Success! All payslips for ${period} have been dispatched.`,
+        "success",
+      );
+    },
+    onError: (error) => {
+      showToast(`Error: ${error.message}`, "error");
+      console.error("Payroll Dispatch Error:", error);
+    },
   });
 
   const adjustmentMutation = useMutation({
@@ -830,12 +845,14 @@ export default function Payroll({ shortcutMode = false }) {
                   {/* NEW: Bulk Email Button */}
                   <button
                     onClick={() => {
+                      // Ensure 'period' is the actual value (e.g., "2024-03")
                       if (
                         window.confirm(
                           `Are you sure you want to send payslips to all employees for the period of ${period}?`,
                         )
                       ) {
-                        sendBulkPayslipsMutation.mutate();
+                        // PASS THE PERIOD HERE
+                        sendBulkPayslipsMutation.mutate(period);
                       }
                     }}
                     disabled={
@@ -846,7 +863,7 @@ export default function Payroll({ shortcutMode = false }) {
                   >
                     <Mail className="w-4 h-4" />
                     {sendBulkPayslipsMutation.isPending
-                      ? "Sending..."
+                      ? `Sending to ${filteredPayroll.length} employees...`
                       : "Email All"}
                   </button>
 
@@ -1083,7 +1100,6 @@ export default function Payroll({ shortcutMode = false }) {
                         {isAdmin && !bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {/* NEW: Individual Email Button */}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

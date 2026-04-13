@@ -36,9 +36,13 @@ import {
   getMyResignations,
   getResignations,
   fileResignation,
+  getResignationRecipient,
+  getMyResignationDraft,
+  saveMyResignationDraft,
   updateResignationStatus,
   cancelMyResignation,
   requestMyResignationCancellation,
+  uploadResignationClearance,
   getMyNotifications,
   markNotificationRead,
   markAllNotificationsRead,
@@ -58,6 +62,10 @@ import {
   authenticateToken,
   authorizeRoles,
 } from "../middleware/authMiddleware.js";
+import {
+  sendPayslip,
+  sendBulkPayslips,
+} from "../controllers/payrollController.js";
 import multer from "multer"; // <-- THIS IS THE MISSING LINE
 import path from "path"; // <-- Make sure you have this too
 import fs from "fs";
@@ -100,6 +108,21 @@ router.post(
   "/resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   fileResignation,
+);
+router.get(
+  "/resignations/recipient",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getResignationRecipient,
+);
+router.get(
+  "/resignations/draft",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getMyResignationDraft,
+);
+router.put(
+  "/resignations/draft",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  saveMyResignationDraft,
 );
 router.put(
   "/resignations/:id",
@@ -181,6 +204,11 @@ router.post(
   "/resignations/:id/request-cancel",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   requestMyResignationCancellation,
+);
+router.post(
+  "/resignations/:id/clearance",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  uploadResignationClearance,
 );
 
 router.get(
@@ -322,4 +350,8 @@ router.post(
 router.put("/me/profile", updateMyProfile);
 router.put("/me/change-password", changeMyPassword);
 
+// TODO : PAYROLL
+// payrollRoutes.js
+router.post("/payroll/:emp_id/send-payslip", sendPayslip);
+router.post("/payroll/send-bulk-payslips", sendBulkPayslips);
 export default router;

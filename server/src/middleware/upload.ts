@@ -1,6 +1,6 @@
 import multer from "multer";
 import multerS3 from "multer-s3";
-import { s3Client } from "../config/s3";
+import { s3Client, s3BucketName } from "../config/s3";
 import { Request } from "express";
 
 // middleware for file upload
@@ -9,7 +9,7 @@ export const upload = multer({
     // Cloudflare r2 Endpoint
     s3: s3Client,
     // Storage name
-    bucket: "payroll",
+    bucket: s3BucketName,
     contentType: multerS3.AUTO_CONTENT_TYPE,
     metadata: (req, file, cb) => {
       cb(null, { fieldname: file.fieldname });
