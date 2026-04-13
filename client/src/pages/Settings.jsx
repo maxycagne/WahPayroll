@@ -300,9 +300,9 @@ export default function Settings() {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                       >
                         {showPassword.current ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
                           <Eye className="w-4 h-4" />
+                        ) : (
+                          <EyeOff className="w-4 h-4" />
                         )}
                       </button>
                     </div>
@@ -333,9 +333,9 @@ export default function Settings() {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                       >
                         {showPassword.new ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
                           <Eye className="w-4 h-4" />
+                        ) : (
+                          <EyeOff className="w-4 h-4" />
                         )}
                       </button>
                     </div>
@@ -366,9 +366,9 @@ export default function Settings() {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                       >
                         {showPassword.confirm ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
                           <Eye className="w-4 h-4" />
+                        ) : (
+                          <EyeOff className="w-4 h-4" />
                         )}
                       </button>
                     </div>
