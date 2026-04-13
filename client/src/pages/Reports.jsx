@@ -45,6 +45,8 @@ const FinancialTooltip = ({ active, payload, label }) => {
 };
 
 export default function Reports() {
+  const currentYearMonth = new Date().toISOString().slice(0, 7);
+
   const {
     data: reportData,
     isLoading,
@@ -59,12 +61,12 @@ export default function Reports() {
   });
 
   const exportCSV = () => {
-    if (!reportData || !reportData.monthlySummary) return;
+    if (!reportData || !monthlySummaryUpToCurrentMonth.length) return;
 
     let csvContent =
       "Month,Present Days,Absent Days,Late Days,Leaves,Total Incentives (PHP),Total Gross (PHP),Total Deductions (PHP),Total Net (PHP)\n";
 
-    reportData.monthlySummary.forEach((row) => {
+    monthlySummaryUpToCurrentMonth.forEach((row) => {
       csvContent += `"${row.month}",${row.present},${row.absent},${row.late},${row.onLeave},${row.totalIncentives},${row.totalGross},${row.totalDeductions},${row.totalNet}\n`;
     });
 
@@ -95,14 +97,26 @@ export default function Reports() {
 
   const {
     activeEmployees = 0,
-    latestMonthName = "No Data",
-    latestNet = 0,
-    latestDeductions = 0,
-    latestAbsences = 0,
     monthlySummary = [],
   } = reportData || {};
 
-  const chartData = [...monthlySummary].reverse();
+  const monthlySummaryUpToCurrentMonth = monthlySummary.filter((row) => {
+    const sortMonth = String(row.sortMonth || "").slice(0, 7);
+    if (!sortMonth) return true;
+    return sortMonth <= currentYearMonth;
+  });
+
+  const chartData = [...monthlySummaryUpToCurrentMonth].reverse();
+  const latestVisibleMonth = monthlySummaryUpToCurrentMonth[0] || {
+    month: "No Data",
+    totalNet: 0,
+    totalDeductions: 0,
+    absent: 0,
+  };
+  const latestMonthName = latestVisibleMonth.month;
+  const latestNet = latestVisibleMonth.totalNet;
+  const latestDeductions = latestVisibleMonth.totalDeductions;
+  const latestAbsences = latestVisibleMonth.absent;
 
   return (
     <div className="max-w-full space-y-6">
@@ -112,7 +126,7 @@ export default function Reports() {
         </h1>
         <button
           onClick={exportCSV}
-          disabled={monthlySummary.length === 0}
+          disabled={monthlySummaryUpToCurrentMonth.length === 0}
           className="px-5 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50 shadow-sm"
         >
           ⬇ Export CSV
@@ -311,7 +325,7 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {monthlySummary.length === 0 ? (
+              {monthlySummaryUpToCurrentMonth.length === 0 ? (
                 <tr>
                   <td
                     colSpan="9"
@@ -321,7 +335,7 @@ export default function Reports() {
                   </td>
                 </tr>
               ) : (
-                monthlySummary.map((m) => (
+                monthlySummaryUpToCurrentMonth.map((m) => (
                   <tr
                     key={m.month}
                     className="hover:bg-gray-50 transition-colors"
