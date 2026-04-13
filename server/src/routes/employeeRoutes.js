@@ -62,6 +62,10 @@ import {
   authenticateToken,
   authorizeRoles,
 } from "../middleware/authMiddleware.js";
+import {
+  sendPayslip,
+  sendBulkPayslips,
+} from "../controllers/payrollController.js";
 import multer from "multer"; // <-- THIS IS THE MISSING LINE
 import path from "path"; // <-- Make sure you have this too
 import fs from "fs";
@@ -346,4 +350,8 @@ router.post(
 router.put("/me/profile", updateMyProfile);
 router.put("/me/change-password", changeMyPassword);
 
+// TODO : PAYROLL
+// payrollRoutes.js
+router.post("/payroll/:emp_id/send-payslip", sendPayslip);
+router.post("/payroll/send-bulk-payslips", sendBulkPayslips);
 export default router;
