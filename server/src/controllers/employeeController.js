@@ -4,6 +4,28 @@ import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
 import bcrypt from "bcryptjs";
 
+// payrollModel.js
+export const getPayrollByEmployee = async (connection, emp_id, period) => {
+  const [rows] = await connection.query(
+    `
+    SELECT 
+      e.first_name, 
+      e.last_name, 
+      e.email, 
+      p.*
+    FROM payroll p
+    JOIN employees e ON p.emp_id = e.emp_id
+    WHERE p.emp_id = ? 
+      AND p.period_start LIKE ? 
+    LIMIT 1
+    `,
+    [emp_id, `${period}%`],
+  );
+
+  if (rows.length === 0) return null;
+  return rows[0];
+};
+
 const resolveRoleFromProfile = ({ designation, position }) => {
   const normalizedDesignation = String(designation || "")
     .trim()

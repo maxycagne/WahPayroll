@@ -40,7 +40,6 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/file", fileRoutes);
 app.use("/api/hr-reports", hrReportsRoutes);
 app.use("/api/leaves", leaveRoutes);
-
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

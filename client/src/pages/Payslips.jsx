@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 
@@ -23,8 +23,8 @@ const fmtPeso = (n) => {
       })}`;
 };
 
-      const TOP_PDF_LOGO = "/images/wah-top-logo.png";
-      const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
+const TOP_PDF_LOGO = "/images/wah-top-logo.png";
+const DEFAULT_PDF_LOGO = "/images/wah-logo.png";
 
 export default function Payslips() {
   const currentUser = useMemo(() => {
@@ -109,7 +109,9 @@ export default function Payslips() {
   const deductionDisplayItems =
     deductionTypeLines.length > 0
       ? deductionTypeLines.map((line) => {
-          const [rawLabel, rawAmount] = line.split("=").map((part) => part?.trim());
+          const [rawLabel, rawAmount] = line
+            .split("=")
+            .map((part) => part?.trim());
 
           return {
             label: rawLabel || line,
@@ -300,7 +302,8 @@ export default function Payslips() {
 
             <div className="relative z-10 border-b border-gray-700 px-6 py-5 text-[32px]">
               <p className="m-0 text-[15px]">
-                <span className="font-bold">PAYROLL PERIOD:</span> {payPeriodLabel}
+                <span className="font-bold">PAYROLL PERIOD:</span>{" "}
+                {payPeriodLabel}
               </p>
               <p className="m-0 mt-1 text-[15px]">
                 <span className="font-bold">EMPLOYEE NAME:</span>{" "}
@@ -311,7 +314,9 @@ export default function Payslips() {
             <div className="relative z-10 grid grid-cols-2 border-b border-gray-700 text-[14px]">
               <div className="border-r border-gray-700 px-4 py-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="m-0 text-[14px] font-bold">EARNINGS & ALLOWANCES</p>
+                  <p className="m-0 text-[14px] font-bold">
+                    EARNINGS & ALLOWANCES
+                  </p>
                   <p className="m-0 text-[14px] font-bold">PHP</p>
                 </div>
 
