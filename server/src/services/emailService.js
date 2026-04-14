@@ -13,7 +13,7 @@ const emailService = {
     try {
       const info = await transporter.sendMail({
         // TODO : CHANGE TO Finance email
-        from: '"WAHEMS Payroll" <cagnemaverick@gmail.com>',
+        from: '"Finance WAH" <cagnemaverick@gmail.com>',
         to,
         subject,
         html,
