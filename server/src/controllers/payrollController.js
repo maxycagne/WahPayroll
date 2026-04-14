@@ -213,7 +213,6 @@ export const sendBulkPayslips = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
       ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
     });
 
     let successCount = 0;
@@ -261,7 +260,6 @@ export const sendPayslip = async (req, res) => {
 
     browser = await puppeteer.launch({
       headless: "new",
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
 
       args: [
         "--no-sandbox",
