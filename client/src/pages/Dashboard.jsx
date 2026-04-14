@@ -780,7 +780,7 @@ function AdminDashboard({ currentUser }) {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((c) => (
-          <div
+          <button
             key={c.label}
             type="button"
             onClick={() => c.clickable && setActiveModal(c.modalKey)}
