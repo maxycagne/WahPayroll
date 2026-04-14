@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { apiFetch } from "@/lib/api";
+import ReviewResigApp from "../../forms/ReviewResigApp";
 import PendingApprovalFilterTabs from "./PendingApprovalFilterTabs";
 import PendingApprovalModalHeader from "./PendingApprovalHeader";
 import PendingApprovalTable from "./PendingApprovalTable";
@@ -20,7 +23,83 @@ export default function PendingApprovalModal({
   openLeaveDecisionConfirm,
   openOffsetDecisionConfirm,
   setHrNoteConfirm,
+  reviewResignationMutation,
+  showToast,
 }) {
+  const [resignationReviewData, setResignationReviewData] = useState(null);
+
+  const parseMaybeArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== "string") return [];
+
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const openResignationReview = (item) => {
+    setResignationReviewData({
+      item,
+      leavingReasons: parseMaybeArray(item.leaving_reasons_json),
+      interviewAnswers: parseMaybeArray(item.exit_interview_answers_json),
+    });
+    setPendingModalOpen(false);
+  };
+
+  const closeResignationReview = () => setResignationReviewData(null);
+
+  const downloadEndorsementFile = async (fileKey) => {
+    if (!fileKey) return;
+
+    try {
+      const res = await apiFetch(
+        `/api/file/get?filename=${encodeURIComponent(fileKey)}`,
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to retrieve endorsement file.");
+      }
+
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${fileKey.split("_").pop() || "endorsement-file"}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      showToast?.(
+        error.message || "Unable to download endorsement file.",
+        "error",
+      );
+    }
+  };
+
+  const finalApproveResignation = () => {
+    if (!resignationReviewData?.item || !reviewResignationMutation?.mutate) {
+      return;
+    }
+
+    reviewResignationMutation.mutate(
+      {
+        id: resignationReviewData.item.id,
+        item: resignationReviewData.item,
+        status: "Approved",
+      },
+      {
+        onSuccess: () => {
+          closeResignationReview();
+          showToast?.("Resignation application approved.");
+        },
+      },
+    );
+  };
+
   return (
     <>
       {pendingModalOpen && isApprover && (
@@ -44,6 +123,7 @@ export default function PendingApprovalModal({
                 canHrDirectDecision={canHrDirectDecision}
                 isPendingApprovalStatus={isPendingApprovalStatus}
                 openResignationDecisionConfirm={openResignationDecisionConfirm}
+                openResignationReview={openResignationReview}
                 openLeaveDecisionConfirm={openLeaveDecisionConfirm}
                 openOffsetDecisionConfirm={openOffsetDecisionConfirm}
                 setHrNoteConfirm={setHrNoteConfirm}
@@ -53,6 +133,15 @@ export default function PendingApprovalModal({
           </div>
         </div>
       )}
+
+      <ReviewResigApp
+        reviewData={resignationReviewData}
+        onClose={closeResignationReview}
+        onKeepPending={closeResignationReview}
+        onFinalApprove={finalApproveResignation}
+        isApproving={Boolean(reviewResignationMutation?.isPending)}
+        onPreviewEndorsement={downloadEndorsementFile}
+      />
     </>
   );
 }

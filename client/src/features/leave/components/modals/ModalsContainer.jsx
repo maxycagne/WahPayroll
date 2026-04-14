@@ -66,6 +66,7 @@ export default function ModalsContainer({
   cancelPendingConfirm,
   hrNoteConfirm,
   addHrNoteMutation,
+  reviewResignationMutation,
   showToast,
   submitCancellationRequest,
 }) {
@@ -110,6 +111,8 @@ export default function ModalsContainer({
         openLeaveDecisionConfirm={openLeaveDecisionConfirm}
         openOffsetDecisionConfirm={openOffsetDecisionConfirm}
         setHrNoteConfirm={setHrNoteConfirm}
+        reviewResignationMutation={reviewResignationMutation}
+        showToast={showToast}
       />
       <MyPendingRequestsModal
         myPendingModalOpen={myPendingModalOpen}

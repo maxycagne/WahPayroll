@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Toast from "../components/Toast";
 import {
@@ -13,7 +12,6 @@ import {
   resignationTypes,
   leavePolicy,
 } from "@/features/leave/leaveConstants";
-import { useEmail } from "../hooks/useEmail";
 
 import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
 import ActionButtons from "@/features/leave/components/ActionButtons";
@@ -22,7 +20,7 @@ import RequestHistoryTable from "@/features/leave/components/RequestHistoryTable
 import ModalsContainer from "@/features/leave/components/modals/ModalsContainer";
 import { useFormData } from "@/features/leave/hooks/useFormData";
 import { useRoleComputation } from "@/features/leave/hooks/useRoleComputation";
-import { useComputedValues } from "@/features/leave/hooks/useLeaveComputedValues"; // ✅ ADD THIS
+import { useComputedValues } from "@/features/leave/hooks/useLeaveComputedValues";
 import {
   leavesQueryOptions,
   myAttendanceQueryOptions,
@@ -33,12 +31,9 @@ import {
 import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
 import { useHandleSubmiisions } from "@/features/leave/hooks/useHandleSubmissions";
 
-// --- MAIN PAGE COMPONENT ---
 export default function Leave() {
   const formDataState = useFormData();
-  const roleComputationState = useRoleComputation();
 
-  // Extract form data
   const {
     user: { currentUser },
     form: {
@@ -80,13 +75,12 @@ export default function Leave() {
     computed: { dateDifference: difference },
   } = formDataState;
 
-  // Extract role data
+  const roleComputationState = useRoleComputation(currentUser);
   const {
     roles: { isAdminRole, isHRRole, isSupervisorRole, isApprover },
     calendar: { calendarScope, setCalendarScope },
   } = roleComputationState;
 
-  // Simple computations
   const normalizedEmploymentStatus = String(currentUser?.status || "")
     .trim()
     .toLowerCase();
@@ -103,7 +97,6 @@ export default function Leave() {
     ? leaveTypes.filter((type) => type !== "PGT Leave")
     : leaveTypes;
 
-  // --- QUERIES ---
   const { data: leaves = [], isLoading: isLoadingLeaves } =
     useQuery(leavesQueryOptions);
 
@@ -121,16 +114,11 @@ export default function Leave() {
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery(resignationQueryOptions);
 
-  // ✅ CALL useComputedValues
   const {
     user: {
       requests: { rows: myRequestRows, history: myRequestHistory },
     },
-    calendar: {
-      options: calendarScopeOptions,
-
-      filtered: calendarLeaves,
-    },
+    calendar: { options: calendarScopeOptions, filtered: calendarLeaves },
     approvals: {
       pending: {
         leaves: pendingLeaveApprovals,
@@ -154,7 +142,6 @@ export default function Leave() {
     currentUser,
   });
 
-  // --- MUTATIONS ---
   const {
     submitLeaveMutation,
     fileOffsetMutation,
@@ -173,7 +160,6 @@ export default function Leave() {
     formData,
   });
 
-  // --- HELPER FUNCTIONS ---
   const canHrDirectDecision = (item) => {
     const roleValue = String(item?.requester_role || "")
       .trim()
@@ -389,7 +375,6 @@ export default function Leave() {
         payload.approved_dates = selectedDates;
       }
 
-      // ✅ Only include remarks if denied
       if (isDenyDecision) {
         payload.supervisor_remarks = trimmedRemarks;
       }
@@ -464,10 +449,11 @@ export default function Leave() {
     }
   };
 
-  if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations)
+  if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations) {
     return (
       <div className="p-6 font-bold text-gray-800">Loading your data...</div>
     );
+  }
 
   return (
     <div className="max-w-full">
@@ -484,6 +470,7 @@ export default function Leave() {
         onShowMyPending={() => setMyPendingModalOpen(true)}
         onShowPendingApproval={() => setPendingModalOpen(true)}
       />
+
       <LeaveCalendar
         leaves={calendarLeaves}
         attendance={isAdminRole ? [] : myAttendance}
@@ -491,10 +478,12 @@ export default function Leave() {
         activeScope={calendarScope}
         onScopeChange={setCalendarScope}
       />
+
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <OffsetBalanceCard offsetBalance={offsetBalance} />
         <RequestHistoryTable myRequestHistory={myRequestHistory} />
       </div>
+
       <ModalsContainer
         applicationModalOpen={applicationModalOpen}
         currentUser={currentUser}
@@ -556,9 +545,11 @@ export default function Leave() {
         cancelPendingConfirm={cancelPendingConfirm}
         hrNoteConfirm={hrNoteConfirm}
         addHrNoteMutation={addHrNoteMutation}
+        reviewResignationMutation={reviewResignationMutation}
         showToast={showToast}
         submitCancellationRequest={submitCancellationRequest}
       />
+
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );

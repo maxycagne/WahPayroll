@@ -60,6 +60,7 @@ export default function LeaveCalendar({
         year={year}
         cells={cells}
         leaves={leaves}
+        attendance={attendance}
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
         selectedAttendance={selectedAttendance}

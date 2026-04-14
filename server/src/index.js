@@ -1,6 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import "./config/db.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js";
@@ -9,8 +9,6 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import hrReportsRoutes from "./routes/hrReportRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.ts";
-import profileRoutes from "./routes/profileRoutes.ts";
-dotenv.config();
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 8000;
@@ -40,8 +38,6 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/file", fileRoutes);
 app.use("/api/hr-reports", hrReportsRoutes);
 app.use("/api/leaves", leaveRoutes);
-app.use("/api/me", profileRoutes);
-
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

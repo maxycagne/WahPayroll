@@ -6,6 +6,7 @@ export default function PendingApprovalTable({
   canHrDirectDecision,
   isPendingApprovalStatus,
   openResignationDecisionConfirm,
+  openResignationReview,
   openLeaveDecisionConfirm,
   openOffsetDecisionConfirm,
   setHrNoteConfirm,
@@ -57,6 +58,7 @@ export default function PendingApprovalTable({
               canHrDirectDecision={canHrDirectDecision}
               isPendingApprovalStatus={isPendingApprovalStatus}
               openResignationDecisionConfirm={openResignationDecisionConfirm}
+              openResignationReview={openResignationReview}
               openLeaveDecisionConfirm={openLeaveDecisionConfirm}
               openOffsetDecisionConfirm={openOffsetDecisionConfirm}
               setHrNoteConfirm={setHrNoteConfirm}
