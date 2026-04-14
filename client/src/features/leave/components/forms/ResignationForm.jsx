@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
+import { mutationHandler } from "../../hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const resignationReasonOptions = [
   "Family and/or personal reasons",
@@ -154,9 +155,9 @@ export default function ResignationForm({
   const { data: resignationRecipient = null } = useQuery({
     queryKey: ["resignation-recipient", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/resignations/recipient");
-      if (!res.ok) return null;
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/resignations/recipient"),
+      );
     },
     enabled: Boolean(currentUser?.emp_id),
   });
@@ -164,12 +165,9 @@ export default function ResignationForm({
   const { data: resignationDraftData = null } = useQuery({
     queryKey: ["resignation-draft", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/resignations/draft");
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(result.message || "Failed to load resignation draft");
-      }
-      return result?.draft || null;
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/resignations/draft"),
+      );
     },
     enabled: Boolean(currentUser?.emp_id),
     refetchOnWindowFocus: false,
@@ -177,16 +175,14 @@ export default function ResignationForm({
 
   const saveResignationDraftMutation = useMutation({
     mutationFn: async ({ payload, step, interviewPart }) => {
-      const res = await apiFetch("/api/employees/resignations/draft", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payload, step, interviewPart }),
-      });
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(result.message || "Failed to save resignation draft");
-      }
-      return result;
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/resignations/draft"),
+        {
+          payload,
+          step,
+          interviewPart,
+        },
+      );
     },
     onError: (err) =>
       showToast(err.message || "Failed to auto-save draft.", "error"),
@@ -264,17 +260,14 @@ export default function ResignationForm({
     const formData = new FormData();
     formData.append("requiredFiles", file);
 
-    const res = await apiFetch("/api/file/upload", {
-      method: "POST",
-      body: formData,
-    });
+    const res = await mutationHandler(
+      axiosInterceptor.post("/api/file/upload", formData),
+    );
 
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(result.message || "File upload failed");
-    }
+    const result = res.data;
 
     const uploaded = Array.isArray(result.files) ? result.files[0] : null;
+
     if (!uploaded?.key) {
       throw new Error("Upload succeeded but no file key was returned");
     }
@@ -284,20 +277,23 @@ export default function ResignationForm({
 
   const loadUploadedEndorsementObjectUrl = async () => {
     const fileKey = String(form.endorsement_file_key || "").trim();
+
     if (!fileKey) {
       throw new Error("No uploaded endorsement file found.");
     }
 
-    const res = await apiFetch(
-      `/api/file/get?filename=${encodeURIComponent(fileKey)}`,
+    const res = await mutationHandler(
+      axiosInterceptor.get("/api/file/get", {
+        params: { filename: fileKey },
+        responseType: "blob",
+      }),
     );
-    if (!res.ok) {
-      throw new Error("Failed to retrieve uploaded endorsement file.");
-    }
 
-    const blob = await res.blob();
+    const blob = res.data;
+
     revokeEndorsementObjectUrl();
     endorsementObjectUrlRef.current = window.URL.createObjectURL(blob);
+
     return endorsementObjectUrlRef.current;
   };
 
@@ -404,7 +400,11 @@ export default function ResignationForm({
 
     const reasons = form.leaving_reasons || [];
     const reasonSummary = reasons.includes("Others")
-      ? `${reasons.filter((item) => item !== "Others").join(", ")}; Others: ${String(form.leaving_reason_other || "").trim()}`
+      ? `${reasons
+          .filter((item) => item !== "Others")
+          .join(
+            ", ",
+          )}; Others: ${String(form.leaving_reason_other || "").trim()}`
       : reasons.join(", ");
 
     const payload = {
@@ -423,23 +423,26 @@ export default function ResignationForm({
       endorsement_file_key: form.endorsement_file_key,
     };
 
-    if (fileResignationMutation?.mutate) {
-      fileResignationMutation.mutate(payload);
-      return;
-    }
+    try {
+      if (fileResignationMutation?.mutate) {
+        fileResignationMutation.mutate(payload);
+        return;
+      }
 
-    const res = await apiFetch("/api/employees/resignations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      showToast(result.message || "Failed to submit resignation", "error");
-      return;
+      await mutationHandler(
+        axiosInterceptor.post("/api/employees/resignations", payload),
+      );
+
+      showToast("Resignation filed successfully.");
+      setApplicationModalOpen(false);
+    } catch (error) {
+      showToast(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to submit resignation",
+        "error",
+      );
     }
-    showToast("Resignation filed successfully.");
-    setApplicationModalOpen(false);
   };
 
   return (

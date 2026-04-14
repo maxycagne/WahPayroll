@@ -15,10 +15,8 @@ import {
   Trash2,
 } from "lucide-react";
 import Sidebar from "./Sidebar";
-import { apiFetch } from "../lib/api";
 import axiosInterceptor from "../hooks/interceptor";
 import TopLoadingBar from "./TopLoading";
-import Skeleton from "react-loading-skeleton";
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
 

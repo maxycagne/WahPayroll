@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
 import { User } from "lucide-react";
 import {
   BarChart,
@@ -14,6 +13,8 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 export default function HRReports() {
   const [reportType, setReportType] = useState("leave");
@@ -28,12 +29,13 @@ export default function HRReports() {
   } = useQuery({
     queryKey: ["hr-reports", reportType, dateRange],
     queryFn: async () => {
-      const res = await apiFetch(
-        `/api/hr-reports?type=${reportType}&range=${dateRange}`,
+      const res = mutationHandler(
+        axiosInterceptor.get(
+          `/api/hr-reports?type=${reportType}&range=${dateRange}`,
+        ),
       );
-      if (!res.ok) throw new Error("Failed to fetch HR reports");
 
-      const rawData = await res.json();
+      const rawData = res.data;
 
       return rawData.map((item) => {
         const cleaned = { ...item };

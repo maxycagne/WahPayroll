@@ -26,7 +26,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { apiFetch } from "../lib/api";
 import Employees from "./Employees";
 import Attendance from "./Attendance";
 import Payroll from "./Payroll";
@@ -144,9 +143,9 @@ function EmployeeDashboard({ currentUser }) {
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/dashboard-summary");
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/dashboard-summary"),
+      );
     },
   });
 
@@ -154,9 +153,9 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/my-attendance`);
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/my-attendance`),
+      );
     },
   });
 
@@ -172,9 +171,9 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myOffsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/offset-applications");
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/offset-applications"),
+      );
     },
   });
 
@@ -453,47 +452,36 @@ function AdminDashboard({ currentUser }) {
 
   const [year, month] = period.split("-").map(Number);
 
-  const fetchDashboardData = async () => {
-    const res = await apiFetch("/api/employees/dashboard-summary", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return await res.json();
-  };
-
   const dashboardQuery = useQuery({
     queryKey: ["dashboardSummary"],
-    queryFn: fetchDashboardData,
+    queryFn: async () =>
+      mutationHandler(axiosInterceptor.get("/api/employees/dashboard-summary")),
   });
 
   const employeesQuery = useQuery({
     queryKey: ["dashboard-employees"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      if (!res.ok) throw new Error("Failed to fetch employees");
-      return res.json();
+      return mutationHandler(axiosInterceptor.get("/api/employees"));
     },
   });
 
   const payrollQuery = useQuery({
     queryKey: ["dashboard-payroll", period],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
-      if (!res.ok) throw new Error("Failed to fetch payroll snapshot");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+      );
     },
   });
 
   const attendanceSummaryQuery = useQuery({
     queryKey: ["dashboard-attendance-summary", year, month],
     queryFn: async () => {
-      const res = await apiFetch(
-        `/api/employees/attendance-summary?year=${year}&month=${month}`,
+      return mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/attendance-summary?year=${year}&month=${month}`,
+        ),
       );
-      if (!res.ok) throw new Error("Failed to fetch attendance summary");
-      return res.json();
     },
   });
 
@@ -619,15 +607,11 @@ function AdminDashboard({ currentUser }) {
 
   const handleUpdateLeaveStatus = async (id, payload) => {
     try {
-      const res = await apiFetch(`/api/employees/leaves/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      const res = await axiosInterceptor.put(`/api/employees/leaves/${id}`, {
+        payload,
       });
 
-      if (res.ok) {
+      if (res.status <= 201) {
         setApprovedLeaves(new Set([...approvedLeaves, id]));
         // Note: For a true refresh, use queryClient.invalidateQueries(["dashboardSummary"])
         // if you import useQueryClient. Otherwise, this visual state handles it.
@@ -1327,45 +1311,43 @@ function SupervisorDashboard({ currentUser }) {
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/dashboard-summary");
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/dashboard-summary"),
+      );
     },
   });
 
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/my-attendance");
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/my-attendance"),
+      );
     },
   });
 
   const { data: leaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/leaves");
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(axiosInterceptor.get("/api/employees/leaves"));
     },
   });
 
   const { data: offsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/offset-applications");
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/offset-applications"),
+      );
     },
   });
 
   const { data: resignations = [] } = useQuery({
     queryKey: ["resignations"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/resignations");
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/resignations"),
+      );
     },
   });
 

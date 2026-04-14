@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { apiFetch } from "../lib/api";
 
 export default function SalaryHistory() {
   const [selectedEmployee, setSelectedEmployee] = useState("WAH-001");
@@ -68,38 +67,47 @@ export default function SalaryHistory() {
 
   // 1. Fetch the list of employees on mount for the dropdown
   useEffect(() => {
-    apiFetch("/api/employees")
-      .then((res) => res.json())
-      .then((data) => {
+    (async () => {
+      try {
+        const { data } = await axiosInterceptor.get("/api/employees");
+
         if (Array.isArray(data)) {
           setEmployees(data);
-          // Default selection to the first employee
           if (data.length > 0) setSelectedEmployee(data[0].emp_id);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error fetching employees:", err);
+      } finally {
         setLoading(false);
-      });
+      }
+    })();
   }, []);
 
   // 2. Fetch salary history whenever the selected employee changes
   useEffect(() => {
     if (!selectedEmployee) return;
 
-    apiFetch(`/api/employees/salary-history/${selectedEmployee}`)
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchSalaryHistory = async () => {
+      try {
+        const res = await axiosInterceptor.get(
+          `/api/employees/salary-history/${selectedEmployee}`,
+        );
+
+        const data = res.data;
+
         if (Array.isArray(data)) {
           setSalaryRecords(data);
         } else {
           setSalaryRecords([]);
         }
-      })
-      .catch((err) => console.error("Error fetching salary records:", err));
-  }, [selectedEmployee]);
+      } catch (err) {
+        console.error("Error fetching salary records:", err);
+        setSalaryRecords([]);
+      }
+    };
 
+    fetchSalaryHistory();
+  }, [selectedEmployee]);
   // Calculation helpers (using Number() to handle MySQL DECIMAL strings)
   const getTotalChange = () => {
     return salaryRecords.reduce((sum, record) => {

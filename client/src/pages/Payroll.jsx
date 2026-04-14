@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -57,79 +58,6 @@ const toUiAdjustmentCategory = (rawType) => {
 
   return "Incentive";
 };
-
-const samplePayroll = [
-  {
-    id: "WAH-002",
-    name: "Rose Ann Biag",
-    basicPay: 38000,
-    absences: 0,
-    deductions: 0,
-    incentives: 2000,
-    gross: 40000,
-    net: 40000,
-  },
-  {
-    id: "WAH-003",
-    name: "Jhuvy Bondoc",
-    basicPay: 35000,
-    absences: 2,
-    deductions: 3000,
-    incentives: 1000,
-    gross: 33000,
-    net: 33000,
-  },
-  {
-    id: "WAH-004",
-    name: "Anna Katrina Yturralde",
-    basicPay: 35000,
-    absences: 0,
-    deductions: 0,
-    incentives: 1500,
-    gross: 36500,
-    net: 36500,
-  },
-  {
-    id: "WAH-005",
-    name: "Meryll Jen Lee",
-    basicPay: 25000,
-    absences: 3,
-    deductions: 4500,
-    incentives: 0,
-    gross: 20500,
-    net: 20500,
-  },
-  {
-    id: "WAH-006",
-    name: "Jaline Latoga",
-    basicPay: 28000,
-    absences: 1,
-    deductions: 1500,
-    incentives: 500,
-    gross: 27000,
-    net: 27000,
-  },
-  {
-    id: "WAH-007",
-    name: "Dominic Domantay",
-    basicPay: 22000,
-    absences: 0,
-    deductions: 0,
-    incentives: 1000,
-    gross: 23000,
-    net: 23000,
-  },
-  {
-    id: "WAH-008",
-    name: "Carla Shey Aguinaldo",
-    basicPay: 22000,
-    absences: 1,
-    deductions: 1500,
-    incentives: 0,
-    gross: 20500,
-    net: 20500,
-  },
-];
 
 const fmt = (n) => "₱" + n.toLocaleString();
 
@@ -277,18 +205,16 @@ export default function Payroll({ shortcutMode = false }) {
   const { data: payrollData = [], isLoading: isLoadingPayroll } = useQuery({
     queryKey: ["payroll", period],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
-      if (!res.ok) throw new Error("Failed to fetch payroll");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+      );
     },
   });
 
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      if (!res.ok) throw new Error("Failed to fetch employees");
-      return res.json();
+      return mutationHandler(axiosInterceptor.get(`/api/employees`));
     },
   });
 
@@ -301,11 +227,12 @@ export default function Payroll({ shortcutMode = false }) {
     enabled: Boolean(adjustmentModal?.emp_id),
     queryFn: async () => {
       const activePeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
-      const res = await apiFetch(
-        `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
+
+      return mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
+        ),
       );
-      if (!res.ok) throw new Error("Failed to fetch salary history");
-      return res.json();
     },
   });
 
@@ -314,16 +241,11 @@ export default function Payroll({ shortcutMode = false }) {
   // NEW: Individual Email Mutation
   const sendPayslipMutation = useMutation({
     mutationFn: async (emp_id) => {
-      const res = await apiFetch(
-        `/api/employees/payroll/${emp_id}/send-payslip`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ period }),
-        },
+      return mutationHandler(
+        axiosInterceptor.post(`/api/employees/payroll/${emp_id}/send-payslip`, {
+          period,
+        }),
       );
-      if (!res.ok) throw new Error("Failed to send payslip");
-      return res.json();
     },
     onSuccess: () => showToast("Payslip sent successfully!"),
     onError: () =>
@@ -332,21 +254,11 @@ export default function Payroll({ shortcutMode = false }) {
 
   const sendBulkPayslipsMutation = useMutation({
     mutationFn: async (selectedPeriod) => {
-      const res = await apiFetch(`/api/employees/payroll/send-bulk-payslips`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ period: selectedPeriod }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to send bulk payslips");
-      }
-
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post(`/api/employees/payroll/send-bulk-payslips`, {
+          period: selectedPeriod,
+        }),
+      );
     },
     onSuccess: (data) => {
       // Using the period from the mutation argument or state
@@ -363,36 +275,23 @@ export default function Payroll({ shortcutMode = false }) {
 
   const adjustmentMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch("/api/employees/salary-adjustment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to save adjustments");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/salary-adjustment", {
+          payload,
+        }),
+      );
     },
   });
 
   const updateHistoryEntryMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch(
-        `/api/employees/salary-history/${payload.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: payload.type,
-            amount: payload.amount,
-            description: payload.description,
-          }),
-        },
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/salary-history/${payload.id}`, {
+          type: payload.type,
+          amount: payload.amount,
+          description: payload.description,
+        }),
       );
-      if (!res.ok) throw new Error("Failed to update adjustment");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -407,11 +306,9 @@ export default function Payroll({ shortcutMode = false }) {
 
   const deleteHistoryEntryMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await apiFetch(`/api/employees/salary-history/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to remove adjustment");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.delete(`/api/employees/salary-history/${id}`),
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -425,15 +322,11 @@ export default function Payroll({ shortcutMode = false }) {
 
   const updateBaseSalaryMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch("/api/employees/update-base-salary", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to update base salary");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put("/api/employees/update-base-salary", {
+          payload,
+        }),
+      );
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -459,15 +352,11 @@ export default function Payroll({ shortcutMode = false }) {
 
   const generatePayrollMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiFetch("/api/employees/generate-payroll", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ period }),
-      });
-      if (!res.ok) throw new Error("Failed to generate payroll");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/generate-payroll", {
+          period: period,
+        }),
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -478,14 +367,11 @@ export default function Payroll({ shortcutMode = false }) {
 
   const resetPayrollMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiFetch("/api/employees/reset-payroll", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) throw new Error("Failed to reset payroll data");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/reset-payroll", {
+          payload,
+        }),
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });

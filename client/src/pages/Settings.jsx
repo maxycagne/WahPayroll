@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
@@ -72,13 +73,11 @@ export default function Settings() {
   // Profile Update Mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch(`/api/employees/me/profile`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update profile");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/me/profile`, {
+          data,
+        }),
+      );
     },
     onSuccess: () => showToast("Profile updated successfully."),
     onError: () => showToast("Error updating profile.", "error"),
@@ -87,15 +86,12 @@ export default function Settings() {
   // Password Change Mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch(`/api/employees/me/change-password`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (!res.ok)
-        throw new Error(result.message || "Failed to change password");
-      return result;
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/me/change-password`),
+        {
+          data,
+        },
+      );
     },
     onSuccess: () => {
       showToast("Password changed successfully.");
