@@ -213,6 +213,7 @@ export const sendBulkPayslips = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
       ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
     });
 
     let successCount = 0;
