@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useIsFetching,
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Bell,
   CheckCheck,
@@ -11,7 +17,8 @@ import {
 import Sidebar from "./Sidebar";
 import { apiFetch } from "../lib/api";
 import axiosInterceptor from "../hooks/interceptor";
-
+import TopLoadingBar from "./TopLoading";
+import Skeleton from "react-loading-skeleton";
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
 
@@ -141,8 +148,11 @@ export default function MainLayout({ role }) {
     };
   }, [openNotifications]);
 
+  const isMutating = useIsMutating();
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
+      {isMutating ? <TopLoadingBar show={true}></TopLoadingBar> : <></>}
+
       <header className="sticky top-0 z-20 border-b border-white/15 bg-gradient-to-r from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] px-4 py-3 text-white shadow-sm backdrop-blur md:px-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -282,6 +292,7 @@ export default function MainLayout({ role }) {
           isCollapsed={isSidebarCollapsed}
           onLogout={() => setShowLogoutConfirmation(true)}
         />
+
         <main className="h-full overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>

@@ -10,7 +10,7 @@ import { authenticateToken } from "../middleware/authMiddleware";
 import { deleteFile } from "../functions/deleteFile";
 import { checkFileExist } from "../middleware/checkFileExist";
 import { upload } from "../middleware/upload";
-import { uploadProfile } from "../functions/uploadProfile";
+// import { uploadProfile } from "../functions/uploadProfile";
 import { FileHandle } from "fs/promises";
 
 const router = express.Router();
@@ -25,11 +25,11 @@ router.post(
 router.get("/get", retrieveFile);
 router.delete("/delete", checkFileExist, deleteFile);
 
-router.post(
-  "/uploadProfile",
-  upload.single("profile-picture"),
-  // checkFileExist,
-  uploadProfile,
-);
+// router.post(
+//   "/uploadProfile",
+//   upload.single("profile-picture"),
+//   // checkFileExist,
+//   uploadProfile,
+// );
 
 export default router;

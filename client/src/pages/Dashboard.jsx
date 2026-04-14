@@ -30,6 +30,8 @@ import { apiFetch } from "../lib/api";
 import Employees from "./Employees";
 import Attendance from "./Attendance";
 import Payroll from "./Payroll";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 function parseDateOnly(value) {
   if (value instanceof Date)
@@ -162,9 +164,7 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myLeaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/leaves");
-      if (!res.ok) return [];
-      return res.json();
+      return mutationHandler(axiosInterceptor.get("api/leaves/"));
     },
   });
 

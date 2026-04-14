@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
+import useCurrentUserStore from "@/store/useCurrentUserStore";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -33,6 +34,7 @@ export default function Login() {
         password,
       });
       const data = res.data;
+
       handleLocalLogin(data.token, data.user);
       window.location.href =
         data.user.role === "HR" ? "/hr-dashboard" : "/dashboard";
