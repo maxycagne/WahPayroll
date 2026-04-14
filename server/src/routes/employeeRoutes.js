@@ -54,7 +54,14 @@ import {
   requestMyOffsetCancellation,
   requestMyLeaveCancellation,
   addHrNoteToPendingRequest,
+  getFileManagementInventory,
+  getFileTemplates,
+  uploadFileTemplate,
+  replaceFileTemplate,
+  downloadFileTemplate,
+  deleteFileTemplate,
   uploadProfilePhoto,
+  replaceResignationFile,
   updateMyProfile,
   changeMyPassword,
 } from "../controllers/employeeController.js";
@@ -210,6 +217,11 @@ router.post(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   uploadResignationClearance,
 );
+router.put(
+  "/resignations/:id/file",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  replaceResignationFile,
+);
 
 router.get(
   "/offset-balance/:emp_id",
@@ -315,6 +327,12 @@ router.get(
   getPayrollReports,
 );
 
+router.get(
+  "/file-management",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getFileManagementInventory,
+);
+
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
@@ -333,17 +351,56 @@ const photoStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
+    const targetEmpId = req.params?.emp_id || req.user?.emp_id;
     cb(
       null,
-      `avatar-${req.user.emp_id}-${Date.now()}${path.extname(file.originalname)}`,
+      `avatar-${targetEmpId}-${Date.now()}${path.extname(file.originalname)}`,
     );
   },
 });
 const uploadPhoto = multer({ storage: photoStorage });
+const uploadTemplate = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1024 * 1024 * 15 },
+});
+
+router.get(
+  "/file-templates",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  getFileTemplates,
+);
+router.get(
+  "/file-templates/:id/download",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  downloadFileTemplate,
+);
+router.post(
+  "/file-templates",
+  authorizeRoles("Admin", "HR"),
+  uploadTemplate.single("template_file"),
+  uploadFileTemplate,
+);
+router.put(
+  "/file-templates/:id",
+  authorizeRoles("Admin", "HR"),
+  uploadTemplate.single("template_file"),
+  replaceFileTemplate,
+);
+router.delete(
+  "/file-templates/:id",
+  authorizeRoles("Admin", "HR"),
+  deleteFileTemplate,
+);
 
 // ADD THESE ROUTES (Put them under your router.use(authenticateToken) line)
 router.post(
   "/me/photo",
+  uploadPhoto.single("profile_photo"),
+  uploadProfilePhoto,
+);
+router.post(
+  "/employees/:emp_id/photo",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   uploadPhoto.single("profile_photo"),
   uploadProfilePhoto,
 );
