@@ -8,7 +8,7 @@ import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
 import Settings from "./pages/Settings";
-import FileManagement from "./pages/FileManagement";
+import FileManagement from "./pages/FileManagement1";
 
 // HR & Reports Pages
 import HRDashboard from "./pages/HRDashboard";
@@ -117,7 +117,7 @@ function AppRoutes({ user }) {
             }
           />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/file-management" element={  
+          <Route path="/file-management1" element={  
             <RoleProtectedRoute
                 user={user}
                 allowedRoles={["Admin", "Supervisor", "HR"]}
