@@ -30,11 +30,12 @@ export default function Login() {
 
   const login = useMutation({
     mutationFn: async ({ username, password }) => {
-      const res = await axios.post("http://localhost:8000/api/auth/login", {
+      const res = await axiosInterceptor.post("/api/auth/login", {
         username,
         password,
       });
       const data = res.data;
+
       handleLocalLogin(data.token, data.user);
       window.location.href =
         data.user.role === "HR" ? "/hr-dashboard" : "/dashboard";

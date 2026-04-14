@@ -80,16 +80,18 @@ export const fileLeave: RequestHandler = async (
         message: "Job Order employees cannot file PGT Leave",
       });
     }
-
-    const keyItem = `OCP/${requesterEmpId}/${Date.now()}-${reqType.file?.originalname}`;
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: keyItem,
-        Body: reqType.file?.buffer,
-        ContentType: reqType.file?.mimetype,
-      }),
-    );
+    let keyItem = null;
+    if (req.file) {
+      keyItem = `OCP/${requesterEmpId}/${Date.now()}-${reqType.file?.originalname}`;
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: keyItem,
+          Body: reqType.file?.buffer,
+          ContentType: reqType.file?.mimetype,
+        }),
+      );
+    }
 
     await connection.query(
       `
