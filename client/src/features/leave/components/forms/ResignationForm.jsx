@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-<<<<<<< HEAD
-=======
-import axiosInterceptor from "@/hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
->>>>>>> a9f2c9ac96a92686450d7be069d5b39de1b09d71
 import { useToast } from "@/hooks/useToast";
 import { mutationHandler } from "../../hooks/createMutationHandler";
 import axiosInterceptor from "@/hooks/interceptor";
@@ -433,21 +428,29 @@ export default function ResignationForm({
     };
 
     try {
+      // React Query mutation fallback
       if (fileResignationMutation?.mutate) {
         fileResignationMutation.mutate(payload);
         return;
       }
+
+      // axios + mutationHandler
       await mutationHandler(
         axiosInterceptor.post("/api/employees/resignations", payload),
         "Failed to submit resignation",
       );
+
       showToast("Resignation filed successfully.");
       setApplicationModalOpen(false);
- } catch (error) {
-      showToast(error.message || "Failed to submit resignation", "error");
+    } catch (error) {
+      showToast(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to submit resignation",
+        "error",
+      );
     }
   };
-
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
