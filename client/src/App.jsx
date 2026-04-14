@@ -117,13 +117,17 @@ function AppRoutes({ user }) {
             }
           />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/file-management" element={  
-            <RoleProtectedRoute
+          <Route
+            path="/file-management"
+            element={
+              <RoleProtectedRoute
                 user={user}
                 allowedRoles={["Admin", "Supervisor", "HR", "RankAndFile"]}
               >
                 <FileManagement />
-              </RoleProtectedRoute>} />
+              </RoleProtectedRoute>
+            }
+          />
 
           {/* PROTECTED: Payroll is only for Admin and Supervisor */}
           <Route

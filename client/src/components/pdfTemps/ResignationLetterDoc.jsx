@@ -61,7 +61,8 @@ const ResignationLetterDoc = ({
   letterBody = "",
   position = "",
 }) => {
-  const resolvedDate = formatReadableDate(resignationDate) || formatReadableDate(lastWorkingDay);
+  const resolvedDate =
+    formatReadableDate(resignationDate) || formatReadableDate(lastWorkingDay);
 
   return (
     <Document>
@@ -74,7 +75,9 @@ const ResignationLetterDoc = ({
 
         <Text style={styles.subject}>Subject: Resignation Letter</Text>
 
-        <Text style={styles.paragraph}>Dear {recipientName || "Sir/Madam"},</Text>
+        <Text style={styles.paragraph}>
+          Dear {recipientName || "Sir/Madam"},
+        </Text>
 
         <Text style={styles.paragraph}>
           {letterBody ||
@@ -88,7 +91,8 @@ const ResignationLetterDoc = ({
         ) : null}
 
         <Text style={styles.paragraph}>
-          Thank you for the guidance and opportunities extended to me during my employment.
+          Thank you for the guidance and opportunities extended to me during my
+          employment.
         </Text>
 
         <Text style={styles.paragraph}>Sincerely,</Text>
