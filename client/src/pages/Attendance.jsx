@@ -84,26 +84,27 @@ export default function Attendance({ shortcutMode = false }) {
   const { data: attendance = [], isLoading } = useQuery({
     queryKey: ["attendance"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/attendance");
-      if (!res.ok) throw new Error("Failed to fetch attendance");
-      return res.json();
+      const res = await axiosInterceptor.get("/api/employees/attendance");
+      if (res.status !== 200) throw new Error("Failed to fetch attendance");
+      return res.data;
     },
   });
 
   const { data: calendarSummary = [] } = useQuery({
     queryKey: ["attendance-calendar", year, month],
     queryFn: async () => {
-      const res = await apiFetch(
+      const res = await axiosInterceptor.get(
         `/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
       );
-      return res.json();
+      if (res.status !== 200) throw new Error("Failed to fetch attendance");
+      return res.data;
     },
   });
 
   const { data: workweekConfigs = [] } = useQuery({
     queryKey: ["workweek-config"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/workweek-config");
+      const res = await axiosInterceptor.get("/api/employees/workweek-config");
       if (!res.ok) throw new Error("Failed to fetch workweek config");
       return res.json();
     },
@@ -112,10 +113,12 @@ export default function Attendance({ shortcutMode = false }) {
   const { data: dailyList = [], isLoading: dailyLoading } = useQuery({
     queryKey: ["attendance-daily", selectedDate],
     queryFn: async () => {
-      const res = await apiFetch(
+      const res = await axiosInterceptor.get(
         `/api/employees/attendance-daily?date=${selectedDate}`,
       );
-      const data = await res.json();
+
+      if (!res.ok) throw new Error("Failed to fetch selected date");
+      const data = res.data;
 
       const initialForm = {};
       const initialSecondary = {};
@@ -134,13 +137,12 @@ export default function Attendance({ shortcutMode = false }) {
   // --- MUTATIONS ---
   const adjustBalanceMutation = useMutation({
     mutationFn: async ({ empId, amount }) => {
-      const res = await apiFetch(`/api/employees/leave-balance/${empId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await axiosInterceptor.put(
+        `/api/employees/leave-balance/${empId}`,
+        {
+          adjustment: amount,
         },
-        body: JSON.stringify({ adjustment: amount }),
-      });
+      );
       if (!res.ok) throw new Error("Failed to adjust leave balance");
     },
     onSuccess: () => {
@@ -175,18 +177,19 @@ export default function Attendance({ shortcutMode = false }) {
 
   const saveWorkweekMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch("/api/employees/workweek-config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await axiosInterceptor.post(
+        "/api/employees/workweek-config",
+        {
+          payload,
         },
-        body: JSON.stringify(payload),
-      });
+      );
 
-      const data = await res.json();
-      if (!res.ok) {
+      if (res.status !== 200) {
         throw new Error(data.message || "Failed to save workweek config");
       }
+
+      const data = res.data;
+
       return data;
     },
     onSuccess: () => {
@@ -204,18 +207,18 @@ export default function Attendance({ shortcutMode = false }) {
 
   const updateWorkweekMutation = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const res = await apiFetch(`/api/employees/workweek-config/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await axiosInterceptor.get(
+        `/api/employees/workweek-config/${id}`,
+        {
+          payload,
         },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
+      );
+      if (res.status !== 200) {
         throw new Error(data.message || "Failed to update workweek config");
       }
+
+      const data = res.data;
+
       return data;
     },
     onSuccess: () => {
@@ -234,14 +237,14 @@ export default function Attendance({ shortcutMode = false }) {
 
   const deleteWorkweekMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await apiFetch(`/api/employees/workweek-config/${id}`, {
-        method: "DELETE",
-      });
+      const res = await axiosInterceptor.delete(
+        `/api/employees/workweek-config/${id}`,
+      );
 
-      const data = await res.json();
-      if (!res.ok) {
+      if (res.status !== 200) {
         throw new Error(data.message || "Failed to delete workweek config");
       }
+      const data = res.data;
       return data;
     },
     onSuccess: () => {
