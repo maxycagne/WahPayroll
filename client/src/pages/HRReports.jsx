@@ -19,7 +19,7 @@ export default function HRReports() {
   const [reportType, setReportType] = useState("leave");
   const [dateRange, setDateRange] = useState("month");
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const {
     data: dynamicData = [],

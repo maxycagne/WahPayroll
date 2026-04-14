@@ -900,12 +900,49 @@ export const getFileManagementInventory = async (req, res) => {
     const files = [];
 
     employees.forEach((employee) => {
+      const employeeName = safeEmployeeDisplayName(employee);
+
+      files.push({
+        id: `employee-${employee.emp_id}-nda-generated`,
+        emp_id: employee.emp_id,
+        employee_name: employeeName,
+        position: employee.position || "-",
+        designation: employee.designation || "-",
+        role: employee.role || "RankAndFile",
+        source: "generated",
+        file_status: "generated",
+        record_id: employee.emp_id,
+        application_id: null,
+        file_group: `employee-${employee.emp_id}-nda`,
+        file_field: null,
+        template_type: "nda",
+        file_type: "NDA Form",
+        file_key: null,
+        file_name: `nda-${employee.emp_id}.pdf`,
+        uploaded_at: employee.updated_at || employee.created_at || null,
+        download_url: null,
+        replaceable: false,
+        request_status: null,
+        request_type: "Employee NDA",
+        document_data: {
+          emp_id: employee.emp_id,
+          employee_name: employeeName,
+          first_name: employee.first_name || "",
+          last_name: employee.last_name || "",
+          position: employee.position || "",
+          designation: employee.designation || "",
+          role: normalizeRole(employee.role),
+          employee_address: "",
+          generated_at: employee.updated_at || employee.created_at || null,
+        },
+      });
+
       if (!String(employee.profile_photo || "").trim()) return;
 
       files.push({
         id: `profile-${employee.emp_id}`,
         emp_id: employee.emp_id,
-        employee_name: safeEmployeeDisplayName(employee),
+        employee_name: employeeName,
         position: employee.position || "-",
         designation: employee.designation || "-",
         role: employee.role || "RankAndFile",
@@ -988,7 +1025,6 @@ export const getFileManagementInventory = async (req, res) => {
 
       if (isApproved) {
         addGeneratedDocument("exit_clearance", "Exit Clearance Form");
-        addGeneratedDocument("nda", "NDA Form");
       }
 
       if (String(row.endorsement_file_key || "").trim()) {
