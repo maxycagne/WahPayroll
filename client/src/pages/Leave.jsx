@@ -1,391 +1,556 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import Toast from "../components/Toast";
+import {
+  parseDateOnly,
+  getDateDiffInclusive,
+  calculateBusinessDays,
+  getDateRangeInclusive,
+} from "@/features/leave/utils/date.utils";
+import { getOffsetRequestedDays } from "@/features/leave/utils/leave.utils";
+import {
+  leaveTypes,
+  resignationTypes,
+  leavePolicy,
+} from "@/features/leave/leaveConstants";
 
-const leaveTypes = [
-  "Birthday Leave",
-  "Vacation Leave",
-  "Sick Leave",
-  "PGT Leave",
-];
-
-const sampleLeaves = [
-  {
-    id: 1,
-    empId: "WAH-006",
-    name: "Jaline Latoga",
-    type: "Vacation Leave",
-    from: "2026-03-15",
-    to: "2026-03-17",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    empId: "WAH-007",
-    name: "Dominic Domantay",
-    type: "Sick Leave",
-    from: "2026-03-10",
-    to: "2026-03-11",
-    status: "Approved",
-  },
-  {
-    id: 3,
-    empId: "WAH-010",
-    name: "John Vincent Antonio",
-    type: "Birthday Leave",
-    from: "2026-01-10",
-    to: "2026-01-10",
-    status: "Approved",
-  },
-  {
-    id: 4,
-    empId: "WAH-008",
-    name: "Carla Shey Aguinaldo",
-    type: "PGT Leave",
-    from: "2026-03-20",
-    to: "2026-03-21",
-    status: "Pending",
-  },
-  {
-    id: 5,
-    empId: "WAH-005",
-    name: "Meryll Jen Lee",
-    type: "Vacation Leave",
-    from: "2026-03-12",
-    to: "2026-03-14",
-    status: "Denied",
-  },
-];
-
-function isInRange(date, from, to) {
-  return date >= from && date <= to;
-}
-
-function getDaysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function LeaveCalendar({ leaves }) {
-  const [viewDate, setViewDate] = useState(new Date(2026, 2, 1));
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = new Date(year, month, 1).getDay();
-  const monthName = viewDate.toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
-
-  const [selectedDate, setSelectedDate] = useState(null);
-
-  const activeLeaves = leaves.filter((l) => l.status !== "Denied");
-
-  function getLeavesForDate(dateStr) {
-    return activeLeaves.filter((l) => isInRange(dateStr, l.from, l.to));
-  }
-
-  function pad(n) {
-    return n < 10 ? "0" + n : "" + n;
-  }
-
-  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
-
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const selectedDateStr = selectedDate
-    ? `${year}-${pad(month + 1)}-${pad(selectedDate)}`
-    : null;
-  const selectedLeaves = selectedDateStr
-    ? getLeavesForDate(selectedDateStr)
-    : [];
-
-  return (
-    <div className="bg-white rounded-xl p-5 mb-6 border border-wah-border">
-      <div className="flex items-center justify-between mb-3">
-        <button
-          className="bg-transparent border-none text-base cursor-pointer text-wah-primary px-2.5 py-1 rounded-md hover:bg-purple-50"
-          onClick={prevMonth}
-        >
-          ◀
-        </button>
-        <h3 className="m-0 text-wah-dark text-[1.1rem]">{monthName}</h3>
-        <button
-          className="bg-transparent border-none text-base cursor-pointer text-wah-primary px-2.5 py-1 rounded-md hover:bg-purple-50"
-          onClick={nextMonth}
-        >
-          ▶
-        </button>
-      </div>
-      <div className="grid grid-cols-7 gap-1">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div
-            key={d}
-            className="text-center text-xs font-semibold text-gray-400 py-1"
-          >
-            {d}
-          </div>
-        ))}
-        {cells.map((day, i) => {
-          if (day === null)
-            return <div key={"e" + i} className="aspect-square" />;
-          const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-          const count = getLeavesForDate(dateStr).length;
-          const isSelected = day === selectedDate;
-          return (
-            <div
-              key={i}
-              className={`aspect-square flex flex-col items-center justify-center rounded-lg cursor-pointer relative text-[0.88rem] transition-colors duration-100 hover:bg-purple-50 ${count > 0 && !isSelected ? "bg-purple-100" : ""} ${isSelected ? "bg-wah-primary text-white" : ""}`}
-              onClick={() => setSelectedDate(day === selectedDate ? null : day)}
-            >
-              <span className="font-medium">{day}</span>
-              {count > 0 && (
-                <span
-                  className={`w-[18px] h-[18px] rounded-full text-[0.65rem] font-bold grid place-items-center mt-0.5 ${isSelected ? "bg-white text-wah-primary" : "bg-wah-primary text-white"}`}
-                >
-                  {count}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {selectedDate && (
-        <div className="mt-4 pt-3.5 border-t border-wah-border">
-          <h4 className="m-0 mb-2.5 text-wah-dark text-[0.95rem]">
-            Leaves on {monthName.split(" ")[0]} {selectedDate}, {year}
-          </h4>
-          {selectedLeaves.length === 0 ? (
-            <p className="text-gray-400 text-sm">No leaves on this date.</p>
-          ) : (
-            <ul className="list-none m-0 p-0 flex flex-col gap-2">
-              {selectedLeaves.map((l) => (
-                <li key={l.id} className="flex items-center gap-2 text-sm">
-                  <strong>{l.name}</strong> — {l.type}
-                  <span
-                    className={`px-3 py-0.5 rounded-full text-[0.78rem] font-semibold ${l.status === "Approved" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-                  >
-                    {l.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const badgeClass = {
-  Approved: "bg-green-100 text-green-800",
-  Denied: "bg-red-100 text-red-800",
-  Pending: "bg-yellow-100 text-yellow-800",
-};
+import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
+import ActionButtons from "@/features/leave/components/ActionButtons";
+import OffsetBalanceCard from "@/features/leave/components/OffsetBalanceCard";
+import RequestHistoryTable from "@/features/leave/components/RequestHistoryTable";
+import ModalsContainer from "@/features/leave/components/modals/ModalsContainer";
+import { useFormData } from "@/features/leave/hooks/useFormData";
+import { useRoleComputation } from "@/features/leave/hooks/useRoleComputation";
+import { useComputedValues } from "@/features/leave/hooks/useLeaveComputedValues";
+import {
+  leavesQueryOptions,
+  myAttendanceQueryOptions,
+  offsetApplicationsQueryOptions,
+  offsetBalanceQueryOptions,
+  resignationQueryOptions,
+} from "@/features/leave/utils/query.utils";
+import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
+import { useHandleSubmiisions } from "@/features/leave/hooks/useHandleSubmissions";
 
 export default function Leave() {
-  const [showForm, setShowForm] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const formDataState = useFormData();
+
+  const {
+    user: { currentUser },
+    form: {
+      data: formData,
+      setData: setFormData,
+      error: formError,
+      setError: setFormError,
+      resignation: resignationForm,
+      setResignation: setResignationForm,
+    },
+    modals: {
+      application: {
+        isOpen: applicationModalOpen,
+        setOpen: setApplicationModalOpen,
+        type: applicationType,
+        setType: setApplicationType,
+      },
+      myPending: { isOpen: myPendingModalOpen, setOpen: setMyPendingModalOpen },
+      pending: {
+        isOpen: pendingModalOpen,
+        setOpen: setPendingModalOpen,
+        typeFilter: pendingTypeFilter,
+        setTypeFilter: setPendingTypeFilter,
+      },
+    },
+    confirmations: {
+      action: confirmAction,
+      setAction: setConfirmAction,
+      review: reviewConfirm,
+      setReview: setReviewConfirm,
+      cancelApproval: cancelApprovalConfirm,
+      setCancelApproval: setCancelApprovalConfirm,
+      cancelPending: cancelPendingConfirm,
+      setCancelPending: setCancelPendingConfirm,
+      hrNote: hrNoteConfirm,
+      setHrNote: setHrNoteConfirm,
+    },
+    toast: { instance: toast, show: showToast, clear: clearToast },
+    computed: { dateDifference: difference },
+  } = formDataState;
+
+  const roleComputationState = useRoleComputation(currentUser);
+  const {
+    roles: { isAdminRole, isHRRole, isSupervisorRole, isApprover },
+    calendar: { calendarScope, setCalendarScope },
+  } = roleComputationState;
+
+  const normalizedEmploymentStatus = String(currentUser?.status || "")
+    .trim()
+    .toLowerCase();
+  const isJobOrderEmployee = normalizedEmploymentStatus === "job order";
+
+  const isPendingApprovalStatus = (status) => {
+    const normalized = String(status || "")
+      .trim()
+      .toLowerCase();
+    return normalized === "pending" || normalized === "pending approval";
+  };
+
+  const availableLeaveTypes = isJobOrderEmployee
+    ? leaveTypes.filter((type) => type !== "PGT Leave")
+    : leaveTypes;
+
+  const { data: leaves = [], isLoading: isLoadingLeaves } =
+    useQuery(leavesQueryOptions);
+
+  const { data: myAttendance = [] } = useQuery(
+    myAttendanceQueryOptions(currentUser?.emp_id || ""),
+  );
+
+  const { data: offsetApplications = [], isLoading: isLoadingOffsets } =
+    useQuery(offsetApplicationsQueryOptions);
+
+  const { data: offsetBalance = {} } = useQuery(
+    offsetBalanceQueryOptions(currentUser?.emp_id || ""),
+  );
+
+  const { data: myResignations = [], isLoading: isLoadingResignations } =
+    useQuery(resignationQueryOptions);
+
+  const {
+    user: {
+      requests: { rows: myRequestRows, history: myRequestHistory },
+    },
+    calendar: { options: calendarScopeOptions, filtered: calendarLeaves },
+    approvals: {
+      pending: {
+        leaves: pendingLeaveApprovals,
+        offsets: pendingOffsetApprovals,
+        resignations: pendingResignationApprovals,
+      },
+      all: allPendingRequests,
+      filtered: filteredPendingRequests,
+      total: totalPendingCount,
+    },
+  } = useComputedValues({
+    leaves,
+    offsetApplications,
+    myResignations,
+    isAdminRole,
+    isHRRole,
+    isSupervisorRole,
+    isApprover,
+    calendarScope,
+    pendingTypeFilter,
+    currentUser,
+  });
+
+  const {
+    submitLeaveMutation,
+    fileOffsetMutation,
+    fileResignationMutation,
+    reviewLeaveMutation,
+    reviewOffsetMutation,
+    cancelMyPendingRequestMutation,
+    requestCancellationApprovalMutation,
+    addHrNoteMutation,
+    reviewResignationMutation,
+  } = useRequestMutation({
+    showToast,
+    setApplicationModalOpen,
+    setResignationForm,
+    setFormData,
+    formData,
+  });
+
+  const canHrDirectDecision = (item) => {
+    const roleValue = String(item?.requester_role || "")
+      .trim()
+      .toLowerCase();
+    return roleValue === "supervisor";
+  };
+
+  const { handleSubmitLeave } = useHandleSubmiisions({
+    formData,
+    setFormError,
+    setConfirmAction,
+  });
+
+  const handleLeaveTypeChange = (e) => {
+    const newLeaveType = e.target.value;
+    const newToDate =
+      newLeaveType === "Birthday Leave" && formData.fromDate
+        ? formData.fromDate
+        : "";
+    setFormData({
+      ...formData,
+      leaveType: newLeaveType,
+      toDate: newToDate,
+      daysApplied: "",
+    });
+    setFormError("");
+  };
+
+  const submitCancellationRequest = (item, cancellationReason) => {
+    const trimmedReason = String(cancellationReason || "").trim();
+    if (!trimmedReason) {
+      showToast("Cancellation reason is required.", "error");
+      return;
+    }
+
+    requestCancellationApprovalMutation.mutate({
+      item,
+      cancellationReason: trimmedReason,
+    });
+  };
+
+  const handleFromDateChange = (e) => {
+    const newFromDate = e.target.value;
+    const newToDate =
+      formData.leaveType === "Birthday Leave" ? newFromDate : "";
+    setFormData({ ...formData, fromDate: newFromDate, toDate: newToDate });
+    setFormError("");
+  };
+
+  const handleToDateChange = (e) => {
+    const toDate = e.target.value;
+    if (!toDate) {
+      setFormData({ ...formData, toDate: "" });
+      setFormError("");
+      return;
+    }
+
+    if (formData.leaveType !== "Offset") {
+      const policy = leavePolicy[formData.leaveType];
+      if (formData.fromDate && toDate && policy) {
+        const businessDays = calculateBusinessDays(
+          new Date(formData.fromDate),
+          new Date(toDate),
+        );
+        if (businessDays > policy.maxDays) {
+          setFormError(
+            `Maximum ${policy.maxDays} business day(s) allowed for ${formData.leaveType}`,
+          );
+          return;
+        }
+      }
+    }
+    setFormData({ ...formData, toDate });
+    setFormError("");
+  };
+
+  const getMaxToDate = () => {
+    if (!formData.fromDate || formData.leaveType === "Offset") return "";
+    const policy = leavePolicy[formData.leaveType];
+    const startDate = new Date(formData.fromDate);
+    let daysAdded = 0;
+    const maxDays = policy.maxDays;
+    while (daysAdded < maxDays) {
+      startDate.setDate(startDate.getDate() + 1);
+      if (startDate.getDay() !== 0 && startDate.getDay() !== 6) daysAdded++;
+    }
+    return startDate.toISOString().split("T")[0];
+  };
+
+  const openLeaveDecisionConfirm = (
+    item,
+    status,
+    decisionMode = "application",
+  ) => {
+    const totalDays = getDateDiffInclusive(item.date_from, item.date_to);
+    const requestedDates = getDateRangeInclusive(item.date_from, item.date_to);
+    const isMultiDay = totalDays > 1;
+
+    setReviewConfirm({
+      module: "leave",
+      status,
+      decisionMode,
+      item,
+      isMultiDay,
+      totalDays,
+      selectedDates: status === "Approved" ? requestedDates : [],
+      remarks: "",
+    });
+  };
+
+  const openOffsetDecisionConfirm = (
+    item,
+    status,
+    decisionMode = "application",
+  ) => {
+    const totalDays = getOffsetRequestedDays(item);
+    const isMultiDay = totalDays > 1;
+
+    setReviewConfirm({
+      module: "offset",
+      status,
+      decisionMode,
+      item,
+      isMultiDay,
+      isPartial: false,
+      approvedDays: totalDays,
+      remarks: "",
+    });
+  };
+
+  const openResignationDecisionConfirm = (
+    item,
+    status,
+    decisionMode = "application",
+  ) => {
+    setReviewConfirm({
+      module: "resignation",
+      status,
+      decisionMode,
+      item,
+      remarks: "",
+    });
+  };
+
+  const toggleLeaveApprovedDate = (date) => {
+    if (!reviewConfirm || reviewConfirm.module !== "leave") return;
+    const selected = new Set(reviewConfirm.selectedDates || []);
+    if (selected.has(date)) selected.delete(date);
+    else selected.add(date);
+    setReviewConfirm({
+      ...reviewConfirm,
+      selectedDates: Array.from(selected).sort(),
+    });
+  };
+
+  const submitReviewDecision = () => {
+    if (!reviewConfirm) return;
+
+    const trimmedRemarks = String(reviewConfirm.remarks || "").trim();
+    const isDenyDecision = reviewConfirm.status === "Denied";
+
+    if (isDenyDecision && !trimmedRemarks) {
+      showToast("Reason is required for denial.", "error");
+      return;
+    }
+
+    if (reviewConfirm.module === "leave") {
+      if (reviewConfirm.decisionMode === "cancellation") {
+        reviewLeaveMutation.mutate({
+          id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
+          status: reviewConfirm.status,
+          decision_mode: "cancellation",
+          supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
+        });
+        setReviewConfirm(null);
+        return;
+      }
+
+      const requestedDates = getDateRangeInclusive(
+        reviewConfirm.item.date_from,
+        reviewConfirm.item.date_to,
+      );
+      const selectedDates = reviewConfirm.selectedDates || [];
+
+      if (
+        reviewConfirm.status === "Approved" &&
+        reviewConfirm.isMultiDay &&
+        selectedDates.length === 0
+      ) {
+        showToast("Select at least one day to approve.", "error");
+        return;
+      }
+
+      const isPartialApproval =
+        reviewConfirm.status === "Approved" &&
+        reviewConfirm.isMultiDay &&
+        selectedDates.length < requestedDates.length;
+
+      const payload = {
+        id: reviewConfirm.item.id,
+        item: reviewConfirm.item,
+        status:
+          reviewConfirm.status === "Denied"
+            ? "Denied"
+            : isPartialApproval
+              ? "Partially Approved"
+              : "Approved",
+      };
+
+      if (isPartialApproval) {
+        payload.approved_days = selectedDates.length;
+        payload.approved_dates = selectedDates;
+      }
+
+      if (isDenyDecision) {
+        payload.supervisor_remarks = trimmedRemarks;
+      }
+
+      reviewLeaveMutation.mutate(payload);
+      setReviewConfirm(null);
+      return;
+    }
+
+    if (reviewConfirm.module === "offset") {
+      if (reviewConfirm.decisionMode === "cancellation") {
+        reviewOffsetMutation.mutate({
+          id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
+          status: reviewConfirm.status,
+          decision_mode: "cancellation",
+          supervisor_remarks: isDenyDecision ? trimmedRemarks : undefined,
+        });
+        setReviewConfirm(null);
+        return;
+      }
+
+      if (reviewConfirm.status === "Approved") {
+        const approvedDays = Number(reviewConfirm.approvedDays || 0);
+        const totalDays = getOffsetRequestedDays(reviewConfirm.item);
+
+        if (!approvedDays || approvedDays <= 0 || approvedDays > totalDays) {
+          showToast(
+            "Approved days must be between 0 and requested days.",
+            "error",
+          );
+          return;
+        }
+
+        const isPartial = approvedDays < totalDays;
+
+        const payload = {
+          id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
+          status: isPartial ? "Partially Approved" : "Approved",
+        };
+
+        if (isPartial) {
+          payload.approved_days = approvedDays;
+        }
+
+        reviewOffsetMutation.mutate(payload);
+      } else {
+        reviewOffsetMutation.mutate({
+          id: reviewConfirm.item.id,
+          item: reviewConfirm.item,
+          status: "Denied",
+          supervisor_remarks: trimmedRemarks,
+        });
+      }
+      setReviewConfirm(null);
+      return;
+    }
+
+    if (reviewConfirm.module === "resignation") {
+      reviewResignationMutation.mutate({
+        id: reviewConfirm.item.id,
+        item: reviewConfirm.item,
+        status: reviewConfirm.status === "Denied" ? "Rejected" : "Approved",
+        review_remarks: isDenyDecision ? trimmedRemarks : undefined,
+        decision_mode:
+          reviewConfirm.decisionMode === "cancellation"
+            ? "cancellation"
+            : undefined,
+      });
+      setReviewConfirm(null);
+    }
+  };
+
+  if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations) {
+    return (
+      <div className="p-6 font-bold text-gray-800">Loading your data...</div>
+    );
+  }
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <h1 className="m-0 text-[1.4rem] text-wah-dark">Leave Applications</h1>
-        <div className="flex items-center gap-3">
-          <button
-            className="px-[22px] py-2.5 rounded-[10px] border-[1.5px] border-wah-light bg-transparent text-wah-primary text-[0.95rem] font-semibold cursor-pointer"
-            onClick={() => {
-              setShowCalendar(!showCalendar);
-              if (showForm) setShowForm(false);
-            }}
-          >
-            {showCalendar ? "✕ Close Calendar" : "📅 View Calendar"}
-          </button>
-          <button
-            className="px-[22px] py-2.5 rounded-[10px] border-0 text-white text-[0.95rem] font-semibold cursor-pointer bg-gradient-to-r from-wah-primary to-wah-lighter hover:opacity-90"
-            onClick={() => {
-              setShowForm(!showForm);
-              if (showCalendar) setShowCalendar(false);
-            }}
-          >
-            {showForm ? "✕ Close" : "+ File Leave"}
-          </button>
-        </div>
+      <ActionButtons
+        currentUser={currentUser}
+        isAdminRole={isAdminRole}
+        isApprover={isApprover}
+        myRequestRows={myRequestRows}
+        totalPendingCount={totalPendingCount}
+        onFileNewApplication={() => {
+          setApplicationType("leave");
+          setApplicationModalOpen(true);
+        }}
+        onShowMyPending={() => setMyPendingModalOpen(true)}
+        onShowPendingApproval={() => setPendingModalOpen(true)}
+      />
+
+      <LeaveCalendar
+        leaves={calendarLeaves}
+        attendance={isAdminRole ? [] : myAttendance}
+        scopeOptions={calendarScopeOptions}
+        activeScope={calendarScope}
+        onScopeChange={setCalendarScope}
+      />
+
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <OffsetBalanceCard offsetBalance={offsetBalance} />
+        <RequestHistoryTable myRequestHistory={myRequestHistory} />
       </div>
 
-      {showCalendar && <LeaveCalendar leaves={sampleLeaves} />}
+      <ModalsContainer
+        applicationModalOpen={applicationModalOpen}
+        currentUser={currentUser}
+        setApplicationModalOpen={setApplicationModalOpen}
+        applicationType={applicationType}
+        setApplicationType={setApplicationType}
+        formError={formError}
+        handleFromDateChange={handleFromDateChange}
+        handleLeaveTypeChange={handleLeaveTypeChange}
+        handleToDateChange={handleToDateChange}
+        getMaxToDate={getMaxToDate}
+        formData={formData}
+        setFormData={setFormData}
+        availableLeaveTypes={availableLeaveTypes}
+        difference={difference}
+        handleSubmitLeave={handleSubmitLeave}
+        resignationForm={resignationForm}
+        setResignationForm={setResignationForm}
+        resignationTypes={resignationTypes}
+        fileResignationMutation={fileResignationMutation}
+        pendingModalOpen={pendingModalOpen}
+        isApprover={isApprover}
+        setPendingModalOpen={setPendingModalOpen}
+        pendingTypeFilter={pendingTypeFilter}
+        setPendingTypeFilter={setPendingTypeFilter}
+        allPendingRequests={allPendingRequests}
+        pendingLeaveApprovals={pendingLeaveApprovals}
+        pendingOffsetApprovals={pendingOffsetApprovals}
+        pendingResignationApprovals={pendingResignationApprovals}
+        filteredPendingRequests={filteredPendingRequests}
+        isHRRole={isHRRole}
+        canHrDirectDecision={canHrDirectDecision}
+        isPendingApprovalStatus={isPendingApprovalStatus}
+        openResignationDecisionConfirm={openResignationDecisionConfirm}
+        openLeaveDecisionConfirm={openLeaveDecisionConfirm}
+        openOffsetDecisionConfirm={openOffsetDecisionConfirm}
+        setHrNoteConfirm={setHrNoteConfirm}
+        myPendingModalOpen={myPendingModalOpen}
+        setMyPendingModalOpen={setMyPendingModalOpen}
+        myRequestRows={myRequestRows}
+        cancelMyPendingRequestMutation={cancelMyPendingRequestMutation}
+        setCancelPendingConfirm={setCancelPendingConfirm}
+        requestCancellationApprovalMutation={
+          requestCancellationApprovalMutation
+        }
+        setCancelApprovalConfirm={setCancelApprovalConfirm}
+        confirmAction={confirmAction}
+        setConfirmAction={setConfirmAction}
+        fileOffsetMutation={fileOffsetMutation}
+        submitLeaveMutation={submitLeaveMutation}
+        reviewConfirm={reviewConfirm}
+        setReviewConfirm={setReviewConfirm}
+        getDateRangeInclusive={getDateRangeInclusive}
+        toggleLeaveApprovedDate={toggleLeaveApprovedDate}
+        parseDateOnly={parseDateOnly}
+        getOffsetRequestedDays={getOffsetRequestedDays}
+        submitReviewDecision={submitReviewDecision}
+        cancelApprovalConfirm={cancelApprovalConfirm}
+        cancelPendingConfirm={cancelPendingConfirm}
+        hrNoteConfirm={hrNoteConfirm}
+        addHrNoteMutation={addHrNoteMutation}
+        reviewResignationMutation={reviewResignationMutation}
+        showToast={showToast}
+        submitCancellationRequest={submitCancellationRequest}
+      />
 
-      {showForm && (
-        <div className="bg-white rounded-xl p-7 mb-6 border border-wah-border">
-          <h3 className="m-0 mb-[18px] text-wah-dark">
-            File a Leave Application
-          </h3>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3.5">
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.85rem] text-gray-500 font-semibold">
-                Leave Type
-              </label>
-              <select className="px-3 py-2.5 rounded-[10px] border-[1.5px] border-gray-300 text-[0.92rem] outline-none font-[inherit] focus:border-wah-light">
-                {leaveTypes.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.85rem] text-gray-500 font-semibold">
-                From
-              </label>
-              <input
-                type="date"
-                className="px-3 py-2.5 rounded-[10px] border-[1.5px] border-gray-300 text-[0.92rem] outline-none font-[inherit] focus:border-wah-light"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.85rem] text-gray-500 font-semibold">
-                To
-              </label>
-              <input
-                type="date"
-                className="px-3 py-2.5 rounded-[10px] border-[1.5px] border-gray-300 text-[0.92rem] outline-none font-[inherit] focus:border-wah-light"
-              />
-            </div>
-            <div className="flex flex-col gap-1 col-span-full">
-              <label className="text-[0.85rem] text-gray-500 font-semibold">
-                Reason
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Reason for leave…"
-                className="px-3 py-2.5 rounded-[10px] border-[1.5px] border-gray-300 text-[0.92rem] outline-none font-[inherit] focus:border-wah-light"
-              />
-            </div>
-          </div>
-          <div className="mt-[18px] flex gap-2.5">
-            <button className="px-[22px] py-2.5 rounded-[10px] border-0 text-white text-[0.95rem] font-semibold cursor-pointer bg-gradient-to-r from-wah-primary to-wah-lighter hover:opacity-90">
-              Submit
-            </button>
-            <button
-              className="px-[22px] py-2.5 rounded-[10px] border-[1.5px] border-wah-light bg-transparent text-wah-primary text-[0.95rem] font-semibold cursor-pointer"
-              onClick={() => setShowForm(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl px-6 py-[22px] border border-wah-border">
-          <h4 className="m-0 mb-3 text-wah-dark">Leave Balances</h4>
-          <ul className="list-none m-0 p-0 flex flex-col gap-2">
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Vacation Leave</span>
-              <strong>12 days</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Sick Leave</span>
-              <strong>8 days</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>PGT Leave</span>
-              <strong>5 days</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Birthday Leave</span>
-              <strong>1 day</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Offset Credits</span>
-              <strong>2 days</strong>
-            </li>
-          </ul>
-        </div>
-        <div className="bg-white rounded-xl px-6 py-[22px] border border-wah-border">
-          <h4 className="m-0 mb-3 text-wah-dark">Workweek Setup</h4>
-          <ul className="list-none m-0 p-0 flex flex-col gap-2">
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Current</span>
-              <strong>5 days (8 hrs/day)</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Effective</span>
-              <strong>Jan 5 – Mar 6</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Next</span>
-              <strong>4 days (10 hrs/day)</strong>
-            </li>
-            <li className="flex justify-between text-[0.9rem] text-gray-600">
-              <span>Starts</span>
-              <strong>Mar 9 onwards</strong>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse bg-white rounded-xl overflow-hidden">
-          <thead>
-            <tr>
-              <th className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100 bg-wah-table-head text-wah-dark font-semibold whitespace-nowrap">
-                Employee
-              </th>
-              <th className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100 bg-wah-table-head text-wah-dark font-semibold whitespace-nowrap">
-                Type
-              </th>
-              <th className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100 bg-wah-table-head text-wah-dark font-semibold whitespace-nowrap">
-                From
-              </th>
-              <th className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100 bg-wah-table-head text-wah-dark font-semibold whitespace-nowrap">
-                To
-              </th>
-              <th className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100 bg-wah-table-head text-wah-dark font-semibold whitespace-nowrap">
-                Status
-              </th>
-              <th className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100 bg-wah-table-head text-wah-dark font-semibold whitespace-nowrap">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleLeaves.map((l) => (
-              <tr key={l.id} className="hover:bg-wah-table-hover">
-                <td className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100">
-                  {l.name}
-                </td>
-                <td className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100">
-                  {l.type}
-                </td>
-                <td className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100">
-                  {l.from}
-                </td>
-                <td className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100">
-                  {l.to}
-                </td>
-                <td className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100">
-                  <span
-                    className={`px-3 py-0.5 rounded-full text-[0.78rem] font-semibold ${badgeClass[l.status] || ""}`}
-                  >
-                    {l.status}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 text-left text-[0.85rem] border-b border-gray-100">
-                  {l.status === "Pending" && (
-                    <div className="flex gap-1.5">
-                      <button className="px-3 py-[5px] rounded-md border-0 text-white text-[0.8rem] font-semibold cursor-pointer bg-wah-green">
-                        Approve
-                      </button>
-                      <button className="px-3 py-[5px] rounded-md border-0 text-white text-[0.8rem] font-semibold cursor-pointer bg-wah-red">
-                        Deny
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }
