@@ -120,7 +120,7 @@ function AppRoutes({ user }) {
           <Route path="/file-management" element={  
             <RoleProtectedRoute
                 user={user}
-                allowedRoles={["Admin", "Supervisor", "HR"]}
+                allowedRoles={["Admin", "Supervisor", "HR", "RankAndFile"]}
               >
                 <FileManagement />
               </RoleProtectedRoute>} />
