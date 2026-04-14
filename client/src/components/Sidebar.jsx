@@ -29,6 +29,7 @@ const navItems = {
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
+    { to: "/file-management", icon: FileSpreadsheet, label: "File Management" },
     { to: "/settings", icon: Settings, label: "Settings" },
   ],
   HR: [

@@ -3,6 +3,13 @@ import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
 import bcrypt from "bcryptjs";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { s3BucketName, s3Client } from "../config/s3";
+import {
+  deleteDbStoredFileByKey,
+  getDbStoredFileByKey,
+  saveDbStoredFile,
+} from "../functions/dbFileStorage.ts";
 
 // payrollModel.js
 export const getPayrollByEmployee = async (connection, emp_id, period) => {
@@ -559,6 +566,24 @@ const ensureEmployeeMissingDocsTable = async (connection = pool) => {
   `);
 };
 
+const ensureFileTemplatesTable = async (connection = pool) => {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS file_templates (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      category VARCHAR(120) NULL,
+      storage_key VARCHAR(120) NOT NULL,
+      original_name VARCHAR(255) NOT NULL,
+      mime_type VARCHAR(120) NOT NULL,
+      size_bytes INT NOT NULL,
+      uploaded_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_file_templates_created (created_at),
+      INDEX idx_file_templates_storage_key (storage_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+};
+
 export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
   const governmentColumns = [
     { name: "philhealth_no", type: "VARCHAR(50)", after: "email" },
@@ -700,6 +725,560 @@ export const getEmployeeProfile = async (connection, empId) => {
     status: rows[0].status || null,
     designation: rows[0].designation || null,
   };
+};
+
+const safeEmployeeDisplayName = (employee) => {
+  const firstName = String(employee?.first_name || "").trim();
+  const lastName = String(employee?.last_name || "").trim();
+  return `${firstName} ${lastName}`.trim() || employee?.emp_id || "Employee";
+};
+
+const safeFileName = (fileKey) => {
+  const normalized = String(fileKey || "").trim();
+  if (!normalized) return "";
+  return path.basename(normalized);
+};
+
+const parseJsonArraySafe = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const deleteS3ObjectQuietly = async (fileKey) => {
+  const normalized = String(fileKey || "").trim();
+  if (!normalized) return;
+
+  try {
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: s3BucketName,
+        Key: normalized,
+      }),
+    );
+  } catch (error) {
+    if (error?.name === "NoSuchKey") return;
+    throw error;
+  }
+};
+
+const getAccessibleEmployeesForFileManagement = async (connection, viewer) => {
+  const [timestampColumns] = await connection.query(
+    `SELECT COLUMN_NAME
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'employees'
+       AND COLUMN_NAME IN ('created_at', 'updated_at')`,
+  );
+
+  const hasCreatedAt = timestampColumns.some(
+    (column) => column.COLUMN_NAME === "created_at",
+  );
+  const hasUpdatedAt = timestampColumns.some(
+    (column) => column.COLUMN_NAME === "updated_at",
+  );
+
+  const createdAtSelect = hasCreatedAt
+    ? "created_at"
+    : "NULL AS created_at";
+  const updatedAtSelect = hasUpdatedAt
+    ? "updated_at"
+    : "NULL AS updated_at";
+
+  let whereClause = `
+    WHERE LOWER(COALESCE(role, '')) <> 'admin'
+      AND LOWER(TRIM(COALESCE(designation, ''))) <> 'admin system'
+  `;
+  const params = [];
+
+  if (viewer.role === "RankAndFile") {
+    whereClause += " AND emp_id = ?";
+    params.push(viewer.emp_id);
+  } else if (viewer.role === "Supervisor") {
+    whereClause = `
+      WHERE (
+        (
+          emp_id = ?
+          AND LOWER(COALESCE(role, '')) <> 'admin'
+          AND LOWER(TRIM(COALESCE(designation, ''))) <> 'admin system'
+        )
+        OR (
+          COALESCE(role, '') IN ('RankAndFile', 'HR')
+          AND LOWER(TRIM(COALESCE(designation, ''))) = LOWER(TRIM(?))
+          AND LOWER(TRIM(COALESCE(designation, ''))) <> 'admin system'
+          AND emp_id <> ?
+        )
+      )
+    `;
+    params.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
+  }
+
+  const [rows] = await connection.query(
+    `SELECT
+       emp_id,
+       first_name,
+       last_name,
+       designation,
+       position,
+       COALESCE(role, 'RankAndFile') AS role,
+       profile_photo,
+       ${createdAtSelect},
+       ${updatedAtSelect}
+     FROM employees
+     ${whereClause}
+     ORDER BY
+       CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
+       emp_id ASC`,
+    params,
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    role: normalizeRole(row.role),
+  }));
+};
+
+export const getFileManagementInventory = async (req, res) => {
+  try {
+    await ensureResignationsTable();
+
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const employees = await getAccessibleEmployeesForFileManagement(
+      pool,
+      viewer,
+    );
+    const accessibleEmpIds = employees.map((employee) => employee.emp_id);
+
+    let resignationRows = [];
+    if (accessibleEmpIds.length > 0) {
+      const placeholders = accessibleEmpIds.map(() => "?").join(",");
+      const [rows] = await pool.query(
+        `SELECT
+           r.id,
+           r.emp_id,
+           r.resignation_type,
+           r.status,
+           r.effective_date,
+           r.resignation_letter,
+           r.recipient_name,
+           r.recipient_emp_id,
+           r.resignation_date,
+           r.last_working_day,
+           r.leaving_reasons_json,
+           r.leaving_reason_other,
+           r.exit_interview_answers_json,
+           r.created_at,
+           r.updated_at,
+           r.endorsement_file_key,
+           r.clearance_file_key,
+           e.first_name,
+           e.last_name,
+           e.designation,
+           e.position,
+           e.hired_date,
+           COALESCE(e.role, 'RankAndFile') AS role
+         FROM resignations r
+         JOIN employees e ON e.emp_id = r.emp_id
+         WHERE r.emp_id IN (${placeholders})
+           AND (r.endorsement_file_key IS NOT NULL OR r.clearance_file_key IS NOT NULL)
+         ORDER BY r.updated_at DESC, r.created_at DESC, r.id DESC`,
+        accessibleEmpIds,
+      );
+      resignationRows = rows;
+    }
+
+    const files = [];
+
+    employees.forEach((employee) => {
+      if (!String(employee.profile_photo || "").trim()) return;
+
+      files.push({
+        id: `profile-${employee.emp_id}`,
+        emp_id: employee.emp_id,
+        employee_name: safeEmployeeDisplayName(employee),
+        position: employee.position || "-",
+        designation: employee.designation || "-",
+        role: employee.role || "RankAndFile",
+        source: "profile",
+        record_id: employee.emp_id,
+        file_field: "profile_photo",
+        file_type: "Profile Photo",
+        file_key: employee.profile_photo,
+        file_name: safeFileName(employee.profile_photo) || "Profile Photo",
+        uploaded_at: employee.updated_at || employee.created_at || null,
+        download_url: `/${String(employee.profile_photo).replace(/^\/+/, "")}`,
+        replaceable: true,
+      });
+    });
+
+    resignationRows.forEach((row) => {
+      const employeeName = safeEmployeeDisplayName(row);
+      const uploadedAt = row.updated_at || row.created_at || null;
+      const normalizedStatus = String(row.status || "").trim().toLowerCase();
+      const isApproved =
+        normalizedStatus === "approved" ||
+        normalizedStatus === "approved resignation";
+      const leavingReasons = parseJsonArraySafe(row.leaving_reasons_json);
+      const interviewAnswers = parseJsonArraySafe(row.exit_interview_answers_json);
+
+      const baseDocumentData = {
+        resignation_id: row.id,
+        emp_id: row.emp_id,
+        employee_name: employeeName,
+        first_name: row.first_name || "",
+        last_name: row.last_name || "",
+        position: row.position || "",
+        designation: row.designation || "",
+        hired_date: row.hired_date || null,
+        role: normalizeRole(row.role),
+        resignation_type: row.resignation_type || "Resignation",
+        resignation_status: row.status || "Pending Approval",
+        effective_date: row.effective_date || null,
+        resignation_date: row.resignation_date || null,
+        last_working_day: row.last_working_day || null,
+        resignation_letter: row.resignation_letter || "",
+        recipient_name: row.recipient_name || "",
+        recipient_emp_id: row.recipient_emp_id || "",
+        leaving_reasons: leavingReasons,
+        leaving_reason_other: row.leaving_reason_other || "",
+        exit_interview_answers: interviewAnswers,
+        generated_at: uploadedAt,
+      };
+
+      const addGeneratedDocument = (templateType, fileType) => {
+        files.push({
+          id: `resignation-${row.id}-${templateType}-generated`,
+          emp_id: row.emp_id,
+          employee_name: employeeName,
+          position: row.position || "-",
+          designation: row.designation || "-",
+          role: normalizeRole(row.role),
+          source: "generated",
+          file_status: "generated",
+          record_id: row.id,
+          application_id: row.id,
+          file_group: `resignation-${row.id}`,
+          file_field: null,
+          template_type: templateType,
+          file_type: fileType,
+          file_key: null,
+          file_name: `${templateType}.pdf`,
+          uploaded_at: uploadedAt,
+          download_url: null,
+          replaceable: false,
+          request_status: row.status || null,
+          request_type: row.resignation_type || "Resignation",
+          document_data: baseDocumentData,
+        });
+      };
+
+      addGeneratedDocument("resignation_letter", "Resignation Letter");
+      addGeneratedDocument("resignation_form", "Employee Resignation Form");
+      addGeneratedDocument("exit_interview", "Exit Interview Form");
+
+      if (isApproved) {
+        addGeneratedDocument("exit_clearance", "Exit Clearance Form");
+        addGeneratedDocument("nda", "NDA Form");
+      }
+
+      if (String(row.endorsement_file_key || "").trim()) {
+        files.push({
+          id: `resignation-${row.id}-endorsement`,
+          emp_id: row.emp_id,
+          employee_name: employeeName,
+          position: row.position || "-",
+          designation: row.designation || "-",
+          role: normalizeRole(row.role),
+          source: "resignation",
+          file_status: "uploaded",
+          record_id: row.id,
+          application_id: row.id,
+          file_group: `resignation-${row.id}`,
+          file_field: "endorsement_file_key",
+          file_type: "Endorsement Form",
+          file_key: row.endorsement_file_key,
+          file_name: safeFileName(row.endorsement_file_key),
+          uploaded_at: uploadedAt,
+          download_url: `/api/file/get?filename=${encodeURIComponent(row.endorsement_file_key)}`,
+          replaceable: true,
+          request_status: row.status || null,
+          request_type: row.resignation_type || "Resignation",
+        });
+      }
+
+      if (String(row.clearance_file_key || "").trim()) {
+        files.push({
+          id: `resignation-${row.id}-clearance`,
+          emp_id: row.emp_id,
+          employee_name: employeeName,
+          position: row.position || "-",
+          designation: row.designation || "-",
+          role: normalizeRole(row.role),
+          source: "resignation",
+          file_status: "uploaded",
+          record_id: row.id,
+          application_id: row.id,
+          file_group: `resignation-${row.id}`,
+          file_field: "clearance_file_key",
+          file_type: "Clearance Form",
+          file_key: row.clearance_file_key,
+          file_name: safeFileName(row.clearance_file_key),
+          uploaded_at: uploadedAt,
+          download_url: `/api/file/get?filename=${encodeURIComponent(row.clearance_file_key)}`,
+          replaceable: true,
+          request_status: row.status || null,
+          request_type: row.resignation_type || "Resignation",
+        });
+      }
+    });
+
+    files.sort(
+      (a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime(),
+    );
+
+    const filesByEmployee = employees.map((employee) => ({
+      ...employee,
+      display_name: safeEmployeeDisplayName(employee),
+      files: files.filter((file) => file.emp_id === employee.emp_id),
+    }));
+
+    return res.json({
+      viewerRole: viewer.role,
+      employees: filesByEmployee,
+      files,
+    });
+  } catch (error) {
+    console.error("DB Error in getFileManagementInventory:", error);
+    return res.status(500).json({ message: "Error fetching file inventory" });
+  }
+};
+
+export const getFileTemplates = async (req, res) => {
+  try {
+    await ensureFileTemplatesTable();
+
+    const [rows] = await pool.query(
+      `SELECT
+         id,
+         title,
+         category,
+         original_name,
+         mime_type,
+         size_bytes,
+         uploaded_by,
+         created_at
+       FROM file_templates
+       ORDER BY created_at DESC, id DESC`,
+    );
+
+    return res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getFileTemplates:", error);
+    return res.status(500).json({ message: "Error fetching templates" });
+  }
+};
+
+export const uploadFileTemplate = async (req, res) => {
+  try {
+    await ensureFileTemplatesTable();
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const title = String(req.body?.title || "").trim();
+    const category = String(req.body?.category || "").trim();
+    const originalName = String(req.file.originalname || "template").trim();
+    const finalTitle = title || originalName;
+
+    const storageKey = await saveDbStoredFile({
+      originalName,
+      mimeType: String(req.file.mimetype || "application/octet-stream"),
+      sizeBytes: Number(req.file.size || 0),
+      content: req.file.buffer,
+      createdBy: req.user?.emp_id || null,
+    });
+
+    const [result] = await pool.query(
+      `INSERT INTO file_templates (
+         title,
+         category,
+         storage_key,
+         original_name,
+         mime_type,
+         size_bytes,
+         uploaded_by
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        finalTitle,
+        category || null,
+        storageKey,
+        originalName,
+        req.file.mimetype || "application/octet-stream",
+        Number(req.file.size || 0),
+        req.user?.emp_id || null,
+      ],
+    );
+
+    return res.status(201).json({
+      id: result.insertId,
+      title: finalTitle,
+      category: category || null,
+      original_name: originalName,
+      mime_type: req.file.mimetype || "application/octet-stream",
+      size_bytes: Number(req.file.size || 0),
+      uploaded_by: req.user?.emp_id || null,
+      created_at: new Date().toISOString(),
+      message: "Template uploaded successfully",
+    });
+  } catch (error) {
+    console.error("DB Error in uploadFileTemplate:", error);
+    return res.status(500).json({ message: "Error uploading template" });
+  }
+};
+
+export const replaceFileTemplate = async (req, res) => {
+  try {
+    await ensureFileTemplatesTable();
+
+    const templateId = Number(req.params?.id || 0);
+    if (!Number.isFinite(templateId) || templateId <= 0) {
+      return res.status(400).json({ message: "Invalid template id" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, title, category, storage_key, original_name
+       FROM file_templates
+       WHERE id = ?
+       LIMIT 1`,
+      [templateId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    const existing = rows[0];
+    const nextOriginalName = String(req.file.originalname || existing.original_name || "template").trim();
+    const nextStorageKey = await saveDbStoredFile({
+      originalName: nextOriginalName,
+      mimeType: String(req.file.mimetype || "application/octet-stream"),
+      sizeBytes: Number(req.file.size || 0),
+      content: req.file.buffer,
+      createdBy: req.user?.emp_id || null,
+    });
+
+    await pool.query(
+      `UPDATE file_templates
+       SET storage_key = ?, original_name = ?, mime_type = ?, size_bytes = ?
+       WHERE id = ?`,
+      [
+        nextStorageKey,
+        nextOriginalName,
+        req.file.mimetype || "application/octet-stream",
+        Number(req.file.size || 0),
+        templateId,
+      ],
+    );
+
+    await deleteDbStoredFileByKey(existing.storage_key);
+
+    return res.json({
+      id: templateId,
+      title: existing.title,
+      category: existing.category,
+      original_name: nextOriginalName,
+      mime_type: req.file.mimetype || "application/octet-stream",
+      size_bytes: Number(req.file.size || 0),
+      message: "Template replaced successfully",
+    });
+  } catch (error) {
+    console.error("DB Error in replaceFileTemplate:", error);
+    return res.status(500).json({ message: "Error replacing template" });
+  }
+};
+
+export const downloadFileTemplate = async (req, res) => {
+  try {
+    await ensureFileTemplatesTable();
+
+    const templateId = Number(req.params?.id || 0);
+    if (!Number.isFinite(templateId) || templateId <= 0) {
+      return res.status(400).json({ message: "Invalid template id" });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, storage_key, original_name, mime_type
+       FROM file_templates
+       WHERE id = ?
+       LIMIT 1`,
+      [templateId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    const template = rows[0];
+    const storedFile = await getDbStoredFileByKey(template.storage_key);
+    if (!storedFile) {
+      return res.status(404).json({ message: "Template file not found" });
+    }
+
+    res.setHeader("Content-Type", template.mime_type || storedFile.mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${template.original_name || storedFile.originalName}"`,
+    );
+    res.setHeader("Content-Length", String(storedFile.sizeBytes || 0));
+    return res.send(storedFile.content);
+  } catch (error) {
+    console.error("DB Error in downloadFileTemplate:", error);
+    return res.status(500).json({ message: "Error downloading template" });
+  }
+};
+
+export const deleteFileTemplate = async (req, res) => {
+  try {
+    await ensureFileTemplatesTable();
+
+    const templateId = Number(req.params?.id || 0);
+    if (!Number.isFinite(templateId) || templateId <= 0) {
+      return res.status(400).json({ message: "Invalid template id" });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, storage_key FROM file_templates WHERE id = ? LIMIT 1`,
+      [templateId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    const template = rows[0];
+    await pool.query(`DELETE FROM file_templates WHERE id = ?`, [templateId]);
+    await deleteDbStoredFileByKey(template.storage_key);
+
+    return res.json({ message: "Template deleted successfully" });
+  } catch (error) {
+    console.error("DB Error in deleteFileTemplate:", error);
+    return res.status(500).json({ message: "Error deleting template" });
+  }
 };
 
 const getSupervisorApproversForRequester = async (connection, requester) => {
@@ -4802,6 +5381,46 @@ const ensureProfileColumn = async (connection) => {
 // 1. Upload Profile Photo
 export const uploadProfilePhoto = async (req, res) => {
   try {
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    const targetEmpId = String(req.params?.emp_id || req.user?.emp_id || "").trim();
+
+    if (!viewer) {
+      if (req.file?.path) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!targetEmpId) {
+      if (req.file?.path) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
+
+    const targetEmployee = await getEmployeeProfile(pool, targetEmpId);
+    if (!targetEmployee) {
+      if (req.file?.path) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const canManageTarget =
+      viewer.role === "Admin" ||
+      viewer.role === "HR" ||
+      viewer.emp_id === targetEmpId ||
+      (viewer.role === "Supervisor" &&
+        String(viewer.designation || "").trim().toLowerCase() ===
+          String(targetEmployee.designation || "").trim().toLowerCase());
+
+    if (!canManageTarget) {
+      if (req.file?.path) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(403).json({ message: "You cannot replace this file" });
+    }
+
     // 1. Check if Multer actually saved a file
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -4809,7 +5428,7 @@ export const uploadProfilePhoto = async (req, res) => {
 
     // Normalize path for Windows (\ vs /)
     const newPhotoPath = req.file.path.replace(/\\/g, "/");
-    const empId = req.user.emp_id;
+    const empId = targetEmpId;
 
     // 2. Fetch the old photo path from the database BEFORE we overwrite it
     const [rows] = await pool.query(
@@ -4843,6 +5462,82 @@ export const uploadProfilePhoto = async (req, res) => {
   } catch (error) {
     console.error("Photo Upload Error:", error);
     res.status(500).json({ message: "Server error during photo upload" });
+  }
+};
+
+export const replaceResignationFile = async (req, res) => {
+  const requester = await getEmployeeProfile(pool, req.user?.emp_id);
+  const resignationId = req.params?.id;
+  const fileField = String(req.body?.file_field || "").trim();
+  const newFileKey = String(req.body?.file_key || "").trim();
+  const oldFileKey = String(req.body?.old_file_key || "").trim();
+
+  if (!requester) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const allowedFields = {
+    endorsement_file_key: "endorsement_file_key",
+    clearance_file_key: "clearance_file_key",
+  };
+
+  const columnName = allowedFields[fileField];
+  if (!columnName) {
+    return res.status(400).json({ message: "Invalid file field" });
+  }
+
+  if (!newFileKey) {
+    return res.status(400).json({ message: "file_key is required" });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      `SELECT r.id, r.emp_id, e.designation, COALESCE(e.role, 'RankAndFile') AS role
+       FROM resignations r
+       JOIN employees e ON e.emp_id = r.emp_id
+       WHERE r.id = ?
+       LIMIT 1`,
+      [resignationId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const target = rows[0];
+    const targetRole = normalizeRole(target.role);
+    const canManageTarget =
+      requester.role === "Admin" ||
+      requester.role === "HR" ||
+      requester.emp_id === target.emp_id ||
+      (requester.role === "Supervisor" &&
+        String(requester.designation || "").trim().toLowerCase() ===
+          String(target.designation || "").trim().toLowerCase() &&
+        targetRole !== "Admin");
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot replace this file" });
+    }
+
+    await pool.query(
+      `UPDATE resignations SET ${columnName} = ? WHERE id = ?`,
+      [newFileKey, resignationId],
+    );
+
+    if (oldFileKey && oldFileKey !== newFileKey) {
+      try {
+        await deleteS3ObjectQuietly(oldFileKey);
+      } catch (deleteError) {
+        console.error("S3 cleanup error in replaceResignationFile:", deleteError);
+      }
+    }
+
+    return res.json({ message: "Resignation file replaced successfully" });
+  } catch (error) {
+    console.error("DB Error in replaceResignationFile:", error);
+    return res.status(500).json({ message: "Error replacing resignation file" });
   }
 };
 

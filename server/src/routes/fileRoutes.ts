@@ -10,6 +10,7 @@ import { deleteFile } from "../functions/deleteFile";
 import { checkFileExist } from "../middleware/checkFileExist";
 import { upload } from "../middleware/upload";
 import { uploadProfile } from "../functions/uploadProfile";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const uploadS3 = multer({
   storage: multerS3({
@@ -37,7 +38,7 @@ const uploadS3 = multer({
 });
 
 const router = express.Router();
-// router.use(authenticateToken);
+router.use(authenticateToken as any);
 
 const handleUpload = (req: any, res: any, next: any) => {
   uploadS3.array("requiredFiles", 10)(req, res, (err: any) => {

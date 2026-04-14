@@ -119,7 +119,7 @@ export default function Payroll({ shortcutMode = false }) {
   const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState(getCurrentPeriod);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const currentUser = useMemo(() => {
     try {
