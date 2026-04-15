@@ -4,7 +4,8 @@ import {
 } from "./employeeController.js";
 import emailService from "../services/emailService.js";
 import pool from "../config/db.js";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core"; // Changed to puppeteer-core
+import chromium from "@sparticuz/chromium";
 import fs from "fs";
 import path from "path";
 
@@ -207,17 +208,10 @@ export const sendBulkPayslips = async (req, res) => {
     }
 
     browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--no-first-run",
-        "--no-zygote",
-        "--single-process",
-      ],
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(), // Finds the browser on Render/Vercel
+      headless: chromium.headless,
     });
 
     let successCount = 0;
@@ -264,17 +258,10 @@ export const sendPayslip = async (req, res) => {
       return res.status(400).json({ message: "Employee email not found." });
 
     browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--no-first-run",
-        "--no-zygote",
-        "--single-process",
-      ],
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
     await processSinglePayslip(payrollRecord, period, browser);
