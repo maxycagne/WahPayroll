@@ -27,8 +27,10 @@ const LOGO_TOP = getBase64Image("wah-top-logo.png");
 const PUPPETEER_ARGS = [
   "--no-sandbox",
   "--disable-setuid-sandbox",
-  "--disable-dev-shm-usage", // This is the most important flag for Render
+  "--disable-dev-shm-usage", // CRITICAL: Forces Puppeteer to use disk instead of shared memory RAM
   "--disable-gpu",
+  "--no-zygote",
+  "--single-process",
 ];
 
 // --- HELPERS ---
