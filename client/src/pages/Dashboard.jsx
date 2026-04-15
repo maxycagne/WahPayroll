@@ -26,7 +26,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Employees from "./Employees";
 import Attendance from "./Attendance";
 import Payroll from "./Payroll";
@@ -142,9 +143,10 @@ function EmployeeDashboard({ currentUser }) {
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/dashboard-summary");
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/dashboard-summary"),
+        "Failed to fetch dashboard data",
+      );
     },
   });
 
@@ -152,9 +154,14 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/my-attendance`);
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/my-attendance"),
+          "Failed to fetch attendance",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 
@@ -162,9 +169,14 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myLeaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/leaves");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/leaves"),
+          "Failed to fetch leaves",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 
@@ -172,9 +184,14 @@ function EmployeeDashboard({ currentUser }) {
   const { data: myOffsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/offset-applications");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/offset-applications"),
+          "Failed to fetch offsets",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 
@@ -454,13 +471,10 @@ function AdminDashboard({ currentUser }) {
   const [year, month] = period.split("-").map(Number);
 
   const fetchDashboardData = async () => {
-    const res = await apiFetch("/api/employees/dashboard-summary", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return await res.json();
+    return mutationHandler(
+      axiosInterceptor.get("/api/employees/dashboard-summary"),
+      "Failed to fetch dashboard data",
+    );
   };
 
   const dashboardQuery = useQuery({
@@ -471,29 +485,32 @@ function AdminDashboard({ currentUser }) {
   const employeesQuery = useQuery({
     queryKey: ["dashboard-employees"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      if (!res.ok) throw new Error("Failed to fetch employees");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees"),
+        "Failed to fetch employees",
+      );
     },
   });
 
   const payrollQuery = useQuery({
     queryKey: ["dashboard-payroll", period],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
-      if (!res.ok) throw new Error("Failed to fetch payroll snapshot");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        "Failed to fetch payroll snapshot",
+      );
     },
   });
 
   const attendanceSummaryQuery = useQuery({
     queryKey: ["dashboard-attendance-summary", year, month],
     queryFn: async () => {
-      const res = await apiFetch(
-        `/api/employees/attendance-summary?year=${year}&month=${month}`,
+      return mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/attendance-summary?year=${year}&month=${month}`,
+        ),
+        "Failed to fetch attendance summary",
       );
-      if (!res.ok) throw new Error("Failed to fetch attendance summary");
-      return res.json();
     },
   });
 
@@ -619,21 +636,13 @@ function AdminDashboard({ currentUser }) {
 
   const handleUpdateLeaveStatus = async (id, payload) => {
     try {
-      const res = await apiFetch(`/api/employees/leaves/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        setApprovedLeaves(new Set([...approvedLeaves, id]));
-        // Note: For a true refresh, use queryClient.invalidateQueries(["dashboardSummary"])
-        // if you import useQueryClient. Otherwise, this visual state handles it.
-      } else {
-        alert("Failed to update leave request");
-      }
+      await mutationHandler(
+        axiosInterceptor.put(`/api/employees/leaves/${id}`, payload),
+        "Failed to update leave request",
+      );
+      setApprovedLeaves(new Set([...approvedLeaves, id]));
+      // Note: For a true refresh, use queryClient.invalidateQueries(["dashboardSummary"])
+      // if you import useQueryClient. Otherwise, this visual state handles it.
     } catch (error) {
       console.error("Error updating leave:", error);
     }
@@ -1327,45 +1336,66 @@ function SupervisorDashboard({ currentUser }) {
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/dashboard-summary");
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/dashboard-summary"),
+        "Failed to fetch dashboard data",
+      );
     },
   });
 
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/my-attendance");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/my-attendance"),
+          "Failed to fetch attendance",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 
   const { data: leaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/leaves");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/leaves"),
+          "Failed to fetch leaves",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 
   const { data: offsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/offset-applications");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/offset-applications"),
+          "Failed to fetch offsets",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 
   const { data: resignations = [] } = useQuery({
     queryKey: ["resignations"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/resignations");
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        return await mutationHandler(
+          axiosInterceptor.get("/api/employees/resignations"),
+          "Failed to fetch resignations",
+        );
+      } catch {
+        return [];
+      }
     },
   });
 

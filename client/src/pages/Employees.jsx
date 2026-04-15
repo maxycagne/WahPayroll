@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User } from "lucide-react";
 
 const designationMap = {
@@ -85,8 +85,10 @@ export default function Employees({ shortcutMode = false }) {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees"),
+        "Failed to fetch employees",
+      );
     },
   });
 
@@ -113,18 +115,13 @@ export default function Employees({ shortcutMode = false }) {
 
   const updateMutation = useMutation({
     mutationFn: async (updatedData) => {
-      const res = await apiFetch(`/api/employees/${updatedData.emp_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedData),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update employee");
-      }
-
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put(
+          `/api/employees/${updatedData.emp_id}`,
+          updatedData,
+        ),
+        "Failed to update employee",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
@@ -137,7 +134,11 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => apiFetch(`/api/employees/${id}`, { method: "DELETE" }),
+    mutationFn: (id) =>
+      mutationHandler(
+        axiosInterceptor.delete(`/api/employees/${id}`),
+        "Failed to delete employee",
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);
@@ -148,19 +149,10 @@ export default function Employees({ shortcutMode = false }) {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (emp) => {
-      const res = await apiFetch(
-        `/api/employees/${emp.emp_id}/reset-password`,
-        {
-          method: "PUT",
-        },
+      const data = await mutationHandler(
+        axiosInterceptor.put(`/api/employees/${emp.emp_id}/reset-password`),
+        "Failed to reset password",
       );
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to reset password");
-      }
-
       return { ...data, emp };
     },
     onSuccess: ({ autoPassword, emp }) => {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
@@ -50,15 +51,10 @@ export default function Settings() {
     mutationFn: async (file) => {
       const formData = new FormData();
       formData.append("profile_photo", file);
-      const token = localStorage.getItem("wah_token");
-
-      const res = await fetch(`${API_BASE_URL}/api/employees/me/photo`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Failed to upload photo");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/me/photo", formData),
+        "Failed to upload photo",
+      );
     },
     onSuccess: (data) => {
       const updatedUser = { ...currentUser, profile_photo: data.filePath };
@@ -72,13 +68,10 @@ export default function Settings() {
   // Profile Update Mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch(`/api/employees/me/profile`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update profile");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put("/api/employees/me/profile", data),
+        "Failed to update profile",
+      );
     },
     onSuccess: () => showToast("Profile updated successfully."),
     onError: () => showToast("Error updating profile.", "error"),
@@ -87,15 +80,10 @@ export default function Settings() {
   // Password Change Mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiFetch(`/api/employees/me/change-password`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (!res.ok)
-        throw new Error(result.message || "Failed to change password");
-      return result;
+      return mutationHandler(
+        axiosInterceptor.put("/api/employees/me/change-password", data),
+        "Failed to change password",
+      );
     },
     onSuccess: () => {
       showToast("Password changed successfully.");

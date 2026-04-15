@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -84,38 +84,44 @@ export default function Attendance({ shortcutMode = false }) {
   const { data: attendance = [], isLoading } = useQuery({
     queryKey: ["attendance"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/attendance");
-      if (!res.ok) throw new Error("Failed to fetch attendance");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/attendance"),
+        "Failed to fetch attendance",
+      );
     },
   });
 
   const { data: calendarSummary = [] } = useQuery({
     queryKey: ["attendance-calendar", year, month],
     queryFn: async () => {
-      const res = await apiFetch(
-        `/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
+      return mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
+        ),
+        "Failed to fetch attendance summary",
       );
-      return res.json();
     },
   });
 
   const { data: workweekConfigs = [] } = useQuery({
     queryKey: ["workweek-config"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/workweek-config");
-      if (!res.ok) throw new Error("Failed to fetch workweek config");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/workweek-config"),
+        "Failed to fetch workweek config",
+      );
     },
   });
 
   const { data: dailyList = [], isLoading: dailyLoading } = useQuery({
     queryKey: ["attendance-daily", selectedDate],
     queryFn: async () => {
-      const res = await apiFetch(
-        `/api/employees/attendance-daily?date=${selectedDate}`,
+      const data = await mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/attendance-daily?date=${selectedDate}`,
+        ),
+        "Failed to fetch attendance daily list",
       );
-      const data = await res.json();
 
       const initialForm = {};
       const initialSecondary = {};
@@ -134,14 +140,12 @@ export default function Attendance({ shortcutMode = false }) {
   // --- MUTATIONS ---
   const adjustBalanceMutation = useMutation({
     mutationFn: async ({ empId, amount }) => {
-      const res = await apiFetch(`/api/employees/leave-balance/${empId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ adjustment: amount }),
-      });
-      if (!res.ok) throw new Error("Failed to adjust leave balance");
+      await mutationHandler(
+        axiosInterceptor.put(`/api/employees/leave-balance/${empId}`, {
+          adjustment: amount,
+        }),
+        "Failed to adjust leave balance",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
@@ -154,15 +158,13 @@ export default function Attendance({ shortcutMode = false }) {
 
   const saveDailyAttendanceMutation = useMutation({
     mutationFn: async (records) => {
-      // CHANGED: Use axiosInterceptor instead of apiFetch to guarantee the token is sent
-      const res = await axiosInterceptor.post(
-        "/api/employees/attendance-bulk",
-        {
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/attendance-bulk", {
           date: selectedDate,
           records,
-        },
+        }),
+        "Failed to save attendance",
       );
-      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["attendance"]);
@@ -175,19 +177,10 @@ export default function Attendance({ shortcutMode = false }) {
 
   const saveWorkweekMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch("/api/employees/workweek-config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to save workweek config");
-      }
-      return data;
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/workweek-config", payload),
+        "Failed to save workweek config",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
@@ -204,19 +197,10 @@ export default function Attendance({ shortcutMode = false }) {
 
   const updateWorkweekMutation = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const res = await apiFetch(`/api/employees/workweek-config/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to update workweek config");
-      }
-      return data;
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/workweek-config/${id}`, payload),
+        "Failed to update workweek config",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
@@ -234,15 +218,10 @@ export default function Attendance({ shortcutMode = false }) {
 
   const deleteWorkweekMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await apiFetch(`/api/employees/workweek-config/${id}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to delete workweek config");
-      }
-      return data;
+      return mutationHandler(
+        axiosInterceptor.delete(`/api/employees/workweek-config/${id}`),
+        "Failed to delete workweek config",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });

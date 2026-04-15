@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import axiosInterceptor from "@/hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import ReviewResigApp from "../../forms/ReviewResigApp";
 import PendingApprovalFilterTabs from "./PendingApprovalFilterTabs";
 import PendingApprovalModalHeader from "./PendingApprovalHeader";
@@ -55,15 +56,13 @@ export default function PendingApprovalModal({
     if (!fileKey) return;
 
     try {
-      const res = await apiFetch(
-        `/api/file/get?filename=${encodeURIComponent(fileKey)}`,
+      const blob = await mutationHandler(
+        axiosInterceptor.get(
+          `/api/file/get?filename=${encodeURIComponent(fileKey)}`,
+          { responseType: "blob" },
+        ),
+        "Failed to retrieve endorsement file.",
       );
-
-      if (!res.ok) {
-        throw new Error("Failed to retrieve endorsement file.");
-      }
-
-      const blob = await res.blob();
       const objectUrl = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;

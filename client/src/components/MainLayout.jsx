@@ -9,8 +9,8 @@ import {
   Trash2,
 } from "lucide-react";
 import Sidebar from "./Sidebar";
-import { apiFetch } from "../lib/api";
 import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -27,9 +27,10 @@ export default function MainLayout({ role }) {
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/notifications");
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/notifications"),
+        "Failed to fetch notifications",
+      );
     },
     refetchInterval: 30000,
   });
@@ -38,44 +39,40 @@ export default function MainLayout({ role }) {
 
   const markReadMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await apiFetch(`/api/employees/notifications/${id}/read`, {
-        method: "PUT",
-      });
-      if (!res.ok) throw new Error("Failed to mark notification as read");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/notifications/${id}/read`),
+        "Failed to mark notification as read",
+      );
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiFetch("/api/employees/notifications/read-all", {
-        method: "PUT",
-      });
-      if (!res.ok) throw new Error("Failed to mark all notifications as read");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put("/api/employees/notifications/read-all"),
+        "Failed to mark all notifications as read",
+      );
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await apiFetch(`/api/employees/notifications/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete notification");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.delete(`/api/employees/notifications/${id}`),
+        "Failed to delete notification",
+      );
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const deleteAllNotificationsMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiFetch("/api/employees/notifications", {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete notifications");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.delete("/api/employees/notifications"),
+        "Failed to delete notifications",
+      );
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });

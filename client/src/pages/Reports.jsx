@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import {
   BarChart,
   Bar,
@@ -54,9 +55,10 @@ export default function Reports() {
   } = useQuery({
     queryKey: ["payroll-reports"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/payroll-reports");
-      if (!res.ok) throw new Error("Failed to fetch reports");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/payroll-reports"),
+        "Failed to fetch reports",
+      );
     },
   });
 

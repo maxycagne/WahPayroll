@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 
 export default function SalaryHistory() {
   const [employees, setEmployees] = useState([]);
@@ -15,28 +16,41 @@ export default function SalaryHistory() {
 
   // 1. Fetch the list of employees on mount for the dropdown
   useEffect(() => {
-    apiFetch("/api/employees")
-      .then((res) => res.json())
-      .then((data) => {
+    let isMounted = true;
+
+    const loadEmployees = async () => {
+      try {
+        const data = await mutationHandler(
+          axiosInterceptor.get("/api/employees"),
+          "Failed to fetch employees",
+        );
+        if (!isMounted) return;
         if (Array.isArray(data)) {
           setEmployees(data);
-          // Default selection to the first employee
           if (data.length > 0) setSelectedEmployee(data[0].emp_id);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error fetching employees:", err);
-        setLoading(false);
-      });
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadEmployees();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // 2. Fetch salary history whenever the selected employee changes
   useEffect(() => {
     if (!selectedEmployee) return;
 
-    apiFetch(`/api/employees/salary-history/${selectedEmployee}`)
-      .then((res) => res.json())
+    mutationHandler(
+      axiosInterceptor.get(`/api/employees/salary-history/${selectedEmployee}`),
+      "Failed to fetch salary records",
+    )
       .then((data) => {
         if (Array.isArray(data)) {
           setSalaryRecords(data);
