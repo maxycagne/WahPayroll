@@ -4,7 +4,7 @@ import {
 } from "./employeeController.js";
 import emailService from "../services/emailService.js";
 import pool from "../config/db.js";
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer";
 import chromium from "@sparticuz/chromium";
 import fs from "fs";
 import path from "path";
@@ -28,10 +28,8 @@ const LOGO_TOP = getBase64Image("wah-top-logo.png");
 const PUPPETEER_ARGS = [
   "--no-sandbox",
   "--disable-setuid-sandbox",
-  "--disable-dev-shm-usage", // Crucial for low-memory environments
+  "--disable-dev-shm-usage", // This is the most important flag for Render
   "--disable-gpu",
-  "--no-zygote",
-  "--single-process",
 ];
 
 // --- HELPERS ---
@@ -163,9 +161,9 @@ export const sendBulkPayslips = async (req, res) => {
 
     browser = await puppeteer.launch({
       args: PUPPETEER_ARGS,
+      headless: "new",
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
     });
 
     // Process in small parallel chunks (faster than sequential, safer than all-at-once)
@@ -205,9 +203,9 @@ export const sendPayslip = async (req, res) => {
 
     browser = await puppeteer.launch({
       args: PUPPETEER_ARGS,
+      headless: "new",
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
     });
 
     await processSinglePayslip(payrollRecord, period, browser);
