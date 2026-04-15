@@ -25,14 +25,13 @@ const getBase64Image = (fileName) => {
 const LOGO_MAIN = getBase64Image("wah-logo.png");
 const LOGO_TOP = getBase64Image("wah-top-logo.png");
 
-// --- REUSABLE BROWSER CONFIG ---
 const PUPPETEER_ARGS = [
-  ...chromium.args,
-  "--hide-scrollbars",
-  "--disable-web-security",
-  "--single-process",
-  "--no-zygote",
   "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage", // Crucial for low-memory environments
+  "--disable-gpu",
+  "--no-zygote",
+  "--single-process",
 ];
 
 // --- HELPERS ---
