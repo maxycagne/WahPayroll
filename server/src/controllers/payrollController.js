@@ -212,6 +212,11 @@ export const sendBulkPayslips = async (req, res) => {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--single-process",
       ],
     });
 
@@ -264,8 +269,11 @@ export const sendPayslip = async (req, res) => {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
-        "--single-process", // Highly recommended for Render
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--no-first-run",
         "--no-zygote",
+        "--single-process",
       ],
     });
 
