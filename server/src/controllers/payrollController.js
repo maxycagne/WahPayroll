@@ -140,35 +140,7 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
   return await emailService.send({
     to: payrollRecord.email,
     subject: `Payslip for ${payPeriodLabel}`,
-    html: `<div style="font-family: sans-serif; color: #333; line-height: 1.5;">
-    <p>Good day!</p>
-    
-    <p>Kindly see the attached <b>Payslip</b> for your reference.</p>
-    <p>You can also see the payslip in <b>WahPayroll.com</b></p>
-    
-    <p>If you have any concerns, please don't hesitate to let me know.</p>
-    
-    <p style="margin-bottom: 0;">--</p>
-    
-    <div style="margin-top: 5px;">
-      <strong style="color: #1a3a5f;">Finance Team</strong><br>
-      <strong style="color: #2b78c5; font-size: 1.1em;">Wireless Access for Health Initiative Inc. (WAH)</strong>
-    </div>
-
-    <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
-      2nd Floor, Diwa ng Tarlac, Romulo Blvd.<br>
-      San Vicente, Tarlac City 2300<br>
-      Web: <a href="http://www.wah.ph" style="color: #2b78c5;">www.wah.ph</a><br>
-      Facebook: <a href="http://www.facebook.com/wah.ph" style="color: #2b78c5;">http://www.facebook.com/wah.ph</a><br>
-      Linkedin: <a href="https://linkedin.com/company/wahteam" style="color: #2b78c5;">linkedin.com/company/wahteam</a><br>
-      Telefax: +6345 985 5607<br>
-      Mobile: +63917 529 7095 / +63998 565 1432
-    </div>
-
-    <div style="margin-top: 30px; font-size: 0.75em; color: #444; border-top: 1px solid #eee; pt: 10px; text-align: justify;">
-      <strong>CONFIDENTIALITY NOTICE:</strong> This email message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and/or privileged information. Any unauthorized review, use or disclosure, or distribution is prohibited. If you are not the intended recipient, please contact the sender immediately and destroy all copies of the original message.
-    </div>
-  </div>`, // Keep HTML short for speed
+    html: `<p>Good day! Attached is your payslip for ${payPeriodLabel}.</p>`, // Keep HTML short for speed
     attachments: [
       {
         filename: `Payslip_${payrollRecord.last_name}.pdf`,
