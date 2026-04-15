@@ -2,9 +2,18 @@ import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
+import { Camera, Lock, User, Eye, EyeOff, X } from "lucide-react"; // <-- Added Eye and EyeOff
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import axiosInterceptor from "@/hooks/interceptor";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
@@ -29,6 +38,10 @@ export default function Settings() {
     phone: currentUser.phone || "",
   });
 
+  // State for selected photo file & preview
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -42,45 +55,89 @@ export default function Settings() {
     confirm: false,
   });
 
+  // Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   const togglePasswordVisibility = (field) => {
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  // Photo Upload Mutation
-  const uploadPhotoMutation = useMutation({
-    mutationFn: async (file) => {
-      const formData = new FormData();
-      formData.append("profile_photo", file);
-      const token = localStorage.getItem("wah_token");
+  // Handle photo file selection — store locally + generate preview
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedPhoto(file);
+      const objectUrl = URL.createObjectURL(file);
+      setPhotoPreview(objectUrl);
+    }
+  };
 
-      const res = await fetch(`${API_BASE_URL}/api/employees/me/photo`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+  // Clear the selected photo
+  const clearSelectedPhoto = () => {
+    setSelectedPhoto(null);
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+      setPhotoPreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
+  // Combined Profile + Photo Save Mutation (uses /api/me/profile → updateMyProfile.ts)
+  const saveProfileMutation = useMutation({
+    mutationFn: async ({ profileData, photoFile }) => {
+      const formData = new FormData();
+      formData.append("email", profileData.email);
+
+      if (photoFile) {
+        formData.append("profile_photo", photoFile);
+      }
+
+      const res = await axiosInterceptor.put("/api/me/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      if (!res.ok) throw new Error("Failed to upload photo");
-      return res.json();
+
+      return res.data;
     },
     onSuccess: (data) => {
-      const updatedUser = { ...currentUser, profile_photo: data.filePath };
+      let updatedUser = { ...currentUser };
+
+      // The backend returns a signed S3 URL for the photo
+      if (data.photo) {
+        updatedUser.profile_photo = data.photo;
+      }
+
+      updatedUser.email = profileForm.email;
       localStorage.setItem("wah_user", JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
-      showToast("Profile photo updated successfully.");
+      clearSelectedPhoto();
+      showToast("Profile updated successfully.");
     },
-    onError: () => showToast("Error uploading photo.", "error"),
+    onError: (err) => showToast(err?.response?.data?.message || err.message || "Error updating profile.", "error"),
   });
 
-  // Profile Update Mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data) => {
-      return mutationHandler(
-        axiosInterceptor.put(`/api/employees/me/profile`, data),
-        "Failed to update profile"
-      );
-    },
-    onSuccess: () => showToast("Profile updated successfully."),
-    onError: () => showToast("Error updating profile.", "error"),
-  });
+  // Form submit handler — opens confirmation modal
+  const handleProfileSubmit = (e) => {
+    e.preventDefault();
+    setShowConfirmModal(true);
+  };
+
+  // Confirmed save — actually fire the mutation
+  const handleConfirmSave = () => {
+    setShowConfirmModal(false);
+    saveProfileMutation.mutate({
+      profileData: profileForm,
+      photoFile: selectedPhoto,
+    });
+  };
 
   // Password Change Mutation
   const changePasswordMutation = useMutation({
@@ -101,11 +158,6 @@ export default function Settings() {
     onError: (err) => showToast(err.message, "error"),
   });
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) uploadPhotoMutation.mutate(file);
-  };
-
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -117,6 +169,15 @@ export default function Settings() {
       newPassword: passwordForm.newPassword,
     });
   };
+
+  // Determine which photo to display in the avatar
+  const avatarSrc = photoPreview
+    ? photoPreview
+    : currentUser.profile_photo
+      ? currentUser.profile_photo.startsWith("http")
+        ? currentUser.profile_photo
+        : `${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`
+      : null;
 
   return (
     <div className="max-w-4xl mx-auto w-full">
@@ -158,51 +219,63 @@ export default function Settings() {
                   Public Profile
                 </h3>
 
-                {/* Photo Upload Section */}
-                <div className="flex items-center gap-5 mb-8">
-                  <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                    {currentUser.profile_photo ? (
-                      <img
-                        src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/jpeg, image/png, image/webp"
-                      className="hidden"
-                      ref={fileInputRef}
-                      onChange={handlePhotoChange}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadPhotoMutation.isPending}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <Camera className="w-4 h-4" />
-                      {uploadPhotoMutation.isPending
-                        ? "Uploading..."
-                        : "Change Photo"}
-                    </button>
-                    <p className="text-[11px] text-gray-500 mt-2">
-                      JPG, PNG or WEBP. Max size 2MB.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Details Form */}
+                {/* Single combined form for profile + photo */}
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    updateProfileMutation.mutate(profileForm);
-                  }}
+                  onSubmit={handleProfileSubmit}
                   className="space-y-4"
                 >
+                  {/* Photo Upload Section — now inside the form */}
+                  <div className="flex items-center gap-5 mb-4">
+                    <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      {avatarSrc ? (
+                        <img
+                          src={avatarSrc}
+                          alt="Profile"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-8 w-8 text-gray-400" />
+                      )}
+                    </div>
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/jpeg, image/png, image/webp"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handlePhotoChange}
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <Camera className="w-4 h-4" />
+                          {selectedPhoto ? "Change Photo" : "Upload Photo"}
+                        </button>
+                        {selectedPhoto && (
+                          <button
+                            type="button"
+                            onClick={clearSelectedPhoto}
+                            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-2">
+                        JPG, PNG or WEBP. Max size 2MB.
+                      </p>
+                      {selectedPhoto && (
+                        <p className="text-[11px] text-purple-600 font-medium mt-1">
+                          New photo selected: {selectedPhoto.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -248,10 +321,10 @@ export default function Settings() {
                   <div className="pt-4 flex justify-end">
                     <button
                       type="submit"
-                      disabled={updateProfileMutation.isPending}
+                      disabled={saveProfileMutation.isPending}
                       className="px-5 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {updateProfileMutation.isPending
+                      {saveProfileMutation.isPending
                         ? "Saving..."
                         : "Save Changes"}
                     </button>
@@ -384,6 +457,58 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900">
+              Confirm Changes
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 mt-1">
+              Are you sure you want to save the following changes to your profile?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {selectedPhoto && (
+              <div className="flex items-center gap-3 px-3 py-2.5 bg-purple-50 rounded-lg border border-purple-100">
+                <Camera className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                <div className="text-sm">
+                  <span className="font-medium text-purple-700">New profile photo: </span>
+                  <span className="text-purple-600">{selectedPhoto.name}</span>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
+              <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">Email: </span>
+                <span className="text-gray-600">{profileForm.email}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </DialogClose>
+            <button
+              type="button"
+              onClick={handleConfirmSave}
+              className="px-4 py-2 text-sm font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors cursor-pointer"
+            >
+              Confirm & Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );

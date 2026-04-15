@@ -5592,7 +5592,7 @@ export const updateMyProfile = async (req, res) => {
   }
 };
 
-// 3. Change Password
+// 3. Change Passw  ord
 export const changeMyPassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
