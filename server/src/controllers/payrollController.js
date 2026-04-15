@@ -68,7 +68,7 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
     : "Incentives";
 
   const page = await browser.newPage();
-
+  await page.setDefaultNavigationTimeout(60000);
   // Optimization: Use domcontentloaded instead of networkidle0 for speed
   const pdfHtmlContent = `
     <!DOCTYPE html>
