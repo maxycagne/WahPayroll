@@ -4,7 +4,6 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "build": "npm install && npx puppeteer install",
     "start": "node src/index.js",
     "dev": "tsx watch src/index.js"
   },

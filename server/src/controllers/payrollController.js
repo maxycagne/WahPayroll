@@ -5,7 +5,6 @@ import {
 import emailService from "../services/emailService.js";
 import pool from "../config/db.js";
 import puppeteer from "puppeteer";
-import chromium from "@sparticuz/chromium";
 import fs from "fs";
 import path from "path";
 
@@ -161,9 +160,9 @@ export const sendBulkPayslips = async (req, res) => {
 
     browser = await puppeteer.launch({
       args: PUPPETEER_ARGS,
-      headless: "new",
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      headless: true, // or "shell" for newer versions
+      // REMOVED: executablePath (Puppeteer finds its own)
+      // REMOVED: defaultViewport (Puppeteer uses its own default)
     });
 
     // Process in small parallel chunks (faster than sequential, safer than all-at-once)
@@ -203,9 +202,9 @@ export const sendPayslip = async (req, res) => {
 
     browser = await puppeteer.launch({
       args: PUPPETEER_ARGS,
-      headless: "new",
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      headless: true, // or "shell" for newer versions
+      // REMOVED: executablePath (Puppeteer finds its own)
+      // REMOVED: defaultViewport (Puppeteer uses its own default)
     });
 
     await processSinglePayslip(payrollRecord, period, browser);
