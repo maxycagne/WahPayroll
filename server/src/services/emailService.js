@@ -2,11 +2,9 @@ import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Must be false for 587
-  connectionOptions: {
-    family: 4,
-  },
+  port: 465,
+  secure: true, // Faster direct SSL
+  pool: true, // Keeps the connection open for multiple emails
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -26,7 +24,7 @@ const emailService = {
       console.log("Email sent: %s", info.messageId);
       return true;
     } catch (error) {
-      console.error("Email Service Error Detail:", error);
+      console.error("Email Service Error:", error);
       return false;
     }
   },
