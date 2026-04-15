@@ -74,9 +74,8 @@ export default function Settings() {
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
       return mutationHandler(
-        axiosInterceptor.put(`/api/employees/me/profile`, {
-          data,
-        }),
+        axiosInterceptor.put(`/api/employees/me/profile`, data),
+        "Failed to update profile"
       );
     },
     onSuccess: () => showToast("Profile updated successfully."),
@@ -87,10 +86,8 @@ export default function Settings() {
   const changePasswordMutation = useMutation({
     mutationFn: async (data) => {
       return mutationHandler(
-        axiosInterceptor.put(`/api/employees/me/change-password`),
-        {
-          data,
-        },
+        axiosInterceptor.put(`/api/employees/me/change-password`, data),
+        "Failed to change password"
       );
     },
     onSuccess: () => {

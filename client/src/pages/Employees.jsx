@@ -113,9 +113,7 @@ export default function Employees({ shortcutMode = false }) {
   const updateMutation = useMutation({
     mutationFn: async (updatedData) => {
       return mutationHandler(
-        axiosInterceptor.put(`/api/employees/${updatedData.emp_id}`, {
-          updatedData,
-        }),
+        axiosInterceptor.put(`/api/employees/${updatedData.emp_id}`, updatedData),
       );
     },
     onSuccess: () => {
