@@ -293,25 +293,9 @@ export default function Employees({ shortcutMode = false }) {
                   >
                     <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {/* The Circular Profile Picture */}
-                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                          {emp.profile_photo ? (
-                            <img
-                              src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
-                              alt="Profile"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-
-                        {/* The Name */}
-                        <div className="font-semibold text-gray-800">
-                          {emp.last_name}, {emp.first_name}{" "}
-                          {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                        </div>
+                      <div className="font-semibold text-gray-800">
+                        {emp.last_name}, {emp.first_name}{" "}
+                        {emp.middle_initial ? `${emp.middle_initial}.` : ""}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
