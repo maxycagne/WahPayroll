@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Camera, Lock, User, Eye, EyeOff, X } from "lucide-react"; // <-- Added Eye and EyeOff
+import { Lock, User, Eye, EyeOff } from "lucide-react";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import axiosInterceptor from "@/hooks/interceptor";
 import {
@@ -17,11 +17,9 @@ import {
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
-  const fileInputRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(
     JSON.parse(localStorage.getItem("wah_user") || "{}"),
   );
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const displayFirstName =
     currentUser?.first_name ||
@@ -38,9 +36,7 @@ export default function Settings() {
     phone: currentUser.phone || "",
   });
 
-  // State for selected photo file & preview
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
+
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -62,63 +58,18 @@ export default function Settings() {
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  // Handle photo file selection — store locally + generate preview
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedPhoto(file);
-      const objectUrl = URL.createObjectURL(file);
-      setPhotoPreview(objectUrl);
-    }
-  };
-
-  // Clear the selected photo
-  const clearSelectedPhoto = () => {
-    setSelectedPhoto(null);
-    if (photoPreview) {
-      URL.revokeObjectURL(photoPreview);
-      setPhotoPreview(null);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  // Cleanup object URL on unmount
-  useEffect(() => {
-    return () => {
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-    };
-  }, [photoPreview]);
-
-  // Combined Profile + Photo Save Mutation (uses /api/me/profile → updateMyProfile.ts)
+  // Profile Save Mutation (uses /api/me/profile → updateMyProfile.ts)
   const saveProfileMutation = useMutation({
-    mutationFn: async ({ profileData, photoFile }) => {
-      const formData = new FormData();
-      formData.append("email", profileData.email);
-
-      if (photoFile) {
-        formData.append("profile_photo", photoFile);
-      }
-
-      const res = await axiosInterceptor.put("/api/me/profile", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
+    mutationFn: async (profileData) => {
+      const res = await axiosInterceptor.put("/api/me/profile", profileData);
       return res.data;
     },
-    onSuccess: (data) => {
-      let updatedUser = { ...currentUser };
-
-      // The backend returns a signed S3 URL for the photo
-      if (data.photo) {
-        updatedUser.profile_photo = data.photo;
-      }
-
+    onSuccess: () => {
+      const freshUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+      let updatedUser = { ...freshUser };
       updatedUser.email = profileForm.email;
       localStorage.setItem("wah_user", JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
-      clearSelectedPhoto();
       showToast("Profile updated successfully.");
     },
     onError: (err) => showToast(err?.response?.data?.message || err.message || "Error updating profile.", "error"),
@@ -133,10 +84,7 @@ export default function Settings() {
   // Confirmed save — actually fire the mutation
   const handleConfirmSave = () => {
     setShowConfirmModal(false);
-    saveProfileMutation.mutate({
-      profileData: profileForm,
-      photoFile: selectedPhoto,
-    });
+    saveProfileMutation.mutate(profileForm);
   };
 
   // Password Change Mutation
@@ -170,14 +118,7 @@ export default function Settings() {
     });
   };
 
-  // Determine which photo to display in the avatar
-  const avatarSrc = photoPreview
-    ? photoPreview
-    : currentUser.profile_photo
-      ? currentUser.profile_photo.startsWith("http")
-        ? currentUser.profile_photo
-        : `${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`
-      : null;
+
 
   return (
     <div className="max-w-4xl mx-auto w-full">
@@ -219,62 +160,10 @@ export default function Settings() {
                   Public Profile
                 </h3>
 
-                {/* Single combined form for profile + photo */}
                 <form
                   onSubmit={handleProfileSubmit}
                   className="space-y-4"
                 >
-                  {/* Photo Upload Section — now inside the form */}
-                  <div className="flex items-center gap-5 mb-4">
-                    <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                      {avatarSrc ? (
-                        <img
-                          src={avatarSrc}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-8 w-8 text-gray-400" />
-                      )}
-                    </div>
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/jpeg, image/png, image/webp"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handlePhotoChange}
-                      />
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                          <Camera className="w-4 h-4" />
-                          {selectedPhoto ? "Change Photo" : "Upload Photo"}
-                        </button>
-                        {selectedPhoto && (
-                          <button
-                            type="button"
-                            onClick={clearSelectedPhoto}
-                            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-2">
-                        JPG, PNG or WEBP. Max size 2MB.
-                      </p>
-                      {selectedPhoto && (
-                        <p className="text-[11px] text-purple-600 font-medium mt-1">
-                          New photo selected: {selectedPhoto.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -471,15 +360,7 @@ export default function Settings() {
           </DialogHeader>
 
           <div className="space-y-3 py-2">
-            {selectedPhoto && (
-              <div className="flex items-center gap-3 px-3 py-2.5 bg-purple-50 rounded-lg border border-purple-100">
-                <Camera className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                <div className="text-sm">
-                  <span className="font-medium text-purple-700">New profile photo: </span>
-                  <span className="text-purple-600">{selectedPhoto.name}</span>
-                </div>
-              </div>
-            )}
+
             <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
               <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
               <div className="text-sm">

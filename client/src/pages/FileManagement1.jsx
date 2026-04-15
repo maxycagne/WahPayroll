@@ -605,16 +605,8 @@ export default function FileManagement() {
     setIsReplacing(true);
     try {
       if (replaceTarget.source === "profile") {
-        const payload = new FormData();
-        payload.append("profile_photo", file);
-
-        await mutationHandler(
-          axiosInterceptor.post(
-            `/api/employees/${replaceTarget.emp_id}/photo`,
-            payload,
-          ),
-          "Failed to replace profile photo",
-        );
+        showToast("Profile photo replacement is not supported.", "error");
+        return;
       } else {
         const uploadPayload = new FormData();
         uploadPayload.append("requiredFiles", file);
@@ -1111,7 +1103,6 @@ export default function FileManagement() {
       ) : isCardLayout ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {employeeCards.map(({ employee, files: employeeFiles }) => {
-            const profilePhoto = String(employee.profile_photo || "").trim();
             const employeeName =
               String(employee.employee_name || "").trim() ||
               employee.display_name ||
@@ -1130,17 +1121,6 @@ export default function FileManagement() {
                 className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-slate-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-200 text-slate-500">
-                    {profilePhoto ? (
-                      <img
-                        src={`${API_BASE_URL}/${String(profilePhoto).replace(/^\/+/, "")}`}
-                        alt={employee.employee_name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Users className="h-6 w-6" />
-                    )}
-                  </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="m-0 truncate text-sm font-bold text-slate-900">
                       {employeeName}
