@@ -17,7 +17,7 @@ const pool = mysql.createPool(process.env.MYSQL_PUBLIC_URL);
 pool
   .getConnection()
   .then((connection) => {
-    console.log("✅ Connected to MySQL database successfully!");
+    console.log("✅ Connected to MySQL database successfully!dasdad");
     connection.release();
   })
   .catch((err) => {
