@@ -208,13 +208,18 @@ export const sendBulkPayslips = async (req, res) => {
     }
 
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        "--hide-scrollbars",
+        "--disable-web-security",
+        "--single-process", // CRITICAL: Runs everything in one process to save RAM
+        "--no-zygote", // Saves memory
+        "--no-sandbox",
+      ],
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(), // This replaces /usr/bin/ path
+      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      ignoreHTTPSErrors: true,
     });
-
     let successCount = 0;
     let failureCount = 0;
 
@@ -259,11 +264,17 @@ export const sendPayslip = async (req, res) => {
       return res.status(400).json({ message: "Employee email not found." });
 
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        "--hide-scrollbars",
+        "--disable-web-security",
+        "--single-process", // CRITICAL: Runs everything in one process to save RAM
+        "--no-zygote", // Saves memory
+        "--no-sandbox",
+      ],
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(), // This replaces /usr/bin/ path
+      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      ignoreHTTPSErrors: true,
     });
 
     await processSinglePayslip(payrollRecord, period, browser);
