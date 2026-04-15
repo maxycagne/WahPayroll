@@ -4,7 +4,7 @@ import {
 } from "./employeeController.js";
 import emailService from "../services/emailService.js";
 import pool from "../config/db.js";
-import puppeteer from "puppeteer-core"; // Changed to puppeteer-core
+import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import fs from "fs";
 import path from "path";
@@ -210,8 +210,9 @@ export const sendBulkPayslips = async (req, res) => {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(), // Finds the browser on Render/Vercel
+      executablePath: await chromium.executablePath(), // This replaces /usr/bin/ path
       headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
 
     let successCount = 0;
@@ -260,8 +261,9 @@ export const sendPayslip = async (req, res) => {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(), // This replaces /usr/bin/ path
       headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
 
     await processSinglePayslip(payrollRecord, period, browser);
