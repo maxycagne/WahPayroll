@@ -36,6 +36,7 @@ export default function Employees({ shortcutMode = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const canResetPassword = currentUser?.role === "Admin";
+  const canAddEmployee = ["Admin", "HR"].includes(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
@@ -221,12 +222,14 @@ export default function Employees({ shortcutMode = false }) {
             <h1 className="text-2xl font-bold text-gray-900">
               Employee Management
             </h1>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              + Add Employee
-            </button>
+            {canAddEmployee && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                + Add Employee
+              </button>
+            )}
           </div>
 
           {/* Filters */}
