@@ -40,9 +40,6 @@ export default function LeaveCalendar({
   const selectedLeaves = selectedDateStr
     ? getLeavesForDate(selectedDateStr, leaves)
     : [];
-  const selectedAttendance = selectedDateStr
-    ? getAttendanceForDate(selectedDateStr, attendance)
-    : null;
 
   return (
     <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -63,7 +60,6 @@ export default function LeaveCalendar({
         attendance={attendance}
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
-        selectedAttendance={selectedAttendance}
         selectedLeaves={selectedLeaves}
       ></LeaveCalendarGrid>
     </div>

@@ -1,22 +1,19 @@
 import React from "react";
 
 import {
-  getAttendanceForDate,
   getLeavesForDate,
 } from "../utils/calendar.utils";
 import { pad } from "../utils/leave.utils";
-import { attendanceColors, statusColors } from "../leaveConstants";
+import { statusColors } from "../leaveConstants";
 import LeaveCalendarModal from "./LeaveCalendarModal";
 
 const LeaveCalendarGrid = ({
   cells,
   leaves,
-  attendance,
   selectedDate,
   setSelectedDate,
   month,
   year,
-  selectedAttendance,
   selectedLeaves,
   selectedDateStr,
 }) => {
@@ -38,7 +35,6 @@ const LeaveCalendarGrid = ({
 
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
             const dayLeaves = getLeavesForDate(dateStr, leaves);
-            const dayAtt = getAttendanceForDate(dateStr, attendance);
             const isSelected = day === selectedDate;
             const visibleLeaves = dayLeaves.slice(0, 3);
             const extraLeavesCount = Math.max(
@@ -71,19 +67,7 @@ const LeaveCalendarGrid = ({
                 </span>
 
                 <div className="mt-0.5 flex w-full flex-col gap-1">
-                  {dayAtt && dayAtt.status !== "On Leave" && (
-                    <span
-                      className={`flex w-fit rounded-md px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${
-                        isSelected
-                          ? "bg-white/20 text-white"
-                          : //  @ts-ignore
-                            attendanceColors[dayAtt.status] ||
-                            "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {dayAtt.status}
-                    </span>
-                  )}
+
                   {visibleLeaves.map((leave) => (
                     <div
                       key={leave.id}
@@ -132,7 +116,6 @@ const LeaveCalendarGrid = ({
         <LeaveCalendarModal
           setSelectedDate={setSelectedDate}
           selectedDateStr={selectedDateStr}
-          selectedAttendance={selectedAttendance}
           selectedLeaves={selectedLeaves}
         ></LeaveCalendarModal>
       )}
