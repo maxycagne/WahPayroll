@@ -320,114 +320,101 @@ export default function Employees({ shortcutMode = false }) {
                   </tr>
                 ) : (
                   filteredEmployees.map((emp) => (
-                  <tr
-                    key={emp.emp_id}
-                    onClick={() => setSelectedEmployeeDetails(emp)}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {/* The Circular Profile Picture */}
-                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                          {emp.profile_photo ? (
-                            <img
-                              src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
-                              alt="Profile"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-
-                        {/* The Name */}
-                        <div className="font-semibold text-gray-800">
-                          {emp.last_name}, {emp.first_name}{" "}
-                          {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="font-medium text-gray-900">
-                        {emp.designation}
-                      </div>
-                      <div className="text-xs opacity-75">{emp.position}</div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                        {emp.status}
-                      </span>
-                    </td>
-                    {canAddEmployee && (
-                    <td
-                      className="px-6 py-4 text-center relative"
-                      onClick={(e) => e.stopPropagation()}
+                    <tr
+                      key={emp.emp_id}
+                      onClick={() => setSelectedEmployeeDetails(emp)}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      <button
-                        onClick={() =>
-                          setActiveMenu(
-                            activeMenu === emp.emp_id ? null : emp.emp_id,
-                          )
-                        }
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
-                      >
-                        <svg
-                          width="20"
-                          height="20"
-                          fill="currentColor"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                        </svg>
-                      </button>
-
-                      {/* Action Menu Dropdown */}
-                      {activeMenu === emp.emp_id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setActiveMenu(null)}
-                          ></div>
-                          <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                            <button
-                              onClick={() => {
-                                setEditEmployee(emp);
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                            >
-                              Edit Info
-                            </button>
-                            {canResetPassword && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenu(null);
-                                  setResetConfirm(emp);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
-                              >
-                                Reset Password
-                              </button>
-                            )}
-                            <hr className="my-1 border-gray-100" />
-                            <button
-                              onClick={() => {
-                                setDeleteConfirm(emp);
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                            >
-                              Delete
-                            </button>
+                      <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {/* The Name */}
+                          <div className="font-semibold text-gray-800">
+                            {emp.last_name}, {emp.first_name}{" "}
+                            {emp.middle_initial ? `${emp.middle_initial}.` : ""}
                           </div>
-                        </>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        <div className="font-medium text-gray-900">
+                          {emp.designation}
+                        </div>
+                        <div className="text-xs opacity-75">{emp.position}</div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                          {emp.status}
+                        </span>
+                      </td>
+                      {canAddEmployee && (
+                        <td
+                          className="px-6 py-4 text-center relative"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() =>
+                              setActiveMenu(
+                                activeMenu === emp.emp_id ? null : emp.emp_id,
+                              )
+                            }
+                            className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                          >
+                            <svg
+                              width="20"
+                              height="20"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                            </svg>
+                          </button>
+
+                          {/* Action Menu Dropdown */}
+                          {activeMenu === emp.emp_id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setActiveMenu(null)}
+                              ></div>
+                              <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
+                                <button
+                                  onClick={() => {
+                                    setEditEmployee(emp);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                                >
+                                  Edit Info
+                                </button>
+                                {canResetPassword && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveMenu(null);
+                                      setResetConfirm(emp);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                  >
+                                    Reset Password
+                                  </button>
+                                )}
+                                <hr className="my-1 border-gray-100" />
+                                <button
+                                  onClick={() => {
+                                    setDeleteConfirm(emp);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </td>
                       )}
-                    </td>
-                    )}
-                  </tr>
-                ))
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -769,7 +756,10 @@ function EmployeeModal({
   isEdit = false,
 }) {
   // Check if ID is duplicate
-  const isDuplicate = !isEdit && data.emp_id && employees.some(emp => emp.emp_id === data.emp_id);
+  const isDuplicate =
+    !isEdit &&
+    data.emp_id &&
+    employees.some((emp) => emp.emp_id === data.emp_id);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
@@ -797,7 +787,9 @@ function EmployeeModal({
                 required
                 maxLength={20}
                 className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 ${
-                  isDuplicate ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
+                  isDuplicate
+                    ? "border-red-500 ring-1 ring-red-500"
+                    : "border-gray-300"
                 }`}
               />
               {isDuplicate && (
