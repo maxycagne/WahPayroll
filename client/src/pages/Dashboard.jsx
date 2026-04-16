@@ -269,7 +269,7 @@ function EmployeeDashboard({ currentUser }) {
         </div>
       )}
       {/* STAT CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col justify-between rounded-xl border border-emerald-200/70 bg-white p-5 shadow-sm">
           <p className="m-0 mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
             Leave Balance
@@ -284,19 +284,6 @@ function EmployeeDashboard({ currentUser }) {
           </div>
         </div>
 
-        <div className="flex flex-col justify-between rounded-xl border border-violet-200/80 bg-white p-5 shadow-sm">
-          <p className="m-0 mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            Offset Credits
-          </p>
-          <div className="flex items-baseline gap-2">
-            <h2 className="m-0 text-4xl font-black text-slate-900">
-              {myBalanceRecord?.offset_credits || 0}
-            </h2>
-            <span className="text-sm font-medium text-slate-500">
-              Earned Credits
-            </span>
-          </div>
-        </div>
 
         {/* QUICK ACTIONS */}
         <div className="flex flex-col gap-2">
@@ -1441,7 +1428,7 @@ function SupervisorDashboard({ currentUser }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm">
           <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
             My Attendance Today
@@ -1458,14 +1445,7 @@ function SupervisorDashboard({ currentUser }) {
             {Number(personalSummary.leaveBalance || 0)}
           </p>
         </div>
-        <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 shadow-sm">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-violet-700">
-            My Offset Credits
-          </p>
-          <p className="m-0 mt-1 text-xl font-black text-violet-800">
-            {Number(personalSummary.offsetCredits || 0)}
-          </p>
-        </div>
+
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 shadow-sm">
           <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-amber-700">
             My Pending Requests

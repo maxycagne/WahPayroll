@@ -70,6 +70,8 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   useEffect(() => {
+    if (!canAddEmployee) return;
+
     if (shortcutMode) {
       setIsAddModalOpen(true);
       return;
@@ -282,9 +284,11 @@ export default function Employees({ shortcutMode = false }) {
                     Email Address
                   </th>
                   <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-                  <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                    Actions
-                  </th>
+                  {canAddEmployee && (
+                    <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -313,6 +317,7 @@ export default function Employees({ shortcutMode = false }) {
                         {emp.status}
                       </span>
                     </td>
+                    {canAddEmployee && (
                     <td
                       className="px-6 py-4 text-center relative"
                       onClick={(e) => e.stopPropagation()}
@@ -377,6 +382,7 @@ export default function Employees({ shortcutMode = false }) {
                         </>
                       )}
                     </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -386,7 +392,7 @@ export default function Employees({ shortcutMode = false }) {
       )}
 
       {/* Modals same as before but updated with logic */}
-      {isAddModalOpen && !addConfirm && (
+      {canAddEmployee && isAddModalOpen && !addConfirm && (
         <EmployeeModal
           title="Add New Employee"
           data={formData}
@@ -739,6 +745,7 @@ function EmployeeModal({
                 onChange={onChange}
                 disabled={isEdit}
                 required
+                maxLength={20}
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
               />
             </div>
@@ -752,6 +759,7 @@ function EmployeeModal({
                 value={data.email}
                 onChange={onChange}
                 required
+                maxLength={30}
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -767,6 +775,7 @@ function EmployeeModal({
                     value={data.first_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -791,6 +800,7 @@ function EmployeeModal({
                     value={data.last_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -881,6 +891,7 @@ function EmployeeModal({
                     name="philhealth_no"
                     value={data.philhealth_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -892,6 +903,7 @@ function EmployeeModal({
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -903,6 +915,7 @@ function EmployeeModal({
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -914,6 +927,7 @@ function EmployeeModal({
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -925,6 +939,7 @@ function EmployeeModal({
                     name="pag_ibig_rtn"
                     value={data.pag_ibig_rtn || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -936,6 +951,7 @@ function EmployeeModal({
                     name="gsis_no"
                     value={data.gsis_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
