@@ -36,6 +36,7 @@ export default function Employees({ shortcutMode = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const canResetPassword = currentUser?.role === "Admin";
+  const canAddEmployee = ["Admin", "HR"].includes(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
@@ -69,6 +70,8 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   useEffect(() => {
+    if (!canAddEmployee) return;
+
     if (shortcutMode) {
       setIsAddModalOpen(true);
       return;
@@ -155,10 +158,10 @@ export default function Employees({ shortcutMode = false }) {
       );
       return { ...data, emp };
     },
-    onSuccess: ({ autoPassword, emp }) => {
+    onSuccess: (data, emp) => {
       setResetConfirm(null);
       showToast(
-        `Password reset for ${emp.first_name} ${emp.last_name}: ${autoPassword}`,
+        `Password reset for ${emp.first_name} ${emp.last_name}: ${data.autoPassword}`,
       );
     },
     onError: (error) => {
@@ -233,12 +236,14 @@ export default function Employees({ shortcutMode = false }) {
             <h1 className="text-2xl font-bold text-gray-900">
               Employee Management
             </h1>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              + Add Employee
-            </button>
+            {canAddEmployee && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                + Add Employee
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -291,13 +296,30 @@ export default function Employees({ shortcutMode = false }) {
                     Email Address
                   </th>
                   <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-                  <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                    Actions
-                  </th>
+                  {canAddEmployee && (
+                    <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEmployees.map((emp) => (
+                {filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={canAddEmployee ? 6 : 5}
+                      className="px-6 py-12 text-center"
+                    >
+                      <p className="m-0 text-sm font-semibold text-gray-500">
+                        No employees found
+                      </p>
+                      <p className="m-0 mt-1 text-xs text-gray-400">
+                        Try adjusting your search or filter criteria.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEmployees.map((emp) => (
                   <tr
                     key={emp.emp_id}
                     onClick={() => setSelectedEmployeeDetails(emp)}
@@ -338,6 +360,7 @@ export default function Employees({ shortcutMode = false }) {
                         {emp.status}
                       </span>
                     </td>
+                    {canAddEmployee && (
                     <td
                       className="px-6 py-4 text-center relative"
                       onClick={(e) => e.stopPropagation()}
@@ -402,8 +425,10 @@ export default function Employees({ shortcutMode = false }) {
                         </>
                       )}
                     </td>
+                    )}
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
@@ -411,10 +436,11 @@ export default function Employees({ shortcutMode = false }) {
       )}
 
       {/* Modals same as before but updated with logic */}
-      {isAddModalOpen && !addConfirm && (
+      {canAddEmployee && isAddModalOpen && !addConfirm && (
         <EmployeeModal
           title="Add New Employee"
           data={formData}
+          employees={employees} // <-- Pass employees for duplicate check
           onChange={handleInputChange}
           onClose={() => {
             setIsAddModalOpen(false);
@@ -432,6 +458,7 @@ export default function Employees({ shortcutMode = false }) {
         <EmployeeModal
           title="Edit Employee Information"
           data={editEmployee}
+          employees={employees} // <-- Pass employees for duplicate check
           isEdit={true}
           onChange={(e) => {
             const { name, value } = e.target;
@@ -734,12 +761,16 @@ function EmployeeDetailsModal({ employee, onClose }) {
 function EmployeeModal({
   title,
   data,
+  employees = [], // <-- Added employees prop
   onChange,
   onClose,
   onSubmit,
   isPending,
   isEdit = false,
 }) {
+  // Check if ID is duplicate
+  const isDuplicate = !isEdit && data.emp_id && employees.some(emp => emp.emp_id === data.emp_id);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -764,8 +795,16 @@ function EmployeeModal({
                 onChange={onChange}
                 disabled={isEdit}
                 required
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
+                maxLength={20}
+                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 ${
+                  isDuplicate ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
+                }`}
               />
+              {isDuplicate && (
+                <span className="text-[10px] font-bold text-red-500 mt-1">
+                  Employee ID already in use
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
@@ -777,6 +816,7 @@ function EmployeeModal({
                 value={data.email}
                 onChange={onChange}
                 required
+                maxLength={30}
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -792,6 +832,7 @@ function EmployeeModal({
                     value={data.first_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -816,6 +857,7 @@ function EmployeeModal({
                     value={data.last_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -906,6 +948,7 @@ function EmployeeModal({
                     name="philhealth_no"
                     value={data.philhealth_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -917,6 +960,7 @@ function EmployeeModal({
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -928,6 +972,7 @@ function EmployeeModal({
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -939,6 +984,7 @@ function EmployeeModal({
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -950,6 +996,7 @@ function EmployeeModal({
                     name="pag_ibig_rtn"
                     value={data.pag_ibig_rtn || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -961,6 +1008,7 @@ function EmployeeModal({
                     name="gsis_no"
                     value={data.gsis_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -990,8 +1038,8 @@ function EmployeeModal({
             </button>
             <button
               type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white"
+              disabled={isPending || isDuplicate}
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending
                 ? "Processing..."

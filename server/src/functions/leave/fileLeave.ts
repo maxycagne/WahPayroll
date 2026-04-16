@@ -93,6 +93,29 @@ export const fileLeave: RequestHandler = async (
       );
     }
 
+    // --- OVERLAP CHECK ---
+    const [existingApproved] = await connection.query(
+      `
+      SELECT id, status, date_from, date_to 
+      FROM leave_requests 
+      WHERE emp_id = ? 
+        AND status IN ('Approved', 'Pending')
+        AND (
+          (date_from <= ? AND date_to >= ?)
+        )
+      LIMIT 1
+      `,
+      [requesterEmpId, resolvedDateTo, date_from]
+    );
+
+    if ((existingApproved as any[]).length > 0) {
+      await connection.rollback();
+      const match = (existingApproved as any[])[0];
+      return res.status(409).json({
+        message: `Overlap detected: You already have a ${match.status} leave request for this period (${match.date_from} to ${match.date_to}).`,
+      });
+    }
+
     await connection.query(
       `
         INSERT INTO leave_requests (

@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LeaveCalendarGrid from "./LeaveCalendarGrid";
 import LeaveCalendarHeader from "./LeaveCalendarHeader";
 import { getDaysInMonth } from "../utils/date.utils";
 import { pad } from "../utils/leave.utils";
 import {
-  getAttendanceForDate,
   getLeavesForDate,
 } from "../utils/calendar.utils";
 
@@ -14,6 +13,8 @@ export default function LeaveCalendar({
   onScopeChange,
   attendance,
   activeScope,
+  onMonthChange,
+  workweekConfigs = [],
 }) {
   const [viewDate, setViewDate] = useState(new Date());
   const year = viewDate.getFullYear();
@@ -30,6 +31,10 @@ export default function LeaveCalendar({
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
+  useEffect(() => {
+    if (onMonthChange) onMonthChange({ year, month });
+  }, [year, month, onMonthChange]);
+
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
@@ -40,9 +45,6 @@ export default function LeaveCalendar({
   const selectedLeaves = selectedDateStr
     ? getLeavesForDate(selectedDateStr, leaves)
     : [];
-  const selectedAttendance = selectedDateStr
-    ? getAttendanceForDate(selectedDateStr, attendance)
-    : null;
 
   return (
     <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -63,8 +65,8 @@ export default function LeaveCalendar({
         attendance={attendance}
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
-        selectedAttendance={selectedAttendance}
         selectedLeaves={selectedLeaves}
+        workweekConfigs={workweekConfigs}
       ></LeaveCalendarGrid>
     </div>
   );

@@ -4,7 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { mutationHandler } from "../features/leave/hooks/createMutationHandler";
+import { isNonWorkingDay } from "../features/leave/utils/date.utils";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -14,7 +15,31 @@ const badgeClass = {
   Absent: "bg-red-100 text-red-800",
   "On Leave": "bg-purple-100 text-purple-800",
   Pending: "bg-gray-100 text-gray-500",
-  "": "bg-gray-100 text-gray-500", // Fallback styling for None
+  "": "bg-gray-100 text-gray-500",
+};
+
+const designationMap = {
+  Operations: [
+    "Supervisor(Finance & Operations)",
+    "Assistant Finance & Operations Partner",
+    "Admin & Human Resources Partner",
+  ],
+  "Health Program Partners": [
+    "Supervisor(Health Program Partner)",
+    "Health Program Partner",
+    "Profiler",
+  ],
+  "Platform Innovation": [
+    "Supervisor(Platform Innovation)",
+    "Senior Platform Innovation Partner",
+    "Platform Innovation Partner",
+    "Data Analyst",
+    "Business Analyst/Quality Assurance",
+  ],
+  "Network & System": [
+    "Supervisor(Network & Systems)",
+    "Network & Systems Partner",
+  ],
 };
 
 export default function Attendance({ shortcutMode = false }) {
@@ -49,6 +74,12 @@ export default function Attendance({ shortcutMode = false }) {
 
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [dateDetailsOpen, setDateDetailsOpen] = useState(false);
+  const [dateDetailsDate, setDateDetailsDate] = useState(null);
+  const [detailsSearch, setDetailsSearch] = useState("");
+  const [detailsDesignation, setDetailsDesignation] = useState("All");
+  const [detailsPosition, setDetailsPosition] = useState("All");
+  const [detailsStatus, setDetailsStatus] = useState("All");
   const [workweekModalOpen, setWorkweekModalOpen] = useState(false);
 
   // Calendar State
@@ -134,7 +165,7 @@ export default function Attendance({ shortcutMode = false }) {
       setSecondaryStatusForm(initialSecondary);
       return data;
     },
-    enabled: !!selectedDate && dailyModalOpen,
+    enabled: !!selectedDate && (dailyModalOpen || dateDetailsOpen),
   });
 
   // --- MUTATIONS ---
@@ -184,6 +215,8 @@ export default function Attendance({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
       showToast("Workweek configuration saved.");
       setWorkweekForm((prev) => ({
         ...prev,
@@ -204,6 +237,8 @@ export default function Attendance({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
       showToast("Workweek configuration updated.");
       setEditingWorkweekId(null);
       setWorkweekForm({
@@ -225,6 +260,8 @@ export default function Attendance({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
       showToast("Workweek configuration deleted.");
     },
     onError: (err) =>
@@ -520,15 +557,22 @@ export default function Attendance({ shortcutMode = false }) {
                     );
                   });
 
+                  const isOffDay = isNonWorkingDay(dateStr, workweekConfigs);
+
                   return (
                     <button
                       key={i}
                       onClick={() => {
                         setSelectedDate(dateStr);
-                        setDailyModalOpen(true);
+                        setDateDetailsDate(dateStr);
+                        setDateDetailsOpen(true);
+                        setDetailsSearch("");
+                        setDetailsDesignation("All");
+                        setDetailsPosition("All");
+                        setDetailsStatus("All");
                         setSelectedEmployees(new Set());
                       }}
-                      className={`min-h-[88px] cursor-pointer rounded-xl border bg-white p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${isToday ? "border-indigo-600 ring-2 ring-indigo-200" : "border-slate-200 hover:border-indigo-300"}`}
+                      className={`min-h-[88px] cursor-pointer rounded-xl border p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${isToday ? "border-indigo-600 ring-2 ring-indigo-200" : "border-slate-200 hover:border-indigo-300"} ${isOffDay ? "opacity-50 bg-slate-50" : "bg-white"}`}
                     >
                       <div className="mb-1 flex w-full items-center justify-between">
                         <span
@@ -717,6 +761,209 @@ export default function Attendance({ shortcutMode = false }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* --- POPUP: DATE DETAILS (like Applications page) --- */}
+      {dateDetailsOpen && dateDetailsDate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+          onClick={() => setDateDetailsOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-700 px-5 py-3 text-white">
+              <div>
+                <h2 className="m-0 text-sm font-bold">Date Details</h2>
+                <p className="m-0 mt-0.5 text-xs text-white/80">
+                  {new Date(dateDetailsDate + "T00:00:00").toLocaleDateString(
+                    undefined,
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => setDateDetailsOpen(false)}
+                className="cursor-pointer rounded-md border border-white/20 bg-white/5 px-3 py-1 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 pb-2 space-y-2">
+              <input
+                type="text"
+                placeholder="Search employee..."
+                value={detailsSearch}
+                onChange={(e) => setDetailsSearch(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={detailsDesignation}
+                  onChange={(e) => {
+                    setDetailsDesignation(e.target.value);
+                    setDetailsPosition("All");
+                  }}
+                  className="flex-1 min-w-[120px] rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="All">All Designations</option>
+                  {Object.keys(designationMap).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={detailsPosition}
+                  onChange={(e) => setDetailsPosition(e.target.value)}
+                  className="flex-1 min-w-[120px] rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="All">All Positions</option>
+                  {detailsDesignation !== "All" &&
+                  designationMap[detailsDesignation]
+                    ? designationMap[detailsDesignation].map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))
+                    : Object.values(designationMap)
+                        .flat()
+                        .map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                </select>
+                <select
+                  value={detailsStatus}
+                  onChange={(e) => setDetailsStatus(e.target.value)}
+                  className="flex-1 min-w-[100px] rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="All">All Status</option>
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Late">Late</option>
+                  <option value="Undertime">Undertime</option>
+                  <option value="Half-Day">Half-Day</option>
+                  <option value="No Status">No Status</option>
+                </select>
+              </div>
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto px-4 pb-4">
+              {dailyLoading ? (
+                <p className="py-6 text-center text-sm font-semibold text-slate-500">
+                  Loading attendance...
+                </p>
+              ) : dailyList.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-500">
+                  No attendance records for this date.
+                </p>
+              ) : (
+                (() => {
+                  const filtered = dailyList.filter((emp) => {
+                    const name =
+                      `${emp.first_name} ${emp.last_name} ${emp.emp_id}`.toLowerCase();
+                    if (
+                      detailsSearch &&
+                      !name.includes(detailsSearch.toLowerCase())
+                    )
+                      return false;
+                    if (
+                      detailsDesignation !== "All" &&
+                      emp.designation !== detailsDesignation
+                    )
+                      return false;
+                    if (
+                      detailsPosition !== "All" &&
+                      emp.position !== detailsPosition
+                    )
+                      return false;
+                    if (detailsStatus !== "All") {
+                      const primary = emp.attendance_status || "";
+                      const secondary = emp.status2 || "";
+                      if (detailsStatus === "No Status") {
+                        if (primary || secondary) return false;
+                      } else {
+                        if (
+                          primary !== detailsStatus &&
+                          secondary !== detailsStatus
+                        )
+                          return false;
+                      }
+                    }
+                    return true;
+                  });
+                  if (filtered.length === 0)
+                    return (
+                      <p className="py-6 text-center text-sm text-slate-500">
+                        No employees match your filters.
+                      </p>
+                    );
+                  return (
+                    <div className="space-y-2">
+                      <p className="m-0 text-[11px] font-semibold text-slate-400">
+                        {filtered.length} employee
+                        {filtered.length !== 1 ? "s" : ""}
+                      </p>
+                      {filtered.map((emp) => {
+                        const primary = emp.attendance_status || "";
+                        const secondary = emp.status2 || "";
+                        const statusLabel =
+                          [primary, secondary].filter(Boolean).join(", ") ||
+                          "No Status";
+                        const statusColor =
+                          badgeClass[primary] || badgeClass[""];
+                        return (
+                          <div
+                            key={emp.emp_id}
+                            className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3"
+                          >
+                            <div>
+                              <p className="m-0 text-sm font-bold text-slate-900">
+                                {emp.first_name} {emp.last_name}
+                              </p>
+                              <p className="m-0 text-[11px] text-slate-500">
+                                {[emp.designation, emp.position]
+                                  .filter(Boolean)
+                                  .join(" • ") || emp.emp_id}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${statusColor}`}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+            {canEditAttendance && (
+              <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 flex justify-end">
+                <button
+                  onClick={() => {
+                    setDateDetailsOpen(false);
+                    setSelectedDate(dateDetailsDate);
+                    setDailyModalOpen(true);
+                  }}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700"
+                >
+                  Edit Attendance
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* --- MODAL: DAILY ATTENDANCE FORM --- */}

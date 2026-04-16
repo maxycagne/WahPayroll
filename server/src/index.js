@@ -13,8 +13,11 @@ import profileRoutes from "./routes/profileRoutes.ts";
 
 const app = express();
 const PORT = process.env.PORT || 8001;
-const allowedOrigins = ["http://localhost:5173"];
-
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://wah-payroll-seven.vercel.app",
+];
+//mavsy the great
 // Updated CORS configuration to allow React and your custom headers
 app.use(
   cors({
