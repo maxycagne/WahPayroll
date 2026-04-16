@@ -1,4 +1,5 @@
 import axiosInterceptor from "@/hooks/interceptor";
+import { useFieldStore } from "../store/useFieldStore";
 import {
   createMutation,
   mutationHandler,
@@ -9,10 +10,9 @@ import { useEmailNotifications } from "../hooks/useEmailNotifications";
 
 export const useRequestMutation = ({
   showToast,
-  setApplicationModalOpen,
-  setResignationForm,
   setFormData,
   formData,
+  setApplicationModalOpen,
 }: useRequestMutation) => {
   const endpoints = {
     leave: "/api/employees/leaves",
@@ -99,13 +99,7 @@ export const useRequestMutation = ({
     showToast,
     invalidateKeys: ["resignations"],
     successExtra: () => {
-      if (typeof setResignationForm === "function") {
-        setResignationForm({
-          resignation_type: "Voluntary Resignation",
-          effective_date: "",
-          reason: "",
-        });
-      }
+      useFieldStore.getState().resetForm();
       setApplicationModalOpen(false);
     },
   });

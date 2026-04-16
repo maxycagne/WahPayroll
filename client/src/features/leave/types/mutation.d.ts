@@ -1,12 +1,5 @@
 type useRequestMutation = {
   showToast: (message: any, type?: string, duration?: number) => void;
-  setResignationForm: Dispatch<
-    SetStateAction<{
-      resignation_type: string;
-      effective_date: string;
-      reason: string;
-    }>
-  >;
   setFormData: Dispatch<
     SetStateAction<{
       emp_id: any;

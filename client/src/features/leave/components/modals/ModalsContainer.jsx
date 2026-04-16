@@ -23,8 +23,6 @@ export default function ModalsContainer({
   availableLeaveTypes,
   difference,
   handleSubmitLeave,
-  resignationForm,
-  setResignationForm,
   resignationTypes,
   fileResignationMutation,
   pendingModalOpen,
@@ -88,8 +86,6 @@ export default function ModalsContainer({
         availableLeaveTypes={availableLeaveTypes}
         difference={difference}
         handleSubmitLeave={handleSubmitLeave}
-        resignationForm={resignationForm}
-        setResignationForm={setResignationForm}
         resignationTypes={resignationTypes}
         fileResignationMutation={fileResignationMutation}
       />

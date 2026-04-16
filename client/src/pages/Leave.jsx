@@ -41,8 +41,6 @@ export default function Leave() {
       setData: setFormData,
       error: formError,
       setError: setFormError,
-      resignation: resignationForm,
-      setResignation: setResignationForm,
     },
     modals: {
       application: {
@@ -155,7 +153,6 @@ export default function Leave() {
   } = useRequestMutation({
     showToast,
     setApplicationModalOpen,
-    setResignationForm,
     setFormData,
     formData,
   });
@@ -501,8 +498,6 @@ export default function Leave() {
         availableLeaveTypes={availableLeaveTypes}
         difference={difference}
         handleSubmitLeave={handleSubmitLeave}
-        resignationForm={resignationForm}
-        setResignationForm={setResignationForm}
         resignationTypes={resignationTypes}
         fileResignationMutation={fileResignationMutation}
         pendingModalOpen={pendingModalOpen}
