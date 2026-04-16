@@ -349,6 +349,23 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
       "ALTER TABLE leave_requests ADD COLUMN hr_note TEXT NULL AFTER supervisor_remarks",
     );
   }
+
+  const [leaveCreatedAtColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'created_at'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveCreatedAtColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    );
+  }
 };
 
 const ensureResignationsTable = async (connection = pool) => {

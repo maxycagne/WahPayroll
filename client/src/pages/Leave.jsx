@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Toast from "../components/Toast";
 import {
@@ -15,7 +16,6 @@ import {
 
 import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
 import ActionButtons from "@/features/leave/components/ActionButtons";
-import OffsetBalanceCard from "@/features/leave/components/OffsetBalanceCard";
 import RequestHistoryTable from "@/features/leave/components/RequestHistoryTable";
 import ModalsContainer from "@/features/leave/components/modals/ModalsContainer";
 import { useFormData } from "@/features/leave/hooks/useFormData";
@@ -32,6 +32,7 @@ import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
 import { useHandleSubmiisions } from "@/features/leave/hooks/useHandleSubmissions";
 
 export default function Leave() {
+  const [activeMonth, setActiveMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() });
   const formDataState = useFormData();
 
   const {
@@ -107,9 +108,6 @@ export default function Leave() {
   const { data: offsetApplications = [], isLoading: isLoadingOffsets } =
     useQuery(offsetApplicationsQueryOptions);
 
-  const { data: offsetBalance = {} } = useQuery(
-    offsetBalanceQueryOptions(currentUser?.emp_id || ""),
-  );
 
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery(resignationQueryOptions);
@@ -141,6 +139,14 @@ export default function Leave() {
     pendingTypeFilter,
     currentUser,
   });
+  
+  const filteredHistory = useMemo(() => {
+    return myRequestHistory.filter(entry => {
+      if (!entry.filter_date) return false;
+      const d = new Date(entry.filter_date);
+      return d.getFullYear() === activeMonth.year && d.getMonth() === activeMonth.month;
+    });
+  }, [myRequestHistory, activeMonth]);
 
   const {
     submitLeaveMutation,
@@ -478,11 +484,11 @@ export default function Leave() {
         scopeOptions={calendarScopeOptions}
         activeScope={calendarScope}
         onScopeChange={setCalendarScope}
+        onMonthChange={setActiveMonth}
       />
 
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <OffsetBalanceCard offsetBalance={offsetBalance} />
-        <RequestHistoryTable myRequestHistory={myRequestHistory} />
+      <div className="mt-5">
+        <RequestHistoryTable myRequestHistory={filteredHistory} activeMonth={activeMonth} />
       </div>
 
       <ModalsContainer

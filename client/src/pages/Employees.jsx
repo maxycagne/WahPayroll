@@ -292,7 +292,22 @@ export default function Employees({ shortcutMode = false }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEmployees.map((emp) => (
+                {filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={canAddEmployee ? 6 : 5}
+                      className="px-6 py-12 text-center"
+                    >
+                      <p className="m-0 text-sm font-semibold text-gray-500">
+                        No employees found
+                      </p>
+                      <p className="m-0 mt-1 text-xs text-gray-400">
+                        Try adjusting your search or filter criteria.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEmployees.map((emp) => (
                   <tr
                     key={emp.emp_id}
                     onClick={() => setSelectedEmployeeDetails(emp)}
@@ -384,7 +399,8 @@ export default function Employees({ shortcutMode = false }) {
                     </td>
                     )}
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
