@@ -14,6 +14,7 @@ export default function LeaveCalendar({
   attendance,
   activeScope,
   onMonthChange,
+  workweekConfigs = [],
 }) {
   const [viewDate, setViewDate] = useState(new Date());
   const year = viewDate.getFullYear();
@@ -65,6 +66,7 @@ export default function LeaveCalendar({
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
         selectedLeaves={selectedLeaves}
+        workweekConfigs={workweekConfigs}
       ></LeaveCalendarGrid>
     </div>
   );

@@ -66,3 +66,16 @@ export const resignationQueryOptions = queryOptions({
       "Failed to fetch resignations",
     ),
 });
+
+/**
+ * Query for workweek configs
+ */
+export const workweekConfigQueryOptions = queryOptions({
+  queryKey: ["workweek-config"],
+  queryFn: () =>
+    mutationHandler(
+      axiosInterceptor.get("/api/employees/workweek-config"),
+      "Failed to fetch workweek config",
+    ),
+});
+

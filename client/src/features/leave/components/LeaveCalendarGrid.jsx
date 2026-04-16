@@ -4,6 +4,7 @@ import {
   getLeavesForDate,
 } from "../utils/calendar.utils";
 import { pad } from "../utils/leave.utils";
+import { isNonWorkingDay } from "../utils/date.utils";
 import { statusColors } from "../leaveConstants";
 import LeaveCalendarModal from "./LeaveCalendarModal";
 
@@ -16,6 +17,7 @@ const LeaveCalendarGrid = ({
   year,
   selectedLeaves,
   selectedDateStr,
+  workweekConfigs = [],
 }) => {
   return (
     <>
@@ -48,16 +50,20 @@ const LeaveCalendarGrid = ({
               ? // @ts-ignore
                 statusColors[firstLeaveStatus]
               : null;
+              
+            const isOffDay = isNonWorkingDay(dateStr, workweekConfigs);
 
             return (
               <button
                 key={i}
                 type="button"
                 className={`relative flex min-h-22.5 cursor-pointer flex-col items-start justify-start rounded-xl p-2 text-left transition-all duration-150 ${
+                  isOffDay ? "opacity-50 bg-slate-50 cursor-not-allowed" : ""
+                } ${
                   dayLeaves.length > 0 && !isSelected
                     ? colorConfig?.border + " " + colorConfig?.bg
-                    : "border border-slate-200 bg-white"
-                } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
+                    : isOffDay ? "border border-slate-200" : "border border-slate-200 bg-white"
+                } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md cursor-default" : isOffDay ? "" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
                 onClick={() => setSelectedDate(day)}
               >
                 <span

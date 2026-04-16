@@ -677,6 +677,52 @@ const getDefaultLeaveAllocation = (status) => {
     : 27;
 };
 
+const getWorkweekMultiplierForDate = async (connection, date) => {
+  const normDate = normalizeDateInput(date);
+  if (!normDate) return 1.0;
+
+  const [configs] = await connection.query(
+    `SELECT workweek_type, absence_unit 
+     FROM workweek_configs 
+     WHERE effective_from <= ? 
+       AND (effective_to IS NULL OR effective_to >= ?)
+     ORDER BY effective_from DESC 
+     LIMIT 1`,
+    [normDate, normDate],
+  );
+
+  if (configs.length > 0) {
+    return Number(configs[0].absence_unit || 1.0);
+  }
+
+  return 1.0;
+};
+
+const calculateLeaveCreditsInternal = async (connection, fromDate, toDate) => {
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
+  let totalCredits = 0;
+
+  const current = new Date(start);
+  while (current <= end) {
+    const dayOfWeek = current.getDay();
+    // Only count Mon-Fri as potential work days (Sat=6, Sun=0)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const multiplier = await getWorkweekMultiplierForDate(connection, current);
+      
+      // If 4-day, Friday (5) is also a non-working day
+      const isFriday = dayOfWeek === 5;
+      if (multiplier === 1.25 && isFriday) {
+        // Skip Friday for 4-day
+      } else {
+        totalCredits += multiplier;
+      }
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return totalCredits;
+};
+
 const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
   const [employeeRows] = await connection.query(
     `SELECT status
@@ -3493,12 +3539,11 @@ export const updateLeaveStatus = async (req, res) => {
     const leaveRequest = rows[0];
     const requester = await getEmployeeProfile(connection, leaveRequest.emp_id);
 
-    const totalRequestDays =
-      Math.floor(
-        (new Date(leaveRequest.date_to).getTime() -
-          new Date(leaveRequest.date_from).getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
+    const totalRequestDays = await calculateLeaveCreditsInternal(
+      connection,
+      leaveRequest.date_from,
+      leaveRequest.date_to,
+    );
 
     const getEffectiveApprovedDays = (statusValue, approvedDaysValue) => {
       if (

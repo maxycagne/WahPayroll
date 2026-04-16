@@ -5,6 +5,7 @@ import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "../features/leave/hooks/createMutationHandler";
+import { isNonWorkingDay } from "../features/leave/utils/date.utils";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -209,6 +210,8 @@ export default function Attendance({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
       showToast("Workweek configuration saved.");
       setWorkweekForm((prev) => ({
         ...prev,
@@ -229,6 +232,8 @@ export default function Attendance({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
       showToast("Workweek configuration updated.");
       setEditingWorkweekId(null);
       setWorkweekForm({
@@ -250,6 +255,8 @@ export default function Attendance({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
       showToast("Workweek configuration deleted.");
     },
     onError: (err) =>
@@ -545,6 +552,8 @@ export default function Attendance({ shortcutMode = false }) {
                     );
                   });
 
+                  const isOffDay = isNonWorkingDay(dateStr, workweekConfigs);
+
                   return (
                     <button
                       key={i}
@@ -558,7 +567,7 @@ export default function Attendance({ shortcutMode = false }) {
                         setDetailsStatus("All");
                         setSelectedEmployees(new Set());
                       }}
-                      className={`min-h-[88px] cursor-pointer rounded-xl border bg-white p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${isToday ? "border-indigo-600 ring-2 ring-indigo-200" : "border-slate-200 hover:border-indigo-300"}`}
+                      className={`min-h-[88px] cursor-pointer rounded-xl border p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${isToday ? "border-indigo-600 ring-2 ring-indigo-200" : "border-slate-200 hover:border-indigo-300"} ${isOffDay ? "opacity-50 bg-slate-50" : "bg-white"}`}
                     >
                       <div className="mb-1 flex w-full items-center justify-between">
                         <span
