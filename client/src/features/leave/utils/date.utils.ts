@@ -17,6 +17,8 @@ const getDateDiffInclusiveCore = ({ start, end }: DateDiffInclusive) => {
   const to = parseDateOnly(end).getTime();
   return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
 };
+
+// Use this for ({ start, end })
 export const getDateDiffInclusive = (
   arg1: DateDiffInclusive | DateInput,
   arg2?: DateInput,
@@ -29,18 +31,13 @@ export const getDateDiffInclusive = (
     end: arg2 as DateInput,
   });
 };
-// Compatibility shim: supports both getDateDiffInclusive({ start, end }) and getDateDiffInclusive(start, end).
+
+// Use this for (start, end)
 export const getDateDiffInclusiveCompat = (
-  arg1: DateDiffInclusive | DateInput,
-  arg2?: DateInput,
+  start: DateInput,
+  end: DateInput,
 ) => {
-  if (arg1 && typeof arg1 === "object" && "start" in arg1 && "end" in arg1) {
-    return getDateDiffInclusiveCore(arg1 as DateDiffInclusive);
-  }
-  return getDateDiffInclusiveCore({
-    start: arg1 as DateInput,
-    end: arg2 as DateInput,
-  });
+  return getDateDiffInclusiveCore({ start, end });
 };
 // ----
 export const isInRange = ({ date, from, to }: IsInRange): boolean => {

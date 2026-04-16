@@ -1,11 +1,11 @@
 type DateDiffInclusive = {
-  start: string;
-  end: string;
+  start: DateInput;
+  end: DateInput;
 };
 type IsInRange = {
-  date: string | Date;
-  from: string | Date;
-  to: string | Date;
+  date: DateInput;
+  from: DateInput;
+  to: DateInput;
 };
 
 type DateInput = string | Date | null | undefined;
