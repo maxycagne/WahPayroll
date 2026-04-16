@@ -66,6 +66,18 @@ function normalizeString(value) {
     .toLowerCase();
 }
 
+function isDocOrDocxFile(file) {
+  const target = String(file?.file_name || file?.file_key || "").toLowerCase();
+  return /\.(doc|docx)(?:$|[?#])/.test(target);
+}
+
+function isPreviewSupported(file) {
+  if (!file) return false;
+  if (file.source === "generated") return true;
+  if (!file.download_url) return false;
+  return !isDocOrDocxFile(file);
+}
+
 function buildDownloadBlobUrl(file, blob) {
   const blobUrl = window.URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -84,6 +96,7 @@ export default function FileManagement() {
   const [isReplacing, setIsReplacing] = useState(false);
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [isReplacingTemplate, setIsReplacingTemplate] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState(null);
   const [templateReplaceTarget, setTemplateReplaceTarget] = useState(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
@@ -416,6 +429,10 @@ export default function FileManagement() {
 
   const handlePreview = async (file) => {
     try {
+      if (!isPreviewSupported(file)) {
+        throw new Error("Preview is only available for PDF and supported file types");
+      }
+
       if (file.source === "generated") {
         const documentNode = buildGeneratedDocument(file);
         if (!documentNode) {
@@ -655,6 +672,44 @@ export default function FileManagement() {
       if (event.target) {
         event.target.value = "";
       }
+    }
+  };
+
+  const handleRemove = async (file) => {
+    if (!file?.replaceable) {
+      showToast("This file cannot be removed.", "error");
+      return;
+    }
+
+    const fileLabel = file.file_type || file.file_name || "this file";
+    const shouldProceed = window.confirm(`Remove ${fileLabel}? This action cannot be undone.`);
+    if (!shouldProceed) return;
+
+    setIsRemoving(true);
+    try {
+      if (file.source === "profile") {
+        await mutationHandler(
+          axiosInterceptor.delete(`/api/employees/employees/${file.emp_id}/photo`),
+          "Failed to remove profile photo",
+        );
+      } else {
+        await mutationHandler(
+          axiosInterceptor.delete(`/api/employees/resignations/${file.record_id}/file`, {
+            data: {
+              file_field: file.file_field,
+              old_file_key: file.file_key,
+            },
+          }),
+          "Failed to remove file",
+        );
+      }
+
+      showToast("File removed successfully.");
+      await refetch();
+    } catch (error) {
+      showToast(error.message || "Failed to remove file", "error");
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -937,14 +992,16 @@ export default function FileManagement() {
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handlePreview(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                Preview
-                              </button>
+                              {isPreviewSupported(file) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePreview(file)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Preview
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleDownload(file)}
@@ -961,6 +1018,16 @@ export default function FileManagement() {
                                 >
                                   <Upload className="h-3.5 w-3.5" />
                                   Replace
+                                </button>
+                              )}
+                              {file.replaceable && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemove(file)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove
                                 </button>
                               )}
                             </div>
@@ -1210,14 +1277,26 @@ export default function FileManagement() {
                           <ArrowDownToLine className="h-3.5 w-3.5" />
                           Download
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => openReplacePicker(file)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
-                        >
-                          <Upload className="h-3.5 w-3.5" />
-                          Replace
-                        </button>
+                        {file.replaceable && (
+                          <button
+                            type="button"
+                            onClick={() => openReplacePicker(file)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            Replace
+                          </button>
+                        )}
+                        {file.replaceable && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(file)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remove
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1261,6 +1340,14 @@ export default function FileManagement() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
           <div className="rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-lg">
             Replacing file...
+          </div>
+        </div>
+      )}
+
+      {isRemoving && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
+          <div className="rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-lg">
+            Removing file...
           </div>
         </div>
       )}

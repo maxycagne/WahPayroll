@@ -5482,6 +5482,59 @@ export const uploadProfilePhoto = async (req, res) => {
   }
 };
 
+export const removeProfilePhoto = async (req, res) => {
+  try {
+    const targetEmpId = String(req.params?.emp_id || req.user?.emp_id || "").trim();
+    if (!targetEmpId) {
+      return res.status(400).json({ message: "Target employee is required" });
+    }
+
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const targetEmployee = await getEmployeeProfile(pool, targetEmpId);
+    if (!targetEmployee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const canManageTarget =
+      viewer.role === "Admin" ||
+      viewer.role === "HR" ||
+      viewer.emp_id === targetEmpId ||
+      (viewer.role === "Supervisor" &&
+        String(viewer.designation || "").trim().toLowerCase() ===
+          String(targetEmployee.designation || "").trim().toLowerCase());
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot remove this file" });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT profile_photo FROM employees WHERE emp_id = ?",
+      [targetEmpId],
+    );
+
+    const oldPhotoPath = String(rows?.[0]?.profile_photo || "").trim();
+    await pool.query("UPDATE employees SET profile_photo = NULL WHERE emp_id = ?", [
+      targetEmpId,
+    ]);
+
+    if (oldPhotoPath) {
+      const fullOldPath = path.join(process.cwd(), oldPhotoPath);
+      if (fs.existsSync(fullOldPath)) {
+        fs.unlinkSync(fullOldPath);
+      }
+    }
+
+    return res.json({ message: "Profile photo removed successfully" });
+  } catch (error) {
+    console.error("Error in removeProfilePhoto:", error);
+    return res.status(500).json({ message: "Error removing profile photo" });
+  }
+};
+
 export const replaceResignationFile = async (req, res) => {
   const requester = await getEmployeeProfile(pool, req.user?.emp_id);
   const resignationId = req.params?.id;
@@ -5555,6 +5608,84 @@ export const replaceResignationFile = async (req, res) => {
   } catch (error) {
     console.error("DB Error in replaceResignationFile:", error);
     return res.status(500).json({ message: "Error replacing resignation file" });
+  }
+};
+
+export const removeResignationFile = async (req, res) => {
+  const requester = await getEmployeeProfile(pool, req.user?.emp_id);
+  const resignationId = req.params?.id;
+  const fileField = String(req.body?.file_field || "").trim();
+  const oldFileKeyFromBody = String(req.body?.old_file_key || "").trim();
+
+  if (!requester) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const allowedFields = {
+    endorsement_file_key: "endorsement_file_key",
+    clearance_file_key: "clearance_file_key",
+  };
+
+  const columnName = allowedFields[fileField];
+  if (!columnName) {
+    return res.status(400).json({ message: "Invalid file field" });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      `SELECT r.id, r.emp_id, r.endorsement_file_key, r.clearance_file_key, e.designation, COALESCE(e.role, 'RankAndFile') AS role
+       FROM resignations r
+       JOIN employees e ON e.emp_id = r.emp_id
+       WHERE r.id = ?
+       LIMIT 1`,
+      [resignationId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const target = rows[0];
+    const targetRole = normalizeRole(target.role);
+    const canManageTarget =
+      requester.role === "Admin" ||
+      requester.role === "HR" ||
+      requester.emp_id === target.emp_id ||
+      (requester.role === "Supervisor" &&
+        String(requester.designation || "").trim().toLowerCase() ===
+          String(target.designation || "").trim().toLowerCase() &&
+        targetRole !== "Admin");
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot remove this file" });
+    }
+
+    const oldFileKey =
+      oldFileKeyFromBody ||
+      String(
+        columnName === "endorsement_file_key"
+          ? target.endorsement_file_key
+          : target.clearance_file_key,
+      ).trim();
+
+    await pool.query(`UPDATE resignations SET ${columnName} = NULL WHERE id = ?`, [
+      resignationId,
+    ]);
+
+    if (oldFileKey) {
+      try {
+        await deleteS3ObjectQuietly(oldFileKey);
+      } catch (deleteError) {
+        console.error("S3 cleanup error in removeResignationFile:", deleteError);
+      }
+    }
+
+    return res.json({ message: "Resignation file removed successfully" });
+  } catch (error) {
+    console.error("DB Error in removeResignationFile:", error);
+    return res.status(500).json({ message: "Error removing resignation file" });
   }
 };
 
