@@ -146,10 +146,10 @@ export default function Employees({ shortcutMode = false }) {
         axiosInterceptor.put(`/api/employees/${emp.emp_id}/reset-password`),
       );
     },
-    onSuccess: ({ autoPassword, emp }) => {
+    onSuccess: (data, emp) => {
       setResetConfirm(null);
       showToast(
-        `Password reset for ${emp.first_name} ${emp.last_name}: ${autoPassword}`,
+        `Password reset for ${emp.first_name} ${emp.last_name}: ${data.autoPassword}`,
       );
     },
     onError: (error) => {

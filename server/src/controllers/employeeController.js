@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3BucketName, s3Client } from "../config/s3";
 import {
@@ -5654,19 +5654,33 @@ export const updateMyProfile = async (req, res) => {
   }
 };
 
-// 3. Change Passw  ord
+// 3. Change Password
 export const changeMyPassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
     const [rows] = await pool.query(
-      "SELECT password FROM employees WHERE emp_id = ?",
+      "SELECT emp_id, first_name, role, password FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );
     if (rows.length === 0)
       return res.status(404).json({ message: "User not found" });
 
-    // Verify old password
-    const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+    const user = rows[0];
+    const stored = user.password;
+    const generatedFallback = `${user.emp_id || ""}${(user.first_name || "").replace(/\s+/g, "")}`;
+
+    let isMatch = false;
+
+    // 1. If we have a hash, use bcrypt
+    if (stored && (stored.startsWith("$2b$") || stored.startsWith("$2a$") || stored.startsWith("$2y$"))) {
+      isMatch = await bcrypt.compare(currentPassword, stored);
+    } 
+    
+    // 2. Fallback check (needed for new accounts or migration cases)
+    if (!isMatch) {
+       isMatch = (currentPassword === generatedFallback);
+    }
+
     if (!isMatch)
       return res.status(400).json({ message: "Incorrect current password" });
 
