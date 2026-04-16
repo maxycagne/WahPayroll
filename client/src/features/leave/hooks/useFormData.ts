@@ -27,11 +27,6 @@ export const useFormData = () => {
     priority: "Low",
     OCP: undefined,
   });
-  const [resignationForm, setResignationForm] = useState({
-    resignation_type: "Voluntary Resignation",
-    effective_date: "",
-    reason: "",
-  });
   const { toast, showToast, clearToast } = useToast();
 
   const difference = useMemo(() => {
@@ -51,8 +46,6 @@ export const useFormData = () => {
       setData: setFormData,
       error: formError,
       setError: setFormError,
-      resignation: resignationForm,
-      setResignation: setResignationForm,
     },
     modals: {
       application: {
