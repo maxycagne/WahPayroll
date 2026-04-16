@@ -412,6 +412,7 @@ export default function Employees({ shortcutMode = false }) {
         <EmployeeModal
           title="Add New Employee"
           data={formData}
+          employees={employees} // <-- Pass employees for duplicate check
           onChange={handleInputChange}
           onClose={() => {
             setIsAddModalOpen(false);
@@ -429,6 +430,7 @@ export default function Employees({ shortcutMode = false }) {
         <EmployeeModal
           title="Edit Employee Information"
           data={editEmployee}
+          employees={employees} // <-- Pass employees for duplicate check
           isEdit={true}
           onChange={(e) => {
             const { name, value } = e.target;
@@ -731,12 +733,16 @@ function EmployeeDetailsModal({ employee, onClose }) {
 function EmployeeModal({
   title,
   data,
+  employees = [], // <-- Added employees prop
   onChange,
   onClose,
   onSubmit,
   isPending,
   isEdit = false,
 }) {
+  // Check if ID is duplicate
+  const isDuplicate = !isEdit && data.emp_id && employees.some(emp => emp.emp_id === data.emp_id);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -762,8 +768,15 @@ function EmployeeModal({
                 disabled={isEdit}
                 required
                 maxLength={20}
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
+                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 ${
+                  isDuplicate ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
+                }`}
               />
+              {isDuplicate && (
+                <span className="text-[10px] font-bold text-red-500 mt-1">
+                  Employee ID already in use
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
@@ -997,8 +1010,8 @@ function EmployeeModal({
             </button>
             <button
               type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white"
+              disabled={isPending || isDuplicate}
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending
                 ? "Processing..."

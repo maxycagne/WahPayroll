@@ -1722,6 +1722,15 @@ export const createEmployee = async (req, res) => {
   const normalizedHiredDate = normalizeDateInput(hired_date);
 
   try {
+    const [existingIdRows] = await pool.query(
+      "SELECT emp_id FROM employees WHERE emp_id = ? LIMIT 1",
+      [emp_id],
+    );
+
+    if (existingIdRows.length > 0) {
+      return res.status(400).json({ message: "Employee ID already in use" });
+    }
+
     await ensureEmployeeGovernmentColumns();
     await ensurePositionSalarySettingsTable();
 
