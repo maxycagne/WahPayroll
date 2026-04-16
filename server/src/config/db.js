@@ -12,7 +12,7 @@ dotenv.config();
 //   connectionLimit: 10,
 //   queueLimit: 0,
 // });
- pool = mysql.createPool(process.env.MYSQL_PUBLIC_URL);
+const pool = mysql.createPool(process.env.MYSQL_PUBLIC_URL);
 
 pool
   .getConnection()
