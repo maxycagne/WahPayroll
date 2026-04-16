@@ -15,8 +15,6 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-import axiosInterceptor from "@/hooks/interceptor";
 
 export default function HRReports() {
   const [reportType, setReportType] = useState("leave");
@@ -494,7 +492,20 @@ export default function HRReports() {
                     {reportType === "leave" && (
                       <>
                         <td className="px-5 py-3 font-bold text-gray-900 whitespace-nowrap">
-                          {report.employee}
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                              {report.profilePhoto ? (
+                                <img
+                                  src={`${API_BASE_URL}/${report.profilePhoto.replace(/^\/+/, "")}`}
+                                  alt="Profile"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <User className="h-4 w-4 text-gray-400" />
+                              )}
+                            </div>
+                            <span>{report.employee}</span>
+                          </div>
                         </td>
                         <td className="px-5 py-3 text-center text-gray-700 font-medium">
                           {report.leaveType}
@@ -540,7 +551,20 @@ export default function HRReports() {
                     {reportType === "balance" && (
                       <>
                         <td className="px-5 py-3 font-bold text-gray-900 whitespace-nowrap">
-                          {report.employee}
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                              {report.profilePhoto ? (
+                                <img
+                                  src={`${API_BASE_URL}/${report.profilePhoto.replace(/^\/+/, "")}`}
+                                  alt="Profile"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <User className="h-4 w-4 text-gray-400" />
+                              )}
+                            </div>
+                            <span>{report.employee}</span>
+                          </div>
                         </td>
                         <td className="px-5 py-3 text-center text-green-700 font-bold border-l border-gray-100 bg-green-50/10">
                           {report.leaveBalance}

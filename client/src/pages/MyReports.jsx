@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import axiosInterceptor from "../hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import {
   Bar,
   BarChart,

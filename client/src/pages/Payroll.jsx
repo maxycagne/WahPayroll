@@ -6,8 +6,6 @@ import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-import axiosInterceptor from "@/hooks/interceptor";
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -61,7 +59,16 @@ const toUiAdjustmentCategory = (rawType) => {
   return "Incentive";
 };
 
-const fmt = (n) => "₱" + n.toLocaleString();
+const fmt = (n) => {
+  const num = Number(n);
+  return isNaN(num)
+    ? "₱0.00"
+    : "₱" +
+        num.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+};
 
 const fmtSigned = (n) => {
   const num = Number(n || 0);
@@ -1007,12 +1014,25 @@ export default function Payroll({ shortcutMode = false }) {
                         )}
                         <td className="px-6 py-4">{p.emp_id}</td>
                         <td className="px-6 py-4">
-                          <div>
-                            <div className="font-bold text-gray-900">
-                              {p.first_name} {p.last_name}
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                              {p.profile_photo ? (
+                                <img
+                                  src={`${API_BASE_URL}/${p.profile_photo.replace(/^\/+/, "")}`}
+                                  alt="Profile"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <User className="h-5 w-5 text-gray-400" />
+                              )}
                             </div>
-                            <div className="text-xs text-gray-500 font-normal mt-0.5">
-                              {p.position}
+                            <div>
+                              <div className="font-bold text-gray-900">
+                                {p.first_name} {p.last_name}
+                              </div>
+                              <div className="text-xs text-gray-500 font-normal mt-0.5">
+                                {p.position}
+                              </div>
                             </div>
                           </div>
                         </td>
