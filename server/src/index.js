@@ -9,14 +9,27 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import hrReportsRoutes from "./routes/hrReportRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.ts";
+import profileRoutes from "./routes/profileRoutes.ts";
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8001;
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://wah-payroll-seven.vercel.app",
+];
 
 // Updated CORS configuration to allow React and your custom headers
 app.use(
   cors({
-    origin: "http://localhost:5173", // Allow your React frontend
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: [
@@ -38,6 +51,7 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/file", fileRoutes);
 app.use("/api/hr-reports", hrReportsRoutes);
 app.use("/api/leaves", leaveRoutes);
+app.use("/api/me", profileRoutes);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

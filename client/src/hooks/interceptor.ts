@@ -1,10 +1,11 @@
+/// <reference types="vite/client" />
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 const getAccessToken = () => localStorage.getItem("wah_token") || "";
 const setAccessToken = (token: string) =>
   localStorage.setItem("wah_token", token);
 const axiosInterceptor = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
 
   headers: {

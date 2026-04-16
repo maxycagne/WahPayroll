@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useIsFetching,
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Bell,
   CheckCheck,
@@ -10,8 +16,7 @@ import {
 } from "lucide-react";
 import Sidebar from "./Sidebar";
 import axiosInterceptor from "../hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-
+import TopLoadingBar from "./TopLoading";
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
 
@@ -27,10 +32,9 @@ export default function MainLayout({ role }) {
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees/notifications"),
-        "Failed to fetch notifications",
-      );
+      const res = await axiosInterceptor.get("/api/employees/notifications");
+      if (res.status !== 200) throw new Error("Failed to fetch notifications");
+      return res.data;
     },
     refetchInterval: 30000,
   });
@@ -39,40 +43,44 @@ export default function MainLayout({ role }) {
 
   const markReadMutation = useMutation({
     mutationFn: async (id) => {
-      return mutationHandler(
-        axiosInterceptor.put(`/api/employees/notifications/${id}/read`),
-        "Failed to mark notification as read",
+      const res = await axiosInterceptor.put(
+        `/api/employees/notifications/${id}/read`,
       );
+      if (res.status !== 200)
+        throw new Error("Failed to mark notification as read");
+      return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.put("/api/employees/notifications/read-all"),
-        "Failed to mark all notifications as read",
+      const res = await axiosInterceptor.put(
+        "/api/employees/notifications/read-all",
       );
+      if (res.status !== 200)
+        throw new Error("Failed to mark all notifications as read");
+      return res.data;
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (id) => {
-      return mutationHandler(
-        axiosInterceptor.delete(`/api/employees/notifications/${id}`),
-        "Failed to delete notification",
+      const res = await axiosInterceptor.delete(
+        `/api/employees/notifications/${id}`,
       );
+      if (res.status !== 200) throw new Error("Failed to delete notification");
+      return res.data;
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
 
   const deleteAllNotificationsMutation = useMutation({
     mutationFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.delete("/api/employees/notifications"),
-        "Failed to delete notifications",
-      );
+      const res = await axiosInterceptor.delete("/api/employees/notifications");
+      if (res.status !== 200) throw new Error("Failed to delete notifications");
+      return res.data;
     },
     onSuccess: () => queryClient.invalidateQueries(["notifications"]),
   });
@@ -138,8 +146,11 @@ export default function MainLayout({ role }) {
     };
   }, [openNotifications]);
 
+  const isMutating = useIsMutating();
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
+      {isMutating ? <TopLoadingBar show={true}></TopLoadingBar> : <></>}
+
       <header className="sticky top-0 z-20 border-b border-white/15 bg-gradient-to-r from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] px-4 py-3 text-white shadow-sm backdrop-blur md:px-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -279,6 +290,7 @@ export default function MainLayout({ role }) {
           isCollapsed={isSidebarCollapsed}
           onLogout={() => setShowLogoutConfirmation(true)}
         />
+
         <main className="h-full overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>

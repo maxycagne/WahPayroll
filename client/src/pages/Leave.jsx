@@ -327,6 +327,7 @@ export default function Leave() {
     }
 
     if (reviewConfirm.module === "leave") {
+      console.log("leave");
       if (reviewConfirm.decisionMode === "cancellation") {
         reviewLeaveMutation.mutate({
           id: reviewConfirm.item.id,

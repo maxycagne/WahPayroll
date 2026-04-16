@@ -64,16 +64,22 @@ export default function PendingApprovalModal({
         "Failed to retrieve endorsement file.",
       );
       const objectUrl = window.URL.createObjectURL(blob);
+
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download = `${fileKey.split("_").pop() || "endorsement-file"}`;
+      anchor.download = fileKey.split("_").pop() || "endorsement-file";
+
       document.body.appendChild(anchor);
       anchor.click();
-      document.body.removeChild(anchor);
-      window.URL.revokeObjectURL(objectUrl);
+      anchor.remove();
+
+      // cleanup
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (error) {
       showToast?.(
-        error.message || "Unable to download endorsement file.",
+        error?.response?.data?.message ||
+          error.message ||
+          "Unable to download endorsement file.",
         "error",
       );
     }

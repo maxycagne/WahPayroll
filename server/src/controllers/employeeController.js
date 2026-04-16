@@ -2639,13 +2639,19 @@ export const getResignationRecipient = async (req, res) => {
       return res.status(404).json({ message: "Requester not found" });
     }
 
-    const supervisors = await getSupervisorApproversForRequester(pool, requester);
+    const supervisors = await getSupervisorApproversForRequester(
+      pool,
+      requester,
+    );
     const primaryRecipient = supervisors[0] || null;
     const firstName = String(primaryRecipient?.first_name || "").trim();
     const lastName = String(primaryRecipient?.last_name || "").trim();
     const candidateName = `${firstName} ${lastName}`.trim();
     const recipientName =
-      candidateName && !["undefined", "null", "undefined undefined", "null null"].includes(candidateName.toLowerCase())
+      candidateName &&
+      !["undefined", "null", "undefined undefined", "null null"].includes(
+        candidateName.toLowerCase(),
+      )
         ? candidateName
         : "Supervisor";
 
@@ -2657,7 +2663,9 @@ export const getResignationRecipient = async (req, res) => {
     });
   } catch (error) {
     console.error("DB Error in getResignationRecipient:", error);
-    return res.status(500).json({ message: "Error loading resignation recipient" });
+    return res
+      .status(500)
+      .json({ message: "Error loading resignation recipient" });
   }
 };
 
@@ -2692,7 +2700,9 @@ export const getMyResignationDraft = async (req, res) => {
     });
   } catch (error) {
     console.error("DB Error in getMyResignationDraft:", error);
-    return res.status(500).json({ message: "Error fetching resignation draft" });
+    return res
+      .status(500)
+      .json({ message: "Error fetching resignation draft" });
   }
 };
 
@@ -2725,7 +2735,12 @@ export const saveMyResignationDraft = async (req, res) => {
          current_step = VALUES(current_step),
          interview_part = VALUES(interview_part),
          updated_at = CURRENT_TIMESTAMP`,
-      [requesterEmpId, JSON.stringify(payload || {}), currentStep, interviewPart],
+      [
+        requesterEmpId,
+        JSON.stringify(payload || {}),
+        currentStep,
+        interviewPart,
+      ],
     );
 
     return res.json({ message: "Draft saved" });
@@ -2779,9 +2794,7 @@ export const fileResignation = async (req, res) => {
     }
 
     const parsedReasons = Array.isArray(leaving_reasons)
-      ? leaving_reasons
-          .map((item) => String(item || "").trim())
-          .filter(Boolean)
+      ? leaving_reasons.map((item) => String(item || "").trim()).filter(Boolean)
       : [];
 
     if (parsedReasons.length === 0) {
@@ -2794,7 +2807,10 @@ export const fileResignation = async (req, res) => {
       ? exit_interview_answers.map((item) => String(item || "").trim())
       : [];
 
-    if (parsedInterviewAnswers.length !== 16 || parsedInterviewAnswers.some((item) => !item)) {
+    if (
+      parsedInterviewAnswers.length !== 16 ||
+      parsedInterviewAnswers.some((item) => !item)
+    ) {
       return res.status(400).json({
         message: "All 16 exit interview answers are required",
       });
@@ -2843,7 +2859,10 @@ export const fileResignation = async (req, res) => {
 
       if (requester?.hired_date) {
         const parsedHireDate = new Date(requester.hired_date);
-        if (!Number.isNaN(parsedHireDate.getTime()) && parsedResignationDate < parsedHireDate) {
+        if (
+          !Number.isNaN(parsedHireDate.getTime()) &&
+          parsedResignationDate < parsedHireDate
+        ) {
           await connection.rollback();
           return res.status(400).json({
             message: "Resignation date cannot be earlier than date of joining",
@@ -5704,7 +5723,7 @@ export const updateMyProfile = async (req, res) => {
   }
 };
 
-// 3. Change Password
+// 3. Change Passw  ord
 export const changeMyPassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {

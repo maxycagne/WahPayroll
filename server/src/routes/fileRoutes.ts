@@ -51,20 +51,15 @@ const handleUpload = (req: any, res: any, next: any) => {
   });
 };
 
-router.post(
-  "/upload",
-  handleUpload,
-  sanitizeFile,
-  fileUpload as any,
-);
+router.post("/upload", handleUpload, sanitizeFile, fileUpload as any);
 router.get("/get", retrieveFile);
 router.delete("/delete", checkFileExist, deleteFile);
 
-router.post(
-  "/uploadProfile",
-  upload.single("profile-picture"),
-  // checkFileExist,
-  uploadProfile,
-);
+// router.post(
+//   "/uploadProfile",
+//   upload.single("profile-picture"),
+//   // checkFileExist,
+//   uploadProfile,
+// );
 
 export default router;

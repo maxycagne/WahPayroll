@@ -13,6 +13,8 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -57,7 +59,6 @@ export default function Reports() {
     queryFn: async () => {
       return mutationHandler(
         axiosInterceptor.get("/api/employees/payroll-reports"),
-        "Failed to fetch reports",
       );
     },
   });
