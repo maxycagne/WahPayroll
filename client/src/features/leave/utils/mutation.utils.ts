@@ -21,7 +21,7 @@ export const useRequestMutation = ({
   };
 
   const handleSendUpdate = useEmailNotifications();
-  const ALL_KEYS = ["leaves", "offset-applications", "resignations"];
+  const ALL_KEYS = ["leaves", "offset-applications", "resignations", "dashboardSummary"];
 
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
 
@@ -119,7 +119,7 @@ export const useRequestMutation = ({
       ),
     successMsg: "Leave request updated successfully.",
     showToast,
-    invalidateKeys: ["leaves"],
+    invalidateKeys: ["leaves", "dashboardSummary"],
     callback: async (data, variables) => {
       console.log("hit!!!!");
       await handleSendUpdate(

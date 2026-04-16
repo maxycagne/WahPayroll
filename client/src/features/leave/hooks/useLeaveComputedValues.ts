@@ -207,7 +207,9 @@ export const useComputedValues = ({
         ...myLeaves.map((l) => ({
           id: `leave-${l.id}`,
           request_type: l.leave_type,
+          employee_name: `${l.first_name || ''} ${l.last_name || ''}`.trim(),
           schedule: `${new Date(l.date_from).toLocaleDateString()} - ${new Date(l.date_to).toLocaleDateString()}`,
+          filter_date: l.date_from || l.created_at,
           filed_at: l.created_at,
           final_status: l.cancellation_requested_at
             ? "Cancellation Requested"
@@ -219,7 +221,9 @@ export const useComputedValues = ({
             Number(o.days_applied || 0) > 0
               ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
               : "Offset",
+          employee_name: `${o.first_name || ''} ${o.last_name || ''}`.trim(),
           schedule: `${new Date(o.date_from).toLocaleDateString()} - ${new Date(o.date_to).toLocaleDateString()}`,
+          filter_date: o.date_from || o.created_at,
           filed_at: o.created_at,
           final_status: o.cancellation_requested_at
             ? "Cancellation Requested"
@@ -228,9 +232,11 @@ export const useComputedValues = ({
         ...myOwnResignations.map((r) => ({
           id: `resignation-${r.id}`,
           request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
+          employee_name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
           schedule: r.effective_date
             ? new Date(r.effective_date).toLocaleDateString()
             : "N/A",
+          filter_date: r.effective_date || r.created_at,
           filed_at: r.created_at,
           final_status: r.cancellation_requested_at
             ? "Cancellation Requested"

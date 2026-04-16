@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import axiosInterceptor from "@/hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { useToast } from "@/hooks/useToast";
+import { mutationHandler } from "../../hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const resignationReasonOptions = [
   "Family and/or personal reasons",
@@ -273,6 +273,7 @@ export default function ResignationForm({
     );
 
     const uploaded = Array.isArray(result.files) ? result.files[0] : null;
+
     if (!uploaded?.key) {
       throw new Error("Upload succeeded but no file key was returned");
     }
@@ -282,6 +283,7 @@ export default function ResignationForm({
 
   const loadUploadedEndorsementObjectUrl = async () => {
     const fileKey = String(form.endorsement_file_key || "").trim();
+
     if (!fileKey) {
       throw new Error("No uploaded endorsement file found.");
     }
@@ -295,6 +297,7 @@ export default function ResignationForm({
     );
     revokeEndorsementObjectUrl();
     endorsementObjectUrlRef.current = window.URL.createObjectURL(blob);
+
     return endorsementObjectUrlRef.current;
   };
 
@@ -401,7 +404,11 @@ export default function ResignationForm({
 
     const reasons = form.leaving_reasons || [];
     const reasonSummary = reasons.includes("Others")
-      ? `${reasons.filter((item) => item !== "Others").join(", ")}; Others: ${String(form.leaving_reason_other || "").trim()}`
+      ? `${reasons
+          .filter((item) => item !== "Others")
+          .join(
+            ", ",
+          )}; Others: ${String(form.leaving_reason_other || "").trim()}`
       : reasons.join(", ");
 
     const payload = {
@@ -420,23 +427,30 @@ export default function ResignationForm({
       endorsement_file_key: form.endorsement_file_key,
     };
 
-    if (fileResignationMutation?.mutate) {
-      fileResignationMutation.mutate(payload);
-      return;
-    }
-
     try {
+      // React Query mutation fallback
+      if (fileResignationMutation?.mutate) {
+        fileResignationMutation.mutate(payload);
+        return;
+      }
+
+      // axios + mutationHandler
       await mutationHandler(
         axiosInterceptor.post("/api/employees/resignations", payload),
         "Failed to submit resignation",
       );
+
       showToast("Resignation filed successfully.");
       setApplicationModalOpen(false);
     } catch (error) {
-      showToast(error.message || "Failed to submit resignation", "error");
+      showToast(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to submit resignation",
+        "error",
+      );
     }
   };
-
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">

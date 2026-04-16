@@ -9,6 +9,7 @@ export default function LeaveForm({
   currentUser,
   availableLeaveTypes,
   difference,
+  totalCredits,
   handleSubmitLeave,
 }) {
   return (
@@ -127,20 +128,31 @@ export default function LeaveForm({
         />
       </div>
 
-      <div className="mt-1 flex justify-end gap-2 md:col-span-3">
-        <button
-          type="button"
-          onClick={() => setApplicationModalOpen(false)}
-          className="cursor-pointer rounded-lg bg-gray-200 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="cursor-pointer rounded-lg bg-green-600 px-5 py-2 text-sm font-bold text-white hover:bg-green-700"
-        >
-          Review Application
-        </button>
+      <div className="mt-1 flex items-center justify-between md:col-span-3">
+        <div className="flex flex-col">
+          <p className="m-0 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Estimated Cost</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-black text-indigo-700">{totalCredits.toFixed(2)}</span>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Credits Used</span>
+            <span className="text-[10px] font-bold text-gray-300">|</span>
+            <span className="text-[11px] font-semibold text-gray-500 italic">({difference} working days)</span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setApplicationModalOpen(false)}
+            className="cursor-pointer rounded-lg bg-gray-200 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="cursor-pointer rounded-lg bg-green-600 px-5 py-2 text-sm font-bold text-white hover:bg-green-700 transition-colors shadow-sm"
+          >
+            Review Application
+          </button>
+        </div>
       </div>
     </form>
   );

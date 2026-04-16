@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
 import { User } from "lucide-react";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 
 const designationMap = {
   Operations: [
@@ -36,6 +36,7 @@ export default function Employees({ shortcutMode = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const canResetPassword = currentUser?.role === "Admin";
+  const canAddEmployee = ["Admin", "HR"].includes(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
@@ -52,7 +53,7 @@ export default function Employees({ shortcutMode = false }) {
   const [formData, setFormData] = useState({
     emp_id: "",
     first_name: "",
-    middle_initial: "",
+    middle_initial: "", // <-- Added Middle Initial
     last_name: "",
     designation: "",
     position: "",
@@ -69,6 +70,8 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   useEffect(() => {
+    if (!canAddEmployee) return;
+
     if (shortcutMode) {
       setIsAddModalOpen(true);
       return;
@@ -85,8 +88,7 @@ export default function Employees({ shortcutMode = false }) {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      return res.json();
+      return mutationHandler(axiosInterceptor.get("/api/employees"));
     },
   });
 
@@ -113,18 +115,9 @@ export default function Employees({ shortcutMode = false }) {
 
   const updateMutation = useMutation({
     mutationFn: async (updatedData) => {
-      const res = await apiFetch(`/api/employees/${updatedData.emp_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedData),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update employee");
-      }
-
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/${updatedData.emp_id}`, updatedData),
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
@@ -137,7 +130,8 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => apiFetch(`/api/employees/${id}`, { method: "DELETE" }),
+    mutationFn: async (id) =>
+      mutationHandler(axiosInterceptor.delete(`/api/employees/${id}`)),
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);
@@ -148,25 +142,14 @@ export default function Employees({ shortcutMode = false }) {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (emp) => {
-      const res = await apiFetch(
-        `/api/employees/${emp.emp_id}/reset-password`,
-        {
-          method: "PUT",
-        },
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/${emp.emp_id}/reset-password`),
       );
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to reset password");
-      }
-
-      return { ...data, emp };
     },
-    onSuccess: ({ autoPassword, emp }) => {
+    onSuccess: (data, emp) => {
       setResetConfirm(null);
       showToast(
-        `Password reset for ${emp.first_name} ${emp.last_name}: ${autoPassword}`,
+        `Password reset for ${emp.first_name} ${emp.last_name}: ${data.autoPassword}`,
       );
     },
     onError: (error) => {
@@ -241,12 +224,14 @@ export default function Employees({ shortcutMode = false }) {
             <h1 className="text-2xl font-bold text-gray-900">
               Employee Management
             </h1>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              + Add Employee
-            </button>
+            {canAddEmployee && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                + Add Employee
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -299,13 +284,30 @@ export default function Employees({ shortcutMode = false }) {
                     Email Address
                   </th>
                   <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-                  <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                    Actions
-                  </th>
+                  {canAddEmployee && (
+                    <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEmployees.map((emp) => (
+                {filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={canAddEmployee ? 6 : 5}
+                      className="px-6 py-12 text-center"
+                    >
+                      <p className="m-0 text-sm font-semibold text-gray-500">
+                        No employees found
+                      </p>
+                      <p className="m-0 mt-1 text-xs text-gray-400">
+                        Try adjusting your search or filter criteria.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEmployees.map((emp) => (
                   <tr
                     key={emp.emp_id}
                     onClick={() => setSelectedEmployeeDetails(emp)}
@@ -313,25 +315,9 @@ export default function Employees({ shortcutMode = false }) {
                   >
                     <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {/* The Circular Profile Picture */}
-                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                          {emp.profile_photo ? (
-                            <img
-                              src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
-                              alt="Profile"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-
-                        {/* The Name */}
-                        <div className="font-semibold text-gray-800">
-                          {emp.last_name}, {emp.first_name}{" "}
-                          {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                        </div>
+                      <div className="font-semibold text-gray-800">
+                        {emp.last_name}, {emp.first_name}{" "}
+                        {emp.middle_initial ? `${emp.middle_initial}.` : ""}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
@@ -346,6 +332,7 @@ export default function Employees({ shortcutMode = false }) {
                         {emp.status}
                       </span>
                     </td>
+                    {canAddEmployee && (
                     <td
                       className="px-6 py-4 text-center relative"
                       onClick={(e) => e.stopPropagation()}
@@ -410,8 +397,10 @@ export default function Employees({ shortcutMode = false }) {
                         </>
                       )}
                     </td>
+                    )}
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
@@ -419,7 +408,7 @@ export default function Employees({ shortcutMode = false }) {
       )}
 
       {/* Modals same as before but updated with logic */}
-      {isAddModalOpen && !addConfirm && (
+      {canAddEmployee && isAddModalOpen && !addConfirm && (
         <EmployeeModal
           title="Add New Employee"
           data={formData}
@@ -772,6 +761,7 @@ function EmployeeModal({
                 onChange={onChange}
                 disabled={isEdit}
                 required
+                maxLength={20}
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
               />
             </div>
@@ -785,6 +775,7 @@ function EmployeeModal({
                 value={data.email}
                 onChange={onChange}
                 required
+                maxLength={30}
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -800,6 +791,7 @@ function EmployeeModal({
                     value={data.first_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -824,6 +816,7 @@ function EmployeeModal({
                     value={data.last_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -914,6 +907,7 @@ function EmployeeModal({
                     name="philhealth_no"
                     value={data.philhealth_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -925,6 +919,7 @@ function EmployeeModal({
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -936,6 +931,7 @@ function EmployeeModal({
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -947,6 +943,7 @@ function EmployeeModal({
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -958,6 +955,7 @@ function EmployeeModal({
                     name="pag_ibig_rtn"
                     value={data.pag_ibig_rtn || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -969,6 +967,7 @@ function EmployeeModal({
                     name="gsis_no"
                     value={data.gsis_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>

@@ -12,7 +12,6 @@ export default function PendingApprovalTable({
   setHrNoteConfirm,
   setPendingModalOpen,
 }) {
-  console.log(filteredPendingRequests);
   return (
     <table className="w-full text-sm text-left">
       <thead className="sticky top-[43px] z-10 bg-white">

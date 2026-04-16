@@ -69,6 +69,7 @@ export default function ModalsContainer({
   reviewResignationMutation,
   showToast,
   submitCancellationRequest,
+  totalCredits,
 }) {
   return (
     <>
@@ -87,6 +88,7 @@ export default function ModalsContainer({
         setFormData={setFormData}
         availableLeaveTypes={availableLeaveTypes}
         difference={difference}
+        totalCredits={totalCredits}
         handleSubmitLeave={handleSubmitLeave}
         resignationForm={resignationForm}
         setResignationForm={setResignationForm}

@@ -9,7 +9,6 @@ import {
   Users,
   Wallet,
   Settings,
-  User, // <-- ADDED THIS IMPORT
 } from "lucide-react";
 
 const navItems = {
@@ -56,9 +55,7 @@ const navItems = {
 export default function Sidebar({ role, onLogout, isCollapsed = false }) {
   const items = navItems[role] || navItems.RankAndFile;
 
-  // --- ADDED THESE THREE VARIABLES ---
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
   const displayName =
     currentUser.name ||
     `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() ||
@@ -123,19 +120,6 @@ export default function Sidebar({ role, onLogout, isCollapsed = false }) {
         <div
           className={`mb-4 flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}
         >
-          {/* Circular Avatar */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 overflow-hidden ring-2 ring-white/10">
-            {currentUser.profile_photo ? (
-              <img
-                src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
-                alt="Profile"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <User className="h-5 w-5 text-white/70" />
-            )}
-          </div>
-
           {/* Name & Role (Hidden when collapsed) */}
           {!isCollapsed && (
             <div className="flex min-w-0 flex-col">
