@@ -430,7 +430,9 @@ export default function FileManagement() {
   const handlePreview = async (file) => {
     try {
       if (!isPreviewSupported(file)) {
-        throw new Error("Preview is only available for PDF and supported file types");
+        throw new Error(
+          "Preview is only available for PDF and supported file types",
+        );
       }
 
       if (file.source === "generated") {
@@ -682,24 +684,31 @@ export default function FileManagement() {
     }
 
     const fileLabel = file.file_type || file.file_name || "this file";
-    const shouldProceed = window.confirm(`Remove ${fileLabel}? This action cannot be undone.`);
+    const shouldProceed = window.confirm(
+      `Remove ${fileLabel}? This action cannot be undone.`,
+    );
     if (!shouldProceed) return;
 
     setIsRemoving(true);
     try {
       if (file.source === "profile") {
         await mutationHandler(
-          axiosInterceptor.delete(`/api/employees/employees/${file.emp_id}/photo`),
+          axiosInterceptor.delete(
+            `/api/employees/employees/${file.emp_id}/photo`,
+          ),
           "Failed to remove profile photo",
         );
       } else {
         await mutationHandler(
-          axiosInterceptor.delete(`/api/employees/resignations/${file.record_id}/file`, {
-            data: {
-              file_field: file.file_field,
-              old_file_key: file.file_key,
+          axiosInterceptor.delete(
+            `/api/employees/resignations/${file.record_id}/file`,
+            {
+              data: {
+                file_field: file.file_field,
+                old_file_key: file.file_key,
+              },
             },
-          }),
+          ),
           "Failed to remove file",
         );
       }
