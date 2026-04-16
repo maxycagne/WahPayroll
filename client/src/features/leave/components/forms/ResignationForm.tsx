@@ -437,6 +437,59 @@ export default function ResignationForm({
     setResignationStep((prev) => Math.max(prev - 1, 1));
   };
 
+  const resetResignationWizardState = () => {
+    resetForm();
+    setField("resignation_letter", defaultResignationForm.resignation_letter);
+    setField("request_date", defaultResignationForm.request_date);
+    setField("recipient_name", defaultResignationForm.recipient_name);
+    setField("recipient_emp_id", defaultResignationForm.recipient_emp_id);
+    setField("employee_name", defaultResignationForm.employee_name);
+    setField("position", defaultResignationForm.position);
+    setField("designation", defaultResignationForm.designation);
+    setField("hired_date", defaultResignationForm.hired_date);
+    setField("resignation_date", defaultResignationForm.resignation_date);
+    setField("last_working_day", defaultResignationForm.last_working_day);
+    setField("leaving_reasons", []);
+    setField(
+      "leaving_reason_other",
+      defaultResignationForm.leaving_reason_other,
+    );
+    setField("interview_answers", Array(16).fill(""));
+    setField(
+      "endorsement_file_key",
+      defaultResignationForm.endorsement_file_key,
+    );
+    setField(
+      "endorsement_file_name",
+      defaultResignationForm.endorsement_file_name,
+    );
+    setResignationStep(1);
+    setResignationInterviewPart(1);
+    setResignationWizardError("");
+    setIsEndorsementActionsOpen(false);
+    revokeEndorsementObjectUrl();
+    lastSavedResignationDraftRef.current = JSON.stringify({
+      payload: {
+        ...defaultResignationForm,
+        leaving_reasons: [],
+        interview_answers: Array(16).fill(""),
+      },
+      step: 1,
+      interviewPart: 1,
+    });
+
+    // Extra safeguard: clear persisted wizard storage after successful submit.
+    try {
+      localStorage.removeItem("resignation-form");
+      const storeWithPersist = useFieldStore as typeof useFieldStore & {
+        persist?: { clearStorage?: () => void };
+      };
+      storeWithPersist.persist?.clearStorage?.();
+    } catch {
+      // Ignore storage cleanup failures to keep submission flow uninterrupted.
+    }
+  };
+
   const submitResignationWizard = async () => {
     const validationError =
       validateResignationStep(1) ||
@@ -474,21 +527,46 @@ export default function ResignationForm({
       endorsement_file_key: resignationForm.endorsement_file_key,
     };
 
+    let usedExternalMutation = false;
+    const externalMutation = fileResignationMutation as
+      | {
+          mutateAsync?: (payload: SubmitResignationPayload) => Promise<unknown>;
+          mutate?: (
+            payload: SubmitResignationPayload,
+            options?: {
+              onSuccess?: () => void;
+              onError?: (error: unknown) => void;
+            },
+          ) => void;
+        }
+      | undefined;
+
     try {
-      // React Query mutation fallback
-      if (fileResignationMutation?.mutate) {
-        fileResignationMutation.mutate(payload);
-        return;
+      // React Query mutation path from parent
+      if (externalMutation?.mutateAsync) {
+        usedExternalMutation = true;
+        await externalMutation.mutateAsync(payload);
+      } else if (externalMutation?.mutate) {
+        usedExternalMutation = true;
+        await new Promise<void>((resolve, reject) => {
+          externalMutation.mutate?.(payload, {
+            onSuccess: () => resolve(),
+            onError: (mutationError: unknown) => reject(mutationError),
+          });
+        });
+      } else {
+        // Direct axios fallback
+        await mutationHandler(
+          axiosInterceptor.post("/api/employees/resignations", payload),
+          "Failed to submit resignation",
+        );
       }
 
-      // axios + mutationHandler
-      await mutationHandler(
-        axiosInterceptor.post("/api/employees/resignations", payload),
-        "Failed to submit resignation",
-      );
+      if (!usedExternalMutation) {
+        showToast("Resignation filed successfully.");
+      }
 
-      showToast("Resignation filed successfully.");
-      resetForm();
+      resetResignationWizardState();
       setApplicationModalOpen(false);
     } catch (error) {
       showToast(

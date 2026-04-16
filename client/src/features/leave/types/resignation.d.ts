@@ -66,7 +66,14 @@ interface SubmitResignationPayload {
 }
 
 interface FileResignationMutationLike {
-  mutate?: (payload: SubmitResignationPayload) => void;
+  mutate?: (
+    payload: SubmitResignationPayload,
+    options?: {
+      onSuccess?: () => void;
+      onError?: (error: unknown) => void;
+    },
+  ) => void;
+  mutateAsync?: (payload: SubmitResignationPayload) => Promise<unknown>;
   isPending?: boolean;
 }
 
