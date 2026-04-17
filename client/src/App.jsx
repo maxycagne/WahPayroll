@@ -19,6 +19,7 @@ import Reports from "./pages/Reports";
 import MyReports from "./pages/MyReports";
 import axiosInterceptor from "./hooks/interceptor";
 import Login from "./pages/Login";
+import PostLoginLoading from "./pages/PostLoginLoading";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -55,6 +56,7 @@ function AppRoutes({ user }) {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/loading" element={<PostLoginLoading user={user} />} />
         <Route element={<MainLayout role={role} />}>
           {/* --- DASHBOARDS --- */}
           <Route

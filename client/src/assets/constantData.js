@@ -92,4 +92,5 @@ export const EmptyResigationField = {
   interview_answers: Array(16).fill(""),
   endorsement_file_key: "",
   endorsement_file_name: "",
+  endorsement_file: undefined,
 };

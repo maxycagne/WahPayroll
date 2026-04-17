@@ -782,8 +782,9 @@ export default function ResignationForm({
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-
+                // setField("endorsement_file", file);
                 const fileError = validateEndorsementFile(file);
+
                 if (fileError) {
                   showToast(fileError, "error");
                   e.target.value = "";

@@ -12,7 +12,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
+
 import { Eye, EyeOff } from "lucide-react";
 
 const STORAGE_TOKEN_KEY = "wah_token";
@@ -37,8 +37,7 @@ export default function Login() {
       const data = res.data;
 
       handleLocalLogin(data.token, data.user);
-      window.location.href =
-        data.user.role === "HR" ? "/hr-dashboard" : "/dashboard";
+      window.location.href = "/loading";
     },
   });
 
