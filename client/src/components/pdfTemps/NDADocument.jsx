@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
     color: "#101010",
     fontSize: 12,
     paddingTop: 54,
-    paddingBottom: 54,
+    paddingBottom: 50,
     paddingLeft: 72,
     paddingRight: 72,
     lineHeight: 1.55,
@@ -223,9 +223,9 @@ const styles = StyleSheet.create({
 
   pageFooter: {
     position: "absolute",
-    bottom: 32,
-    left: 72,
-    right: 72,
+    bottom: 20,
+    left: 0,
+    right: 40,
     textAlign: "right",
     fontSize: 9,
     color: "#444",
@@ -357,7 +357,15 @@ const NDADocument = ({
         authorized systems, nor store such data in personal devices, external
         drives, or unauthorized cloud-based platforms.
       </Text>
-
+      <Text style={styles.pageFooter} fixed>
+        Wireless Access for Health | NDA Employee | Page 1 of 3
+      </Text>
+    </Page>
+    <Page size="LEGAL" style={styles.page}>
+      {/* Logo in top left corner */}
+      <View fixed style={styles.logoContainer}>
+        <Image src={logoUrl} style={styles.logo} />
+      </View>
       <Text style={styles.listItem}>
         <Text style={styles.bold}>3.</Text> The SECOND PARTY shall not share
         login credentials, allow unauthorized access to accounts, or engage in
@@ -445,7 +453,16 @@ const NDADocument = ({
         Access for Health Initiative, Inc. and its partner institutions, and
         shall apply to all employees granted access to the platform.
       </Text>
+      <Text style={styles.pageFooter} fixed>
+        Wireless Access for Health | NDA Employee | Page 2 of 3
+      </Text>
+    </Page>
 
+    <Page size="LEGAL" style={styles.page}>
+      {/* Logo in top left corner */}
+      <View fixed style={styles.logoContainer}>
+        <Image src={logoUrl} style={styles.logo} />
+      </View>
       {/* SIGNATURE SECTION */}
       <View style={styles.signatureSectionDivider} />
 
@@ -484,8 +501,8 @@ const NDADocument = ({
       </View>
 
       {/* Footer */}
-      <Text style={styles.pageFooter}>
-        Wireless Access for Health | NDA Employee | Page 1 / 1
+      <Text style={styles.pageFooter} fixed>
+        Wireless Access for Health | NDA Employee | Page 3 of 3
       </Text>
     </Page>
   </Document>

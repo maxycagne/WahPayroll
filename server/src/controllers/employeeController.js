@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3BucketName, s3Client } from "../config/s3";
 import {
@@ -349,6 +349,23 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
       "ALTER TABLE leave_requests ADD COLUMN hr_note TEXT NULL AFTER supervisor_remarks",
     );
   }
+
+  const [leaveCreatedAtColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'created_at'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveCreatedAtColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    );
+  }
 };
 
 const ensureResignationsTable = async (connection = pool) => {
@@ -658,6 +675,52 @@ const getDefaultLeaveAllocation = (status) => {
   return ["job order", "pgt employee", "pgt"].includes(normalizedStatus)
     ? 12
     : 27;
+};
+
+const getWorkweekMultiplierForDate = async (connection, date) => {
+  const normDate = normalizeDateInput(date);
+  if (!normDate) return 1.0;
+
+  const [configs] = await connection.query(
+    `SELECT workweek_type, absence_unit 
+     FROM workweek_configs 
+     WHERE effective_from <= ? 
+       AND (effective_to IS NULL OR effective_to >= ?)
+     ORDER BY effective_from DESC 
+     LIMIT 1`,
+    [normDate, normDate],
+  );
+
+  if (configs.length > 0) {
+    return Number(configs[0].absence_unit || 1.0);
+  }
+
+  return 1.0;
+};
+
+const calculateLeaveCreditsInternal = async (connection, fromDate, toDate) => {
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
+  let totalCredits = 0;
+
+  const current = new Date(start);
+  while (current <= end) {
+    const dayOfWeek = current.getDay();
+    // Only count Mon-Fri as potential work days (Sat=6, Sun=0)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const multiplier = await getWorkweekMultiplierForDate(connection, current);
+      
+      // If 4-day, Friday (5) is also a non-working day
+      const isFriday = dayOfWeek === 5;
+      if (multiplier === 1.25 && isFriday) {
+        // Skip Friday for 4-day
+      } else {
+        totalCredits += multiplier;
+      }
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return totalCredits;
 };
 
 const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
@@ -1659,6 +1722,15 @@ export const createEmployee = async (req, res) => {
   const normalizedHiredDate = normalizeDateInput(hired_date);
 
   try {
+    const [existingIdRows] = await pool.query(
+      "SELECT emp_id FROM employees WHERE emp_id = ? LIMIT 1",
+      [emp_id],
+    );
+
+    if (existingIdRows.length > 0) {
+      return res.status(400).json({ message: "Employee ID already in use" });
+    }
+
     await ensureEmployeeGovernmentColumns();
     await ensurePositionSalarySettingsTable();
 
@@ -3476,12 +3548,11 @@ export const updateLeaveStatus = async (req, res) => {
     const leaveRequest = rows[0];
     const requester = await getEmployeeProfile(connection, leaveRequest.emp_id);
 
-    const totalRequestDays =
-      Math.floor(
-        (new Date(leaveRequest.date_to).getTime() -
-          new Date(leaveRequest.date_from).getTime()) /
-          (1000 * 60 * 60 * 24),
-      ) + 1;
+    const totalRequestDays = await calculateLeaveCreditsInternal(
+      connection,
+      leaveRequest.date_from,
+      leaveRequest.date_to,
+    );
 
     const getEffectiveApprovedDays = (statusValue, approvedDaysValue) => {
       if (
@@ -5501,6 +5572,59 @@ export const uploadProfilePhoto = async (req, res) => {
   }
 };
 
+export const removeProfilePhoto = async (req, res) => {
+  try {
+    const targetEmpId = String(req.params?.emp_id || req.user?.emp_id || "").trim();
+    if (!targetEmpId) {
+      return res.status(400).json({ message: "Target employee is required" });
+    }
+
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const targetEmployee = await getEmployeeProfile(pool, targetEmpId);
+    if (!targetEmployee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const canManageTarget =
+      viewer.role === "Admin" ||
+      viewer.role === "HR" ||
+      viewer.emp_id === targetEmpId ||
+      (viewer.role === "Supervisor" &&
+        String(viewer.designation || "").trim().toLowerCase() ===
+          String(targetEmployee.designation || "").trim().toLowerCase());
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot remove this file" });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT profile_photo FROM employees WHERE emp_id = ?",
+      [targetEmpId],
+    );
+
+    const oldPhotoPath = String(rows?.[0]?.profile_photo || "").trim();
+    await pool.query("UPDATE employees SET profile_photo = NULL WHERE emp_id = ?", [
+      targetEmpId,
+    ]);
+
+    if (oldPhotoPath) {
+      const fullOldPath = path.join(process.cwd(), oldPhotoPath);
+      if (fs.existsSync(fullOldPath)) {
+        fs.unlinkSync(fullOldPath);
+      }
+    }
+
+    return res.json({ message: "Profile photo removed successfully" });
+  } catch (error) {
+    console.error("Error in removeProfilePhoto:", error);
+    return res.status(500).json({ message: "Error removing profile photo" });
+  }
+};
+
 export const replaceResignationFile = async (req, res) => {
   const requester = await getEmployeeProfile(pool, req.user?.emp_id);
   const resignationId = req.params?.id;
@@ -5577,6 +5701,84 @@ export const replaceResignationFile = async (req, res) => {
   }
 };
 
+export const removeResignationFile = async (req, res) => {
+  const requester = await getEmployeeProfile(pool, req.user?.emp_id);
+  const resignationId = req.params?.id;
+  const fileField = String(req.body?.file_field || "").trim();
+  const oldFileKeyFromBody = String(req.body?.old_file_key || "").trim();
+
+  if (!requester) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const allowedFields = {
+    endorsement_file_key: "endorsement_file_key",
+    clearance_file_key: "clearance_file_key",
+  };
+
+  const columnName = allowedFields[fileField];
+  if (!columnName) {
+    return res.status(400).json({ message: "Invalid file field" });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      `SELECT r.id, r.emp_id, r.endorsement_file_key, r.clearance_file_key, e.designation, COALESCE(e.role, 'RankAndFile') AS role
+       FROM resignations r
+       JOIN employees e ON e.emp_id = r.emp_id
+       WHERE r.id = ?
+       LIMIT 1`,
+      [resignationId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const target = rows[0];
+    const targetRole = normalizeRole(target.role);
+    const canManageTarget =
+      requester.role === "Admin" ||
+      requester.role === "HR" ||
+      requester.emp_id === target.emp_id ||
+      (requester.role === "Supervisor" &&
+        String(requester.designation || "").trim().toLowerCase() ===
+          String(target.designation || "").trim().toLowerCase() &&
+        targetRole !== "Admin");
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot remove this file" });
+    }
+
+    const oldFileKey =
+      oldFileKeyFromBody ||
+      String(
+        columnName === "endorsement_file_key"
+          ? target.endorsement_file_key
+          : target.clearance_file_key,
+      ).trim();
+
+    await pool.query(`UPDATE resignations SET ${columnName} = NULL WHERE id = ?`, [
+      resignationId,
+    ]);
+
+    if (oldFileKey) {
+      try {
+        await deleteS3ObjectQuietly(oldFileKey);
+      } catch (deleteError) {
+        console.error("S3 cleanup error in removeResignationFile:", deleteError);
+      }
+    }
+
+    return res.json({ message: "Resignation file removed successfully" });
+  } catch (error) {
+    console.error("DB Error in removeResignationFile:", error);
+    return res.status(500).json({ message: "Error removing resignation file" });
+  }
+};
+
 // 2. Update Personal Profile Details
 export const updateMyProfile = async (req, res) => {
   const { email } = req.body;
@@ -5592,19 +5794,33 @@ export const updateMyProfile = async (req, res) => {
   }
 };
 
-// 3. Change Passw  ord
+// 3. Change Password
 export const changeMyPassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
     const [rows] = await pool.query(
-      "SELECT password FROM employees WHERE emp_id = ?",
+      "SELECT emp_id, first_name, role, password FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );
     if (rows.length === 0)
       return res.status(404).json({ message: "User not found" });
 
-    // Verify old password
-    const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+    const user = rows[0];
+    const stored = user.password;
+    const generatedFallback = `${user.emp_id || ""}${(user.first_name || "").replace(/\s+/g, "")}`;
+
+    let isMatch = false;
+
+    // 1. If we have a hash, use bcrypt
+    if (stored && (stored.startsWith("$2b$") || stored.startsWith("$2a$") || stored.startsWith("$2y$"))) {
+      isMatch = await bcrypt.compare(currentPassword, stored);
+    } 
+    
+    // 2. Fallback check (needed for new accounts or migration cases)
+    if (!isMatch) {
+       isMatch = (currentPassword === generatedFallback);
+    }
+
     if (!isMatch)
       return res.status(400).json({ message: "Incorrect current password" });
 

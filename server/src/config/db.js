@@ -23,5 +23,4 @@ pool
   .catch((err) => {
     console.error("❌ Error connecting to MySQL:", err.message);
   });
-
 export default pool;

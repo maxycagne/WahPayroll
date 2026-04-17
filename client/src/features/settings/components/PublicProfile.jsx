@@ -10,7 +10,7 @@ const PublicProfile = ({
   isMutating,
 }) => {
   const fileInputRef = useRef();
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   return (
     <div>
       <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">

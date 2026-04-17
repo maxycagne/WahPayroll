@@ -61,7 +61,9 @@ import {
   downloadFileTemplate,
   deleteFileTemplate,
   uploadProfilePhoto,
+  removeProfilePhoto,
   replaceResignationFile,
+  removeResignationFile,
   updateMyProfile,
   changeMyPassword,
 } from "../controllers/employeeController.js";
@@ -221,6 +223,11 @@ router.put(
   "/resignations/:id/file",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   replaceResignationFile,
+);
+router.delete(
+  "/resignations/:id/file",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  removeResignationFile,
 );
 
 router.get(
@@ -403,6 +410,11 @@ router.post(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   uploadPhoto.single("profile_photo"),
   uploadProfilePhoto,
+);
+router.delete(
+  "/employees/:emp_id/photo",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  removeProfilePhoto,
 );
 router.put("/me/profile", updateMyProfile);
 router.put("/me/change-password", changeMyPassword);

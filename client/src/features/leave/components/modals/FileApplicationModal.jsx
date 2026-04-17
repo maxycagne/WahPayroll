@@ -16,6 +16,7 @@ export default function FileApplicationModal({
   setFormData,
   availableLeaveTypes,
   difference,
+  totalCredits,
   handleSubmitLeave,
   resignationTypes,
   fileResignationMutation,
@@ -73,6 +74,7 @@ export default function FileApplicationModal({
                     currentUser={currentUser}
                     availableLeaveTypes={availableLeaveTypes}
                     difference={difference}
+                    totalCredits={totalCredits}
                     handleSubmitLeave={handleSubmitLeave}
                   />
                 </>
