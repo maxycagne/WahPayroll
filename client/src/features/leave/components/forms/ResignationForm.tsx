@@ -16,6 +16,7 @@ import {
   safeText,
   toDateInputValue,
 } from "@/utils/text.utils";
+import { useAuthStore } from "@/stores/authStore";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -56,19 +57,13 @@ export default function ResignationForm({
   currentUser: currentUserProp,
 }: ResignationFormProps) {
   const { showToast } = useToast();
+  const authUser = useAuthStore((state) => state.user);
   const currentUser = useMemo<CurrentUserLike>(() => {
     if (currentUserProp) return currentUserProp;
-    try {
-      const parsed: unknown = JSON.parse(
-        localStorage.getItem("wah_user") || "{}",
-      );
-      return parsed && typeof parsed === "object"
-        ? (parsed as CurrentUserLike)
-        : {};
-    } catch {
-      return {};
-    }
-  }, [currentUserProp]);
+    return authUser && typeof authUser === "object"
+      ? (authUser as CurrentUserLike)
+      : {};
+  }, [authUser, currentUserProp]);
 
   const defaultResignationForm = useMemo(
     () => getDefaultResignationWizardState(currentUser),

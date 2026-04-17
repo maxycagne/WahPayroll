@@ -3,9 +3,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import axiosInterceptor from "../hooks/interceptor";
-import { mutationHandler } from "../features/leave/hooks/createMutationHandler";
 import { isNonWorkingDay } from "../features/leave/utils/date.utils";
+import { useAuthStore } from "@/stores/authStore";
+import {
+  attendanceCalendarSummaryQueryOptions,
+  attendanceDailyQueryOptions,
+  attendanceQueryOptions,
+  attendanceWorkweekConfigQueryOptions,
+} from "@/features/attendance/utils/queryOptions";
+import {
+  adjustLeaveBalanceMutationFn,
+  deleteWorkweekMutationFn,
+  saveDailyAttendanceMutationFn,
+  saveWorkweekMutationFn,
+  updateWorkweekMutationFn,
+} from "@/features/attendance/utils/mutationOptions";
 
 const badgeClass = {
   Present: "bg-green-100 text-green-800",
@@ -54,13 +66,7 @@ export default function Attendance({ shortcutMode = false }) {
   });
   const [editingWorkweekId, setEditingWorkweekId] = useState(null);
 
-  const currentUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("wah_user") || "null");
-    } catch {
-      return null;
-    }
-  }, []);
+  const currentUser = useAuthStore((state) => state.user);
   const isAdmin = currentUser?.role === "Admin";
   const canEditAttendance =
     currentUser?.role === "Admin" || currentUser?.role === "HR";
@@ -112,72 +118,37 @@ export default function Attendance({ shortcutMode = false }) {
   }, [searchParams, setSearchParams, shortcutMode]);
 
   // --- QUERIES ---
-  const { data: attendance = [], isLoading } = useQuery({
-    queryKey: ["attendance"],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees/attendance"),
-        "Failed to fetch attendance",
-      );
-    },
-  });
+  const { data: attendance = [], isLoading } = useQuery(attendanceQueryOptions);
 
-  const { data: calendarSummary = [] } = useQuery({
-    queryKey: ["attendance-calendar", year, month],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get(
-          `/api/employees/attendance-summary?year=${year}&month=${month + 1}`,
-        ),
-        "Failed to fetch attendance summary",
-      );
-    },
-  });
+  const { data: calendarSummary = [] } = useQuery(
+    attendanceCalendarSummaryQueryOptions(year, month + 1),
+  );
 
-  const { data: workweekConfigs = [] } = useQuery({
-    queryKey: ["workweek-config"],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees/workweek-config"),
-        "Failed to fetch workweek config",
-      );
-    },
-  });
+  const { data: workweekConfigs = [] } = useQuery(
+    attendanceWorkweekConfigQueryOptions,
+  );
 
-  const { data: dailyList = [], isLoading: dailyLoading } = useQuery({
-    queryKey: ["attendance-daily", selectedDate],
-    queryFn: async () => {
-      const data = await mutationHandler(
-        axiosInterceptor.get(
-          `/api/employees/attendance-daily?date=${selectedDate}`,
-        ),
-        "Failed to fetch attendance daily list",
-      );
+  const { data: dailyList = [], isLoading: dailyLoading } = useQuery(
+    attendanceDailyQueryOptions(
+      selectedDate,
+      Boolean(dailyModalOpen || dateDetailsOpen),
+    ),
+  );
 
-      const initialForm = {};
-      const initialSecondary = {};
-      data.forEach((emp) => {
-        initialForm[emp.emp_id] = emp.attendance_status || "";
-        // FIX: Tell React to load status2 from the database
-        initialSecondary[emp.emp_id] = emp.status2 || "";
-      });
-      setAttendanceForm(initialForm);
-      setSecondaryStatusForm(initialSecondary);
-      return data;
-    },
-    enabled: !!selectedDate && (dailyModalOpen || dateDetailsOpen),
-  });
+  useEffect(() => {
+    const initialForm = {};
+    const initialSecondary = {};
+    dailyList.forEach((emp) => {
+      initialForm[emp.emp_id] = emp.attendance_status || "";
+      initialSecondary[emp.emp_id] = emp.status2 || "";
+    });
+    setAttendanceForm(initialForm);
+    setSecondaryStatusForm(initialSecondary);
+  }, [dailyList]);
 
   // --- MUTATIONS ---
   const adjustBalanceMutation = useMutation({
-    mutationFn: async ({ empId, amount }) => {
-      await mutationHandler(
-        axiosInterceptor.put(`/api/employees/leave-balance/${empId}`, {
-          adjustment: amount,
-        }),
-        "Failed to adjust leave balance",
-      );
-    },
+    mutationFn: adjustLeaveBalanceMutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       showToast("Leave balance updated.");
@@ -188,15 +159,8 @@ export default function Attendance({ shortcutMode = false }) {
   });
 
   const saveDailyAttendanceMutation = useMutation({
-    mutationFn: async (records) => {
-      return mutationHandler(
-        axiosInterceptor.post("/api/employees/attendance-bulk", {
-          date: selectedDate,
-          records,
-        }),
-        "Failed to save attendance",
-      );
-    },
+    mutationFn: (records) =>
+      saveDailyAttendanceMutationFn({ selectedDate, records }),
     onSuccess: () => {
       queryClient.invalidateQueries(["attendance"]);
       queryClient.invalidateQueries(["attendance-calendar"]);
@@ -207,12 +171,7 @@ export default function Attendance({ shortcutMode = false }) {
   });
 
   const saveWorkweekMutation = useMutation({
-    mutationFn: async (payload) => {
-      return mutationHandler(
-        axiosInterceptor.post("/api/employees/workweek-config", payload),
-        "Failed to save workweek config",
-      );
-    },
+    mutationFn: saveWorkweekMutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
@@ -229,12 +188,7 @@ export default function Attendance({ shortcutMode = false }) {
   });
 
   const updateWorkweekMutation = useMutation({
-    mutationFn: async ({ id, payload }) => {
-      return mutationHandler(
-        axiosInterceptor.put(`/api/employees/workweek-config/${id}`, payload),
-        "Failed to update workweek config",
-      );
-    },
+    mutationFn: ({ id, payload }) => updateWorkweekMutationFn({ id, data: payload }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
@@ -252,12 +206,7 @@ export default function Attendance({ shortcutMode = false }) {
   });
 
   const deleteWorkweekMutation = useMutation({
-    mutationFn: async (id) => {
-      return mutationHandler(
-        axiosInterceptor.delete(`/api/employees/workweek-config/${id}`),
-        "Failed to delete workweek config",
-      );
-    },
+    mutationFn: deleteWorkweekMutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workweek-config"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });

@@ -3,9 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import axiosInterceptor from "@/hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User } from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
+import { employeesQueryOptions } from "@/features/employees/utils/queryOptions";
+import {
+  addEmployeeMutationFn,
+  deleteEmployeeMutationFn,
+  resetEmployeePasswordMutationFn,
+  updateEmployeeMutationFn,
+} from "@/features/employees/utils/mutationOptions";
 
 const designationMap = {
   Operations: [
@@ -34,7 +40,7 @@ const designationMap = {
 export default function Employees({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+  const currentUser = useAuthStore((state) => state.user) || {};
   const canResetPassword = currentUser?.role === "Admin";
   const canAddEmployee = ["Admin", "HR"].includes(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,28 +91,13 @@ export default function Employees({ shortcutMode = false }) {
   }, [searchParams, setSearchParams, shortcutMode]);
 
   // --- QUERIES ---
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["employees"],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees"),
-        "Failed to fetch employees",
-      );
-    },
-  });
+  const { data: employees = [], isLoading } = useQuery(employeesQueryOptions);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // --- MUTATIONS ---
   const addMutation = useMutation({
-    mutationFn: (newData) => {
-      // Auto Password Logic: ID + FirstName (No spaces)
-      const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
-      return axiosInterceptor.post("/api/employees/add", {
-        ...newData,
-        password: autoPassword,
-      });
-    },
+    mutationFn: addEmployeeMutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setIsAddModalOpen(false);
@@ -117,15 +108,7 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (updatedData) => {
-      return mutationHandler(
-        axiosInterceptor.put(
-          `/api/employees/${updatedData.emp_id}`,
-          updatedData,
-        ),
-        "Failed to update employee",
-      );
-    },
+    mutationFn: updateEmployeeMutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setEditEmployee(null);
@@ -137,11 +120,7 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) =>
-      mutationHandler(
-        axiosInterceptor.delete(`/api/employees/${id}`),
-        "Failed to delete employee",
-      ),
+    mutationFn: deleteEmployeeMutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);
@@ -151,13 +130,7 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: async (emp) => {
-      const data = await mutationHandler(
-        axiosInterceptor.put(`/api/employees/${emp.emp_id}/reset-password`),
-        "Failed to reset password",
-      );
-      return { ...data, emp };
-    },
+    mutationFn: resetEmployeePasswordMutationFn,
     onSuccess: (data, emp) => {
       setResetConfirm(null);
       showToast(

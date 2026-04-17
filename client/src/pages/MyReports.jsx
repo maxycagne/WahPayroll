@@ -13,7 +13,10 @@ import {
   YAxis,
 } from "recharts";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { dashboardMyAttendanceQueryOptions } from "@/features/dashboard/hooks/queryOptions";
+import { myPayrollReportQueryOptions } from "@/features/payroll/utils/queryOptions";
 import axiosInterceptor from "@/hooks/interceptor";
+import { useAuthStore } from "@/stores/authStore";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -27,35 +30,17 @@ const fmt = (n) => {
 };
 
 export default function MyReports() {
-  const currentUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("wah_user") || "{}");
-    } catch {
-      return {};
-    }
-  }, []);
+  const currentUser = useAuthStore((state) => state.user) || {};
 
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
 
-  const { data: myAttendance = [], isLoading: attendanceLoading } = useQuery({
-    queryKey: ["my-attendance", currentUser?.emp_id],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees/my-attendance"),
-        "Failed to fetch attendance",
-      );
-    },
-  });
+  const { data: myAttendance = [], isLoading: attendanceLoading } = useQuery(
+    dashboardMyAttendanceQueryOptions(currentUser?.emp_id),
+  );
 
-  const { data: payrollData = [], isLoading: payrollLoading } = useQuery({
-    queryKey: ["my-payroll-report", period],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
-        "Failed to fetch payroll report",
-      );
-    },
-  });
+  const { data: payrollData = [], isLoading: payrollLoading } = useQuery(
+    myPayrollReportQueryOptions(period),
+  );
 
   const myPayrollRows = payrollData.filter(
     (row) => String(row.emp_id) === String(currentUser?.emp_id),

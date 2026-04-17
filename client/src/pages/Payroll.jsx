@@ -3,9 +3,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import axiosInterceptor from "../hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { useAuthStore } from "@/stores/authStore";
 import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
+import {
+  myPayrollReportQueryOptions,
+  payrollByPeriodQueryOptions,
+  salaryHistoryQueryOptions,
+} from "@/features/payroll/utils/queryOptions";
+import { employeesQueryOptions } from "@/features/employees/utils/queryOptions";
+import {
+  deleteSalaryHistoryEntryMutationFn,
+  generatePayrollMutationFn,
+  resetPayrollMutationFn,
+  saveSalaryAdjustmentMutationFn,
+  sendBulkPayslipsMutationFn,
+  sendPayslipMutationFn,
+  updateBaseSalaryMutationFn,
+  updateSalaryHistoryEntryMutationFn,
+} from "@/features/payroll/utils/mutationOptions";
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -130,13 +145,7 @@ export default function Payroll({ shortcutMode = false }) {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  const currentUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("wah_user") || "{}");
-    } catch {
-      return {};
-    }
-  }, []);
+  const currentUser = useAuthStore((state) => state.user) || {};
 
   const isAdmin = currentUser?.role === "Admin";
 
@@ -211,43 +220,19 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- QUERIES ---
-  const { data: payrollData = [], isLoading: isLoadingPayroll } = useQuery({
-    queryKey: ["payroll", period],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
-        "Failed to fetch payroll",
-      );
-    },
-  });
+  const { data: payrollData = [], isLoading: isLoadingPayroll } = useQuery(
+    payrollByPeriodQueryOptions(period),
+  );
 
-  const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
-    queryKey: ["employees"],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees"),
-        "Failed to fetch employees",
-      );
-    },
-  });
+  const { data: employeesData = [], isLoading: isLoadingEmployees } =
+    useQuery(employeesQueryOptions);
 
-  const { data: salaryHistoryData = [] } = useQuery({
-    queryKey: [
-      "salary-history",
-      adjustmentModal?.emp_id,
-      applyToOtherMonth ? adjustmentTargetPeriod : period,
-    ],
-    enabled: Boolean(adjustmentModal?.emp_id),
-    queryFn: async () => {
-      const activePeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
-      return mutationHandler(
-        axiosInterceptor.get(
-          `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
-        ),
-        "Failed to fetch salary history",
-      );
-    },
-  });
+  const { data: salaryHistoryData = [] } = useQuery(
+    salaryHistoryQueryOptions({
+      empId: adjustmentModal?.emp_id,
+      period: applyToOtherMonth ? adjustmentTargetPeriod : period,
+    }),
+  );
 
   // --- MUTATIONS ---
 

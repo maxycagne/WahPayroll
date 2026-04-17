@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import axiosInterceptor from "../hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+
+import { payrollReportsQueryOptions } from "@/features/payroll/utils/queryOptions";
 import {
   BarChart,
   Bar,
@@ -52,15 +52,7 @@ export default function Reports() {
     data: reportData,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["payroll-reports"],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get("/api/employees/payroll-reports"),
-        "Failed to fetch reports",
-      );
-    },
-  });
+  } = useQuery(payrollReportsQueryOptions);
 
   const exportCSV = () => {
     if (!reportData || !monthlySummaryUpToCurrentMonth.length) return;

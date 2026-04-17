@@ -16,28 +16,21 @@ import {
 } from "lucide-react";
 import Sidebar from "./Sidebar";
 import axiosInterceptor from "../hooks/interceptor";
+import { notificationsQueryOptions } from "@/features/settings/queryOptions";
 import TopLoadingBar from "./TopLoading";
-const STORAGE_TOKEN_KEY = "wah_token";
-const STORAGE_USER_KEY = "wah_user";
+import { useAuthStore } from "@/stores/authStore";
 
 export default function MainLayout({ role }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const clearSession = useAuthStore((state) => state.clearSession);
   const notificationPanelRef = useRef(null);
   const [openNotifications, setOpenNotifications] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // --- NOTIFICATIONS LOGIC ---
-  const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: async () => {
-      const res = await axiosInterceptor.get("/api/employees/notifications");
-      if (res.status !== 200) throw new Error("Failed to fetch notifications");
-      return res.data;
-    },
-    refetchInterval: 30000,
-  });
+  const { data: notifications = [] } = useQuery(notificationsQueryOptions);
 
   const unreadCount = notifications.filter((n) => n.status === "Unread").length;
 
@@ -114,9 +107,9 @@ export default function MainLayout({ role }) {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      localStorage.removeItem(STORAGE_TOKEN_KEY);
-      localStorage.removeItem(STORAGE_USER_KEY);
-      window.location.href = "/";
+      clearSession();
+      queryClient.clear();
+      navigate("/", { replace: true });
     }
   };
 

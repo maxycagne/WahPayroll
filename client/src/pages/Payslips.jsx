@@ -1,7 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { payrollByPeriodQueryOptions } from "@/features/payroll/utils/queryOptions";
 import axiosInterceptor from "@/hooks/interceptor";
+import { useAuthStore } from "@/stores/authStore";
 
 const fmt = (n) => {
   if (n === null || n === undefined || n === "") return "-";
@@ -52,13 +54,7 @@ function parseReasonAmountPair(rawLine) {
 }
 
 export default function Payslips() {
-  const currentUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("wah_user") || "{}");
-    } catch {
-      return {};
-    }
-  }, []);
+  const currentUser = useAuthStore((state) => state.user) || {};
 
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
   const isAdmin = currentUser?.role === "Admin";
@@ -80,14 +76,9 @@ export default function Payslips() {
     return months;
   }, []);
 
-  const { data: payrollData = [], isLoading } = useQuery({
-    queryKey: ["payroll", period],
-    queryFn: async () => {
-      return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
-      );
-    },
-  });
+  const { data: payrollData = [], isLoading } = useQuery(
+    payrollByPeriodQueryOptions(period),
+  );
 
   if (isLoading)
     return (

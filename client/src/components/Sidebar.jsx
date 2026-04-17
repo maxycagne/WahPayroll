@@ -10,6 +10,7 @@ import {
   Wallet,
   Settings,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
 
 const navItems = {
   Admin: [
@@ -55,7 +56,7 @@ const navItems = {
 export default function Sidebar({ role, onLogout, isCollapsed = false }) {
   const items = navItems[role] || navItems.RankAndFile;
 
-  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+  const currentUser = useAuthStore((state) => state.user) || {};
   const displayName =
     currentUser.name ||
     `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() ||

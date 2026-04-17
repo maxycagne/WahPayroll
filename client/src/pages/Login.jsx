@@ -12,21 +12,17 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
 
 import { Eye, EyeOff } from "lucide-react";
 
-const STORAGE_TOKEN_KEY = "wah_token";
-const STORAGE_USER_KEY = "wah_user";
-
 export default function Login() {
+  const navigate = useNavigate();
+  const setSession = useAuthStore((state) => state.setSession);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  const handleLocalLogin = (token, nextUser) => {
-    localStorage.setItem(STORAGE_TOKEN_KEY, token);
-    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
-  };
 
   const login = useMutation({
     mutationFn: async ({ username, password }) => {
@@ -36,8 +32,8 @@ export default function Login() {
       });
       const data = res.data;
 
-      handleLocalLogin(data.token, data.user);
-      window.location.href = "/loading";
+      setSession(data.token, data.user);
+      navigate("/loading", { replace: true });
     },
   });
 

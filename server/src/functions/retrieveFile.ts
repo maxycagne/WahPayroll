@@ -33,6 +33,11 @@ export const retrieveFile = async (req: Request, res: Response) => {
       res.status(500).json({ message: "File body is empty" });
     }
   } catch (e) {
+    // Log error and request filename for easier debugging
+    // (stack trace will be visible in server logs)
+    // NOTE: Avoid returning stack traces in production.
+    console.error("retrieveFile error for filename:", filename, e);
+
     if (e instanceof S3ServiceException && e.name === "NoSuchKey") {
       return res.status(404).json({
         message: "File not found",

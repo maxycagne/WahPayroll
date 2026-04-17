@@ -1,11 +1,9 @@
 import { useToast } from "@/hooks/useToast";
 import { useMemo, useState } from "react";
+import { useAuthStore } from "@/stores/authStore";
 
 export const useFormData = () => {
-  const currentUser = useMemo(
-    () => JSON.parse(localStorage.getItem("wah_user") || "{}"),
-    [],
-  );
+  const currentUser = useAuthStore((state) => state.user) || {};
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
   const [applicationType, setApplicationType] = useState("leave");
   const [myPendingModalOpen, setMyPendingModalOpen] = useState(false);

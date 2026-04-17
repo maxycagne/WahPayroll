@@ -1,9 +1,11 @@
 /// <reference types="vite/client" />
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "@/stores/authStore";
+import { handleUnauthorized } from "@/stores/authNavigation";
 
-const getAccessToken = () => localStorage.getItem("wah_token") || "";
+const getAccessToken = () => useAuthStore.getState().token || "";
 const setAccessToken = (token: string) =>
-  localStorage.setItem("wah_token", token);
+  useAuthStore.getState().setToken(token);
 const axiosInterceptor = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
@@ -60,9 +62,8 @@ axiosInterceptor.interceptors.response.use(
 
         return axiosInterceptor(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem("wah_token");
-        localStorage.removeItem("wah_user");
-        window.location.href = "/";
+        useAuthStore.getState().clearSession();
+        handleUnauthorized();
       }
     }
     console.log("reject");

@@ -5,6 +5,7 @@ import {
   mutationHandler,
 } from "../hooks/createMutationHandler";
 import { useEmailNotifications } from "../hooks/useEmailNotifications";
+import { useAuthStore } from "@/stores/authStore";
 
 //T
 
@@ -23,7 +24,7 @@ export const useRequestMutation = ({
   const handleSendUpdate = useEmailNotifications();
   const ALL_KEYS = ["leaves", "offset-applications", "resignations", "dashboardSummary"];
 
-  const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
+  const currentUser = useAuthStore((state) => state.user) || {};
 
   const resetLeaveForm = () => {
     setFormData({

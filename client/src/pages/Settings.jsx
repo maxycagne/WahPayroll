@@ -5,14 +5,19 @@ import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
+import { useAuthStore } from "@/stores/authStore";
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
   const fileInputRef = useRef(null);
-  const [currentUser, setCurrentUser] = useState(
-    JSON.parse(localStorage.getItem("wah_user") || "{}"),
-  );
+  const authUser = useAuthStore((state) => state.user);
+  const setAuthUser = useAuthStore((state) => state.setUser);
+  const [currentUser, setCurrentUser] = useState(authUser || {});
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    setCurrentUser(authUser || {});
+  }, [authUser]);
 
   const displayFirstName =
     currentUser?.first_name ||
@@ -28,6 +33,13 @@ export default function Settings() {
     email: currentUser.email || "",
     phone: currentUser.phone || "",
   });
+
+  useEffect(() => {
+    setProfileForm({
+      email: currentUser.email || "",
+      phone: currentUser.phone || "",
+    });
+  }, [currentUser.email, currentUser.phone]);
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -58,7 +70,7 @@ export default function Settings() {
     },
     onSuccess: (data) => {
       const updatedUser = { ...currentUser, profile_photo: data.filePath };
-      localStorage.setItem("wah_user", JSON.stringify(updatedUser));
+      setAuthUser(updatedUser);
       setCurrentUser(updatedUser);
       showToast("Profile photo updated successfully.");
     },
@@ -73,7 +85,12 @@ export default function Settings() {
         "Failed to update profile",
       );
     },
-    onSuccess: () => showToast("Profile updated successfully."),
+    onSuccess: (_, variables) => {
+      const updatedUser = { ...currentUser, ...variables };
+      setAuthUser(updatedUser);
+      setCurrentUser(updatedUser);
+      showToast("Profile updated successfully.");
+    },
     onError: () => showToast("Error updating profile.", "error"),
   });
 
