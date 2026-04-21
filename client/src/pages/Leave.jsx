@@ -35,7 +35,10 @@ import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
 import { useHandleSubmiisions } from "@/features/leave/hooks/useHandleSubmissions";
 
 export default function Leave() {
-  const [activeMonth, setActiveMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() });
+  const [activeMonth, setActiveMonth] = useState({
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+  });
   const formDataState = useFormData();
 
   const {
@@ -109,7 +112,6 @@ export default function Leave() {
   const { data: offsetApplications = [], isLoading: isLoadingOffsets } =
     useQuery(offsetApplicationsQueryOptions);
 
-
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery(resignationQueryOptions);
   const { data: workweekConfigs = [] } = useQuery(workweekConfigQueryOptions);
@@ -145,14 +147,17 @@ export default function Leave() {
     pendingTypeFilter,
     currentUser,
   });
-  
+
   const sourceHistory = isAdminRole ? allRequestHistory : myRequestHistory;
 
   const filteredHistory = useMemo(() => {
     return sourceHistory.filter((entry) => {
       if (!entry.filter_date) return false;
       const d = new Date(entry.filter_date);
-      return d.getFullYear() === activeMonth.year && d.getMonth() === activeMonth.month;
+      return (
+        d.getFullYear() === activeMonth.year &&
+        d.getMonth() === activeMonth.month
+      );
     });
   }, [sourceHistory, activeMonth]);
 
@@ -216,15 +221,19 @@ export default function Leave() {
 
   const handleFromDateChange = (e) => {
     const newFromDate = e.target.value;
-    
-    if (newFromDate && formData.leaveType !== "Offset" && isNonWorkingDay(newFromDate, workweekConfigs)) {
+
+    if (
+      newFromDate &&
+      formData.leaveType !== "Offset" &&
+      isNonWorkingDay(newFromDate, workweekConfigs)
+    ) {
       setFormError("Cannot file a leave on a non-working day.");
       return;
     }
 
     const newToDate =
       formData.leaveType === "Birthday Leave" ? newFromDate : "";
-    
+
     // Also validate if the newToDate is non-working, but birthday leave is already on the fromDate
     setFormData({ ...formData, fromDate: newFromDate, toDate: newToDate });
     setFormError("");
@@ -243,13 +252,13 @@ export default function Leave() {
         setFormError("Cannot file a leave ending on a non-working day.");
         return;
       }
-      
+
       const policy = leavePolicy[formData.leaveType];
       if (formData.fromDate && toDate && policy) {
         const businessDays = calculateBusinessDays(
           new Date(formData.fromDate),
           new Date(toDate),
-          workweekConfigs
+          workweekConfigs,
         );
         if (businessDays > policy.maxDays) {
           setFormError(
@@ -479,7 +488,11 @@ export default function Leave() {
 
   const totalCredits = useMemo(() => {
     if (!formData.fromDate || !formData.toDate) return 0;
-    return calculateTotalCredits(formData.fromDate, formData.toDate, workweekConfigs);
+    return calculateTotalCredits(
+      formData.fromDate,
+      formData.toDate,
+      workweekConfigs,
+    );
   }, [formData.fromDate, formData.toDate, workweekConfigs]);
 
   if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations) {
@@ -515,7 +528,10 @@ export default function Leave() {
       />
 
       <div className="mt-5">
-        <RequestHistoryTable myRequestHistory={filteredHistory} activeMonth={activeMonth} />
+        <RequestHistoryTable
+          myRequestHistory={filteredHistory}
+          activeMonth={activeMonth}
+        />
       </div>
 
       <ModalsContainer

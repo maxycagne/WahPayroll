@@ -1,8 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  badgeClass,
-  calendarStatusCardClass,
-} from "../leaveConstants";
+import { badgeClass, calendarStatusCardClass } from "../leaveConstants";
 
 const LeaveCalendarModal = ({
   setSelectedDate,

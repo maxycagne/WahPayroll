@@ -1,5 +1,12 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Image,
+} from "@react-pdf/renderer";
 
 const LOGO_URL = "/images/wah-top-logo.png";
 
@@ -228,7 +235,11 @@ export default function PayrollSummaryDoc({
           const incentiveItems = parseReasonLines(row.incentive_reasons);
 
           return (
-            <View key={`${row.emp_id || "emp"}-${index}`} style={styles.tableRow} wrap={false}>
+            <View
+              key={`${row.emp_id || "emp"}-${index}`}
+              style={styles.tableRow}
+              wrap={false}
+            >
               <View style={styles.colName}>
                 <Text style={styles.rowStrong}>{employeeName}</Text>
               </View>
@@ -241,8 +252,12 @@ export default function PayrollSummaryDoc({
                 <Text>{money(row.absence_deductions)}</Text>
                 {deductionItems.length > 0 ? (
                   deductionItems.map((item, itemIndex) => (
-                    <Text key={`deduction-${index}-${itemIndex}`} style={styles.typeText}>
-                      {item.label} = {item.amount == null ? "-" : money(item.amount)}
+                    <Text
+                      key={`deduction-${index}-${itemIndex}`}
+                      style={styles.typeText}
+                    >
+                      {item.label} ={" "}
+                      {item.amount == null ? "-" : money(item.amount)}
                     </Text>
                   ))
                 ) : (
@@ -254,8 +269,12 @@ export default function PayrollSummaryDoc({
                 <Text>{money(row.incentives)}</Text>
                 {incentiveItems.length > 0 ? (
                   incentiveItems.map((item, itemIndex) => (
-                    <Text key={`incentive-${index}-${itemIndex}`} style={styles.typeText}>
-                      {item.label} = {item.amount == null ? "-" : money(item.amount)}
+                    <Text
+                      key={`incentive-${index}-${itemIndex}`}
+                      style={styles.typeText}
+                    >
+                      {item.label} ={" "}
+                      {item.amount == null ? "-" : money(item.amount)}
                     </Text>
                   ))
                 ) : (
