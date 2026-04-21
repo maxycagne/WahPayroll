@@ -34,6 +34,20 @@ export const badgeClass = {
   "Partially Approved": "bg-amber-100 text-amber-800",
 };
 
+export const calendarStatusOrder = {
+  Pending: 0,
+  Approved: 1,
+  "Partially Approved": 1,
+  Denied: 2,
+};
+
+export const calendarStatusCardClass = {
+  Pending: "border border-yellow-200 bg-yellow-50/80",
+  Approved: "border border-green-200 bg-green-50/80",
+  "Partially Approved": "border border-amber-200 bg-amber-50/80",
+  Denied: "border border-red-200 bg-red-50/80",
+};
+
 export const statusColors = {
   Approved: {
     bg: "bg-green-50",

@@ -1,11 +1,16 @@
-import React from "react";
-import { badgeClass } from "../leaveConstants";
+import React, { useMemo } from "react";
+import {
+  badgeClass,
+  calendarStatusCardClass,
+} from "../leaveConstants";
 
 const LeaveCalendarModal = ({
   setSelectedDate,
   selectedDateStr,
   selectedLeaves,
 }) => {
+  const orderedLeaves = useMemo(() => selectedLeaves || [], [selectedLeaves]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4"
@@ -43,10 +48,10 @@ const LeaveCalendarModal = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {selectedLeaves.map((l) => (
+              {orderedLeaves.map((l) => (
                 <div
                   key={l.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  className={`rounded-xl p-4 shadow-sm ${calendarStatusCardClass[l.calendar_status] || "border border-slate-200 bg-white"}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>

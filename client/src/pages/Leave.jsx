@@ -116,7 +116,11 @@ export default function Leave() {
 
   const {
     user: {
-      requests: { rows: myRequestRows, history: myRequestHistory },
+      requests: {
+        rows: myRequestRows,
+        history: myRequestHistory,
+        allHistory: allRequestHistory,
+      },
     },
     calendar: { options: calendarScopeOptions, filtered: calendarLeaves },
     approvals: {
@@ -142,13 +146,15 @@ export default function Leave() {
     currentUser,
   });
   
+  const sourceHistory = isAdminRole ? allRequestHistory : myRequestHistory;
+
   const filteredHistory = useMemo(() => {
-    return myRequestHistory.filter(entry => {
+    return sourceHistory.filter((entry) => {
       if (!entry.filter_date) return false;
       const d = new Date(entry.filter_date);
       return d.getFullYear() === activeMonth.year && d.getMonth() === activeMonth.month;
     });
-  }, [myRequestHistory, activeMonth]);
+  }, [sourceHistory, activeMonth]);
 
   const {
     submitLeaveMutation,
