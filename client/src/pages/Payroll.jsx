@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { pdf } from "@react-pdf/renderer";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
+import { User, Mail, FileDown } from "lucide-react";
+import PayrollSummaryDoc from "../components/pdfTemps/PayrollSummaryDoc";
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -148,6 +150,7 @@ export default function Payroll({ shortcutMode = false }) {
   const [salaryBreakdownModal, setSalaryBreakdownModal] = useState(null);
   const [resetConfirmModal, setResetConfirmModal] = useState(false);
   const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
+  const [isGeneratingPayrollPdf, setIsGeneratingPayrollPdf] = useState(false);
 
   const [adjustmentType, setAdjustmentType] = useState("Incentive");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
@@ -772,6 +775,44 @@ export default function Payroll({ shortcutMode = false }) {
     );
   }, [filteredPayroll]);
 
+  const handleGeneratePayrollPdf = async () => {
+    if (!isAdmin) return;
+    if (!Array.isArray(payrollData) || payrollData.length === 0) {
+      showToast("No payroll records found for this period.", "error");
+      return;
+    }
+
+    setIsGeneratingPayrollPdf(true);
+    try {
+      const sortedRows = [...payrollData].sort((a, b) => {
+        const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+        const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim();
+        return aName.localeCompare(bName);
+      });
+
+      const blob = await pdf(
+        <PayrollSummaryDoc rows={sortedRows} period={period} />,
+      ).toBlob();
+
+      const fileName = `payroll-summary-${period || "report"}.pdf`;
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(blobUrl);
+
+      showToast("Payroll PDF generated successfully.");
+    } catch (error) {
+      console.error("Payroll PDF generation failed:", error);
+      showToast("Failed to generate payroll PDF.", "error");
+    } finally {
+      setIsGeneratingPayrollPdf(false);
+    }
+  };
+
   if (isLoadingPayroll || isLoadingEmployees)
     return (
       <div className="p-6 text-gray-900 font-bold">Loading Payroll Data...</div>
@@ -828,6 +869,19 @@ export default function Payroll({ shortcutMode = false }) {
                     {sendBulkPayslipsMutation.isPending
                       ? `Sending to ${filteredPayroll.length} employees...`
                       : "Email All"}
+                  </button>
+
+                  <button
+                    onClick={handleGeneratePayrollPdf}
+                    disabled={
+                      isGeneratingPayrollPdf || payrollData.length === 0
+                    }
+                    className="px-4 py-2 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    {isGeneratingPayrollPdf
+                      ? "Generating PDF..."
+                      : "Generate Payroll PDF"}
                   </button>
 
                   <button
@@ -1015,17 +1069,6 @@ export default function Payroll({ shortcutMode = false }) {
                         <td className="px-6 py-4">{p.emp_id}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                              {p.profile_photo ? (
-                                <img
-                                  src={`${API_BASE_URL}/${p.profile_photo.replace(/^\/+/, "")}`}
-                                  alt="Profile"
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <User className="h-5 w-5 text-gray-400" />
-                              )}
-                            </div>
                             <div>
                               <div className="font-bold text-gray-900">
                                 {p.first_name} {p.last_name}
