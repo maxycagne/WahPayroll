@@ -11,6 +11,7 @@ import {
   getAllPayroll,
   generatePayroll,
   getAttendance,
+  getAttendanceStats,
   adjustLeaveBalance,
   getDashboardSummary,
   getSalaryHistory,
@@ -100,6 +101,12 @@ router.get(
   "/attendance",
   authorizeRoles("Admin", "Supervisor", "HR"),
   getAttendance,
+  getAttendanceStats,
+);
+router.get(
+  "/attendance-stats",
+  authorizeRoles("Admin", "HR"),
+  getAttendanceStats,
 );
 
 router.get("/all-resignations", getAllResignations);

@@ -42,6 +42,26 @@ const designationMap = {
   ],
 };
 
+const getCurrentPeriod = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const formatMonthLabel = (monthValue) => {
+  if (!/^\d{4}-\d{2}$/.test(String(monthValue || ""))) return monthValue || "";
+
+  const [yearValue, monthIndex] = String(monthValue).split("-").map(Number);
+  return new Date(yearValue, monthIndex - 1, 1).toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const formatLeaveDays = (value) => {
+  const amount = Number(value || 0);
+  return `${amount.toFixed(2)} day${amount === 1 ? "" : "s"}`;
+};
+
 export default function Attendance({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -61,11 +81,20 @@ export default function Attendance({ shortcutMode = false }) {
       return null;
     }
   }, []);
-  const isAdmin = currentUser?.role === "Admin";
   const canEditAttendance =
     currentUser?.role === "Admin" || currentUser?.role === "HR";
   const canConfigureWorkweek =
     currentUser?.role === "Admin" || currentUser?.role === "HR";
+  const [attendanceStatsMode, setAttendanceStatsMode] = useState("month");
+  const [attendanceStatsMonth, setAttendanceStatsMonth] =
+    useState(getCurrentPeriod);
+  const [attendanceStatsRangeStart, setAttendanceStatsRangeStart] =
+    useState(getCurrentPeriod);
+  const [attendanceStatsRangeEnd, setAttendanceStatsRangeEnd] =
+    useState(getCurrentPeriod);
+  const [attendanceStatsYear, setAttendanceStatsYear] = useState(
+    String(new Date().getFullYear()),
+  );
 
   // Modals State
   const [adjModal, setAdjModal] = useState(null);
@@ -143,6 +172,38 @@ export default function Attendance({ shortcutMode = false }) {
       );
     },
   });
+
+  const { data: attendanceStats = [], isLoading: isLoadingAttendanceStats } =
+    useQuery({
+      queryKey: [
+        "attendance-stats",
+        attendanceStatsMode,
+        attendanceStatsMonth,
+        attendanceStatsRangeStart,
+        attendanceStatsRangeEnd,
+        attendanceStatsYear,
+      ],
+      enabled: canEditAttendance,
+      queryFn: async () => {
+        const params = new URLSearchParams({ mode: attendanceStatsMode });
+
+        if (attendanceStatsMode === "range") {
+          params.set("start", attendanceStatsRangeStart);
+          params.set("end", attendanceStatsRangeEnd);
+        } else if (attendanceStatsMode === "year") {
+          params.set("year", attendanceStatsYear);
+        } else {
+          params.set("month", attendanceStatsMonth);
+        }
+
+        return mutationHandler(
+          axiosInterceptor.get(
+            `/api/employees/attendance-stats?${params.toString()}`,
+          ),
+          "Failed to fetch attendance stats",
+        );
+      },
+    });
 
   const { data: dailyList = [], isLoading: dailyLoading } = useQuery({
     queryKey: ["attendance-daily", selectedDate],
@@ -476,6 +537,65 @@ export default function Attendance({ shortcutMode = false }) {
     );
   }, [attendance]);
 
+  const attendanceStatsLabel = useMemo(() => {
+    if (attendanceStatsMode === "range") {
+      return `${formatMonthLabel(attendanceStatsRangeStart)} - ${formatMonthLabel(attendanceStatsRangeEnd)}`;
+    }
+
+    if (attendanceStatsMode === "year") {
+      return attendanceStatsYear;
+    }
+
+    return formatMonthLabel(attendanceStatsMonth);
+  }, [
+    attendanceStatsMode,
+    attendanceStatsMonth,
+    attendanceStatsRangeStart,
+    attendanceStatsRangeEnd,
+    attendanceStatsYear,
+  ]);
+
+  const topAbsenceEmployees = useMemo(() => {
+    return [...attendanceStats]
+      .filter((row) => Number(row.total_absences || 0) > 0)
+      .sort(
+        (a, b) =>
+          Number(b.total_absences || 0) - Number(a.total_absences || 0) ||
+          `${a.last_name || ""} ${a.first_name || ""}`.localeCompare(
+            `${b.last_name || ""} ${b.first_name || ""}`,
+          ),
+      )
+      .slice(0, 5);
+  }, [attendanceStats]);
+
+  const topApprovedLeaveEmployees = useMemo(() => {
+    return [...attendanceStats]
+      .filter((row) => Number(row.approved_leave_days || 0) > 0)
+      .sort(
+        (a, b) =>
+          Number(b.approved_leave_days || 0) -
+            Number(a.approved_leave_days || 0) ||
+          Number(b.approved_leave_count || 0) -
+            Number(a.approved_leave_count || 0) ||
+          `${a.last_name || ""} ${a.first_name || ""}`.localeCompare(
+            `${b.last_name || ""} ${b.first_name || ""}`,
+          ),
+      )
+      .slice(0, 5);
+  }, [attendanceStats]);
+
+  const lowestLeaveBalanceEmployees = useMemo(() => {
+    return [...attendanceStats]
+      .sort(
+        (a, b) =>
+          Number(a.leave_balance || 0) - Number(b.leave_balance || 0) ||
+          `${a.last_name || ""} ${a.first_name || ""}`.localeCompare(
+            `${b.last_name || ""} ${b.first_name || ""}`,
+          ),
+      )
+      .slice(0, 5);
+  }, [attendanceStats]);
+
   if (isLoading)
     return <div className="p-6 font-bold">Loading Attendance...</div>;
 
@@ -688,77 +808,333 @@ export default function Attendance({ shortcutMode = false }) {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                      Employee
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                      Employment
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                      Primary Status
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 uppercase text-[11px]">
-                      Status 2
-                    </th>
-                    <th className="px-3 py-2 text-center font-semibold text-gray-700 uppercase text-[11px]">
-                      Absences
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredMain.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="px-3 py-4 text-center text-gray-500"
-                      >
-                        No matching records.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredMain.map((a, index) => (
-                      <tr
-                        key={`${a.emp_id}-${index}`}
-                        className="hover:bg-gray-50"
-                      >
-                        <td className="px-3 py-2">
-                          <p className="m-0 font-semibold text-gray-900">
-                            {a.first_name} {a.last_name}
-                          </p>
-                          <p className="m-0 text-[11px] text-gray-500">
-                            {a.emp_id}
-                          </p>
-                        </td>
-                        <td className="px-3 py-2 text-gray-700">
-                          {a.emp_status || "N/A"}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass[a.status || "Pending"] || "bg-gray-100 text-gray-800"}`}
-                          >
-                            {a.status || "Pending"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass[a.status2 || ""] || "bg-gray-100 text-gray-500"}`}
-                          >
-                            {a.status2 || "--"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center font-semibold text-gray-700">
-                          {a.total_absences || 0}
-                        </td>
-                      </tr>
-                    ))
+            {canEditAttendance && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="m-0 text-sm font-bold text-slate-900">
+                      Attendance Stats
+                    </h3>
+                    <p className="m-0 mt-1 text-xs text-slate-500">
+                      Track the employees with the most absences, the most
+                      approved leave, and their current leave balance for{" "}
+                      {attendanceStatsLabel}.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAttendanceStatsMode("month")}
+                      className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${attendanceStatsMode === "month" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`}
+                    >
+                      Month
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAttendanceStatsMode("range")}
+                      className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${attendanceStatsMode === "range" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`}
+                    >
+                      Month Range
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAttendanceStatsMode("year")}
+                      className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${attendanceStatsMode === "year" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`}
+                    >
+                      Year
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {attendanceStatsMode === "month" && (
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Select Month
+                      </span>
+                      <input
+                        type="month"
+                        value={attendanceStatsMonth}
+                        onChange={(e) =>
+                          setAttendanceStatsMonth(e.target.value)
+                        }
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
+                      />
+                    </label>
                   )}
-                </tbody>
-              </table>
-            </div>
+
+                  {attendanceStatsMode === "range" && (
+                    <>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Start Month
+                        </span>
+                        <input
+                          type="month"
+                          value={attendanceStatsRangeStart}
+                          onChange={(e) =>
+                            setAttendanceStatsRangeStart(e.target.value)
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          End Month
+                        </span>
+                        <input
+                          type="month"
+                          value={attendanceStatsRangeEnd}
+                          onChange={(e) =>
+                            setAttendanceStatsRangeEnd(e.target.value)
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
+                        />
+                      </label>
+                    </>
+                  )}
+
+                  {attendanceStatsMode === "year" && (
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Select Year
+                      </span>
+                      <input
+                        type="number"
+                        min="2000"
+                        max="2100"
+                        value={attendanceStatsYear}
+                        onChange={(e) => setAttendanceStatsYear(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {isLoadingAttendanceStats ? (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                    Loading attendance stats...
+                  </div>
+                ) : (
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <div>
+                          <h4 className="m-0 text-sm font-bold text-slate-900">
+                            Most Absences
+                          </h4>
+                          <p className="m-0 mt-0.5 text-xs text-slate-500">
+                            Employees with the highest absence counts.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                          {topAbsenceEmployees.length} shown
+                        </span>
+                      </div>
+
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50">
+                              <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-slate-500">
+                                Employee
+                              </th>
+                              <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                                Absences
+                              </th>
+                              <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                                Leave Balance
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {topAbsenceEmployees.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={3}
+                                  className="px-3 py-4 text-center text-slate-500"
+                                >
+                                  No absence records found for this period.
+                                </td>
+                              </tr>
+                            ) : (
+                              topAbsenceEmployees.map((row) => (
+                                <tr
+                                  key={row.emp_id}
+                                  className="hover:bg-slate-50"
+                                >
+                                  <td className="px-3 py-2">
+                                    <p className="m-0 font-semibold text-slate-900">
+                                      {row.first_name} {row.last_name}
+                                    </p>
+                                    <p className="m-0 text-[11px] text-slate-500">
+                                      {row.designation || "N/A"}
+                                    </p>
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-bold text-red-700">
+                                    {Number(row.total_absences || 0)}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-semibold text-slate-700">
+                                    {formatLeaveDays(row.leave_balance)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <div>
+                          <h4 className="m-0 text-sm font-bold text-slate-900">
+                            Most Approved Leave
+                          </h4>
+                          <p className="m-0 mt-0.5 text-xs text-slate-500">
+                            Employees with the highest approved leave totals.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                          {topApprovedLeaveEmployees.length} shown
+                        </span>
+                      </div>
+
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50">
+                              <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-slate-500">
+                                Employee
+                              </th>
+                              <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                                Approved Days
+                              </th>
+                              <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                                Leave Count
+                              </th>
+                              <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                                Leave Balance
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {topApprovedLeaveEmployees.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={4}
+                                  className="px-3 py-4 text-center text-slate-500"
+                                >
+                                  No approved leave records found for this
+                                  period.
+                                </td>
+                              </tr>
+                            ) : (
+                              topApprovedLeaveEmployees.map((row) => (
+                                <tr
+                                  key={row.emp_id}
+                                  className="hover:bg-slate-50"
+                                >
+                                  <td className="px-3 py-2">
+                                    <p className="m-0 font-semibold text-slate-900">
+                                      {row.first_name} {row.last_name}
+                                    </p>
+                                    <p className="m-0 text-[11px] text-slate-500">
+                                      {row.designation || "N/A"}
+                                    </p>
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-bold text-emerald-700">
+                                    {formatLeaveDays(row.approved_leave_days)}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-semibold text-slate-700">
+                                    {Number(row.approved_leave_count || 0)}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-semibold text-slate-700">
+                                    {formatLeaveDays(row.leave_balance)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                      <h4 className="m-0 text-sm font-bold text-slate-900">
+                        Leave Balance Snapshot
+                      </h4>
+                      <p className="m-0 mt-0.5 text-xs text-slate-500">
+                        Employees with the lowest current leave balance.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                      {lowestLeaveBalanceEmployees.length} shown
+                    </span>
+                  </div>
+
+                  <div className="overflow-hidden rounded-lg border border-slate-200">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50">
+                          <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide text-slate-500">
+                            Employee
+                          </th>
+                          <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                            Leave Balance
+                          </th>
+                          <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                            Absences
+                          </th>
+                          <th className="px-3 py-2 text-center font-semibold uppercase tracking-wide text-slate-500">
+                            Approved Leave
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {lowestLeaveBalanceEmployees.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="px-3 py-4 text-center text-slate-500"
+                            >
+                              No leave balance records found for this period.
+                            </td>
+                          </tr>
+                        ) : (
+                          lowestLeaveBalanceEmployees.map((row) => (
+                            <tr key={row.emp_id} className="hover:bg-slate-50">
+                              <td className="px-3 py-2">
+                                <p className="m-0 font-semibold text-slate-900">
+                                  {row.first_name} {row.last_name}
+                                </p>
+                                <p className="m-0 text-[11px] text-slate-500">
+                                  {row.designation || "N/A"}
+                                </p>
+                              </td>
+                              <td className="px-3 py-2 text-center font-bold text-sky-700">
+                                {formatLeaveDays(row.leave_balance)}
+                              </td>
+                              <td className="px-3 py-2 text-center font-semibold text-slate-700">
+                                {Number(row.total_absences || 0)}
+                              </td>
+                              <td className="px-3 py-2 text-center font-semibold text-slate-700">
+                                {formatLeaveDays(row.approved_leave_days)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

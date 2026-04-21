@@ -2838,6 +2838,24 @@ export const fileResignation = async (req, res) => {
     exit_interview_answers,
     endorsement_file_key,
   } = req.body;
+
+  const computeOneMonthAheadDateString = (baseDate = new Date()) => {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const day = baseDate.getDate();
+
+    const targetYear = month === 11 ? year + 1 : year;
+    const targetMonth = (month + 1) % 12;
+    const maxDayInTargetMonth = new Date(
+      targetYear,
+      targetMonth + 1,
+      0,
+    ).getDate();
+    const targetDay = Math.min(day, maxDayInTargetMonth);
+
+    return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+  };
+
   try {
     const requesterEmpId =
       req.user?.role === "Admin" && emp_id
@@ -2900,7 +2918,11 @@ export const fileResignation = async (req, res) => {
         return res.status(404).json({ message: "Requester not found" });
       }
 
-      const parsedResignationDate = new Date(resignation_date);
+      const computedResignationDate = computeOneMonthAheadDateString(
+        new Date(),
+      );
+
+      const parsedResignationDate = new Date(computedResignationDate);
       const parsedLastWorkingDay = new Date(last_working_day);
       const parsedEffectiveDate = new Date(effective_date);
 
@@ -2968,7 +2990,7 @@ export const fileResignation = async (req, res) => {
           trimmedLetter,
           recipient_name || null,
           recipient_emp_id || null,
-          resignation_date || null,
+          computedResignationDate,
           last_working_day || null,
           JSON.stringify(parsedReasons),
           String(leaving_reason_other || "").trim() || null,
@@ -3355,6 +3377,113 @@ export const getAttendance = async (req, res) => {
   } catch (error) {
     console.error("DB Error in getAttendance:", error);
     res.status(500).json({ message: "Error fetching attendance" });
+  }
+};
+
+export const getAttendanceStats = async (req, res) => {
+  const { mode = "month", month, year, start, end } = req.query;
+
+  const buildMonthBounds = (monthValue) => {
+    if (!/^\d{4}-\d{2}$/.test(String(monthValue || ""))) return null;
+
+    const [yearValue, monthIndex] = String(monthValue).split("-").map(Number);
+    const firstDay = `${yearValue}-${String(monthIndex).padStart(2, "0")}-01`;
+    const lastDayDate = new Date(yearValue, monthIndex, 0);
+    const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
+    return { startDate: firstDay, endDate: lastDay };
+  };
+
+  const buildYearBounds = (yearValue) => {
+    if (!/^\d{4}$/.test(String(yearValue || ""))) return null;
+    return {
+      startDate: `${yearValue}-01-01`,
+      endDate: `${yearValue}-12-31`,
+    };
+  };
+
+  const buildRangeBounds = (startValue, endValue) => {
+    const startBounds = buildMonthBounds(startValue);
+    const endBounds = buildMonthBounds(endValue);
+    if (!startBounds || !endBounds) return null;
+
+    return startBounds.startDate <= endBounds.endDate
+      ? { startDate: startBounds.startDate, endDate: endBounds.endDate }
+      : { startDate: endBounds.startDate, endDate: startBounds.endDate };
+  };
+
+  const normalizedMode = String(mode || "month").toLowerCase();
+  const resolvedBounds =
+    normalizedMode === "year"
+      ? buildYearBounds(year)
+      : normalizedMode === "range"
+        ? buildRangeBounds(start, end)
+        : buildMonthBounds(month);
+
+  if (!resolvedBounds) {
+    return res.status(400).json({ message: "Invalid attendance stats range" });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        e.emp_id,
+        e.first_name,
+        e.last_name,
+        e.designation,
+        e.status AS emp_status,
+        COALESCE(att.total_absences, 0) AS total_absences,
+        COALESCE(lv.approved_leave_count, 0) AS approved_leave_count,
+        COALESCE(lv.approved_leave_days, 0) AS approved_leave_days,
+        COALESCE(lb.leave_balance, 0) AS leave_balance
+      FROM employees e
+      LEFT JOIN leave_balances lb ON e.emp_id = lb.emp_id
+      LEFT JOIN (
+        SELECT
+          emp_id,
+          COUNT(*) AS total_absences
+        FROM attendance
+        WHERE date BETWEEN ? AND ?
+          AND (status = 'Absent' OR status2 = 'Absent')
+        GROUP BY emp_id
+      ) att ON e.emp_id = att.emp_id
+      LEFT JOIN (
+        SELECT
+          emp_id,
+          COUNT(*) AS approved_leave_count,
+          SUM(
+            COALESCE(
+              approved_days,
+              DATEDIFF(date_to, date_from) + 1,
+              0
+            )
+          ) AS approved_leave_days
+        FROM leave_requests
+        WHERE date_to >= ?
+          AND date_from <= ?
+          AND status IN ('Approved', 'Partially Approved')
+        GROUP BY emp_id
+      ) lv ON e.emp_id = lv.emp_id
+      WHERE COALESCE(e.role, '') <> 'Admin'
+        AND e.status != 'Inactive'
+      ORDER BY
+        COALESCE(att.total_absences, 0) DESC,
+        COALESCE(lv.approved_leave_days, 0) DESC,
+        e.last_name ASC,
+        e.first_name ASC
+    `,
+      [
+        resolvedBounds.startDate,
+        resolvedBounds.endDate,
+        resolvedBounds.startDate,
+        resolvedBounds.endDate,
+      ],
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getAttendanceStats:", error);
+    res.status(500).json({ message: "Error fetching attendance stats" });
   }
 };
 
