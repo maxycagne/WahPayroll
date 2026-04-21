@@ -1952,6 +1952,27 @@ export const deleteEmployee = async (req, res) => {
   }
 };
 
+export const toggleEmployeeActiveStatus = async (req, res) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      "UPDATE employees SET is_active = ? WHERE emp_id = ?",
+      [is_active, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.json({ message: `Employee marked as ${is_active ? 'Active' : 'Inactive'}` });
+  } catch (error) {
+    console.error("DB Error in toggleEmployeeActiveStatus:", error);
+    res.status(500).json({ message: "Error toggling employee status" });
+  }
+};
+
 export const updateResignationStatus = async (req, res) => {
   const { id } = req.params;
   const { status, decision_mode, review_remarks } = req.body;
