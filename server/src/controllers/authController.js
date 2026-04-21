@@ -85,6 +85,14 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
+    if (user.registration_status !== "Approved") {
+      const statusMsg =
+        user.registration_status === "Pending"
+          ? "Your account is still awaiting approval from HR/Admin."
+          : "Your registration request was rejected. Please contact HR.";
+      return res.status(403).json({ message: statusMsg });
+    }
+
     const role = normalizeRole(user.role);
 
     const token = createAccessToken({ emp_id: user.emp_id, role });

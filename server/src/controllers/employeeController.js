@@ -1795,8 +1795,8 @@ export const createEmployee = async (req, res) => {
 
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
