@@ -1,8 +1,10 @@
-import { useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import { RegisterCredentials } from "../types";
 import { useRegister } from "../hooks/useRegister";
 import { initialState, registerReducer } from "../registerReducer";
 import React from "react";
+import Toast from "@/components/Toast";
+import { useToast } from "@/hooks/useToast";
 const designations = {
   Operations: [
     "Supervisor(Finance & Operations)",
@@ -29,7 +31,14 @@ const designations = {
 
 export const RegisterForm = () => {
   const [state, dispatch] = useReducer(registerReducer, initialState);
-  const registerMutation = useRegister();
+  const { toast, showToast, clearToast } = useToast();
+  const registerMutation = useRegister(showToast);
+
+  useEffect(() => {
+    if (registerMutation.isSuccess) {
+      dispatch({ type: "RESET_FORM" });
+    }
+  }, [registerMutation.isSuccess]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -70,6 +79,13 @@ export const RegisterForm = () => {
         <h2 className="text-xl font-bold m-0">Create Account</h2>
       </div>
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {registerMutation.isSuccess && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Account created successfully. Your registration request is pending
+            approval by Admin/HR before you can log in.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Employee ID Removed from Form */}
           <div className="flex flex-col gap-1">
@@ -302,6 +318,7 @@ export const RegisterForm = () => {
           </button>
         </div>
       </form>
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 };

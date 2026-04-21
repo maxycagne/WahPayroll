@@ -16,13 +16,20 @@ export function useToast(defaultDuration = 2800) {
     (message, type = "success", duration = defaultDuration) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
 
-      setToast({ message, type, duration, createdAt: Date.now() });
-      timerRef.current = setTimeout(() => {
-        setToast(null);
-        timerRef.current = null;
-      }, duration);
+      const resolvedDuration =
+        typeof duration === "number" ? duration : defaultDuration;
+
+      setToast({ message, type, duration: resolvedDuration, createdAt: Date.now() });
+
+      if (resolvedDuration > 0) {
+        timerRef.current = setTimeout(() => {
+          setToast(null);
+          timerRef.current = null;
+        }, resolvedDuration);
+      }
     },
     [defaultDuration],
   );

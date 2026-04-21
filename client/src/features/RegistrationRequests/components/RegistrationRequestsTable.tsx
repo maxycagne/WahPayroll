@@ -3,6 +3,12 @@ import { usePendingRequests, useApproveRegistration, useRejectRegistration } fro
 import { Button } from "@/components/ui/button";
 import { Check, X, Edit2 } from "lucide-react";
 import { RegistrationRequest } from "../types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const designations = {
   Operations: [
@@ -33,6 +39,7 @@ export const RegistrationRequestsTable = () => {
   const approveMutation = useApproveRegistration();
   const rejectMutation = useRejectRegistration();
   const [editingRequest, setEditingRequest] = useState<RegistrationRequest | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<RegistrationRequest | null>(null);
 
   if (isLoading) return <div className="p-4">Loading requests...</div>;
 
@@ -97,11 +104,7 @@ export const RegistrationRequestsTable = () => {
                     <Edit2 className="h-4 w-4 mr-1" /> Review & Approve
                   </Button>
                   <Button
-                    onClick={() => {
-                        if (window.confirm("Are you sure you want to reject this registration?")) {
-                            rejectMutation.mutate({ id: req.emp_id });
-                        }
-                    }}
+                    onClick={() => setRejectConfirm(req)}
                     disabled={rejectMutation.isPending}
                     variant="outline"
                     className="h-8 w-8 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
@@ -239,6 +242,65 @@ export const RegistrationRequestsTable = () => {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={Boolean(rejectConfirm)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectConfirm(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md overflow-hidden p-0">
+          <DialogHeader className="bg-gradient-to-r from-red-600 to-red-700 px-5 py-4">
+            <DialogTitle className="text-base font-semibold text-white">
+              Reject Registration Request
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 px-5 py-4">
+            <p className="text-sm text-slate-700">
+              Are you sure you want to reject the registration request for
+              <span className="font-semibold text-slate-900">
+                {" "}
+                {rejectConfirm?.first_name} {rejectConfirm?.last_name}
+              </span>
+              ?
+            </p>
+            <p className="text-xs leading-5 text-slate-500">
+              This will permanently remove the pending registration request from
+              the queue.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRejectConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={rejectMutation.isPending}
+              onClick={() => {
+                if (!rejectConfirm) return;
+
+                rejectMutation.mutate(
+                  { id: rejectConfirm.emp_id },
+                  {
+                    onSuccess: () => setRejectConfirm(null),
+                  },
+                );
+              }}
+            >
+              {rejectMutation.isPending ? "Rejecting..." : "Confirm Reject"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
