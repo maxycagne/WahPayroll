@@ -1,3 +1,5 @@
+import { formatLongDate } from "@/features/leave/utils/date.utils";
+
 export default function PendingApprovalTableRow({
   item,
   isHRRole,
@@ -28,7 +30,7 @@ export default function PendingApprovalTableRow({
       <td className="px-4 py-2.5 text-sm text-gray-700">
         {item.request_group === "resignation"
           ? item.effective_date
-            ? new Date(item.effective_date).toLocaleDateString()
+            ? formatLongDate(item.effective_date)
             : "N/A"
           : `${formatLongDate(item.date_from)} - ${formatLongDate(item.date_to)}`}
       </td>

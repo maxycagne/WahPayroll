@@ -1,4 +1,5 @@
 import { badgeClass } from "../leaveConstants";
+import { formatLongDate } from "../utils/date.utils";
 
 export default function RequestHistoryTable({ myRequestHistory, activeMonth }) {
   const monthName = activeMonth
@@ -59,9 +60,7 @@ export default function RequestHistoryTable({ myRequestHistory, activeMonth }) {
                     {entry.schedule}
                   </td>
                   <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
-                    {entry.filed_at
-                      ? new Date(entry.filed_at).toLocaleDateString()
-                      : "-"}
+                    {entry.filed_at ? formatLongDate(entry.filed_at) : "-"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <span

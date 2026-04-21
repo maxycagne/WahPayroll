@@ -28,6 +28,7 @@ export default function ReviewConfirmationModal({
               getDateRangeInclusive={getDateRangeInclusive}
               toggleLeaveApprovedDate={toggleLeaveApprovedDate}
               parseDateOnly={parseDateOnly}
+              setReviewConfirm={setReviewConfirm}
               workweekConfigs={workweekConfigs}
             />
 

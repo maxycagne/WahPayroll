@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { badgeClass } from "@/features/leave/leaveConstants";
+import { formatLongDate } from "@/features/leave/utils/date.utils";
 
 export default function MyPendingRequestsTableRow({
   item,
@@ -24,7 +25,7 @@ export default function MyPendingRequestsTableRow({
       <td className="px-4 py-2.5 text-sm text-gray-700">
         {item.request_group === "resignation"
           ? item.effective_date
-            ? new Date(item.effective_date).toLocaleDateString()
+            ? formatLongDate(item.effective_date)
             : "N/A"
           : `${formatLongDate(item.date_from)} - ${formatLongDate(item.date_to)}`}
       </td>

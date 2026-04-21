@@ -234,7 +234,7 @@ export const useComputedValues = ({
           request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
           employee_name: `${r.first_name || ""} ${r.last_name || ""}`.trim(),
           schedule: r.effective_date
-            ? new Date(r.effective_date).toLocaleDateString()
+            ? formatLongDate(r.effective_date)
             : "N/A",
           filter_date: r.effective_date || r.created_at,
           filed_at: r.created_at,
@@ -284,7 +284,7 @@ export const useComputedValues = ({
           request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
           employee_name: `${r.first_name || ""} ${r.last_name || ""}`.trim(),
           schedule: r.effective_date
-            ? new Date(r.effective_date).toLocaleDateString()
+            ? formatLongDate(r.effective_date)
             : "N/A",
           filter_date: r.effective_date || r.created_at,
           filed_at: r.created_at,

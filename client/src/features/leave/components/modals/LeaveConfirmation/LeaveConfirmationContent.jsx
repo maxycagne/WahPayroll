@@ -5,6 +5,7 @@ import {
   getRequiredApprovals,
   getRequiredDocuments,
 } from "../../../leaveConstants";
+import { formatLongDate } from "@/features/leave/utils/date.utils";
 
 export default function LeaveConfirmationModalContent({ confirmAction }) {
   const policy = getLeavePolicy(confirmAction.leaveType);
