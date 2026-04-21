@@ -125,7 +125,9 @@ export default function LeaveForm({
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
           To Date
-          {isEmergency && <span className="ml-1 text-red-600 font-bold">(Max 1 Day)</span>}
+          {isEmergency && (
+            <span className="ml-1 text-red-600 font-bold">(Max 1 Day)</span>
+          )}
         </label>
         <input
           type="date"
@@ -135,7 +137,9 @@ export default function LeaveForm({
           max={getMaxToDate()}
           min={formData.fromDate}
           className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${
-            isBirthdayLeave ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""
+            isBirthdayLeave
+              ? "cursor-not-allowed bg-gray-100 text-gray-500"
+              : ""
           }`}
         />
       </div>
@@ -261,9 +265,7 @@ export default function LeaveForm({
         <textarea
           rows={3}
           value={formData.reason}
-          onChange={(e) =>
-            setFormData({ ...formData, reason: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
           className="resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-500"
           placeholder={
             isMandated

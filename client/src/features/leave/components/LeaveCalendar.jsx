@@ -3,9 +3,7 @@ import LeaveCalendarGrid from "./LeaveCalendarGrid";
 import LeaveCalendarHeader from "./LeaveCalendarHeader";
 import { getDaysInMonth } from "../utils/date.utils";
 import { pad } from "../utils/leave.utils";
-import {
-  getLeavesForDate,
-} from "../utils/calendar.utils";
+import { getLeavesForDate } from "../utils/calendar.utils";
 
 export default function LeaveCalendar({
   leaves,

@@ -239,21 +239,21 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                 {reviewConfirm.status === "Approved" &&
                   reviewConfirm.isMultiDay && (
                     <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800">
-                              Select specific days to approve
-                            </p>
-                            <p className="m-0 mt-1 text-[11px] text-slate-600">
-                              Approve only the working days you need.
-                            </p>
-                          </div>
-                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                            {(reviewConfirm.selectedDates || []).length} selected
-                          </span>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800">
+                            Select specific days to approve
+                          </p>
+                          <p className="m-0 mt-1 text-[11px] text-slate-600">
+                            Approve only the working days you need.
+                          </p>
                         </div>
-                        <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
-                          {getWorkingDateRangeInclusive(
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                          {(reviewConfirm.selectedDates || []).length} selected
+                        </span>
+                      </div>
+                      <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+                        {getWorkingDateRangeInclusive(
                           reviewConfirm.employee.date_from,
                           reviewConfirm.employee.date_to,
                           workweekConfigs,

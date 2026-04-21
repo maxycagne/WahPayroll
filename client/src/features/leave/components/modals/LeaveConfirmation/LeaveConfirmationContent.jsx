@@ -26,8 +26,8 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
       <div>
         <p className="m-0 text-gray-600 font-medium">Dates:</p>
         <p className="m-0 text-gray-900 font-semibold">
-            {formatLongDate(confirmAction.fromDate)} to{" "}
-            {formatLongDate(confirmAction.toDate)}
+          {formatLongDate(confirmAction.fromDate)} to{" "}
+          {formatLongDate(confirmAction.toDate)}
         </p>
       </div>
 
@@ -85,11 +85,11 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
                   {approver === "supervisor"
                     ? "Supervisor Approval"
                     : approver === "executive_director"
-                    ? "Executive Director Approval"
-                    : approver === "hr"
-                    ? "HR Endorsement"
-                    : approver.replace(/_/g, " ").charAt(0).toUpperCase() +
-                      approver.replace(/_/g, " ").slice(1)}
+                      ? "Executive Director Approval"
+                      : approver === "hr"
+                        ? "HR Endorsement"
+                        : approver.replace(/_/g, " ").charAt(0).toUpperCase() +
+                          approver.replace(/_/g, " ").slice(1)}
                 </span>
               </div>
             ))}
@@ -106,7 +106,10 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
           <ul className="m-0 space-y-1 pl-4">
             {requiredDocs.map((doc, idx) => (
               <li key={idx} className="text-xs text-gray-700">
-                • {doc.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                •{" "}
+                {doc
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (l) => l.toUpperCase())}
               </li>
             ))}
           </ul>
@@ -130,9 +133,7 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
       {/* Leave Without Pay Note */}
       {confirmAction.leaveType === "Leave Without Pay" && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
-          <p className="m-0 text-xs font-bold text-amber-900">
-            ⚠️ Important
-          </p>
+          <p className="m-0 text-xs font-bold text-amber-900">⚠️ Important</p>
           <p className="m-0 text-xs text-amber-800 mt-1">
             This leave is for unregularized or zero-balance employees. Executive
             Director approval is required.

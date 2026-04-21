@@ -1,8 +1,6 @@
 import React from "react";
 
-import {
-  getLeavesForDate,
-} from "../utils/calendar.utils";
+import { getLeavesForDate } from "../utils/calendar.utils";
 import { pad } from "../utils/leave.utils";
 import { isNonWorkingDay } from "../utils/date.utils";
 import { statusColors } from "../leaveConstants";
@@ -36,7 +34,11 @@ const LeaveCalendarGrid = ({
               return <div key={"e" + i} className="min-h-22.5" />;
 
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-            const dayLeaves = getLeavesForDate(dateStr, leaves, workweekConfigs);
+            const dayLeaves = getLeavesForDate(
+              dateStr,
+              leaves,
+              workweekConfigs,
+            );
             const isSelected = day === selectedDate;
             const visibleLeaves = dayLeaves.slice(0, 3);
             const extraLeavesCount = Math.max(
@@ -50,7 +52,7 @@ const LeaveCalendarGrid = ({
               ? // @ts-ignore
                 statusColors[firstLeaveStatus]
               : null;
-              
+
             const isOffDay = isNonWorkingDay(dateStr, workweekConfigs);
 
             return (
@@ -62,7 +64,9 @@ const LeaveCalendarGrid = ({
                 } ${
                   dayLeaves.length > 0 && !isSelected
                     ? colorConfig?.border + " " + colorConfig?.bg
-                    : isOffDay ? "border border-slate-200" : "border border-slate-200 bg-white"
+                    : isOffDay
+                      ? "border border-slate-200"
+                      : "border border-slate-200 bg-white"
                 } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md cursor-default" : isOffDay ? "" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
                 onClick={() => setSelectedDate(day)}
               >
@@ -73,7 +77,6 @@ const LeaveCalendarGrid = ({
                 </span>
 
                 <div className="mt-0.5 flex w-full flex-col gap-1">
-
                   {visibleLeaves.map((leave) => (
                     <div
                       key={leave.id}

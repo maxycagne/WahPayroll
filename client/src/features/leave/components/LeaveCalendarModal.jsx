@@ -62,7 +62,8 @@ const LeaveCalendarModal = ({
                           `(${Number(l.days_applied || 0).toFixed(2)} days)`}
                       </p>
                       <p className="m-0 mt-1 text-xs text-slate-500">
-                        {formatLongDate(l.date_from)} to {formatLongDate(l.date_to)}
+                        {formatLongDate(l.date_from)} to{" "}
+                        {formatLongDate(l.date_to)}
                       </p>
                       {l.supervisor_remarks && (
                         <p className="m-0 mt-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs italic text-slate-600">

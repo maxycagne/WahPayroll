@@ -66,9 +66,7 @@ export default function LeaveUploadField({
         </div>
       )}
 
-      {helperText && (
-        <p className="m-0 text-xs text-gray-600">{helperText}</p>
-      )}
+      {helperText && <p className="m-0 text-xs text-gray-600">{helperText}</p>}
     </div>
   );
 }

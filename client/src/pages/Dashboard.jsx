@@ -254,7 +254,6 @@ function EmployeeDashboard({ currentUser }) {
           </div>
         </div>
 
-
         {/* QUICK ACTIONS */}
         <div className="flex flex-col gap-2">
           <button
@@ -983,9 +982,8 @@ function AdminDashboard({ currentUser }) {
                             {employee.leave_type}
                           </p>
                           <p className="m-0 mt-0.5 text-[11px] text-gray-500">
-                            Dates:{" "}
-                            {formatLongDate(employee.date_from)}{" "}
-                            - {formatLongDate(employee.date_to)}
+                            Dates: {formatLongDate(employee.date_from)} -{" "}
+                            {formatLongDate(employee.date_to)}
                           </p>
                           <p
                             className={`m-0 mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priorityClass[employee.priority] || "bg-gray-100 text-gray-800"}`}
@@ -1169,8 +1167,7 @@ function AdminDashboard({ currentUser }) {
                   {reviewConfirm.employee.last_name}
                 </span>{" "}
                 requested {reviewConfirm.employee.leave_type} from{" "}
-                {formatLongDate(reviewConfirm.employee.date_from)}{" "}
-                to{" "}
+                {formatLongDate(reviewConfirm.employee.date_from)} to{" "}
                 {formatLongDate(reviewConfirm.employee.date_to)}.
               </p>
 
