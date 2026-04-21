@@ -27,6 +27,22 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function computeOneMonthAheadDate(dateInput?: string): string {
+  const base = dateInput ? new Date(dateInput) : new Date();
+  if (Number.isNaN(base.getTime())) return "";
+
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const day = base.getDate();
+
+  const targetYear = month === 11 ? year + 1 : year;
+  const targetMonth = (month + 1) % 12;
+  const maxDayInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const targetDay = Math.min(day, maxDayInTargetMonth);
+
+  return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+}
+
 function getDefaultResignationWizardState(
   currentUser?: CurrentUserLike | null,
 ): ResignationWizardState {
@@ -131,6 +147,21 @@ export default function ResignationForm({
       setField("leaving_reasons", []);
     }
   }, [defaultResignationForm, resignationForm, setField]);
+
+  useEffect(() => {
+    if (!safeText(resignationForm.request_date)) return;
+
+    const autoResignationDate = computeOneMonthAheadDate(
+      resignationForm.request_date,
+    );
+
+    if (
+      autoResignationDate &&
+      resignationForm.resignation_date !== autoResignationDate
+    ) {
+      setField("resignation_date", autoResignationDate);
+    }
+  }, [resignationForm.request_date, resignationForm.resignation_date, setField]);
 
   const { data: resignationRecipient = null } =
     useQuery<ResignationRecipient | null>({
@@ -368,11 +399,8 @@ export default function ResignationForm({
     }
 
     if (step === 2) {
-      if (
-        !resignationForm.resignation_date ||
-        !resignationForm.last_working_day
-      ) {
-        return "Resignation date and last working day are required.";
+      if (!resignationForm.last_working_day) {
+        return "Last working day is required.";
       }
       if ((resignationForm.leaving_reasons || []).length === 0) {
         return "Select at least one reason for leaving.";
@@ -519,7 +547,7 @@ export default function ResignationForm({
       resignation_letter: resignationForm.resignation_letter,
       recipient_name: resignationForm.recipient_name,
       recipient_emp_id: resignationForm.recipient_emp_id || null,
-      resignation_date: resignationForm.resignation_date,
+      resignation_date: computeOneMonthAheadDate(resignationForm.request_date),
       last_working_day: resignationForm.last_working_day,
       leaving_reasons: resignationForm.leaving_reasons,
       leaving_reason_other: resignationForm.leaving_reason_other,
@@ -708,9 +736,13 @@ export default function ResignationForm({
             <input
               type="date"
               value={resignationForm.resignation_date}
-              onChange={(e) => setField("resignation_date", e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+              readOnly
+              disabled
+              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
             />
+            <p className="m-0 text-[11px] text-gray-500">
+              Auto-calculated as one month from application date.
+            </p>
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
