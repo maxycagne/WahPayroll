@@ -90,7 +90,6 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     pag_ibig_mid_no,
     pag_ibig_rtn,
     gsis_no,
-    dob,
     hired_date,
     password,
   } = req.body;
@@ -111,7 +110,6 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
     const hashPass = await hashPassword(password);
     const employeeRole = resolveRoleFromProfile({ designation, position });
-    const normalizedDob = normalizeDateInput(dob);
     const normalizedHiredDate = normalizeDateInput(hired_date);
 
     await ensureEmployeeGovernmentColumns();
@@ -123,9 +121,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       `INSERT INTO employees (
         emp_id, first_name, last_name, middle_initial, designation, 
         position, status, email, philhealth_no, tin, sss_no, 
-        pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, 
+        pag_ibig_mid_no, pag_ibig_rtn, gsis_no, hired_date, 
         password, role, registration_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
       [
         tempId,
         first_name,
@@ -141,7 +139,6 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         pag_ibig_mid_no || null,
         pag_ibig_rtn || null,
         gsis_no || null,
-        normalizedDob,
         normalizedHiredDate,
         hashPass,
         employeeRole,
@@ -157,13 +154,15 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
 export const getPendingRequests = async (req: Request, res: Response): Promise<any> => {
   try {
+    await ensureEmployeeGovernmentColumns();
+
     const viewerRole = (req as any).user?.role;
     if (viewerRole !== 'Admin' && viewerRole !== 'HR') {
       return res.status(403).json({ message: "Forbidden" });
     }
 
     const [rows]: any = await pool.query(
-      `SELECT emp_id, first_name, last_name, middle_initial, email, role, position, designation, status, hired_date, dob, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no 
+      `SELECT emp_id, first_name, last_name, middle_initial, email, role, position, designation, status, hired_date, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no 
        FROM employees 
        WHERE registration_status = 'Pending' 
        ORDER BY emp_id DESC`
@@ -193,7 +192,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
     pag_ibig_mid_no,
     pag_ibig_rtn,
     gsis_no,
-    dob,
     hired_date,
   } = req.body;
   
@@ -205,6 +203,8 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
   }
 
   try {
+    await ensureEmployeeGovernmentColumns();
+
     // Check if new emp_id already exists
     const [existingIdRows]: any = await pool.query(
       "SELECT emp_id FROM employees WHERE emp_id = ? AND emp_id != ?",
@@ -230,7 +230,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
     }
 
     const employeeRole = resolveRoleFromProfile({ designation, position });
-    const normalizedDob = normalizeDateInput(dob);
     const normalizedHiredDate = normalizeDateInput(hired_date);
 
     // Update the record with the new ID and details
@@ -252,7 +251,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
            pag_ibig_mid_no = ?,
            pag_ibig_rtn = ?,
            gsis_no = ?,
-           dob = ?,
            hired_date = ?,
            role = ?,
            registration_status = 'Approved', 
@@ -274,7 +272,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
         pag_ibig_mid_no || null,
         pag_ibig_rtn || null,
         gsis_no || null,
-        normalizedDob,
         normalizedHiredDate,
         employeeRole,
         reviewerId,
@@ -297,6 +294,8 @@ export const rejectRequest = async (req: Request, res: Response): Promise<any> =
   const reviewerId = (req as any).user?.emp_id;
 
   try {
+    await ensureEmployeeGovernmentColumns();
+
     // Delete the temporary record on rejection to keep employees table clean
     await pool.query("DELETE FROM employees WHERE emp_id = ? AND registration_status = 'Pending'", [id]);
 

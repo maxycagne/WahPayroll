@@ -610,6 +610,15 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
     { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
     { name: "profile_photo", type: "VARCHAR(255)", after: "gsis_no" },
+    {
+      name: "registration_status",
+      type: "ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending'",
+      after: "role",
+    },
+    { name: "reviewed_by", type: "VARCHAR(50)", after: "registration_status" },
+    { name: "reviewed_at", type: "TIMESTAMP NULL", after: "reviewed_by" },
+    { name: "review_remarks", type: "TEXT", after: "reviewed_at" },
+    { name: "is_active", type: "BOOLEAN NOT NULL DEFAULT TRUE", after: "registration_status" },
   ];
 
   for (const column of governmentColumns) {
@@ -635,6 +644,45 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
         if (error?.code !== "ER_DUP_FIELDNAME") {
           throw error;
         }
+      }
+    }
+  }
+
+  // Keep existing non-temporary users eligible to login after introducing registration_status.
+  await connection.query(
+    `UPDATE employees
+     SET registration_status = 'Approved'
+     WHERE (registration_status IS NULL OR registration_status = 'Pending')
+       AND emp_id NOT LIKE 'TEMP\\_%'`,
+  );
+
+  await connection.query(
+    `UPDATE employees
+     SET is_active = TRUE
+     WHERE is_active IS NULL`,
+  );
+
+  const [fkRows] = await connection.query(
+    `SELECT 1
+     FROM information_schema.TABLE_CONSTRAINTS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'employees'
+       AND CONSTRAINT_NAME = 'fk_reviewed_by'
+       AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+     LIMIT 1`,
+  );
+
+  if (fkRows.length === 0) {
+    try {
+      await connection.query(
+        `ALTER TABLE employees
+         ADD CONSTRAINT fk_reviewed_by
+         FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id)
+         ON DELETE SET NULL`,
+      );
+    } catch (error) {
+      if (error?.code !== "ER_DUP_KEYNAME") {
+        throw error;
       }
     }
   }
@@ -1679,6 +1727,8 @@ export const getAllEmployees = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT *
        FROM employees
+       WHERE registration_status = 'Approved'
+         AND emp_id NOT LIKE 'TEMP\\_%'
        ORDER BY
          CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
          emp_id ASC`,

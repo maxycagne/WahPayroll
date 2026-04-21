@@ -9,7 +9,6 @@ export type RegistrationRequest = {
   designation: string;
   status: string;
   hired_date: string;
-  dob?: string;
   philhealth_no?: string;
   tin?: string;
   sss_no?: string;

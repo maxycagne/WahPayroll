@@ -22,10 +22,17 @@ CREATE TABLE IF NOT EXISTS employees (
   password VARCHAR(255),
   basic_pay DECIMAL(12,2),
   role ENUM('Admin', 'Supervisor', 'HR', 'RankAndFile') DEFAULT 'RankAndFile',
+  registration_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+  reviewed_by VARCHAR(50) NULL,
+  reviewed_at TIMESTAMP NULL,
+  review_remarks TEXT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_role (role),
-  INDEX idx_position (position)
+  INDEX idx_position (position),
+  INDEX idx_registration_status (registration_status),
+  FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS attendance (

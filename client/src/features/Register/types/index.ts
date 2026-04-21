@@ -14,7 +14,6 @@ export type RegisterCredentials = {
   pag_ibig_mid_no?: string;
   pag_ibig_rtn?: string;
   gsis_no?: string;
-  dob?: string;
   hired_date?: string;
 };
 

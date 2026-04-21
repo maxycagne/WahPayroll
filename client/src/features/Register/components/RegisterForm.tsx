@@ -205,20 +205,6 @@ export const RegisterForm = () => {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Birth Date
-            </label>
-            <input
-              name="dob"
-              type="date"
-              value={state.dob}
-              onChange={handleInputChange}
-              required
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 uppercase">
               Hired Date
             </label>
             <input
