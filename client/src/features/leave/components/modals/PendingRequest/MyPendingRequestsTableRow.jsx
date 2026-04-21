@@ -26,7 +26,7 @@ export default function MyPendingRequestsTableRow({
           ? item.effective_date
             ? new Date(item.effective_date).toLocaleDateString()
             : "N/A"
-          : `${new Date(item.date_from).toLocaleDateString()} - ${new Date(item.date_to).toLocaleDateString()}`}
+          : `${formatLongDate(item.date_from)} - ${formatLongDate(item.date_to)}`}
       </td>
       <td className="px-4 py-2.5">
         <span

@@ -5,6 +5,7 @@ import {
   mutationHandler,
 } from "../hooks/createMutationHandler";
 import { useEmailNotifications } from "../hooks/useEmailNotifications";
+import { leaveUploadFieldKeys } from "../leaveConstants";
 
 //T
 
@@ -26,14 +27,19 @@ export const useRequestMutation = ({
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
 
   const resetLeaveForm = () => {
-    setFormData({
+    const nextFormState = {
       ...formData,
       fromDate: "",
       toDate: "",
       reason: "",
       daysApplied: "",
-      OCP: undefined,
+    };
+
+    leaveUploadFieldKeys.forEach((fieldKey) => {
+      nextFormState[fieldKey] = undefined;
     });
+
+    setFormData(nextFormState);
   };
 
   // 1

@@ -68,6 +68,7 @@ export default function ModalsContainer({
   showToast,
   submitCancellationRequest,
   totalCredits,
+  workweekConfigs,
 }) {
   return (
     <>
@@ -138,6 +139,7 @@ export default function ModalsContainer({
         parseDateOnly={parseDateOnly}
         getOffsetRequestedDays={getOffsetRequestedDays}
         submitReviewDecision={submitReviewDecision}
+        workweekConfigs={workweekConfigs}
       />
       <CancelApprovalConfirmModal
         cancelApprovalConfirm={cancelApprovalConfirm}

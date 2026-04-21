@@ -10,6 +10,7 @@ import {
   getDbStoredFileByKey,
   saveDbStoredFile,
 } from "../functions/dbFileStorage.ts";
+import { isDeductibleLeave } from "../constants/leavePolicy.ts";
 
 // payrollModel.js
 export const getPayrollByEmployee = async (connection, emp_id, period) => {
@@ -296,6 +297,40 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
   if (approvedDatesColumn.length === 0) {
     await connection.query(
       "ALTER TABLE leave_requests ADD COLUMN approved_dates JSON NULL AFTER approved_days",
+    );
+  }
+
+  const [reasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'reason'
+      LIMIT 1
+    `,
+  );
+
+  if (reasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN reason TEXT NULL",
+    );
+  }
+
+  const [documentsColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'documents'
+      LIMIT 1
+    `,
+  );
+
+  if (documentsColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN documents JSON NULL",
     );
   }
 
@@ -784,6 +819,8 @@ const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
 
   const defaultLeave = getDefaultLeaveAllocation(employeeRows[0].status);
 
+  // ============ CALCULATE USED DAYS (EXCLUDE MANDATED & LWOP) ============
+  // Mandated leaves and Leave-Without-Pay do not deduct from balance
   const [usedRows] = await connection.query(
     `SELECT
        COALESCE(
@@ -798,7 +835,15 @@ const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
        ) AS used_days
      FROM leave_requests
      WHERE emp_id = ?
-       AND status IN ('Approved', 'Partially Approved')`,
+       AND status IN ('Approved', 'Partially Approved')
+       AND leave_type NOT IN (
+         'Mandated - Maternity Leave',
+         'Mandated - Special Leave for Women',
+         'Mandated - Paternity Leave',
+         'Mandated - Solo Parent Leave',
+         'Mandated - VAWC Leave',
+         'Leave Without Pay'
+       )`,
     [empId],
   );
 

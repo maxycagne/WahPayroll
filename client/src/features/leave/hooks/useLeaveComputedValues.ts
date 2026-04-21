@@ -4,7 +4,7 @@ import {
   isPendingApprovalStatus,
   isSupervisorTeamMember,
 } from "../utils/computation.utils";
-import { isFutureDateString } from "../utils/date.utils";
+import { formatLongDate, isFutureDateString } from "../utils/date.utils";
 
 type UseComputedValues = {
   leaves: any[];
@@ -208,7 +208,7 @@ export const useComputedValues = ({
           id: `leave-${l.id}`,
           request_type: l.leave_type,
           employee_name: `${l.first_name || ""} ${l.last_name || ""}`.trim(),
-          schedule: `${new Date(l.date_from).toLocaleDateString()} - ${new Date(l.date_to).toLocaleDateString()}`,
+          schedule: `${formatLongDate(l.date_from)} - ${formatLongDate(l.date_to)}`,
           filter_date: l.date_from || l.created_at,
           filed_at: l.created_at,
           final_status: l.cancellation_requested_at
@@ -222,7 +222,7 @@ export const useComputedValues = ({
               ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
               : "Offset",
           employee_name: `${o.first_name || ""} ${o.last_name || ""}`.trim(),
-          schedule: `${new Date(o.date_from).toLocaleDateString()} - ${new Date(o.date_to).toLocaleDateString()}`,
+          schedule: `${formatLongDate(o.date_from)} - ${formatLongDate(o.date_to)}`,
           filter_date: o.date_from || o.created_at,
           filed_at: o.created_at,
           final_status: o.cancellation_requested_at
@@ -258,7 +258,7 @@ export const useComputedValues = ({
           id: `leave-${l.id}`,
           request_type: l.leave_type,
           employee_name: `${l.first_name || ""} ${l.last_name || ""}`.trim(),
-          schedule: `${new Date(l.date_from).toLocaleDateString()} - ${new Date(l.date_to).toLocaleDateString()}`,
+          schedule: `${formatLongDate(l.date_from)} - ${formatLongDate(l.date_to)}`,
           filter_date: l.date_from || l.created_at,
           filed_at: l.created_at,
           final_status: l.cancellation_requested_at
@@ -272,7 +272,7 @@ export const useComputedValues = ({
               ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
               : "Offset",
           employee_name: `${o.first_name || ""} ${o.last_name || ""}`.trim(),
-          schedule: `${new Date(o.date_from).toLocaleDateString()} - ${new Date(o.date_to).toLocaleDateString()}`,
+          schedule: `${formatLongDate(o.date_from)} - ${formatLongDate(o.date_to)}`,
           filter_date: o.date_from || o.created_at,
           filed_at: o.created_at,
           final_status: o.cancellation_requested_at

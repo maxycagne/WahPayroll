@@ -1,3 +1,5 @@
+import { formatLongDate } from "@/features/leave/utils/date.utils";
+
 export default function ReviewConfirmationModalHeader({ reviewConfirm }) {
   return (
     <>
@@ -14,7 +16,7 @@ export default function ReviewConfirmationModalHeader({ reviewConfirm }) {
         {reviewConfirm.item.first_name} {reviewConfirm.item.last_name}
         {reviewConfirm.module === "resignation"
           ? ` • ${reviewConfirm.item.resignation_type}`
-          : ` • ${new Date(reviewConfirm.item.date_from).toLocaleDateString()} - ${new Date(reviewConfirm.item.date_to).toLocaleDateString()}`}
+          : ` • ${formatLongDate(reviewConfirm.item.date_from)} - ${formatLongDate(reviewConfirm.item.date_to)}`}
       </p>
     </>
   );

@@ -1,3 +1,11 @@
+import {
+  isDeductibleLeave,
+  isMandatedLeave,
+  getRequiredDocuments,
+  getLeaveHelperText,
+} from "../../leaveConstants";
+import LeaveUploadField from "./LeaveUploadField";
+
 export default function LeaveForm({
   handleLeaveTypeChange,
   handleFromDateChange,
@@ -12,11 +20,38 @@ export default function LeaveForm({
   totalCredits,
   handleSubmitLeave,
 }) {
+  const isMandated = isMandatedLeave(formData.leaveType);
+  const isDeductible = isDeductibleLeave(formData.leaveType);
+  const requiredDocs = getRequiredDocuments(formData.leaveType);
+  const helperText = getLeaveHelperText(formData.leaveType);
+
+  // Determine if we should show OCP (5+ days for vacation or scheduled leaves)
+  const shouldShowOCP =
+    formData.leaveType === "Scheduled - Vacation Leave" && difference >= 5;
+
+  // Check if this leave type requires doctor certificate for 3+ days
+  const shouldShowDoctorCert =
+    formData.leaveType === "Unscheduled - Sick Leave" && difference >= 3;
+
+  // Check if this leave type requires death certificate
+  const shouldShowDeathCert =
+    formData.leaveType === "Unscheduled - Bereavement Leave";
+
+  // Check if this is leave without pay
+  const isLWOP = formData.leaveType === "Leave Without Pay";
+
+  // Check if Emergency Leave (max 1 day)
+  const isEmergency = formData.leaveType === "Unscheduled - Emergency Leave";
+
+  // Check if Birthday Leave
+  const isBirthdayLeave = formData.leaveType === "Birthday Leave";
+
   return (
     <form
       onSubmit={handleSubmitLeave}
       className="grid grid-cols-1 gap-4 md:grid-cols-3"
     >
+      {/* Filing As */}
       <div className="flex flex-col gap-2 md:col-span-3">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
           Filing As
@@ -29,6 +64,29 @@ export default function LeaveForm({
         />
       </div>
 
+      {/* Leave Type Info Box (for mandated/LWOP) */}
+      {(isMandated || isLWOP) && (
+        <div
+          className={`md:col-span-3 rounded-lg border px-4 py-3 text-sm ${
+            isMandated
+              ? "border-blue-200 bg-blue-50"
+              : "border-amber-200 bg-amber-50"
+          }`}
+        >
+          <p className="m-0 font-semibold">
+            {isMandated
+              ? "📋 Legally Mandated Leave"
+              : "⚠️ Leave Without Balance Deduction"}
+          </p>
+          <p className="m-0 text-xs text-gray-700 mt-1">
+            {isMandated
+              ? "This leave does not reduce your leave balance and has legal entitlements."
+              : "This leave does not deduct from your available balance. ED approval required."}
+          </p>
+        </div>
+      )}
+
+      {/* Leave Type */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
           Leave Type
@@ -44,7 +102,12 @@ export default function LeaveForm({
             </option>
           ))}
         </select>
+        {helperText && (
+          <p className="m-0 text-xs text-gray-600 italic mt-1">{helperText}</p>
+        )}
       </div>
+
+      {/* From Date */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
           From Date
@@ -57,44 +120,118 @@ export default function LeaveForm({
           className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500"
         />
       </div>
+
+      {/* To Date */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
           To Date
+          {isEmergency && <span className="ml-1 text-red-600 font-bold">(Max 1 Day)</span>}
         </label>
         <input
           type="date"
           value={formData.toDate}
           onChange={handleToDateChange}
-          disabled={formData.leaveType === "Birthday Leave"}
+          disabled={isBirthdayLeave}
           max={getMaxToDate()}
           min={formData.fromDate}
-          className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""}`}
+          className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${
+            isBirthdayLeave ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""
+          }`}
         />
       </div>
-      {difference >= 5 && (
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-            OCP
-          </label>
-          <input
-            type="file"
-            required
-            disabled={formData.leaveType === "Birthday Leave"}
-            onChange={(e) => {
-              if (e.target.files.length === 0) return;
 
-              setFormData((prev) => {
-                return {
-                  ...prev,
-                  OCP: e.target.files[0],
-                };
-              });
-            }}
-            className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${formData.leaveType === "Birthday Leave" ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""}`}
-          />
-        </div>
+      {/* OCP Upload (for 5+ day leaves) */}
+      {shouldShowOCP && (
+        <LeaveUploadField
+          label="OCP"
+          required
+          file={formData.OCP}
+          onChange={(selectedFile) =>
+            setFormData((prev) => ({
+              ...prev,
+              OCP: selectedFile,
+            }))
+          }
+          onRemove={() =>
+            setFormData((prev) => ({
+              ...prev,
+              OCP: undefined,
+            }))
+          }
+          helperText="OCP required 5 days before leave start date"
+        />
       )}
-      {formData.leaveType !== "Offset" && (
+
+      {/* Doctor Certificate (for Unscheduled Sick Leave 3+ days) */}
+      {shouldShowDoctorCert && (
+        <LeaveUploadField
+          label="Medical Certificate"
+          required
+          file={formData.doctorCert}
+          onChange={(selectedFile) =>
+            setFormData((prev) => ({
+              ...prev,
+              doctorCert: selectedFile,
+            }))
+          }
+          onRemove={() =>
+            setFormData((prev) => ({
+              ...prev,
+              doctorCert: undefined,
+            }))
+          }
+          helperText="Medical certificate required for sick leaves of 3 or more days"
+        />
+      )}
+
+      {/* Death Certificate (for Bereavement Leave) */}
+      {shouldShowDeathCert && (
+        <LeaveUploadField
+          label="Death Certificate / Funeral Notice"
+          required
+          file={formData.deathCert}
+          onChange={(selectedFile) =>
+            setFormData((prev) => ({
+              ...prev,
+              deathCert: selectedFile,
+            }))
+          }
+          onRemove={() =>
+            setFormData((prev) => ({
+              ...prev,
+              deathCert: undefined,
+            }))
+          }
+          helperText="Death certificate or funeral notice required for bereavement leave"
+        />
+      )}
+
+      {/* Mandated Leave Documents */}
+      {isMandated &&
+        requiredDocs.map((docType) => (
+          <LeaveUploadField
+            key={docType}
+            label={docType.replace(/_/g, " ")}
+            required
+            file={formData[docType]}
+            onChange={(selectedFile) =>
+              setFormData((prev) => ({
+                ...prev,
+                [docType]: selectedFile,
+              }))
+            }
+            onRemove={() =>
+              setFormData((prev) => ({
+                ...prev,
+                [docType]: undefined,
+              }))
+            }
+            helperText="Required document for this leave type"
+          />
+        ))}
+
+      {/* Priority Level (hidden for Offset and Mandated leaves) */}
+      {formData.leaveType !== "Offset" && !isMandated && (
         <div className="flex flex-col gap-2 md:col-span-3">
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
             Priority Level
@@ -116,6 +253,7 @@ export default function LeaveForm({
         </div>
       )}
 
+      {/* Reason / Details */}
       <div className="flex flex-col gap-2 md:col-span-3">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
           Reason / Details
@@ -123,20 +261,49 @@ export default function LeaveForm({
         <textarea
           rows={3}
           value={formData.reason}
-          onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, reason: e.target.value })
+          }
           className="resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+          placeholder={
+            isMandated
+              ? "Provide details about your mandated leave (e.g., estimated delivery date for maternity, relationship to deceased for bereavement)"
+              : "Provide reason or additional details for this leave request"
+          }
         />
       </div>
 
+      {/* Estimated Cost / Balance Info */}
       <div className="mt-1 flex items-center justify-between md:col-span-3">
         <div className="flex flex-col">
-          <p className="m-0 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Estimated Cost</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-black text-indigo-700">{totalCredits.toFixed(2)}</span>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Credits Used</span>
-            <span className="text-[10px] font-bold text-gray-300">|</span>
-            <span className="text-[11px] font-semibold text-gray-500 italic">({difference} working days)</span>
-          </div>
+          {isDeductible ? (
+            <>
+              <p className="m-0 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                Estimated Cost
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-black text-indigo-700">
+                  {totalCredits.toFixed(2)}
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                  Credits Used
+                </span>
+                <span className="text-[10px] font-bold text-gray-300">|</span>
+                <span className="text-[11px] font-semibold text-gray-500 italic">
+                  ({difference} working days)
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="m-0 text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
+                ✓ No Balance Deduction
+              </p>
+              <p className="m-0 text-[10px] text-gray-500 italic">
+                This leave does not reduce your balance
+              </p>
+            </>
+          )}
         </div>
         <div className="flex gap-2">
           <button

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -9,41 +10,11 @@ import {
 import ReviewResigApp from "@/features/leave/components/forms/ReviewResigApp";
 import axiosInterceptor from "@/hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-
-function parseDateOnly(value) {
-  if (value instanceof Date)
-    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const raw = String(value || "").trim();
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (match) {
-    const [, y, m, d] = match;
-    return new Date(Number(y), Number(m) - 1, Number(d));
-  }
-  const parsed = new Date(raw);
-  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-}
-
-function getDateDiffInclusive(start, end) {
-  const from = parseDateOnly(start).getTime();
-  const to = parseDateOnly(end).getTime();
-  return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-function getDateRangeInclusive(start, end) {
-  const dates = [];
-  const current = parseDateOnly(start);
-  const to = parseDateOnly(end);
-
-  while (current <= to) {
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, "0");
-    const day = String(current.getDate()).padStart(2, "0");
-    dates.push(`${year}-${month}-${day}`);
-    current.setDate(current.getDate() + 1);
-  }
-
-  return dates;
-}
+import { workweekConfigQueryOptions } from "@/features/leave/utils/query.utils";
+import {
+  formatLongDate,
+  getWorkingDateRangeInclusive,
+} from "@/features/leave/utils/date.utils";
 
 function EmployeeCard({
   employee,
@@ -74,16 +45,15 @@ function EmployeeCard({
 
 export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
   const [reviewConfirm, setReviewConfirm] = useState(null);
+  const { data: workweekConfigs = [] } = useQuery(workweekConfigQueryOptions);
 
   const openLeaveDecisionConfirm = (employee, status) => {
-    const totalDays = getDateDiffInclusive(
+    const requestedDates = getWorkingDateRangeInclusive(
       employee.date_from,
       employee.date_to,
+      workweekConfigs,
     );
-    const requestedDates = getDateRangeInclusive(
-      employee.date_from,
-      employee.date_to,
-    );
+    const totalDays = requestedDates.length;
 
     setReviewConfirm({
       employee,
@@ -132,9 +102,10 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
       return;
     }
 
-    const requestedDates = getDateRangeInclusive(
+    const requestedDates = getWorkingDateRangeInclusive(
       reviewConfirm.employee.date_from,
       reviewConfirm.employee.date_to,
+      workweekConfigs,
     );
     const selectedDates = reviewConfirm.selectedDates || [];
 
@@ -192,8 +163,8 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                       {employee.leave_type}
                     </p>
                     <p className="mt-0.5 text-[11px] text-slate-500">
-                      {new Date(employee.date_from).toLocaleDateString()} -{" "}
-                      {new Date(employee.date_to).toLocaleDateString()}
+                      {formatLongDate(employee.date_from)} -{" "}
+                      {formatLongDate(employee.date_to)}
                     </p>
 
                     <div className="mt-2 flex gap-1.5 border-t border-slate-200 pt-2">
@@ -267,18 +238,29 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
 
                 {reviewConfirm.status === "Approved" &&
                   reviewConfirm.isMultiDay && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
-                        Multi-day request: select specific days to approve
-                      </p>
-                      <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                        {getDateRangeInclusive(
+                    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800">
+                              Select specific days to approve
+                            </p>
+                            <p className="m-0 mt-1 text-[11px] text-slate-600">
+                              Approve only the working days you need.
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                            {(reviewConfirm.selectedDates || []).length} selected
+                          </span>
+                        </div>
+                        <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+                          {getWorkingDateRangeInclusive(
                           reviewConfirm.employee.date_from,
                           reviewConfirm.employee.date_to,
+                          workweekConfigs,
                         ).map((date) => (
                           <label
                             key={date}
-                            className="flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                            className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/70"
                           >
                             <input
                               type="checkbox"
@@ -286,14 +268,15 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                                 reviewConfirm.selectedDates || []
                               ).includes(date)}
                               onChange={() => toggleApprovedDate(date)}
+                              className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                             />
-                            <span>
-                              {parseDateOnly(date).toLocaleDateString()}
+                            <span className="leading-5 text-slate-800">
+                              {formatLongDate(date)}
                             </span>
                           </label>
                         ))}
                       </div>
-                      <p className="m-0 mt-2 text-xs font-semibold text-amber-800">
+                      <p className="m-0 mt-3 text-xs font-semibold text-amber-800">
                         Selected: {(reviewConfirm.selectedDates || []).length}{" "}
                         day(s)
                       </p>

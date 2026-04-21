@@ -11,6 +11,14 @@ export const parseDateOnly = (value: DateInput) => {
   const parsed = new Date(raw);
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 };
+
+export function formatLongDate(value: DateInput) {
+  return parseDateOnly(value).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 // ----
 const getDateDiffInclusiveCore = ({ start, end }: DateDiffInclusive) => {
   const from = parseDateOnly(start).getTime();
@@ -190,6 +198,28 @@ function getDateRangeInclusiveCore({ start, end }: DateDiffInclusive) {
 
   return dates;
 }
+
+function getWorkingDateRangeInclusiveCore({
+  start,
+  end,
+  configs = [],
+}: DateDiffInclusive & { configs?: any[] }) {
+  const dates = [];
+  const current = parseDateOnly(start);
+  const to = parseDateOnly(end);
+
+  while (current <= to) {
+    if (!isNonWorkingDay(current, configs)) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, "0");
+      const day = String(current.getDate()).padStart(2, "0");
+      dates.push(`${year}-${month}-${day}`);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
 export function getDateRangeInclusive(
   arg1: DateDiffInclusive | DateInput,
   arg2?: DateInput,
@@ -200,6 +230,31 @@ export function getDateRangeInclusive(
   return getDateRangeInclusiveCore({
     start: arg1 as DateInput,
     end: arg2 as DateInput,
+  });
+}
+
+export function getWorkingDateRangeInclusive(
+  arg1:
+    | (DateDiffInclusive & { configs?: any[] })
+    | DateInput,
+  arg2?: DateInput,
+  arg3?: any[],
+) {
+  if (
+    arg1 &&
+    typeof arg1 === "object" &&
+    "start" in arg1 &&
+    "end" in arg1
+  ) {
+    return getWorkingDateRangeInclusiveCore(
+      arg1 as DateDiffInclusive & { configs?: any[] },
+    );
+  }
+
+  return getWorkingDateRangeInclusiveCore({
+    start: arg1 as DateInput,
+    end: arg2 as DateInput,
+    configs: arg3 as any[],
   });
 }
 // Compatibility shim: supports both getDateRangeInclusive({ start, end }) and getDateRangeInclusive(start, end).

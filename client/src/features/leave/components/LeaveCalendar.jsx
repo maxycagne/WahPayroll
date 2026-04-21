@@ -43,7 +43,7 @@ export default function LeaveCalendar({
     ? `${year}-${pad(month + 1)}-${pad(selectedDate)}`
     : null;
   const selectedLeaves = selectedDateStr
-    ? getLeavesForDate(selectedDateStr, leaves)
+    ? getLeavesForDate(selectedDateStr, leaves, workweekConfigs)
     : [];
 
   return (

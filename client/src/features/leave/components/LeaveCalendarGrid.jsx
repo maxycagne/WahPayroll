@@ -36,7 +36,7 @@ const LeaveCalendarGrid = ({
               return <div key={"e" + i} className="min-h-22.5" />;
 
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-            const dayLeaves = getLeavesForDate(dateStr, leaves);
+            const dayLeaves = getLeavesForDate(dateStr, leaves, workweekConfigs);
             const isSelected = day === selectedDate;
             const visibleLeaves = dayLeaves.slice(0, 3);
             const extraLeavesCount = Math.max(

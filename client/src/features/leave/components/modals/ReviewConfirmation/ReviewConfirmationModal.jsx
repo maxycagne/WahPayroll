@@ -13,6 +13,7 @@ export default function ReviewConfirmationModal({
   parseDateOnly,
   getOffsetRequestedDays,
   submitReviewDecision,
+  workweekConfigs = [],
 }) {
   return (
     <>
@@ -27,6 +28,7 @@ export default function ReviewConfirmationModal({
               getDateRangeInclusive={getDateRangeInclusive}
               toggleLeaveApprovedDate={toggleLeaveApprovedDate}
               parseDateOnly={parseDateOnly}
+              workweekConfigs={workweekConfigs}
             />
 
             <ReviewConfirmationModalOffsetInput

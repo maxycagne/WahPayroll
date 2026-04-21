@@ -1,8 +1,16 @@
-import { isInRange } from "./date.utils";
+import { isInRange, isNonWorkingDay } from "./date.utils";
 import { getLeaveDateStatus, pad } from "./leave.utils";
 import { calendarStatusOrder } from "../leaveConstants";
 
-export function getLeavesForDate(dateStr: string, leaves: any[]): any[] {
+export function getLeavesForDate(
+  dateStr: string,
+  leaves: any[],
+  workweekConfigs: any[] = [],
+): any[] {
+  if (isNonWorkingDay(dateStr, workweekConfigs)) {
+    return [];
+  }
+
   return leaves
     .filter((l) =>
       isInRange({ date: dateStr, from: l.date_from, to: l.date_to }),

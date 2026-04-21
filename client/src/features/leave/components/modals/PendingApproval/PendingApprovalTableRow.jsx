@@ -30,7 +30,7 @@ export default function PendingApprovalTableRow({
           ? item.effective_date
             ? new Date(item.effective_date).toLocaleDateString()
             : "N/A"
-          : `${new Date(item.date_from).toLocaleDateString()} - ${new Date(item.date_to).toLocaleDateString()}`}
+          : `${formatLongDate(item.date_from)} - ${formatLongDate(item.date_to)}`}
       </td>
       <td className="max-w-65 px-4 py-2.5 text-xs text-gray-700">
         {isCancellationRequest

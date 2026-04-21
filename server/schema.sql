@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   status ENUM('Pending', 'Approved', 'Denied', 'Partially Approved') DEFAULT 'Pending',
   approved_days DECIMAL(5,2),
   approved_dates JSON,
+  documents JSON DEFAULT NULL,
   cancellation_requested_at TIMESTAMP NULL,
   cancellation_reason TEXT,
   reason TEXT,

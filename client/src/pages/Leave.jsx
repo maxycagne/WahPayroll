@@ -5,7 +5,7 @@ import {
   parseDateOnly,
   getDateDiffInclusive,
   calculateBusinessDays,
-  getDateRangeInclusive,
+  getWorkingDateRangeInclusive,
   isNonWorkingDay,
   calculateTotalCredits,
 } from "@/features/leave/utils/date.utils";
@@ -14,6 +14,7 @@ import {
   leaveTypes,
   resignationTypes,
   leavePolicy,
+  leaveUploadFieldKeys,
 } from "@/features/leave/leaveConstants";
 
 import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
@@ -101,6 +102,14 @@ export default function Leave() {
   const availableLeaveTypes = isJobOrderEmployee
     ? leaveTypes.filter((type) => type !== "PGT Leave")
     : leaveTypes;
+
+  const clearLeaveUploadFields = (formState) => {
+    const nextState = { ...formState };
+    leaveUploadFieldKeys.forEach((fieldKey) => {
+      nextState[fieldKey] = undefined;
+    });
+    return nextState;
+  };
 
   const { data: leaves = [], isLoading: isLoadingLeaves } =
     useQuery(leavesQueryOptions);
@@ -198,7 +207,7 @@ export default function Leave() {
         ? formData.fromDate
         : "";
     setFormData({
-      ...formData,
+      ...clearLeaveUploadFields(formData),
       leaveType: newLeaveType,
       toDate: newToDate,
       daysApplied: "",
@@ -290,8 +299,12 @@ export default function Leave() {
     status,
     decisionMode = "application",
   ) => {
-    const totalDays = getDateDiffInclusive(item.date_from, item.date_to);
-    const requestedDates = getDateRangeInclusive(item.date_from, item.date_to);
+    const requestedDates = getWorkingDateRangeInclusive(
+      item.date_from,
+      item.date_to,
+      workweekConfigs,
+    );
+    const totalDays = requestedDates.length;
     const isMultiDay = totalDays > 1;
 
     setReviewConfirm({
@@ -376,9 +389,10 @@ export default function Leave() {
         return;
       }
 
-      const requestedDates = getDateRangeInclusive(
+      const requestedDates = getWorkingDateRangeInclusive(
         reviewConfirm.item.date_from,
         reviewConfirm.item.date_to,
+        workweekConfigs,
       );
       const selectedDates = reviewConfirm.selectedDates || [];
 
@@ -585,7 +599,7 @@ export default function Leave() {
         submitLeaveMutation={submitLeaveMutation}
         reviewConfirm={reviewConfirm}
         setReviewConfirm={setReviewConfirm}
-        getDateRangeInclusive={getDateRangeInclusive}
+        getDateRangeInclusive={getWorkingDateRangeInclusive}
         toggleLeaveApprovedDate={toggleLeaveApprovedDate}
         parseDateOnly={parseDateOnly}
         getOffsetRequestedDays={getOffsetRequestedDays}
@@ -597,6 +611,7 @@ export default function Leave() {
         reviewResignationMutation={reviewResignationMutation}
         showToast={showToast}
         submitCancellationRequest={submitCancellationRequest}
+        workweekConfigs={workweekConfigs}
       />
 
       <Toast toast={toast} onClose={clearToast} />
