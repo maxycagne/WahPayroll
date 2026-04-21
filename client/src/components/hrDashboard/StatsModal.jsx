@@ -6,6 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import ReviewResigApp from "@/features/leave/components/forms/ReviewResigApp";
+import axiosInterceptor from "@/hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 
 function parseDateOnly(value) {
   if (value instanceof Date)
@@ -420,24 +423,68 @@ export function AbsentModal({ open, onClose, absents }) {
 }
 
 export function ResignationModal({ open, onClose, resignations, mutation }) {
-  const [confirmDecision, setConfirmDecision] = useState(null);
+  const [reviewData, setReviewData] = useState(null);
 
-  const handleConfirm = () => {
-    if (!confirmDecision || !mutation) return;
+  const parseMaybeArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== "string") return [];
 
-    const isRejectDecision = confirmDecision.status === "Rejected";
-    const remarks = confirmDecision.review_remarks?.trim();
-    if (isRejectDecision && !remarks) {
-      alert("Reason is required for rejection.");
-      return;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
+  };
 
-    mutation.mutate({
-      id: confirmDecision.id,
-      status: confirmDecision.status,
-      review_remarks: isRejectDecision ? remarks : undefined,
+  const openResignationReview = (item) => {
+    setReviewData({
+      item,
+      leavingReasons: parseMaybeArray(item.leaving_reasons_json),
+      interviewAnswers: parseMaybeArray(item.exit_interview_answers_json),
     });
-    setConfirmDecision(null);
+    onClose();
+  };
+
+  const closeResignationReview = () => setReviewData(null);
+
+  const downloadEndorsementFile = async (fileKey) => {
+    if (!fileKey) return;
+
+    const blob = await mutationHandler(
+      axiosInterceptor.get(
+        `/api/file/get?filename=${encodeURIComponent(fileKey)}`,
+        { responseType: "blob" },
+      ),
+      "Failed to retrieve endorsement file.",
+    );
+    const objectUrl = window.URL.createObjectURL(blob);
+
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileKey.split("_").pop() || "endorsement-file";
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  };
+
+  const finalApproveResignation = () => {
+    if (!reviewData?.item || !mutation?.mutate) return;
+
+    mutation.mutate(
+      {
+        id: reviewData.item.id,
+        status: "Approved",
+      },
+      {
+        onSuccess: () => {
+          closeResignationReview();
+        },
+      },
+    );
   };
 
   return (
@@ -446,7 +493,6 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
         open={open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
-            setConfirmDecision(null);
             onClose();
           }
         }}
@@ -485,43 +531,17 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
                         {r.status}
                       </Badge>
                     </div>
-                    {r.status === "Pending Approval" && (
-                      <div className="flex gap-1.5 border-t border-slate-200 pt-2.5">
-                        <button
-                          onClick={() =>
-                            setConfirmDecision({
-                              id: r.id,
-                              status: "Approved",
-                              first_name: r.first_name,
-                              last_name: r.last_name,
-                              resignation_type: r.resignation_type,
-                              effective_date: r.effective_date,
-                            })
-                          }
-                          disabled={mutation.isPending}
-                          className="flex-1 rounded-md border-0 bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            setConfirmDecision({
-                              id: r.id,
-                              status: "Rejected",
-                              review_remarks: "",
-                              first_name: r.first_name,
-                              last_name: r.last_name,
-                              resignation_type: r.resignation_type,
-                              effective_date: r.effective_date,
-                            })
-                          }
-                          disabled={mutation.isPending}
-                          className="flex-1 rounded-md border-0 bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-200 disabled:opacity-50"
-                        >
-                          Deny
-                        </button>
-                      </div>
-                    )}
+
+                    <div className="flex gap-1.5 border-t border-slate-200 pt-2.5">
+                      <button
+                        type="button"
+                        onClick={() => openResignationReview(r)}
+                        disabled={mutation?.isPending}
+                        className="flex-1 rounded-md border-0 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-200 disabled:opacity-50"
+                      >
+                        Review Application
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -530,84 +550,14 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!confirmDecision}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) setConfirmDecision(null);
-        }}
-      >
-        <DialogContent className="max-w-[460px] overflow-hidden p-0">
-          <DialogHeader className="border-b border-slate-200 bg-white px-4 py-3">
-            <DialogTitle className="text-base font-semibold text-slate-900">
-              {confirmDecision?.status === "Rejected"
-                ? "Confirm Denial"
-                : "Confirm Approval"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 bg-slate-50 px-4 py-3">
-            <p className="m-0 text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">
-                {confirmDecision?.first_name} {confirmDecision?.last_name}
-              </span>
-            </p>
-            <p className="m-0 text-xs text-slate-600">
-              {confirmDecision?.resignation_type}
-            </p>
-            <p className="m-0 text-xs text-slate-500">
-              Effective Date:{" "}
-              {confirmDecision?.effective_date
-                ? new Date(confirmDecision.effective_date).toLocaleDateString()
-                : "N/A"}
-            </p>
-            <p className="m-0 pt-1 text-sm text-slate-700">
-              Are you sure you want to {confirmDecision?.status?.toLowerCase()}{" "}
-              this resignation request?
-            </p>
-            {confirmDecision?.status === "Rejected" && (
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Reason (required)
-                </label>
-                <textarea
-                  rows={3}
-                  value={confirmDecision?.review_remarks || ""}
-                  onChange={(e) =>
-                    setConfirmDecision((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            review_remarks: e.target.value,
-                          }
-                        : prev,
-                    )
-                  }
-                  className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
-                  placeholder="Enter reason for rejection"
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setConfirmDecision(null)}
-              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={mutation?.isPending}
-              className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${confirmDecision?.status === "Rejected" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
-            >
-              {confirmDecision?.status === "Rejected"
-                ? "Confirm Denial"
-                : "Confirm Approval"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ReviewResigApp
+        reviewData={reviewData}
+        onClose={closeResignationReview}
+        onKeepPending={closeResignationReview}
+        onFinalApprove={finalApproveResignation}
+        isApproving={Boolean(mutation?.isPending)}
+        onPreviewEndorsement={downloadEndorsementFile}
+      />
     </>
   );
 }
