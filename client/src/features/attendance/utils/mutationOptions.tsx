@@ -1,47 +1,62 @@
 import axiosInterceptor from "@/hooks/interceptor";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { mutationOptions } from "@tanstack/react-query";
 
-export const adjustLeaveBalanceMutationFn = (payload: {
-  empId: string | number;
-  amount: number | string;
-}) =>
-  mutationHandler(
-    axiosInterceptor.put(`/api/employees/leave-balance/${payload.empId}`, {
-      adjustment: payload.amount,
-    }),
-    "Failed to adjust leave balance",
-  );
+export const adjustLeaveBalanceMutationOptions = mutationOptions({
+  mutationFn: async (payload: {
+    empId: string | number;
+    amount: number | string;
+  }) => {
+    const res = await axiosInterceptor.put(
+      `/api/employees/leave-balance/${payload.empId}`,
+      {
+        adjustment: payload.amount,
+      },
+    );
+    return res.data;
+  },
+});
 
-export const saveDailyAttendanceMutationFn = (payload: {
-  selectedDate: string;
-  records: unknown[];
-}) =>
-  mutationHandler(
-    axiosInterceptor.post("/api/employees/attendance-bulk", {
+export const saveDailyAttendanceMutationOptions = mutationOptions({
+  mutationFn: async (payload: {
+    selectedDate: string;
+    records: unknown[];
+  }) => {
+    const res = await axiosInterceptor.post("/api/employees/attendance-bulk", {
       date: payload.selectedDate,
       records: payload.records,
-    }),
-    "Failed to save attendance",
-  );
+    });
+    return res.data;
+  },
+});
 
-export const saveWorkweekMutationFn = (payload: Record<string, unknown>) =>
-  mutationHandler(
-    axiosInterceptor.post("/api/employees/workweek-config", payload),
-    "Failed to save workweek config",
-  );
+export const saveWorkweekMutationOptions = mutationOptions({
+  mutationFn: async (payload: Record<string, unknown>) => {
+    const res = await axiosInterceptor.post(
+      "/api/employees/workweek-config",
+      payload,
+    );
+    return res.data;
+  },
+});
 
-export const updateWorkweekMutationFn = (payload: {
-  id: string | number;
-  data: Record<string, unknown>;
-}) =>
-  mutationHandler(
-    axiosInterceptor.put(`/api/employees/workweek-config/${payload.id}`, payload.data),
-    "Failed to update workweek config",
-  );
+export const updateWorkweekMutationOptions = mutationOptions({
+  mutationFn: async (payload: {
+    id: string | number;
+    data: Record<string, unknown>;
+  }) => {
+    const res = await axiosInterceptor.put(
+      `/api/employees/workweek-config/${payload.id}`,
+      payload.data,
+    );
+    return res.data;
+  },
+});
 
-export const deleteWorkweekMutationFn = (id: string | number) =>
-  mutationHandler(
-    axiosInterceptor.delete(`/api/employees/workweek-config/${id}`),
-    "Failed to delete workweek config",
-  );
-
+export const deleteWorkweekMutationOptions = mutationOptions({
+  mutationFn: async (id: string | number) => {
+    const res = await axiosInterceptor.delete(
+      `/api/employees/workweek-config/${id}`,
+    );
+    return res.data;
+  },
+});
