@@ -1795,8 +1795,8 @@ export const createEmployee = async (req, res) => {
 
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -1949,6 +1949,27 @@ export const deleteEmployee = async (req, res) => {
   } catch (error) {
     console.error("DB Error in deleteEmployee:", error);
     res.status(500).json({ message: "Error deleting employee" });
+  }
+};
+
+export const toggleEmployeeActiveStatus = async (req, res) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      "UPDATE employees SET is_active = ? WHERE emp_id = ?",
+      [is_active, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.json({ message: `Employee marked as ${is_active ? 'Active' : 'Inactive'}` });
+  } catch (error) {
+    console.error("DB Error in toggleEmployeeActiveStatus:", error);
+    res.status(500).json({ message: "Error toggling employee status" });
   }
 };
 

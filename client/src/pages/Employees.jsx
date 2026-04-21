@@ -150,6 +150,19 @@ export default function Employees({ shortcutMode = false }) {
     onError: () => showToast("Failed to delete employee.", "error"),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, is_active }) =>
+      mutationHandler(
+        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, { is_active }),
+        "Failed to toggle status"
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(["employees"]);
+      showToast(`Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`);
+    },
+    onError: (err) => showToast(err.message, "error"),
+  });
+
   const resetPasswordMutation = useMutation({
     mutationFn: async (emp) => {
       const data = await mutationHandler(
@@ -398,6 +411,23 @@ export default function Employees({ shortcutMode = false }) {
                                     Reset Password
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => {
+                                    toggleActiveMutation.mutate({
+                                      id: emp.emp_id,
+                                      is_active: !emp.is_active,
+                                    });
+                                    setActiveMenu(null);
+                                  }}
+                                  disabled={toggleActiveMutation.isPending}
+                                  className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
+                                    emp.is_active
+                                      ? "text-orange-600 hover:bg-orange-50"
+                                      : "text-green-600 hover:bg-green-50"
+                                  }`}
+                                >
+                                  {emp.is_active ? "Mark Inactive" : "Mark Active"}
+                                </button>
                                 <hr className="my-1 border-gray-100" />
                                 <button
                                   onClick={() => {

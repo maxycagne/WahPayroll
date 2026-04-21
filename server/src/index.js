@@ -10,6 +10,7 @@ import path from "path";
 import hrReportsRoutes from "./routes/hrReportRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.ts";
 import profileRoutes from "./routes/profileRoutes.ts";
+import registerRoutes from "./routes/registerRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -52,6 +53,7 @@ app.use("/api/file", fileRoutes);
 app.use("/api/hr-reports", hrReportsRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/me", profileRoutes);
+app.use("/api/register", registerRoutes);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

@@ -5,6 +5,7 @@ import {
   updateEmployee,
   resetEmployeePassword,
   deleteEmployee,
+  toggleEmployeeActiveStatus,
   getAllLeaves,
   updateLeaveStatus,
   // fileLeave,
@@ -349,6 +350,7 @@ router.get(
 
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
+router.put("/:id/toggle-active", authorizeRoles("Admin", "HR"), toggleEmployeeActiveStatus);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
 router.put(
   "/:id/reset-password",
