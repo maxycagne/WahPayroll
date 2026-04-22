@@ -71,17 +71,7 @@ router.use(authenticateToken);
 
 router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
-router.get(
-  "/attendance",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getAttendance,
-  getAttendanceStats,
-);
-router.get(
-  "/attendance-stats",
-  authorizeRoles("Admin", "HR"),
-  getAttendanceStats,
-);
+
 
 router.get("/all-resignations", getAllResignations);
 router.get(

@@ -27,6 +27,20 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const [rows]: any = await pool.query("SELECT * FROM employees WHERE emp_id = ?", [req.user.emp_id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const user = rows[0];
+
+    const updatedEmail = email !== undefined ? email : user.email;
+    const updatedPhilhealth = philhealth_no !== undefined ? philhealth_no : user.philhealth_no;
+    const updatedTin = tin !== undefined ? tin : user.tin;
+    const updatedSss = sss_no !== undefined ? sss_no : user.sss_no;
+    const updatedPagIbigMid = pag_ibig_mid_no !== undefined ? pag_ibig_mid_no : user.pag_ibig_mid_no;
+    const updatedPagIbigRtn = pag_ibig_rtn !== undefined ? pag_ibig_rtn : user.pag_ibig_rtn;
+    const updatedGsis = gsis_no !== undefined ? gsis_no : user.gsis_no;
+
     await pool.query(
       `UPDATE employees SET 
         email = ?, 
@@ -38,13 +52,13 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
         gsis_no = ? 
       WHERE emp_id = ?`,
       [
-        email,
-        philhealth_no,
-        tin,
-        sss_no,
-        pag_ibig_mid_no,
-        pag_ibig_rtn,
-        gsis_no,
+        updatedEmail,
+        updatedPhilhealth,
+        updatedTin,
+        updatedSss,
+        updatedPagIbigMid,
+        updatedPagIbigRtn,
+        updatedGsis,
         req.user.emp_id,
       ]
     );
