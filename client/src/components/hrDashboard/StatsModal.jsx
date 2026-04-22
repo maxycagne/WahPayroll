@@ -60,9 +60,78 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
       status,
       totalDays,
       isMultiDay: totalDays > 1,
-      selectedDates: status === "Approved" ? requestedDates : [],
+      selectedDates: requestedDates,
       remarks: "",
     });
+  };
+
+  const getReviewReason = (employee) =>
+    employee?.reason || employee?.remarks || employee?.leave_reason || "";
+
+  const getReviewFiles = (employee) => {
+    const docsRaw = employee?.documents;
+    let docs = {};
+
+    if (typeof docsRaw === "string") {
+      try {
+        docs = JSON.parse(docsRaw);
+      } catch {
+        docs = {};
+      }
+    } else if (docsRaw && typeof docsRaw === "object") {
+      docs = docsRaw;
+    }
+
+    const files = Object.entries(docs)
+      .map(([key, value]) => {
+        if (typeof value === "string" && value.trim().length > 0) {
+          return { key, url: value, label: key };
+        }
+
+        if (value && typeof value === "object") {
+          const directUrl = value.url || value.download_url || value.fileUrl;
+          if (typeof directUrl === "string" && directUrl.trim().length > 0) {
+            return {
+              key,
+              url: directUrl,
+              label: value.originalName || value.file_name || key,
+            };
+          }
+
+          const keyValue = value.key || value.file_key || value.filename;
+          if (typeof keyValue === "string" && keyValue.trim().length > 0) {
+            return {
+              key,
+              url: `/api/file/get?filename=${encodeURIComponent(keyValue)}`,
+              label: value.originalName || value.file_name || key,
+            };
+          }
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    if (employee?.ocp) {
+      files.push({ key: "ocp", url: employee.ocp, label: "ocp" });
+    }
+
+    ["doctor_cert", "death_cert", "birth_cert", "marriage_cert"].forEach(
+      (field) => {
+        const value = employee?.[field];
+        if (typeof value === "string" && value.trim().length > 0) {
+          files.push({ key: field, url: value, label: field });
+        }
+      },
+    );
+
+    const uniqueMap = new Map();
+    files.forEach((entry) => {
+      const uniqueKey = `${entry.key}-${entry.url}`;
+      if (!uniqueMap.has(uniqueKey)) uniqueMap.set(uniqueKey, entry);
+    });
+
+    return Array.from(uniqueMap.values());
   };
 
   const toggleApprovedDate = (date) => {
@@ -83,6 +152,11 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
 
   const submitLeaveDecision = () => {
     if (!reviewConfirm || !mutation) return;
+
+    if (!reviewConfirm.status) {
+      alert("Select Approve or Deny after reviewing the request.");
+      return;
+    }
 
     const remarks = reviewConfirm.remarks?.trim();
     const isDenyDecision = reviewConfirm.status === "Denied";
@@ -170,23 +244,11 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                     <div className="mt-2 flex gap-1.5 border-t border-slate-200 pt-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          openLeaveDecisionConfirm(employee, "Approved")
-                        }
+                        onClick={() => openLeaveDecisionConfirm(employee)}
                         disabled={mutation?.isPending}
-                        className="flex-1 rounded-md border-0 bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
+                        className="flex-1 rounded-md border-0 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-200 disabled:opacity-50"
                       >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openLeaveDecisionConfirm(employee, "Denied")
-                        }
-                        disabled={mutation?.isPending}
-                        className="flex-1 rounded-md border-0 bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-200 disabled:opacity-50"
-                      >
-                        Deny
+                        Review Application
                       </button>
                     </div>
                   </EmployeeCard>
@@ -206,9 +268,11 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
         <DialogContent className="max-h-[85vh] max-w-[560px] overflow-hidden p-0">
           <DialogHeader className="border-b border-slate-200 bg-white px-4 py-3">
             <DialogTitle className="text-base font-semibold text-slate-900">
-              {reviewConfirm?.status === "Denied"
-                ? "Confirm Denial"
-                : "Confirm Approval"}
+              {reviewConfirm?.status
+                ? reviewConfirm.status === "Denied"
+                  ? "Confirm Denial"
+                  : "Confirm Approval"
+                : "Review Application"}
             </DialogTitle>
           </DialogHeader>
 
@@ -221,20 +285,52 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                     {reviewConfirm.employee.last_name}
                   </span>{" "}
                   requested {reviewConfirm.employee.leave_type} from{" "}
-                  {new Date(
-                    reviewConfirm.employee.date_from,
-                  ).toLocaleDateString()}{" "}
-                  to{" "}
-                  {new Date(
-                    reviewConfirm.employee.date_to,
-                  ).toLocaleDateString()}
-                  .
+                  {formatLongDate(reviewConfirm.employee.date_from)} to{" "}
+                  {formatLongDate(reviewConfirm.employee.date_to)}.
                 </p>
 
-                <p className="m-0 text-sm text-slate-700">
-                  Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
-                  this leave request?
-                </p>
+                {getReviewReason(reviewConfirm.employee) && (
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                      Stated Reason
+                    </p>
+                    <p className="m-0 mt-1 text-sm text-slate-900">
+                      {getReviewReason(reviewConfirm.employee)}
+                    </p>
+                  </div>
+                )}
+
+                {getReviewFiles(reviewConfirm.employee).length > 0 && (
+                  <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
+                    <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                      Uploaded Files
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {getReviewFiles(reviewConfirm.employee).map((file) => (
+                        <a
+                          key={`${file.key}-${file.url}`}
+                          href={file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center rounded-md border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-100"
+                        >
+                          {String(file.label || file.key).replace(/_/g, " ")}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {reviewConfirm.status ? (
+                  <p className="m-0 text-sm text-slate-700">
+                    Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
+                    this leave request?
+                  </p>
+                ) : (
+                  <p className="m-0 text-sm text-slate-700">
+                    Review all details first, then choose Approve or Deny.
+                  </p>
+                )}
 
                 {reviewConfirm.status === "Approved" &&
                   reviewConfirm.isMultiDay &&
@@ -358,16 +454,61 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={submitLeaveDecision}
-              disabled={mutation?.isPending}
-              className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${reviewConfirm?.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
-            >
-              {reviewConfirm?.status === "Denied"
-                ? "Confirm Denial"
-                : "Confirm Approval"}
-            </button>
+            {!reviewConfirm?.status ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReviewConfirm({
+                      ...reviewConfirm,
+                      status: "Denied",
+                      remarks: "",
+                    })
+                  }
+                  className="rounded-md border border-red-200 bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-200"
+                >
+                  Deny
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReviewConfirm({
+                      ...reviewConfirm,
+                      status: "Approved",
+                    })
+                  }
+                  className="rounded-md border border-green-200 bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200"
+                >
+                  Approve
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReviewConfirm({
+                      ...reviewConfirm,
+                      status: undefined,
+                      remarks: "",
+                    })
+                  }
+                  className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={submitLeaveDecision}
+                  disabled={mutation?.isPending}
+                  className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${reviewConfirm?.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
+                >
+                  {reviewConfirm?.status === "Denied"
+                    ? "Confirm Denial"
+                    : "Confirm Approval"}
+                </button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

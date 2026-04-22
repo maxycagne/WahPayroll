@@ -314,7 +314,7 @@ export default function Leave() {
       item,
       isMultiDay,
       totalDays,
-      selectedDates: status === "Approved" ? requestedDates : [],
+      selectedDates: requestedDates,
       remarks: "",
     });
   };
@@ -366,6 +366,11 @@ export default function Leave() {
 
   const submitReviewDecision = () => {
     if (!reviewConfirm) return;
+
+    if (!reviewConfirm.status) {
+      showToast("Select Approve or Deny after reviewing the request.", "error");
+      return;
+    }
 
     const trimmedRemarks = String(reviewConfirm.remarks || "").trim();
     const isDenyDecision = reviewConfirm.status === "Denied";

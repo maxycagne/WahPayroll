@@ -1,10 +1,16 @@
 import { formatLongDate } from "@/features/leave/utils/date.utils";
 
 export default function ReviewConfirmationModalHeader({ reviewConfirm }) {
+  const hasDecision = Boolean(reviewConfirm.status);
+
   return (
     <>
       <h2 className="m-0 mb-2 text-lg font-semibold text-gray-900">
-        {reviewConfirm.decisionMode === "cancellation"
+        {!hasDecision
+          ? reviewConfirm.decisionMode === "cancellation"
+            ? "Review Cancellation Request"
+            : "Review Application"
+          : reviewConfirm.decisionMode === "cancellation"
           ? reviewConfirm.status === "Denied"
             ? "Decline Cancellation Request"
             : "Approve Cancellation Request"
