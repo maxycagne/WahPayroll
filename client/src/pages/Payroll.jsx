@@ -868,13 +868,13 @@ export default function Payroll({ shortcutMode = false }) {
                     }}
                     disabled={
                       sendBulkPayslipsMutation.isPending ||
-                      filteredPayroll.length === 0
+                      payrollData.length === 0
                     }
                     className="px-4 py-2 rounded-lg bg-indigo-600 border border-indigo-600 text-white text-sm font-semibold cursor-pointer hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
                     <Mail className="w-4 h-4" />
                     {sendBulkPayslipsMutation.isPending
-                      ? `Sending to ${filteredPayroll.length} employees...`
+                      ? `Sending to ${payrollData.length} employees...`
                       : "Email All"}
                   </button>
 

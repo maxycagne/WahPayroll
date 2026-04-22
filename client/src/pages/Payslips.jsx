@@ -80,14 +80,21 @@ export default function Payslips() {
     return months;
   }, []);
 
-  const { data: payrollData = [], isLoading } = useQuery({
-    queryKey: ["payroll", period],
+  const { data: responseData, isLoading } = useQuery({
+    queryKey: ["payroll", period, currentUser?.emp_id],
     queryFn: async () => {
+      const params = new URLSearchParams({
+        period,
+        search: currentUser?.emp_id || ""
+      });
       return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
       );
     },
+    enabled: !!currentUser?.emp_id,
   });
+
+  const payrollData = responseData?.data || [];
 
   if (isLoading)
     return (
