@@ -137,17 +137,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     [attendanceSummary]
   );
 
-  const payrollChartData = useMemo(() => 
-    [...(payrollData as any[])]
-      .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
-      .slice(0, 8)
-      .map((row) => ({
-        employee: `${row.emp_id}`,
-        Net: Number(row.net_pay || 0),
-        Gross: Number(row.gross_pay || 0),
-      })),
-    [payrollData]
-  );
+  const payrollChartData = [...payrollData]
+    .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
+    .slice(0, 5)
+    .map((row) => ({
+      employee:
+        employeesData.find((e) => String(e.emp_id) === String(row.emp_id))
+          ?.first_name || `${row.emp_id}`,
+      Net: Number(row.net_pay || 0),
+      Gross: Number(row.gross_pay || 0),
+    }));
 
   const quickActions = useMemo(() => [
     {
