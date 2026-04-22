@@ -80,8 +80,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     queryFn: () => getAttendanceSummary(year, month),
   });
 
-  const employeesData = employeesQuery.data || [];
-  const payrollData = payrollQuery.data || [];
+  const employeesData = employeesQuery.data?.data || employeesQuery.data || [];
+  const payrollData = payrollQuery.data?.data || payrollQuery.data || [];
   const attendanceSummary = attendanceSummaryQuery.data || [];
 
   const activeEmployeeCount = useMemo(() => 
