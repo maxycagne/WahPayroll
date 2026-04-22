@@ -176,43 +176,6 @@ export default function Settings() {
                   Public Profile
                 </h3>
 
-                {/* Photo Upload Section */}
-                <div className="flex items-center gap-5 mb-8">
-                  <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                    {currentUser.profile_photo ? (
-                      <img
-                        src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/jpeg, image/png, image/webp"
-                      className="hidden"
-                      ref={fileInputRef}
-                      onChange={handlePhotoChange}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadPhotoMutation.isPending}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <Camera className="w-4 h-4" />
-                      {uploadPhotoMutation.isPending
-                        ? "Uploading..."
-                        : "Change Photo"}
-                    </button>
-                    <p className="text-[11px] text-gray-500 mt-2">
-                      JPG, PNG or WEBP. Max size 2MB.
-                    </p>
-                  </div>
-                </div>
-
                 {/* Details Form */}
                 <form
                   onSubmit={(e) => {
