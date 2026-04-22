@@ -7,21 +7,12 @@ import {
   toggleEmployeeActiveStatus,
   // fileLeave,
   generatePayroll,
-  getAttendance,
-  getAttendanceStats,
-  adjustLeaveBalance,
   getSalaryHistory,
   updateSalaryHistoryEntry,
   deleteSalaryHistoryEntry,
   applySalaryAdjustment,
   updateBaseSalaryByPosition,
-  getDailyAttendance,
   getAllResignations,
-  saveBulkAttendance,
-  getWorkweekConfigs,
-  upsertWorkweekConfig,
-  updateWorkweekConfigById,
-  deleteWorkweekConfigById,
   getOffsetBalance,
   fileOffsetApplication,
   updateOffsetApplicationStatus,
@@ -77,18 +68,6 @@ const router = express.Router();
 router.use(authenticateToken);
 
 router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
-
-router.get(
-  "/attendance",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getAttendance,
-  getAttendanceStats,
-);
-router.get(
-  "/attendance-stats",
-  authorizeRoles("Admin", "HR"),
-  getAttendanceStats,
-);
 
 router.get("/all-resignations", getAllResignations);
 router.get(
@@ -146,35 +125,6 @@ router.delete(
   "/notifications",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   deleteAllNotifications,
-);
-router.put("/leave-balance/:id", authorizeRoles("HR"), adjustLeaveBalance);
-
-router.get(
-  "/attendance-daily",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getDailyAttendance,
-);
-router.post(
-  "/attendance-bulk",
-  authorizeRoles("Admin", "HR"),
-  saveBulkAttendance,
-);
-
-router.get(
-  "/workweek-config",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getWorkweekConfigs,
-);
-router.post("/workweek-config", authorizeRoles("Admin"), upsertWorkweekConfig);
-router.put(
-  "/workweek-config/:id",
-  authorizeRoles("Admin"),
-  updateWorkweekConfigById,
-);
-router.delete(
-  "/workweek-config/:id",
-  authorizeRoles("Admin"),
-  deleteWorkweekConfigById,
 );
 
 router.delete(
