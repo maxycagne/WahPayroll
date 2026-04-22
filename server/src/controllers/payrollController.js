@@ -147,14 +147,6 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
               <div class="footer-note">*** WAH Confidential - Maximum Restrictions ***</div>
             </div>
           </div>
-          <div class="summary-section">
-            <div class="summary-table">
-              <div class="summary-line" style="font-weight:bold;"><span>PAY SUMMARY</span><span>PHP</span></div>
-              <div class="summary-line"><span>Total Gross</span><span>${fmtPeso(payrollRecord.gross_pay)}</span></div>
-              <div class="summary-line"><span>Total Deductions</span><span>${fmtPeso(payrollRecord.absence_deductions)}</span></div>
-              <div class="net-pay"><span>NET SALARY & WAGES:</span><span>${fmtPeso(payrollRecord.net_pay)}</span></div>
-            </div>
-          </div>
           
         </div>
       </div>
