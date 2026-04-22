@@ -20,7 +20,7 @@ export const initialState: RegisterCredentials = {
   pag_ibig_mid_no: "",
   pag_ibig_rtn: "",
   gsis_no: "",
-  hired_date: "",
+  hired_date: new Date().toISOString().split("T")[0],
 };
 
 export const registerReducer = (state: RegisterCredentials, action: RegisterAction): RegisterCredentials => {

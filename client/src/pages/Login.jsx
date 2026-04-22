@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import axiosInterceptor from "../hooks/interceptor";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,9 +20,12 @@ const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
 
 export default function Login() {
+  const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const registrationMessage = location.state?.message;
 
   const handleLocalLogin = (token, nextUser) => {
     localStorage.setItem(STORAGE_TOKEN_KEY, token);
@@ -113,6 +117,12 @@ export default function Login() {
                 }}
               >
                 <FieldGroup className="space-y-5">
+                  {registrationMessage && (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                      {registrationMessage}
+                    </div>
+                  )}
+
                   <Field className="space-y-2">
                     <FieldLabel
                       htmlFor="username"

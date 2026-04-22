@@ -94,7 +94,8 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     password,
   } = req.body;
 
-  if (!first_name || !last_name || !email || !password) {
+  if (!first_name || !last_name || !email || !password || !hired_date) {
+    console.warn("Registration rejected: Missing required fields", { first_name, last_name, email, password: !!password, hired_date });
     return res.status(400).json({ message: "Missing required fields" });
   }
 
@@ -105,6 +106,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     );
 
     if (existingEmailRows.length > 0) {
+      console.warn("Registration rejected: Email already in use", email);
       return res.status(400).json({ message: "Email already in use" });
     }
 
