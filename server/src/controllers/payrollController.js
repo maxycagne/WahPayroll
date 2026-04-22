@@ -155,7 +155,7 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
               <div class="net-pay"><span>NET SALARY & WAGES:</span><span>${fmtPeso(payrollRecord.net_pay)}</span></div>
             </div>
           </div>
-          <div class="footer-note">*** WAH Confidential - Maximum Restrictions ***</div>
+          
         </div>
       </div>
     </body>
