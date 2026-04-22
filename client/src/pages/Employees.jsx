@@ -153,12 +153,16 @@ export default function Employees({ shortcutMode = false }) {
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, is_active }) =>
       mutationHandler(
-        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, { is_active }),
-        "Failed to toggle status"
+        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, {
+          is_active,
+        }),
+        "Failed to toggle status",
       ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(["employees"]);
-      showToast(`Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`);
+      showToast(
+        `Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`,
+      );
     },
     onError: (err) => showToast(err.message, "error"),
   });
@@ -437,7 +441,9 @@ export default function Employees({ shortcutMode = false }) {
                                       : "text-green-600 hover:bg-green-50"
                                   }`}
                                 >
-                                  {emp.is_active ? "Mark Inactive" : "Mark Active"}
+                                  {emp.is_active
+                                    ? "Mark Inactive"
+                                    : "Mark Active"}
                                 </button>
                                 <hr className="my-1 border-gray-100" />
                                 <button
