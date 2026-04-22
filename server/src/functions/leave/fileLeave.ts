@@ -111,6 +111,30 @@ export const fileLeave: RequestHandler = async (
       (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24) + 1
     );
 
+    // Enforce one approved Birthday Leave per calendar year.
+    if (normalizedLeaveType === "birthday leave") {
+      const targetYear = fromDate.getFullYear();
+      const [existingBirthdayLeave] = await connection.query(
+        `
+        SELECT id, date_from
+        FROM leave_requests
+        WHERE emp_id = ?
+          AND LOWER(TRIM(leave_type)) = 'birthday leave'
+          AND status = 'Approved'
+          AND YEAR(date_from) = ?
+        LIMIT 1
+        `,
+        [requesterEmpId, targetYear],
+      );
+
+      if ((existingBirthdayLeave as any[]).length > 0) {
+        await connection.rollback();
+        return res.status(409).json({
+          message: `Birthday Leave can only be approved once per year. An approved Birthday Leave already exists for ${targetYear}.`,
+        });
+      }
+    }
+
     // Validate days against policy max
     if (daysDifference > policy.maxDays) {
       await connection.rollback();
