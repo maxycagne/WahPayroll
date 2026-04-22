@@ -18,6 +18,10 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
   const {
     isLoading,
     attendance,
+    totalRecords,
+    totalPages,
+    currentPage,
+    setCurrentPage,
     calendarSummary,
     canEditAttendance,
     canConfigureWorkweek,
@@ -85,6 +89,10 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
               search={search}
               canEdit={canEditAttendance}
               onAdjustBalance={(record) => balance.setModalData(record)}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalRecords={totalRecords}
+              setCurrentPage={setCurrentPage}
             />
           </div>
 

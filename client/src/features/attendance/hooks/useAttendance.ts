@@ -17,11 +17,17 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   const { toast, showToast, clearToast } = useToast();
   
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewDate, setViewDate] = useState(new Date());
   
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const currentUser = useMemo(() => {
     try {
@@ -59,8 +65,8 @@ export const useAttendance = (shortcutMode: boolean = false) => {
 
   // Main Queries
   const attendanceQuery = useQuery({
-    queryKey: ["attendance"],
-    queryFn: getAttendance,
+    queryKey: ["attendance", currentPage, itemsPerPage, search],
+    queryFn: () => getAttendance(currentPage, itemsPerPage, search),
   });
 
   const calendarSummaryQuery = useQuery({
@@ -69,8 +75,9 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   });
 
   const overviewStats = useMemo(() => {
-    return (attendanceQuery.data || []).reduce(
-      (acc, row) => {
+    const list = attendanceQuery.data?.data || [];
+    return list.reduce(
+      (acc: any, row: any) => {
         const primary = row.status || "Pending";
         if (primary === "Present") acc.present += 1;
         if (primary === "Absent") acc.absent += 1;
@@ -79,13 +86,17 @@ export const useAttendance = (shortcutMode: boolean = false) => {
         if (row.status2) acc.withSecondary += 1;
         return acc;
       },
-      { total: (attendanceQuery.data || []).length, present: 0, absent: 0, onLeave: 0, pending: 0, withSecondary: 0 }
+      { total: list.length, present: 0, absent: 0, onLeave: 0, pending: 0, withSecondary: 0 }
     );
   }, [attendanceQuery.data]);
 
   return {
     isLoading: attendanceQuery.isLoading,
-    attendance: attendanceQuery.data || [],
+    attendance: attendanceQuery.data?.data || [],
+    totalRecords: attendanceQuery.data?.total || 0,
+    totalPages: attendanceQuery.data?.totalPages || 1,
+    currentPage,
+    setCurrentPage,
     calendarSummary: calendarSummaryQuery.data || [],
     canEditAttendance,
     canConfigureWorkweek,

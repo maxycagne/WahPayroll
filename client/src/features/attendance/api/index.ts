@@ -8,11 +8,13 @@ import {
   AttendanceRecord
 } from "../types";
 
-export const getAttendance = (): Promise<AttendanceRecord[]> =>
-  mutationHandler(
-    axiosInterceptor.get("/api/employees/attendance"),
+export const getAttendance = (page: number, limit: number, search: string): Promise<any> => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit), search });
+  return mutationHandler(
+    axiosInterceptor.get(`/api/employees/attendance?${params.toString()}`),
     "Failed to fetch attendance"
   );
+};
 
 export const getAttendanceCalendarSummary = (year: number, month: number): Promise<AttendanceCalendarSummary[]> =>
   mutationHandler(

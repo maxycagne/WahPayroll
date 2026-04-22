@@ -220,15 +220,26 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- QUERIES ---
-  const { data: payrollData = [], isLoading: isLoadingPayroll } = useQuery({
-    queryKey: ["payroll", period],
+  const { data: responseData, isLoading: isLoadingPayroll } = useQuery({
+    queryKey: ["payroll", period, currentPage, search, designationFilter],
     queryFn: async () => {
+      const params = new URLSearchParams({
+        period,
+        page: currentPage,
+        limit: itemsPerPage,
+        search: search,
+        designationFilter: designationFilter,
+      });
       return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
         "Failed to fetch payroll",
       );
     },
   });
+
+  const payrollData = responseData?.data || [];
+  const totalPages = responseData?.totalPages || 1;
+  const totalRecords = responseData?.total || 0;
 
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employees"],
@@ -729,32 +740,15 @@ export default function Payroll({ shortcutMode = false }) {
   };
 
   const designationOptions = useMemo(() => {
+    // In a paginated setup with server-side filtering, getting all designations
+    // dynamically from the fetched page might not be accurate. But we'll leave it
+    // extracting from current data or define a static list if possible.
     const unique = new Set();
     for (const row of payrollData) {
       if (row.designation) unique.add(row.designation);
     }
     return ["All", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
   }, [payrollData]);
-
-  const filteredPayroll = useMemo(() => {
-    const searchText = (search || "").toLowerCase();
-
-    return payrollData.filter((p) => {
-      const bySearch = `${p.first_name} ${p.last_name} ${p.emp_id}`
-        .toLowerCase()
-        .includes(searchText);
-      const byDesignation =
-        designationFilter === "All" || p.designation === designationFilter;
-      return bySearch && byDesignation;
-    });
-  }, [payrollData, search, designationFilter]);
-
-  const totalPages = Math.ceil(filteredPayroll.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedPayroll = filteredPayroll.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
 
   const currentPeriodHistory = useMemo(
     () => salaryHistoryData,
@@ -772,11 +766,11 @@ export default function Payroll({ shortcutMode = false }) {
   }, [adjustmentModal, period]);
 
   const allFilteredSelected =
-    paginatedPayroll.length > 0 &&
-    paginatedPayroll.every((p) => selectedEmployees.has(p.emp_id));
+    payrollData.length > 0 &&
+    payrollData.every((p) => selectedEmployees.has(p.emp_id));
 
   const payrollSummary = useMemo(() => {
-    return filteredPayroll.reduce(
+    return payrollData.reduce(
       (acc, row) => {
         acc.count += 1;
         acc.gross += Number(row.gross_pay || 0);
@@ -786,7 +780,7 @@ export default function Payroll({ shortcutMode = false }) {
       },
       { count: 0, gross: 0, deductions: 0, net: 0 },
     );
-  }, [filteredPayroll]);
+  }, [payrollData]);
 
   const handleGeneratePayrollPdf = async () => {
     if (!isAdmin) return;
@@ -1013,7 +1007,7 @@ export default function Payroll({ shortcutMode = false }) {
                             setSelectedEmployees(
                               allFilteredSelected
                                 ? new Set()
-                                : new Set(paginatedPayroll.map((p) => p.emp_id)),
+                                : new Set(payrollData.map((p) => p.emp_id)),
                             )
                           }
                           checked={allFilteredSelected}
@@ -1047,7 +1041,7 @@ export default function Payroll({ shortcutMode = false }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredPayroll.length === 0 ? (
+                  {payrollData.length === 0 ? (
                     <tr>
                       <td
                         colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
@@ -1058,7 +1052,7 @@ export default function Payroll({ shortcutMode = false }) {
                       </td>
                     </tr>
                   ) : (
-                    paginatedPayroll.map((p) => (
+                    payrollData.map((p) => (
                       <tr
                         key={p.id}
                         onClick={() => {
@@ -1160,11 +1154,11 @@ export default function Payroll({ shortcutMode = false }) {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
                   <div className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
                     <span className="font-medium">
-                      {Math.min(startIndex + itemsPerPage, filteredPayroll.length)}
+                      {Math.min(currentPage * itemsPerPage, totalRecords)}
                     </span>{" "}
-                    of <span className="font-medium">{filteredPayroll.length}</span> results
+                    of <span className="font-medium">{totalRecords}</span> results
                   </div>
                   <div className="flex items-center gap-2">
                     <button

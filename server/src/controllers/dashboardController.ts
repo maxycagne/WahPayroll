@@ -423,16 +423,57 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 export const getAllEmployees = async (req: Request, res: Response) => {
   try {
     await ensureEmployeeGovernmentColumns();
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 6;
+    const search = (req.query.search as string) || "";
+    const status = (req.query.status as string) || "All";
+    const designation = (req.query.designation as string) || "All";
+
+    const offset = (page - 1) * limit;
+
+    let whereClause = "registration_status = 'Approved' AND emp_id NOT LIKE 'TEMP\\_%' AND COALESCE(role, '') <> 'Admin'";
+    const queryParams: any[] = [];
+
+    if (search) {
+      whereClause += " AND (first_name LIKE ? OR last_name LIKE ? OR emp_id LIKE ?)";
+      const searchParam = `%${search}%`;
+      queryParams.push(searchParam, searchParam, searchParam);
+    }
+
+    if (status !== "All") {
+      whereClause += " AND status = ?";
+      queryParams.push(status);
+    }
+
+    if (designation !== "All") {
+      whereClause += " AND designation = ?";
+      queryParams.push(designation);
+    }
+
+    const [countResult]: any = await pool.query(
+      `SELECT COUNT(*) as total FROM employees WHERE ${whereClause}`,
+      queryParams
+    );
+    const totalCount = countResult[0].total;
+
     const [rows] = await pool.query(
       `SELECT *
        FROM employees
-       WHERE registration_status = 'Approved'
-         AND emp_id NOT LIKE 'TEMP\\_%'
+       WHERE ${whereClause}
        ORDER BY
          CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
-         emp_id ASC`,
+         emp_id ASC
+       LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
     );
-    res.json(rows);
+
+    res.json({
+      data: rows,
+      total: totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (error) {
     console.error("DB Error in getAllEmployees:", error);
     res.status(500).json({ message: "Error fetching employees" });
@@ -887,6 +928,30 @@ export const getAllPayroll = async (req: Request, res: Response) => {
       scopedParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
     }
 
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 6;
+    const search = (req.query.search as string) || "";
+    const designationFilter = (req.query.designationFilter as string) || "All";
+
+    if (search) {
+      scopedWhereClause += " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.emp_id LIKE ?)";
+      const searchParam = `%${search}%`;
+      scopedParams.push(searchParam, searchParam, searchParam);
+    }
+
+    if (designationFilter !== "All") {
+      scopedWhereClause += " AND e.designation = ?";
+      scopedParams.push(designationFilter);
+    }
+
+    const offset = (page - 1) * limit;
+
+    const [countResult]: any = await pool.query(
+      `SELECT COUNT(*) as total FROM payroll p JOIN employees e ON p.emp_id = e.emp_id WHERE ${scopedWhereClause}`,
+      scopedParams
+    );
+    const totalCount = countResult[0].total;
+
     const [rows]: any = await pool.query(
       `SELECT
          p.*,
@@ -955,8 +1020,9 @@ export const getAllPayroll = async (req: Request, res: Response) => {
        WHERE ${scopedWhereClause}
        ORDER BY
          CAST(COALESCE(NULLIF(REGEXP_SUBSTR(p.emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
-         p.emp_id ASC`,
-      [periodStart, ...scopedParams],
+         p.emp_id ASC
+       LIMIT ? OFFSET ?`,
+      [periodStart, ...scopedParams, limit, offset],
     );
 
     const enrichedRows = rows.map((row: any) => {
@@ -979,7 +1045,12 @@ export const getAllPayroll = async (req: Request, res: Response) => {
       };
     });
 
-    res.json(enrichedRows);
+    res.json({
+      data: enrichedRows,
+      total: totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (error) {
     console.error("DB Error in getAllPayroll:", error);
     res.status(500).json({ message: "Error fetching payroll" });
