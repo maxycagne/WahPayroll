@@ -42,7 +42,7 @@ export const dashboardSummary = queryOptions({
 export const employees = queryOptions({
   queryKey: ["employees"],
   queryFn: async () => {
-    const res = await axiosInterceptor.get("/api/employees");
+    const res = await axiosInterceptor.get("/api/employees?limit=10000");
     return res.data;
   },
 });

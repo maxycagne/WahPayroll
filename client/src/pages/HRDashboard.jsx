@@ -124,16 +124,19 @@ export default function HRDashboard() {
   };
   const { data: dashboardData, isLoading: isLoadingDashboard } =
     useQuery(dashboardSummary);
-  const { data: employeesData = [], isLoading: isLoadingEmployees } =
+  const { data: rawEmployeesData, isLoading: isLoadingEmployees } =
     useQuery(employees);
-  const { data: payrollData = [] } = useQuery({
+  const employeesData = rawEmployeesData?.data || rawEmployeesData || [];
+
+  const { data: responsePayrollData } = useQuery({
     queryKey: ["dashboard-payroll", period],
     queryFn: async () => {
       return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}&limit=10000`),
       );
     },
   });
+  const payrollData = responsePayrollData?.data || responsePayrollData || [];
 
   const { data: attendanceSummary = [] } = useQuery({
     queryKey: ["dashboard-attendance-summary", year, month],
