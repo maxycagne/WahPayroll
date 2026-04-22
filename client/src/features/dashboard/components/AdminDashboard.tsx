@@ -218,7 +218,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       } else {
         alert("Failed to update leave request");
       }
-    } catch (error) {
+    } catch (error) {x
       console.error("Error updating leave:", error);
     }
   }, [queryClient]);

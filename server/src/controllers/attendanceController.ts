@@ -299,7 +299,7 @@ export const upsertWorkweekConfig = async (req: Request, res: Response) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    await ensureWorkweekConfigsTable(connection);
+    await ensureWorkweekConfigsTable(connection as any);
 
     const [overlaps]: any = await connection.query(
       `
@@ -385,7 +385,7 @@ export const updateWorkweekConfigById = async (req: Request, res: Response) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    await ensureWorkweekConfigsTable(connection);
+    await ensureWorkweekConfigsTable(connection as any);
 
     const [existing]: any = await connection.query(
       "SELECT id FROM workweek_configs WHERE id = ? LIMIT 1",
