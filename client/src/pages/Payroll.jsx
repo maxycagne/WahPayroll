@@ -198,6 +198,12 @@ export default function Payroll({ shortcutMode = false }) {
   const [bulkAdjustmentMode, setBulkAdjustmentMode] = useState(false);
   const [search, setSearch] = useState("");
   const [designationFilter, setDesignationFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, designationFilter, period]);
 
   const [salaryForm, setSalaryForm] = useState({
     designation: "",
@@ -743,6 +749,13 @@ export default function Payroll({ shortcutMode = false }) {
     });
   }, [payrollData, search, designationFilter]);
 
+  const totalPages = Math.ceil(filteredPayroll.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPayroll = filteredPayroll.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
   const currentPeriodHistory = useMemo(
     () => salaryHistoryData,
     [salaryHistoryData],
@@ -759,8 +772,8 @@ export default function Payroll({ shortcutMode = false }) {
   }, [adjustmentModal, period]);
 
   const allFilteredSelected =
-    filteredPayroll.length > 0 &&
-    filteredPayroll.every((p) => selectedEmployees.has(p.emp_id));
+    paginatedPayroll.length > 0 &&
+    paginatedPayroll.every((p) => selectedEmployees.has(p.emp_id));
 
   const payrollSummary = useMemo(() => {
     return filteredPayroll.reduce(
@@ -1000,7 +1013,7 @@ export default function Payroll({ shortcutMode = false }) {
                             setSelectedEmployees(
                               allFilteredSelected
                                 ? new Set()
-                                : new Set(filteredPayroll.map((p) => p.emp_id)),
+                                : new Set(paginatedPayroll.map((p) => p.emp_id)),
                             )
                           }
                           checked={allFilteredSelected}
@@ -1045,7 +1058,7 @@ export default function Payroll({ shortcutMode = false }) {
                       </td>
                     </tr>
                   ) : (
-                    filteredPayroll.map((p) => (
+                    paginatedPayroll.map((p) => (
                       <tr
                         key={p.id}
                         onClick={() => {
@@ -1142,6 +1155,38 @@ export default function Payroll({ shortcutMode = false }) {
                   )}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
+                  <div className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                    <span className="font-medium">
+                      {Math.min(startIndex + itemsPerPage, filteredPayroll.length)}
+                    </span>{" "}
+                    of <span className="font-medium">{filteredPayroll.length}</span> results
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <div className="text-sm font-medium text-gray-700 px-2">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>

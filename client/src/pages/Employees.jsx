@@ -41,6 +41,8 @@ export default function Employees({ shortcutMode = false }) {
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
   const [activeMenu, setActiveMenu] = useState(null); // For Ellipsis
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState(null);
@@ -83,6 +85,10 @@ export default function Employees({ shortcutMode = false }) {
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, shortcutMode]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
   const { data: employees = [], isLoading } = useQuery({
@@ -242,6 +248,13 @@ export default function Employees({ shortcutMode = false }) {
     return matchesSearch && matchesStatus && matchesDesignation;
   });
 
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
   if (isLoading)
     return <div className="p-6 font-bold">Loading Employees...</div>;
 
@@ -336,7 +349,7 @@ export default function Employees({ shortcutMode = false }) {
                     </td>
                   </tr>
                 ) : (
-                  filteredEmployees.map((emp) => (
+                  paginatedEmployees.map((emp) => (
                     <tr
                       key={emp.emp_id}
                       onClick={() => setSelectedEmployeeDetails(emp)}
@@ -466,6 +479,38 @@ export default function Employees({ shortcutMode = false }) {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white px-4 py-3 border border-t-0 border-gray-200 rounded-b-xl">
+              <div className="text-sm text-gray-700">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                <span className="font-medium">
+                  {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}
+                </span>{" "}
+                of <span className="font-medium">{filteredEmployees.length}</span> results
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                >
+                  Previous
+                </button>
+                <div className="text-sm font-medium text-gray-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

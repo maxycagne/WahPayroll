@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { AttendanceRecord } from "../types";
 import { badgeClass } from "../utils";
 
@@ -15,11 +15,22 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   canEdit,
   onAdjustBalance,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const filtered = attendance.filter((row) =>
     `${row.first_name} ${row.last_name} ${row.emp_id}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
@@ -42,7 +53,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
               </td>
             </tr>
           ) : (
-            filtered.map((row) => (
+            paginated.map((row) => (
               <tr key={row.emp_id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <p className="font-bold text-gray-900 m-0">{row.first_name} {row.last_name}</p>
@@ -81,6 +92,38 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
           )}
         </tbody>
       </table>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+            <span className="font-medium">
+              {Math.min(startIndex + itemsPerPage, filtered.length)}
+            </span>{" "}
+            of <span className="font-medium">{filtered.length}</span> results
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+            >
+              Previous
+            </button>
+            <div className="text-sm font-medium text-gray-700 px-2">
+              Page {currentPage} of {totalPages}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
