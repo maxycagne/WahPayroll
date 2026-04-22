@@ -356,9 +356,20 @@ export default function Employees({ shortcutMode = false }) {
                       </td>
                       <td className="px-6 py-4 text-gray-600">{emp.email}</td>
                       <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                          {emp.status}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 inline-block w-fit">
+                            {emp.status}
+                          </span>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
+                              emp.is_active
+                                ? "bg-green-50 text-green-700 border-green-100"
+                                : "bg-red-50 text-red-700 border-red-100"
+                            }`}
+                          >
+                            {emp.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
                       </td>
                       {canAddEmployee && (
                         <td
