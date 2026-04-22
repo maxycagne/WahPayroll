@@ -88,7 +88,9 @@ export default function PendingApprovalTableRow({
               }}
               className="rounded-md border border-indigo-200 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
             >
-              {isCancellationRequest ? "Review Cancel Request" : "Review Application"}
+              {isCancellationRequest
+                ? "Review Cancel Request"
+                : "Review Application"}
             </button>
           )
         ) : (

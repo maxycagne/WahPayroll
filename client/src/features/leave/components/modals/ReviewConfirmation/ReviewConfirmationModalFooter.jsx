@@ -20,14 +20,18 @@ export default function ReviewConfirmationModalFooter({
         <>
           <button
             type="button"
-            onClick={() => setReviewConfirm({ ...reviewConfirm, status: "Denied" })}
+            onClick={() =>
+              setReviewConfirm({ ...reviewConfirm, status: "Denied" })
+            }
             className="rounded-lg border border-red-200 bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-200"
           >
             {isCancellation ? "Keep Request" : "Deny"}
           </button>
           <button
             type="button"
-            onClick={() => setReviewConfirm({ ...reviewConfirm, status: "Approved" })}
+            onClick={() =>
+              setReviewConfirm({ ...reviewConfirm, status: "Approved" })
+            }
             className="rounded-lg border border-green-200 bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200"
           >
             {isCancellation ? "Approve Cancel" : "Approve"}

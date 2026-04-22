@@ -323,8 +323,8 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
 
                 {reviewConfirm.status ? (
                   <p className="m-0 text-sm text-slate-700">
-                    Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
-                    this leave request?
+                    Are you sure you want to{" "}
+                    {reviewConfirm.status.toLowerCase()} this leave request?
                   </p>
                 ) : (
                   <p className="m-0 text-sm text-slate-700">

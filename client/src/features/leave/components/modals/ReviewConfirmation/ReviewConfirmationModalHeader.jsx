@@ -11,12 +11,12 @@ export default function ReviewConfirmationModalHeader({ reviewConfirm }) {
             ? "Review Cancellation Request"
             : "Review Application"
           : reviewConfirm.decisionMode === "cancellation"
-          ? reviewConfirm.status === "Denied"
-            ? "Decline Cancellation Request"
-            : "Approve Cancellation Request"
-          : reviewConfirm.status === "Denied"
-            ? "Confirm Denial"
-            : "Confirm Approval"}
+            ? reviewConfirm.status === "Denied"
+              ? "Decline Cancellation Request"
+              : "Approve Cancellation Request"
+            : reviewConfirm.status === "Denied"
+              ? "Confirm Denial"
+              : "Confirm Approval"}
       </h2>
       <p className="m-0 mb-4 text-sm text-gray-600">
         {reviewConfirm.item.first_name} {reviewConfirm.item.last_name}
