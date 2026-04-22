@@ -348,7 +348,11 @@ export default function HRDashboard() {
                   stroke="#E2E8F0"
                 />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
                   content={<AttendanceTooltip />}
                   cursor={{ stroke: "#cbd5e1", strokeDasharray: "4 4" }}
