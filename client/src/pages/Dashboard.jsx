@@ -31,41 +31,11 @@ import Attendance from "./Attendance";
 import Payroll from "./Payroll";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import axiosInterceptor from "@/hooks/interceptor";
-
-function parseDateOnly(value) {
-  if (value instanceof Date)
-    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const raw = String(value || "").trim();
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (match) {
-    const [, y, m, d] = match;
-    return new Date(Number(y), Number(m) - 1, Number(d));
-  }
-  const parsed = new Date(raw);
-  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-}
-
-function getDateDiffInclusive(start, end) {
-  const from = parseDateOnly(start).getTime();
-  const to = parseDateOnly(end).getTime();
-  return Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-function getDateRangeInclusive(start, end) {
-  const dates = [];
-  const current = parseDateOnly(start);
-  const to = parseDateOnly(end);
-
-  while (current <= to) {
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, "0");
-    const day = String(current.getDate()).padStart(2, "0");
-    dates.push(`${year}-${month}-${day}`);
-    current.setDate(current.getDate() + 1);
-  }
-
-  return dates;
-}
+import { workweekConfigQueryOptions } from "@/features/leave/utils/query.utils";
+import {
+  formatLongDate,
+  getWorkingDateRangeInclusive,
+} from "@/features/leave/utils/date.utils";
 
 const fmtCompactCurrency = (value) => {
   const number = Number(value || 0);
@@ -284,7 +254,6 @@ function EmployeeDashboard({ currentUser }) {
           </div>
         </div>
 
-
         {/* QUICK ACTIONS */}
         <div className="flex flex-col gap-2">
           <button
@@ -451,6 +420,7 @@ function AdminDashboard({ currentUser }) {
       return mutationHandler(axiosInterceptor.get("/api/employees"));
     },
   });
+  const { data: workweekConfigs = [] } = useQuery(workweekConfigQueryOptions);
 
   const payrollQuery = useQuery({
     queryKey: ["dashboard-payroll", period],
@@ -634,23 +604,90 @@ function AdminDashboard({ currentUser }) {
   };
 
   const openLeaveDecisionConfirm = (employee, status) => {
-    const totalDays = getDateDiffInclusive(
+    const requestedDates = getWorkingDateRangeInclusive(
       employee.date_from,
       employee.date_to,
+      workweekConfigs,
     );
-    const requestedDates = getDateRangeInclusive(
-      employee.date_from,
-      employee.date_to,
-    );
+    const totalDays = requestedDates.length;
 
     setReviewConfirm({
       employee,
       status,
       totalDays,
       isMultiDay: totalDays > 1,
-      selectedDates: status === "Approved" ? requestedDates : [],
+      selectedDates: requestedDates,
       remarks: "",
     });
+  };
+
+  const getReviewReason = (employee) =>
+    employee?.reason || employee?.remarks || employee?.leave_reason || "";
+
+  const getReviewFiles = (employee) => {
+    const docsRaw = employee?.documents;
+    let docs = {};
+
+    if (typeof docsRaw === "string") {
+      try {
+        docs = JSON.parse(docsRaw);
+      } catch {
+        docs = {};
+      }
+    } else if (docsRaw && typeof docsRaw === "object") {
+      docs = docsRaw;
+    }
+
+    const files = Object.entries(docs)
+      .map(([key, value]) => {
+        if (typeof value === "string" && value.trim().length > 0) {
+          return { key, url: value, label: key };
+        }
+
+        if (value && typeof value === "object") {
+          const directUrl = value.url || value.download_url || value.fileUrl;
+          if (typeof directUrl === "string" && directUrl.trim().length > 0) {
+            return {
+              key,
+              url: directUrl,
+              label: value.originalName || value.file_name || key,
+            };
+          }
+
+          const keyValue = value.key || value.file_key || value.filename;
+          if (typeof keyValue === "string" && keyValue.trim().length > 0) {
+            return {
+              key,
+              url: `/api/file/get?filename=${encodeURIComponent(keyValue)}`,
+              label: value.originalName || value.file_name || key,
+            };
+          }
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    if (employee?.ocp) {
+      files.push({ key: "ocp", url: employee.ocp, label: "ocp" });
+    }
+
+    ["doctor_cert", "death_cert", "birth_cert", "marriage_cert"].forEach(
+      (field) => {
+        const value = employee?.[field];
+        if (typeof value === "string" && value.trim().length > 0) {
+          files.push({ key: field, url: value, label: field });
+        }
+      },
+    );
+
+    const uniqueMap = new Map();
+    files.forEach((entry) => {
+      const uniqueKey = `${entry.key}-${entry.url}`;
+      if (!uniqueMap.has(uniqueKey)) uniqueMap.set(uniqueKey, entry);
+    });
+
+    return Array.from(uniqueMap.values());
   };
 
   const toggleApprovedDate = (date) => {
@@ -671,6 +708,11 @@ function AdminDashboard({ currentUser }) {
   const submitLeaveDecision = async () => {
     if (!reviewConfirm) return;
 
+    if (!reviewConfirm.status) {
+      alert("Select Approve or Deny after reviewing the request.");
+      return;
+    }
+
     const trimmedRemarks = String(reviewConfirm.remarks || "").trim();
     const isDenyDecision = reviewConfirm.status === "Denied";
 
@@ -688,9 +730,10 @@ function AdminDashboard({ currentUser }) {
       return;
     }
 
-    const requestedDates = getDateRangeInclusive(
+    const requestedDates = getWorkingDateRangeInclusive(
       reviewConfirm.employee.date_from,
       reviewConfirm.employee.date_to,
+      workweekConfigs,
     );
     const selectedDates = reviewConfirm.selectedDates || [];
 
@@ -1013,9 +1056,8 @@ function AdminDashboard({ currentUser }) {
                             {employee.leave_type}
                           </p>
                           <p className="m-0 mt-0.5 text-[11px] text-gray-500">
-                            Dates:{" "}
-                            {new Date(employee.date_from).toLocaleDateString()}{" "}
-                            - {new Date(employee.date_to).toLocaleDateString()}
+                            Dates: {formatLongDate(employee.date_from)} -{" "}
+                            {formatLongDate(employee.date_to)}
                           </p>
                           <p
                             className={`m-0 mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priorityClass[employee.priority] || "bg-gray-100 text-gray-800"}`}
@@ -1025,26 +1067,13 @@ function AdminDashboard({ currentUser }) {
                         </div>
                         <div className="flex gap-2">
                           {!approvedLeaves.has(employee.id) ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openLeaveDecisionConfirm(employee, "Approved")
-                                }
-                                className="inline-flex items-center rounded-md bg-green-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-green-700 hover:shadow active:translate-y-px"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openLeaveDecisionConfirm(employee, "Denied")
-                                }
-                                className="inline-flex items-center rounded-md bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-red-700 hover:shadow active:translate-y-px"
-                              >
-                                Deny
-                              </button>
-                            </>
+                            <button
+                              type="button"
+                              onClick={() => openLeaveDecisionConfirm(employee)}
+                              className="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 hover:shadow active:translate-y-px"
+                            >
+                              Review Application
+                            </button>
                           ) : (
                             <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 whitespace-nowrap">
                               Processed
@@ -1179,9 +1208,11 @@ function AdminDashboard({ currentUser }) {
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <h3 className="m-0 text-sm font-semibold text-slate-900">
-                {reviewConfirm.status === "Denied"
-                  ? "Confirm Denial"
-                  : "Confirm Approval"}
+                {reviewConfirm.status
+                  ? reviewConfirm.status === "Denied"
+                    ? "Confirm Denial"
+                    : "Confirm Approval"
+                  : "Review Application"}
               </h3>
               <button
                 type="button"
@@ -1199,52 +1230,143 @@ function AdminDashboard({ currentUser }) {
                   {reviewConfirm.employee.last_name}
                 </span>{" "}
                 requested {reviewConfirm.employee.leave_type} from{" "}
-                {new Date(
-                  reviewConfirm.employee.date_from,
-                ).toLocaleDateString()}{" "}
-                to{" "}
-                {new Date(reviewConfirm.employee.date_to).toLocaleDateString()}.
+                {formatLongDate(reviewConfirm.employee.date_from)} to{" "}
+                {formatLongDate(reviewConfirm.employee.date_to)}.
               </p>
 
-              <p className="m-0 text-xs text-slate-700">
-                Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
-                this leave request?
-              </p>
+              {getReviewReason(reviewConfirm.employee) && (
+                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                    Stated Reason
+                  </p>
+                  <p className="m-0 mt-1 text-xs text-slate-900">
+                    {getReviewReason(reviewConfirm.employee)}
+                  </p>
+                </div>
+              )}
+
+              {getReviewFiles(reviewConfirm.employee).length > 0 && (
+                <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
+                  <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                    Uploaded Files
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {getReviewFiles(reviewConfirm.employee).map((file) => (
+                      <a
+                        key={`${file.key}-${file.url}`}
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center rounded-md border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-100"
+                      >
+                        {String(file.label || file.key).replace(/_/g, " ")}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {reviewConfirm.status ? (
+                <p className="m-0 text-xs text-slate-700">
+                  Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
+                  this leave request?
+                </p>
+              ) : (
+                <p className="m-0 text-xs text-slate-700">
+                  Review all details first, then choose Approve or Deny.
+                </p>
+              )}
 
               {reviewConfirm.status === "Approved" &&
-                reviewConfirm.isMultiDay && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5">
-                    <p className="m-0 mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-800">
-                      Multi-day request: select specific days to approve
-                    </p>
-                    <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                      {getDateRangeInclusive(
-                        reviewConfirm.employee.date_from,
-                        reviewConfirm.employee.date_to,
-                      ).map((date) => (
-                        <label
-                          key={date}
-                          className="flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white px-2 py-1 text-[11px] text-slate-700 transition-colors hover:bg-amber-100/40"
+                reviewConfirm.isMultiDay &&
+                (() => {
+                  const availableDates = getWorkingDateRangeInclusive(
+                    reviewConfirm.employee.date_from,
+                    reviewConfirm.employee.date_to,
+                    workweekConfigs,
+                  );
+                  const selectedDates = reviewConfirm.selectedDates || [];
+
+                  return (
+                    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                            Select specific days to approve
+                          </p>
+                          <p className="m-0 mt-1 text-[11px] text-slate-600">
+                            Pick the working days that should move forward.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                          {selectedDates.length} selected
+                        </span>
+                      </div>
+
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReviewConfirm({
+                              ...reviewConfirm,
+                              selectedDates: [...availableDates],
+                            })
+                          }
+                          className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-50"
                         >
-                          <input
-                            type="checkbox"
-                            checked={(
-                              reviewConfirm.selectedDates || []
-                            ).includes(date)}
-                            onChange={() => toggleApprovedDate(date)}
-                          />
-                          <span>
-                            {parseDateOnly(date).toLocaleDateString()}
-                          </span>
-                        </label>
-                      ))}
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReviewConfirm({
+                              ...reviewConfirm,
+                              selectedDates: [],
+                            })
+                          }
+                          className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                          Clear
+                        </button>
+                      </div>
+
+                      {selectedDates.length > 0 && (
+                        <div className="mb-3 flex max-h-20 flex-wrap gap-1.5 overflow-y-auto pr-1">
+                          {selectedDates.map((date) => (
+                            <span
+                              key={date}
+                              className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+                            >
+                              {formatLongDate(date)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+                        {availableDates.map((date) => (
+                          <label
+                            key={date}
+                            className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-[11px] text-slate-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/70"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedDates.includes(date)}
+                              onChange={() => toggleApprovedDate(date)}
+                              className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                            />
+                            <span className="leading-5 text-slate-800">
+                              {formatLongDate(date)}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="m-0 mt-3 text-[11px] font-semibold text-amber-800">
+                        Selected: {selectedDates.length} day(s)
+                      </p>
                     </div>
-                    <p className="m-0 mt-2 text-[11px] font-semibold text-amber-800">
-                      Selected: {(reviewConfirm.selectedDates || []).length}{" "}
-                      day(s)
-                    </p>
-                  </div>
-                )}
+                  );
+                })()}
 
               {reviewConfirm.status === "Denied" && (
                 <div>
@@ -1275,15 +1397,60 @@ function AdminDashboard({ currentUser }) {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={submitLeaveDecision}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:shadow active:translate-y-px ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
-              >
-                {reviewConfirm.status === "Denied"
-                  ? "Confirm Denial"
-                  : "Confirm Approval"}
-              </button>
+              {!reviewConfirm.status ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        status: "Denied",
+                        remarks: "",
+                      })
+                    }
+                    className="rounded-md border border-red-200 bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 transition-all duration-200 hover:bg-red-200"
+                  >
+                    Deny
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        status: "Approved",
+                      })
+                    }
+                    className="rounded-md border border-green-200 bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
+                  >
+                    Approve
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        status: undefined,
+                        remarks: "",
+                      })
+                    }
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitLeaveDecision}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:shadow active:translate-y-px ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
+                  >
+                    {reviewConfirm.status === "Denied"
+                      ? "Confirm Denial"
+                      : "Confirm Approval"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

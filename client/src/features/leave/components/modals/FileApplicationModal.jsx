@@ -1,5 +1,5 @@
 import LeaveForm from "../forms/LeaveForm";
-import ResignationForm from "../forms/ResignationForm";
+import ResignationForm from "../forms/ResignationForm.jsx";
 
 export default function FileApplicationModal({
   applicationModalOpen,
@@ -18,8 +18,6 @@ export default function FileApplicationModal({
   difference,
   totalCredits,
   handleSubmitLeave,
-  resignationForm,
-  setResignationForm,
   resignationTypes,
   fileResignationMutation,
 }) {
@@ -82,8 +80,6 @@ export default function FileApplicationModal({
                 </>
               ) : (
                 <ResignationForm
-                  resignationForm={resignationForm}
-                  setResignationForm={setResignationForm}
                   resignationTypes={resignationTypes}
                   setApplicationModalOpen={setApplicationModalOpen}
                   fileResignationMutation={fileResignationMutation}

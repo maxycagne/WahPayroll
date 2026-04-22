@@ -1,15 +1,19 @@
 import { badgeClass } from "../leaveConstants";
+import { formatLongDate } from "../utils/date.utils";
 
 export default function RequestHistoryTable({ myRequestHistory, activeMonth }) {
   const monthName = activeMonth
-    ? new Date(activeMonth.year, activeMonth.month).toLocaleString('default', { month: 'long', year: 'numeric' })
-    : '';
+    ? new Date(activeMonth.year, activeMonth.month).toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      })
+    : "";
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
         <h3 className="m-0 text-sm font-bold text-gray-900">
-          History of Leave / Resignation {monthName ? `for ${monthName}` : ''}
+          History of Leave / Resignation {monthName ? `for ${monthName}` : ""}
         </h3>
       </div>
       <div className="max-h-72 overflow-auto">
@@ -59,9 +63,7 @@ export default function RequestHistoryTable({ myRequestHistory, activeMonth }) {
                     {entry.schedule}
                   </td>
                   <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
-                    {entry.filed_at
-                      ? new Date(entry.filed_at).toLocaleDateString()
-                      : "-"}
+                    {entry.filed_at ? formatLongDate(entry.filed_at) : "-"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <span

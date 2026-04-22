@@ -141,10 +141,11 @@ export default function Toast({ toast, onClose }) {
   if (!payload) return null;
 
   const theme = TOAST_THEME[type] || TOAST_THEME.info;
-  const duration = Math.max(
-    800,
-    Number(payload.duration || TOAST_DURATION_FALLBACK),
-  );
+  const parsedDuration = Number(payload.duration);
+  const hasCountdown = Number.isFinite(parsedDuration) && parsedDuration > 0;
+  const duration = hasCountdown
+    ? Math.max(800, parsedDuration)
+    : TOAST_DURATION_FALLBACK;
 
   return (
     <div
@@ -196,15 +197,17 @@ export default function Toast({ toast, onClose }) {
         )}
       </div>
 
-      <div className="h-1 w-full bg-slate-100" aria-hidden="true">
-        <div
-          key={`${payload.message}-${payload.type}-${payload.createdAt || "now"}`}
-          className={`h-full ${theme.progress}`}
-          style={{
-            animation: `toast-progress ${duration}ms linear forwards`,
-          }}
-        />
-      </div>
+      {hasCountdown && (
+        <div className="h-1 w-full bg-slate-100" aria-hidden="true">
+          <div
+            key={`${payload.message}-${payload.type}-${payload.createdAt || "now"}`}
+            className={`h-full ${theme.progress}`}
+            style={{
+              animation: `toast-progress ${duration}ms linear forwards`,
+            }}
+          />
+        </div>
+      )}
 
       <style>{`@keyframes toast-progress { from { width: 100%; } to { width: 0%; } }`}</style>
     </div>

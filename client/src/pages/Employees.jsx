@@ -4,8 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
-import { User } from "lucide-react";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { User } from "lucide-react";
 
 const designationMap = {
   Operations: [
@@ -53,7 +53,7 @@ export default function Employees({ shortcutMode = false }) {
   const [formData, setFormData] = useState({
     emp_id: "",
     first_name: "",
-    middle_initial: "", // <-- Added Middle Initial
+    middle_initial: "",
     last_name: "",
     designation: "",
     position: "",
@@ -88,11 +88,14 @@ export default function Employees({ shortcutMode = false }) {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      return mutationHandler(axiosInterceptor.get("/api/employees"));
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees"),
+        "Failed to fetch employees",
+      );
     },
   });
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // --- MUTATIONS ---
   const addMutation = useMutation({
@@ -116,7 +119,11 @@ export default function Employees({ shortcutMode = false }) {
   const updateMutation = useMutation({
     mutationFn: async (updatedData) => {
       return mutationHandler(
-        axiosInterceptor.put(`/api/employees/${updatedData.emp_id}`, updatedData),
+        axiosInterceptor.put(
+          `/api/employees/${updatedData.emp_id}`,
+          updatedData,
+        ),
+        "Failed to update employee",
       );
     },
     onSuccess: () => {
@@ -130,8 +137,11 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id) =>
-      mutationHandler(axiosInterceptor.delete(`/api/employees/${id}`)),
+    mutationFn: (id) =>
+      mutationHandler(
+        axiosInterceptor.delete(`/api/employees/${id}`),
+        "Failed to delete employee",
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);
@@ -140,11 +150,26 @@ export default function Employees({ shortcutMode = false }) {
     onError: () => showToast("Failed to delete employee.", "error"),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, is_active }) =>
+      mutationHandler(
+        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, { is_active }),
+        "Failed to toggle status"
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(["employees"]);
+      showToast(`Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`);
+    },
+    onError: (err) => showToast(err.message, "error"),
+  });
+
   const resetPasswordMutation = useMutation({
     mutationFn: async (emp) => {
-      return mutationHandler(
+      const data = await mutationHandler(
         axiosInterceptor.put(`/api/employees/${emp.emp_id}/reset-password`),
+        "Failed to reset password",
       );
+      return { ...data, emp };
     },
     onSuccess: (data, emp) => {
       setResetConfirm(null);
@@ -308,98 +333,118 @@ export default function Employees({ shortcutMode = false }) {
                   </tr>
                 ) : (
                   filteredEmployees.map((emp) => (
-                  <tr
-                    key={emp.emp_id}
-                    onClick={() => setSelectedEmployeeDetails(emp)}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-800">
-                        {emp.last_name}, {emp.first_name}{" "}
-                        {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="font-medium text-gray-900">
-                        {emp.designation}
-                      </div>
-                      <div className="text-xs opacity-75">{emp.position}</div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                        {emp.status}
-                      </span>
-                    </td>
-                    {canAddEmployee && (
-                    <td
-                      className="px-6 py-4 text-center relative"
-                      onClick={(e) => e.stopPropagation()}
+                    <tr
+                      key={emp.emp_id}
+                      onClick={() => setSelectedEmployeeDetails(emp)}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      <button
-                        onClick={() =>
-                          setActiveMenu(
-                            activeMenu === emp.emp_id ? null : emp.emp_id,
-                          )
-                        }
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
-                      >
-                        <svg
-                          width="20"
-                          height="20"
-                          fill="currentColor"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                        </svg>
-                      </button>
-
-                      {/* Action Menu Dropdown */}
-                      {activeMenu === emp.emp_id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setActiveMenu(null)}
-                          ></div>
-                          <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                            <button
-                              onClick={() => {
-                                setEditEmployee(emp);
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                            >
-                              Edit Info
-                            </button>
-                            {canResetPassword && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenu(null);
-                                  setResetConfirm(emp);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
-                              >
-                                Reset Password
-                              </button>
-                            )}
-                            <hr className="my-1 border-gray-100" />
-                            <button
-                              onClick={() => {
-                                setDeleteConfirm(emp);
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                            >
-                              Delete
-                            </button>
+                      <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {/* The Name */}
+                          <div className="font-semibold text-gray-800">
+                            {emp.last_name}, {emp.first_name}{" "}
+                            {emp.middle_initial ? `${emp.middle_initial}.` : ""}
                           </div>
-                        </>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        <div className="font-medium text-gray-900">
+                          {emp.designation}
+                        </div>
+                        <div className="text-xs opacity-75">{emp.position}</div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                          {emp.status}
+                        </span>
+                      </td>
+                      {canAddEmployee && (
+                        <td
+                          className="px-6 py-4 text-center relative"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() =>
+                              setActiveMenu(
+                                activeMenu === emp.emp_id ? null : emp.emp_id,
+                              )
+                            }
+                            className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                          >
+                            <svg
+                              width="20"
+                              height="20"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                            </svg>
+                          </button>
+
+                          {/* Action Menu Dropdown */}
+                          {activeMenu === emp.emp_id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setActiveMenu(null)}
+                              ></div>
+                              <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
+                                <button
+                                  onClick={() => {
+                                    setEditEmployee(emp);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                                >
+                                  Edit Info
+                                </button>
+                                {canResetPassword && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveMenu(null);
+                                      setResetConfirm(emp);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                  >
+                                    Reset Password
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    toggleActiveMutation.mutate({
+                                      id: emp.emp_id,
+                                      is_active: !emp.is_active,
+                                    });
+                                    setActiveMenu(null);
+                                  }}
+                                  disabled={toggleActiveMutation.isPending}
+                                  className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
+                                    emp.is_active
+                                      ? "text-orange-600 hover:bg-orange-50"
+                                      : "text-green-600 hover:bg-green-50"
+                                  }`}
+                                >
+                                  {emp.is_active ? "Mark Inactive" : "Mark Active"}
+                                </button>
+                                <hr className="my-1 border-gray-100" />
+                                <button
+                                  onClick={() => {
+                                    setDeleteConfirm(emp);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </td>
                       )}
-                    </td>
-                    )}
-                  </tr>
-                ))
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -412,6 +457,7 @@ export default function Employees({ shortcutMode = false }) {
         <EmployeeModal
           title="Add New Employee"
           data={formData}
+          employees={employees} // <-- Pass employees for duplicate check
           onChange={handleInputChange}
           onClose={() => {
             setIsAddModalOpen(false);
@@ -429,6 +475,7 @@ export default function Employees({ shortcutMode = false }) {
         <EmployeeModal
           title="Edit Employee Information"
           data={editEmployee}
+          employees={employees} // <-- Pass employees for duplicate check
           isEdit={true}
           onChange={(e) => {
             const { name, value } = e.target;
@@ -731,12 +778,19 @@ function EmployeeDetailsModal({ employee, onClose }) {
 function EmployeeModal({
   title,
   data,
+  employees = [], // <-- Added employees prop
   onChange,
   onClose,
   onSubmit,
   isPending,
   isEdit = false,
 }) {
+  // Check if ID is duplicate
+  const isDuplicate =
+    !isEdit &&
+    data.emp_id &&
+    employees.some((emp) => emp.emp_id === data.emp_id);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -762,8 +816,17 @@ function EmployeeModal({
                 disabled={isEdit}
                 required
                 maxLength={20}
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
+                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 ${
+                  isDuplicate
+                    ? "border-red-500 ring-1 ring-red-500"
+                    : "border-gray-300"
+                }`}
               />
+              {isDuplicate && (
+                <span className="text-[10px] font-bold text-red-500 mt-1">
+                  Employee ID already in use
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
@@ -997,8 +1060,8 @@ function EmployeeModal({
             </button>
             <button
               type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white"
+              disabled={isPending || isDuplicate}
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending
                 ? "Processing..."

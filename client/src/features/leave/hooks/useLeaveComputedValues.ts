@@ -4,7 +4,7 @@ import {
   isPendingApprovalStatus,
   isSupervisorTeamMember,
 } from "../utils/computation.utils";
-import { isFutureDateString } from "../utils/date.utils";
+import { formatLongDate, isFutureDateString } from "../utils/date.utils";
 
 type UseComputedValues = {
   leaves: any[];
@@ -207,8 +207,8 @@ export const useComputedValues = ({
         ...myLeaves.map((l) => ({
           id: `leave-${l.id}`,
           request_type: l.leave_type,
-          employee_name: `${l.first_name || ''} ${l.last_name || ''}`.trim(),
-          schedule: `${new Date(l.date_from).toLocaleDateString()} - ${new Date(l.date_to).toLocaleDateString()}`,
+          employee_name: `${l.first_name || ""} ${l.last_name || ""}`.trim(),
+          schedule: `${formatLongDate(l.date_from)} - ${formatLongDate(l.date_to)}`,
           filter_date: l.date_from || l.created_at,
           filed_at: l.created_at,
           final_status: l.cancellation_requested_at
@@ -221,8 +221,8 @@ export const useComputedValues = ({
             Number(o.days_applied || 0) > 0
               ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
               : "Offset",
-          employee_name: `${o.first_name || ''} ${o.last_name || ''}`.trim(),
-          schedule: `${new Date(o.date_from).toLocaleDateString()} - ${new Date(o.date_to).toLocaleDateString()}`,
+          employee_name: `${o.first_name || ""} ${o.last_name || ""}`.trim(),
+          schedule: `${formatLongDate(o.date_from)} - ${formatLongDate(o.date_to)}`,
           filter_date: o.date_from || o.created_at,
           filed_at: o.created_at,
           final_status: o.cancellation_requested_at
@@ -232,9 +232,9 @@ export const useComputedValues = ({
         ...myOwnResignations.map((r) => ({
           id: `resignation-${r.id}`,
           request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
-          employee_name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+          employee_name: `${r.first_name || ""} ${r.last_name || ""}`.trim(),
           schedule: r.effective_date
-            ? new Date(r.effective_date).toLocaleDateString()
+            ? formatLongDate(r.effective_date)
             : "N/A",
           filter_date: r.effective_date || r.created_at,
           filed_at: r.created_at,
@@ -249,6 +249,55 @@ export const useComputedValues = ({
       ),
     // ✅ FIX: Add dependencies
     [myLeaves, myOffsets, myOwnResignations],
+  );
+
+  const allRequestHistory = useMemo(
+    () =>
+      [
+        ...leaves.map((l) => ({
+          id: `leave-${l.id}`,
+          request_type: l.leave_type,
+          employee_name: `${l.first_name || ""} ${l.last_name || ""}`.trim(),
+          schedule: `${formatLongDate(l.date_from)} - ${formatLongDate(l.date_to)}`,
+          filter_date: l.date_from || l.created_at,
+          filed_at: l.created_at,
+          final_status: l.cancellation_requested_at
+            ? "Cancellation Requested"
+            : l.status,
+        })),
+        ...offsetApplications.map((o) => ({
+          id: `offset-${o.id}`,
+          request_type:
+            Number(o.days_applied || 0) > 0
+              ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
+              : "Offset",
+          employee_name: `${o.first_name || ""} ${o.last_name || ""}`.trim(),
+          schedule: `${formatLongDate(o.date_from)} - ${formatLongDate(o.date_to)}`,
+          filter_date: o.date_from || o.created_at,
+          filed_at: o.created_at,
+          final_status: o.cancellation_requested_at
+            ? "Cancellation Requested"
+            : o.status,
+        })),
+        ...myResignations.map((r) => ({
+          id: `resignation-${r.id}`,
+          request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
+          employee_name: `${r.first_name || ""} ${r.last_name || ""}`.trim(),
+          schedule: r.effective_date
+            ? formatLongDate(r.effective_date)
+            : "N/A",
+          filter_date: r.effective_date || r.created_at,
+          filed_at: r.created_at,
+          final_status: r.cancellation_requested_at
+            ? "Cancellation Requested"
+            : r.status,
+        })),
+      ].sort(
+        (a, b) =>
+          new Date(b.filed_at || 0).getTime() -
+          new Date(a.filed_at || 0).getTime(),
+      ),
+    [leaves, offsetApplications, myResignations],
   );
 
   const unifiedMyLeaves = useMemo(
@@ -447,6 +496,7 @@ export const useComputedValues = ({
         cancellationsPending: myCancellationRequestsPending,
         rows: myRequestRows,
         history: myRequestHistory,
+        allHistory: allRequestHistory,
       },
     },
     calendar: {

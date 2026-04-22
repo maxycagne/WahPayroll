@@ -1,3 +1,5 @@
+import { formatLongDate } from "@/features/leave/utils/date.utils";
+
 const exitInterviewQuestions = [
   "What caused you to start looking for a new job?",
   "Why have you decided to leave the company?",
@@ -116,25 +118,19 @@ export default function ReviewResigApp({
               <p className="m-0">
                 <span className="font-semibold">Resignation Date:</span>{" "}
                 {reviewData.item.resignation_date
-                  ? new Date(
-                      reviewData.item.resignation_date,
-                    ).toLocaleDateString()
+                  ? formatLongDate(reviewData.item.resignation_date)
                   : "-"}
               </p>
               <p className="m-0">
                 <span className="font-semibold">Last Working Day:</span>{" "}
                 {reviewData.item.last_working_day
-                  ? new Date(
-                      reviewData.item.last_working_day,
-                    ).toLocaleDateString()
+                  ? formatLongDate(reviewData.item.last_working_day)
                   : "-"}
               </p>
               <p className="m-0">
                 <span className="font-semibold">Effective Date:</span>{" "}
                 {reviewData.item.effective_date
-                  ? new Date(
-                      reviewData.item.effective_date,
-                    ).toLocaleDateString()
+                  ? formatLongDate(reviewData.item.effective_date)
                   : "-"}
               </p>
             </div>

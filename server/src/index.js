@@ -10,14 +10,15 @@ import path from "path";
 import hrReportsRoutes from "./routes/hrReportRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.ts";
 import profileRoutes from "./routes/profileRoutes.ts";
+import registerRoutes from "./routes/registerRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 8001;
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://wah-payroll.vercel.app",
+  "https://wah-payroll-seven.vercel.app",
 ];
-
+//mavsy the great
 // Updated CORS configuration to allow React and your custom headers
 app.use(
   cors({
@@ -52,6 +53,7 @@ app.use("/api/file", fileRoutes);
 app.use("/api/hr-reports", hrReportsRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/me", profileRoutes);
+app.use("/api/register", registerRoutes);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

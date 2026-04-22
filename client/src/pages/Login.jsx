@@ -43,7 +43,7 @@ export default function Login() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3d0d74] via-[#50109a] to-[#6c2eb9] p-4 md:p-8">
+    <div className="min-h-screen bg-linear-to-br from-[#3d0d74] via-[#50109a] to-[#6c2eb9] p-4 md:p-8">
       {}
       <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-white/20 bg-white/95 shadow-2xl md:h-[calc(100vh-4rem)] md:grid-cols-2">
         <section className="relative hidden md:flex flex-col justify-between overflow-hidden bg-[#4a148c] p-10 text-white">
@@ -182,6 +182,16 @@ export default function Login() {
                   >
                     {login.isPending ? "Signing in..." : "Sign in"}
                   </Button>
+
+                  <div className="text-center text-sm text-slate-600 mt-2">
+                    Don't have an account?{" "}
+                    <a
+                      href="/register"
+                      className="font-medium text-[#5a1ea2] hover:text-[#4b1788]"
+                    >
+                      Register here
+                    </a>
+                  </div>
 
                   <Separator />
                   <p className="m-0 text-center text-xs text-slate-500">

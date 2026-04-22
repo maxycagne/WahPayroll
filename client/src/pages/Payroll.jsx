@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { pdf } from "@react-pdf/renderer";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
+import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-import axiosInterceptor from "@/hooks/interceptor";
+import { User, Mail, FileDown } from "lucide-react";
+import PayrollSummaryDoc from "../components/pdfTemps/PayrollSummaryDoc";
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -59,7 +61,16 @@ const toUiAdjustmentCategory = (rawType) => {
   return "Incentive";
 };
 
-const fmt = (n) => "₱" + n.toLocaleString();
+const fmt = (n) => {
+  const num = Number(n);
+  return isNaN(num)
+    ? "₱0.00"
+    : "₱" +
+        num.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+};
 
 const fmtSigned = (n) => {
   const num = Number(n || 0);
@@ -139,6 +150,7 @@ export default function Payroll({ shortcutMode = false }) {
   const [salaryBreakdownModal, setSalaryBreakdownModal] = useState(null);
   const [resetConfirmModal, setResetConfirmModal] = useState(false);
   const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
+  const [isGeneratingPayrollPdf, setIsGeneratingPayrollPdf] = useState(false);
 
   const [adjustmentType, setAdjustmentType] = useState("Incentive");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
@@ -207,6 +219,7 @@ export default function Payroll({ shortcutMode = false }) {
     queryFn: async () => {
       return mutationHandler(
         axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        "Failed to fetch payroll",
       );
     },
   });
@@ -214,7 +227,10 @@ export default function Payroll({ shortcutMode = false }) {
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      return mutationHandler(axiosInterceptor.get(`/api/employees`));
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees"),
+        "Failed to fetch employees",
+      );
     },
   });
 
@@ -227,11 +243,11 @@ export default function Payroll({ shortcutMode = false }) {
     enabled: Boolean(adjustmentModal?.emp_id),
     queryFn: async () => {
       const activePeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
-
       return mutationHandler(
         axiosInterceptor.get(
           `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
         ),
+        "Failed to fetch salary history",
       );
     },
   });
@@ -245,6 +261,7 @@ export default function Payroll({ shortcutMode = false }) {
         axiosInterceptor.post(`/api/employees/payroll/${emp_id}/send-payslip`, {
           period,
         }),
+        "Failed to send payslip",
       );
     },
     onSuccess: () => showToast("Payslip sent successfully!"),
@@ -255,9 +272,10 @@ export default function Payroll({ shortcutMode = false }) {
   const sendBulkPayslipsMutation = useMutation({
     mutationFn: async (selectedPeriod) => {
       return mutationHandler(
-        axiosInterceptor.post(`/api/employees/payroll/send-bulk-payslips`, {
+        axiosInterceptor.post("/api/employees/payroll/send-bulk-payslips", {
           period: selectedPeriod,
         }),
+        "Failed to send bulk payslips",
       );
     },
     onSuccess: (data) => {
@@ -276,9 +294,8 @@ export default function Payroll({ shortcutMode = false }) {
   const adjustmentMutation = useMutation({
     mutationFn: async (payload) => {
       return mutationHandler(
-        axiosInterceptor.post("/api/employees/salary-adjustment", {
-          payload,
-        }),
+        axiosInterceptor.post("/api/employees/salary-adjustment", payload),
+        "Failed to save adjustments",
       );
     },
   });
@@ -291,6 +308,7 @@ export default function Payroll({ shortcutMode = false }) {
           amount: payload.amount,
           description: payload.description,
         }),
+        "Failed to update adjustment",
       );
     },
     onSuccess: () => {
@@ -308,6 +326,7 @@ export default function Payroll({ shortcutMode = false }) {
     mutationFn: async (id) => {
       return mutationHandler(
         axiosInterceptor.delete(`/api/employees/salary-history/${id}`),
+        "Failed to remove adjustment",
       );
     },
     onSuccess: () => {
@@ -323,9 +342,8 @@ export default function Payroll({ shortcutMode = false }) {
   const updateBaseSalaryMutation = useMutation({
     mutationFn: async (payload) => {
       return mutationHandler(
-        axiosInterceptor.put("/api/employees/update-base-salary", {
-          payload,
-        }),
+        axiosInterceptor.put("/api/employees/update-base-salary", payload),
+        "Failed to update base salary",
       );
     },
     onSuccess: (_, variables) => {
@@ -353,9 +371,8 @@ export default function Payroll({ shortcutMode = false }) {
   const generatePayrollMutation = useMutation({
     mutationFn: async () => {
       return mutationHandler(
-        axiosInterceptor.post("/api/employees/generate-payroll", {
-          period: period,
-        }),
+        axiosInterceptor.post("/api/employees/generate-payroll", { period }),
+        "Failed to generate payroll",
       );
     },
     onSuccess: () => {
@@ -368,9 +385,8 @@ export default function Payroll({ shortcutMode = false }) {
   const resetPayrollMutation = useMutation({
     mutationFn: async () => {
       return mutationHandler(
-        axiosInterceptor.post("/api/employees/reset-payroll", {
-          payload,
-        }),
+        axiosInterceptor.post("/api/employees/reset-payroll"),
+        "Failed to reset payroll data",
       );
     },
     onSuccess: () => {
@@ -759,6 +775,44 @@ export default function Payroll({ shortcutMode = false }) {
     );
   }, [filteredPayroll]);
 
+  const handleGeneratePayrollPdf = async () => {
+    if (!isAdmin) return;
+    if (!Array.isArray(payrollData) || payrollData.length === 0) {
+      showToast("No payroll records found for this period.", "error");
+      return;
+    }
+
+    setIsGeneratingPayrollPdf(true);
+    try {
+      const sortedRows = [...payrollData].sort((a, b) => {
+        const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+        const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim();
+        return aName.localeCompare(bName);
+      });
+
+      const blob = await pdf(
+        <PayrollSummaryDoc rows={sortedRows} period={period} />,
+      ).toBlob();
+
+      const fileName = `payroll-summary-${period || "report"}.pdf`;
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(blobUrl);
+
+      showToast("Payroll PDF generated successfully.");
+    } catch (error) {
+      console.error("Payroll PDF generation failed:", error);
+      showToast("Failed to generate payroll PDF.", "error");
+    } finally {
+      setIsGeneratingPayrollPdf(false);
+    }
+  };
+
   if (isLoadingPayroll || isLoadingEmployees)
     return (
       <div className="p-6 text-gray-900 font-bold">Loading Payroll Data...</div>
@@ -815,6 +869,19 @@ export default function Payroll({ shortcutMode = false }) {
                     {sendBulkPayslipsMutation.isPending
                       ? `Sending to ${filteredPayroll.length} employees...`
                       : "Email All"}
+                  </button>
+
+                  <button
+                    onClick={handleGeneratePayrollPdf}
+                    disabled={
+                      isGeneratingPayrollPdf || payrollData.length === 0
+                    }
+                    className="px-4 py-2 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    {isGeneratingPayrollPdf
+                      ? "Generating PDF..."
+                      : "Generate Payroll PDF"}
                   </button>
 
                   <button
@@ -1001,12 +1068,14 @@ export default function Payroll({ shortcutMode = false }) {
                         )}
                         <td className="px-6 py-4">{p.emp_id}</td>
                         <td className="px-6 py-4">
-                          <div>
-                            <div className="font-bold text-gray-900">
-                              {p.first_name} {p.last_name}
-                            </div>
-                            <div className="text-xs text-gray-500 font-normal mt-0.5">
-                              {p.position}
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <div className="font-bold text-gray-900">
+                                {p.first_name} {p.last_name}
+                              </div>
+                              <div className="text-xs text-gray-500 font-normal mt-0.5">
+                                {p.position}
+                              </div>
                             </div>
                           </div>
                         </td>

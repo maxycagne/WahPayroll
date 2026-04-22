@@ -5,12 +5,14 @@ import {
   updateEmployee,
   resetEmployeePassword,
   deleteEmployee,
+  toggleEmployeeActiveStatus,
   getAllLeaves,
   updateLeaveStatus,
   // fileLeave,
   getAllPayroll,
   generatePayroll,
   getAttendance,
+  getAttendanceStats,
   adjustLeaveBalance,
   getDashboardSummary,
   getSalaryHistory,
@@ -61,7 +63,9 @@ import {
   downloadFileTemplate,
   deleteFileTemplate,
   uploadProfilePhoto,
+  removeProfilePhoto,
   replaceResignationFile,
+  removeResignationFile,
   updateMyProfile,
   changeMyPassword,
 } from "../controllers/employeeController.js";
@@ -98,6 +102,12 @@ router.get(
   "/attendance",
   authorizeRoles("Admin", "Supervisor", "HR"),
   getAttendance,
+  getAttendanceStats,
+);
+router.get(
+  "/attendance-stats",
+  authorizeRoles("Admin", "HR"),
+  getAttendanceStats,
 );
 
 router.get("/all-resignations", getAllResignations);
@@ -222,6 +232,11 @@ router.put(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   replaceResignationFile,
 );
+router.delete(
+  "/resignations/:id/file",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  removeResignationFile,
+);
 
 router.get(
   "/offset-balance/:emp_id",
@@ -335,6 +350,7 @@ router.get(
 
 router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
+router.put("/:id/toggle-active", authorizeRoles("Admin", "HR"), toggleEmployeeActiveStatus);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
 router.put(
   "/:id/reset-password",
@@ -403,6 +419,11 @@ router.post(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   uploadPhoto.single("profile_photo"),
   uploadProfilePhoto,
+);
+router.delete(
+  "/employees/:emp_id/photo",
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
+  removeProfilePhoto,
 );
 router.put("/me/profile", updateMyProfile);
 router.put("/me/change-password", changeMyPassword);

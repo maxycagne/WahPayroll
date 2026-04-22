@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 
 export default function SalaryHistory() {
   const [selectedEmployee, setSelectedEmployee] = useState("WAH-001");

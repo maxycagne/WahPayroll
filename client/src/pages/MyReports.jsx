@@ -42,6 +42,7 @@ export default function MyReports() {
     queryFn: async () => {
       return mutationHandler(
         axiosInterceptor.get("/api/employees/my-attendance"),
+        "Failed to fetch attendance",
       );
     },
   });
@@ -50,7 +51,8 @@ export default function MyReports() {
     queryKey: ["my-payroll-report", period],
     queryFn: async () => {
       return mutationHandler(
-        axiosInterceptor.get("/api/employees/payroll?period=${period}"),
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        "Failed to fetch payroll report",
       );
     },
   });

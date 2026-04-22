@@ -7,6 +7,7 @@ import {
   LogOut,
   ReceiptText,
   Users,
+  UserPlus,
   Wallet,
   Settings,
 } from "lucide-react";
@@ -15,6 +16,7 @@ const navItems = {
   Admin: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
+    { to: "/registration-requests", icon: UserPlus, label: "Registration Requests" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
@@ -34,6 +36,7 @@ const navItems = {
   HR: [
     { to: "/hr-dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
+    { to: "/registration-requests", icon: UserPlus, label: "Registration Requests" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },

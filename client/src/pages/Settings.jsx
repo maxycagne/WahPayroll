@@ -1,25 +1,18 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Lock, User, Eye, EyeOff } from "lucide-react";
-import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-import axiosInterceptor from "@/hooks/interceptor";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
+  const fileInputRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(
     JSON.parse(localStorage.getItem("wah_user") || "{}"),
   );
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const displayFirstName =
     currentUser?.first_name ||
@@ -36,8 +29,6 @@ export default function Settings() {
     phone: currentUser.phone || "",
   });
 
-
-
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -51,48 +42,47 @@ export default function Settings() {
     confirm: false,
   });
 
-  // Confirmation modal state
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-
   const togglePasswordVisibility = (field) => {
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  // Profile Save Mutation (uses /api/me/profile → updateMyProfile.ts)
-  const saveProfileMutation = useMutation({
-    mutationFn: async (profileData) => {
-      const res = await axiosInterceptor.put("/api/me/profile", profileData);
-      return res.data;
+  // Photo Upload Mutation
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append("profile_photo", file);
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/me/photo", formData),
+        "Failed to upload photo",
+      );
     },
-    onSuccess: () => {
-      const freshUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
-      let updatedUser = { ...freshUser };
-      updatedUser.email = profileForm.email;
+    onSuccess: (data) => {
+      const updatedUser = { ...currentUser, profile_photo: data.filePath };
       localStorage.setItem("wah_user", JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
-      showToast("Profile updated successfully.");
+      showToast("Profile photo updated successfully.");
     },
-    onError: (err) => showToast(err?.response?.data?.message || err.message || "Error updating profile.", "error"),
+    onError: () => showToast("Error uploading photo.", "error"),
   });
 
-  // Form submit handler — opens confirmation modal
-  const handleProfileSubmit = (e) => {
-    e.preventDefault();
-    setShowConfirmModal(true);
-  };
-
-  // Confirmed save — actually fire the mutation
-  const handleConfirmSave = () => {
-    setShowConfirmModal(false);
-    saveProfileMutation.mutate(profileForm);
-  };
+  // Profile Update Mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data) => {
+      return mutationHandler(
+        axiosInterceptor.put("/api/employees/me/profile", data),
+        "Failed to update profile",
+      );
+    },
+    onSuccess: () => showToast("Profile updated successfully."),
+    onError: () => showToast("Error updating profile.", "error"),
+  });
 
   // Password Change Mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data) => {
       return mutationHandler(
-        axiosInterceptor.put(`/api/employees/me/change-password`, data),
-        "Failed to change password"
+        axiosInterceptor.put("/api/employees/me/change-password", data),
+        "Failed to change password",
       );
     },
     onSuccess: () => {
@@ -106,6 +96,11 @@ export default function Settings() {
     onError: (err) => showToast(err.message, "error"),
   });
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) uploadPhotoMutation.mutate(file);
+  };
+
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -117,8 +112,6 @@ export default function Settings() {
       newPassword: passwordForm.newPassword,
     });
   };
-
-
 
   return (
     <div className="max-w-4xl mx-auto w-full">
@@ -160,11 +153,51 @@ export default function Settings() {
                   Public Profile
                 </h3>
 
+                {/* Photo Upload Section */}
+                <div className="flex items-center gap-5 mb-8">
+                  <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {currentUser.profile_photo ? (
+                      <img
+                        src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/jpeg, image/png, image/webp"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handlePhotoChange}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadPhotoMutation.isPending}
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <Camera className="w-4 h-4" />
+                      {uploadPhotoMutation.isPending
+                        ? "Uploading..."
+                        : "Change Photo"}
+                    </button>
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      JPG, PNG or WEBP. Max size 2MB.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Details Form */}
                 <form
-                  onSubmit={handleProfileSubmit}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    updateProfileMutation.mutate(profileForm);
+                  }}
                   className="space-y-4"
                 >
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -210,10 +243,10 @@ export default function Settings() {
                   <div className="pt-4 flex justify-end">
                     <button
                       type="submit"
-                      disabled={saveProfileMutation.isPending}
+                      disabled={updateProfileMutation.isPending}
                       className="px-5 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {saveProfileMutation.isPending
+                      {updateProfileMutation.isPending
                         ? "Saving..."
                         : "Save Changes"}
                     </button>
@@ -346,50 +379,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal */}
-      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-gray-900">
-              Confirm Changes
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500 mt-1">
-              Are you sure you want to save the following changes to your profile?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-
-            <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
-              <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <div className="text-sm">
-                <span className="font-medium text-gray-700">Email: </span>
-                <span className="text-gray-600">{profileForm.email}</span>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <button
-                type="button"
-                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </DialogClose>
-            <button
-              type="button"
-              onClick={handleConfirmSave}
-              className="px-4 py-2 text-sm font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors cursor-pointer"
-            >
-              Confirm & Save
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Toast toast={toast} onClose={clearToast} />
     </div>
   );

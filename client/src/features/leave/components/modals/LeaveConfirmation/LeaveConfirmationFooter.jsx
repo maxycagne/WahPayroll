@@ -1,3 +1,5 @@
+import { leaveUploadFieldKeys } from "../../../leaveConstants";
+
 export default function LeaveConfirmationModalFooter({
   confirmAction,
   setConfirmAction,
@@ -26,8 +28,18 @@ export default function LeaveConfirmationModalFooter({
               reason: confirmAction.reason,
             });
           } else {
+            const uploadedLeaveFiles = leaveUploadFieldKeys.reduce(
+              (acc, fieldKey) => {
+                if (formData[fieldKey] instanceof File) {
+                  acc[fieldKey] = formData[fieldKey];
+                }
+                return acc;
+              },
+              {},
+            );
+
             submitLeaveMutation.mutate({
-              Ocp: formData.OCP,
+              ...uploadedLeaveFiles,
               emp_id: formData.emp_id,
               leave_type: formData.leaveType,
               date_from: formData.fromDate,

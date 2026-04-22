@@ -23,7 +23,7 @@ router.get(
 router.post(
   "/",
   authorizeRoles("Supervisor", "HR", "RankAndFile"),
-  file.single("Ocp"),
+  file.any(),
   fileLeave,
 );
 export default router;

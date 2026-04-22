@@ -10,6 +10,7 @@ import {
   getDbStoredFileByKey,
   saveDbStoredFile,
 } from "../functions/dbFileStorage.ts";
+import { isDeductibleLeave } from "../constants/leavePolicy.ts";
 
 // payrollModel.js
 export const getPayrollByEmployee = async (connection, emp_id, period) => {
@@ -296,6 +297,40 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
   if (approvedDatesColumn.length === 0) {
     await connection.query(
       "ALTER TABLE leave_requests ADD COLUMN approved_dates JSON NULL AFTER approved_days",
+    );
+  }
+
+  const [reasonColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'reason'
+      LIMIT 1
+    `,
+  );
+
+  if (reasonColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN reason TEXT NULL",
+    );
+  }
+
+  const [documentsColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'documents'
+      LIMIT 1
+    `,
+  );
+
+  if (documentsColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN documents JSON NULL",
     );
   }
 
@@ -610,6 +645,15 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
     { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
     { name: "profile_photo", type: "VARCHAR(255)", after: "gsis_no" },
+    {
+      name: "registration_status",
+      type: "ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending'",
+      after: "role",
+    },
+    { name: "reviewed_by", type: "VARCHAR(50)", after: "registration_status" },
+    { name: "reviewed_at", type: "TIMESTAMP NULL", after: "reviewed_by" },
+    { name: "review_remarks", type: "TEXT", after: "reviewed_at" },
+    { name: "is_active", type: "BOOLEAN NOT NULL DEFAULT TRUE", after: "registration_status" },
   ];
 
   for (const column of governmentColumns) {
@@ -635,6 +679,45 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
         if (error?.code !== "ER_DUP_FIELDNAME") {
           throw error;
         }
+      }
+    }
+  }
+
+  // Keep existing non-temporary users eligible to login after introducing registration_status.
+  await connection.query(
+    `UPDATE employees
+     SET registration_status = 'Approved'
+     WHERE (registration_status IS NULL OR registration_status = 'Pending')
+       AND emp_id NOT LIKE 'TEMP\\_%'`,
+  );
+
+  await connection.query(
+    `UPDATE employees
+     SET is_active = TRUE
+     WHERE is_active IS NULL`,
+  );
+
+  const [fkRows] = await connection.query(
+    `SELECT 1
+     FROM information_schema.TABLE_CONSTRAINTS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'employees'
+       AND CONSTRAINT_NAME = 'fk_reviewed_by'
+       AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+     LIMIT 1`,
+  );
+
+  if (fkRows.length === 0) {
+    try {
+      await connection.query(
+        `ALTER TABLE employees
+         ADD CONSTRAINT fk_reviewed_by
+         FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id)
+         ON DELETE SET NULL`,
+      );
+    } catch (error) {
+      if (error?.code !== "ER_DUP_KEYNAME") {
+        throw error;
       }
     }
   }
@@ -736,6 +819,8 @@ const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
 
   const defaultLeave = getDefaultLeaveAllocation(employeeRows[0].status);
 
+  // ============ CALCULATE USED DAYS (EXCLUDE MANDATED & LWOP) ============
+  // Mandated leaves and Leave-Without-Pay do not deduct from balance
   const [usedRows] = await connection.query(
     `SELECT
        COALESCE(
@@ -750,7 +835,15 @@ const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
        ) AS used_days
      FROM leave_requests
      WHERE emp_id = ?
-       AND status IN ('Approved', 'Partially Approved')`,
+       AND status IN ('Approved', 'Partially Approved')
+       AND leave_type NOT IN (
+         'Mandated - Maternity Leave',
+         'Mandated - Special Leave for Women',
+         'Mandated - Paternity Leave',
+         'Mandated - Solo Parent Leave',
+         'Mandated - VAWC Leave',
+         'Leave Without Pay'
+       )`,
     [empId],
   );
 
@@ -1679,6 +1772,8 @@ export const getAllEmployees = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT *
        FROM employees
+       WHERE registration_status = 'Approved'
+         AND emp_id NOT LIKE 'TEMP\\_%'
        ORDER BY
          CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
          emp_id ASC`,
@@ -1722,6 +1817,15 @@ export const createEmployee = async (req, res) => {
   const normalizedHiredDate = normalizeDateInput(hired_date);
 
   try {
+    const [existingIdRows] = await pool.query(
+      "SELECT emp_id FROM employees WHERE emp_id = ? LIMIT 1",
+      [emp_id],
+    );
+
+    if (existingIdRows.length > 0) {
+      return res.status(400).json({ message: "Employee ID already in use" });
+    }
+
     await ensureEmployeeGovernmentColumns();
     await ensurePositionSalarySettingsTable();
 
@@ -1786,8 +1890,8 @@ export const createEmployee = async (req, res) => {
 
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -1940,6 +2044,27 @@ export const deleteEmployee = async (req, res) => {
   } catch (error) {
     console.error("DB Error in deleteEmployee:", error);
     res.status(500).json({ message: "Error deleting employee" });
+  }
+};
+
+export const toggleEmployeeActiveStatus = async (req, res) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      "UPDATE employees SET is_active = ? WHERE emp_id = ?",
+      [is_active, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    res.json({ message: `Employee marked as ${is_active ? 'Active' : 'Inactive'}` });
+  } catch (error) {
+    console.error("DB Error in toggleEmployeeActiveStatus:", error);
+    res.status(500).json({ message: "Error toggling employee status" });
   }
 };
 
@@ -2829,6 +2954,24 @@ export const fileResignation = async (req, res) => {
     exit_interview_answers,
     endorsement_file_key,
   } = req.body;
+
+  const computeOneMonthAheadDateString = (baseDate = new Date()) => {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const day = baseDate.getDate();
+
+    const targetYear = month === 11 ? year + 1 : year;
+    const targetMonth = (month + 1) % 12;
+    const maxDayInTargetMonth = new Date(
+      targetYear,
+      targetMonth + 1,
+      0,
+    ).getDate();
+    const targetDay = Math.min(day, maxDayInTargetMonth);
+
+    return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+  };
+
   try {
     const requesterEmpId =
       req.user?.role === "Admin" && emp_id
@@ -2891,7 +3034,11 @@ export const fileResignation = async (req, res) => {
         return res.status(404).json({ message: "Requester not found" });
       }
 
-      const parsedResignationDate = new Date(resignation_date);
+      const computedResignationDate = computeOneMonthAheadDateString(
+        new Date(),
+      );
+
+      const parsedResignationDate = new Date(computedResignationDate);
       const parsedLastWorkingDay = new Date(last_working_day);
       const parsedEffectiveDate = new Date(effective_date);
 
@@ -2959,7 +3106,7 @@ export const fileResignation = async (req, res) => {
           trimmedLetter,
           recipient_name || null,
           recipient_emp_id || null,
-          resignation_date || null,
+          computedResignationDate,
           last_working_day || null,
           JSON.stringify(parsedReasons),
           String(leaving_reason_other || "").trim() || null,
@@ -3346,6 +3493,113 @@ export const getAttendance = async (req, res) => {
   } catch (error) {
     console.error("DB Error in getAttendance:", error);
     res.status(500).json({ message: "Error fetching attendance" });
+  }
+};
+
+export const getAttendanceStats = async (req, res) => {
+  const { mode = "month", month, year, start, end } = req.query;
+
+  const buildMonthBounds = (monthValue) => {
+    if (!/^\d{4}-\d{2}$/.test(String(monthValue || ""))) return null;
+
+    const [yearValue, monthIndex] = String(monthValue).split("-").map(Number);
+    const firstDay = `${yearValue}-${String(monthIndex).padStart(2, "0")}-01`;
+    const lastDayDate = new Date(yearValue, monthIndex, 0);
+    const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
+    return { startDate: firstDay, endDate: lastDay };
+  };
+
+  const buildYearBounds = (yearValue) => {
+    if (!/^\d{4}$/.test(String(yearValue || ""))) return null;
+    return {
+      startDate: `${yearValue}-01-01`,
+      endDate: `${yearValue}-12-31`,
+    };
+  };
+
+  const buildRangeBounds = (startValue, endValue) => {
+    const startBounds = buildMonthBounds(startValue);
+    const endBounds = buildMonthBounds(endValue);
+    if (!startBounds || !endBounds) return null;
+
+    return startBounds.startDate <= endBounds.endDate
+      ? { startDate: startBounds.startDate, endDate: endBounds.endDate }
+      : { startDate: endBounds.startDate, endDate: startBounds.endDate };
+  };
+
+  const normalizedMode = String(mode || "month").toLowerCase();
+  const resolvedBounds =
+    normalizedMode === "year"
+      ? buildYearBounds(year)
+      : normalizedMode === "range"
+        ? buildRangeBounds(start, end)
+        : buildMonthBounds(month);
+
+  if (!resolvedBounds) {
+    return res.status(400).json({ message: "Invalid attendance stats range" });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        e.emp_id,
+        e.first_name,
+        e.last_name,
+        e.designation,
+        e.status AS emp_status,
+        COALESCE(att.total_absences, 0) AS total_absences,
+        COALESCE(lv.approved_leave_count, 0) AS approved_leave_count,
+        COALESCE(lv.approved_leave_days, 0) AS approved_leave_days,
+        COALESCE(lb.leave_balance, 0) AS leave_balance
+      FROM employees e
+      LEFT JOIN leave_balances lb ON e.emp_id = lb.emp_id
+      LEFT JOIN (
+        SELECT
+          emp_id,
+          COUNT(*) AS total_absences
+        FROM attendance
+        WHERE date BETWEEN ? AND ?
+          AND (status = 'Absent' OR status2 = 'Absent')
+        GROUP BY emp_id
+      ) att ON e.emp_id = att.emp_id
+      LEFT JOIN (
+        SELECT
+          emp_id,
+          COUNT(*) AS approved_leave_count,
+          SUM(
+            COALESCE(
+              approved_days,
+              DATEDIFF(date_to, date_from) + 1,
+              0
+            )
+          ) AS approved_leave_days
+        FROM leave_requests
+        WHERE date_to >= ?
+          AND date_from <= ?
+          AND status IN ('Approved', 'Partially Approved')
+        GROUP BY emp_id
+      ) lv ON e.emp_id = lv.emp_id
+      WHERE COALESCE(e.role, '') <> 'Admin'
+        AND e.status != 'Inactive'
+      ORDER BY
+        COALESCE(att.total_absences, 0) DESC,
+        COALESCE(lv.approved_leave_days, 0) DESC,
+        e.last_name ASC,
+        e.first_name ASC
+    `,
+      [
+        resolvedBounds.startDate,
+        resolvedBounds.endDate,
+        resolvedBounds.startDate,
+        resolvedBounds.endDate,
+      ],
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getAttendanceStats:", error);
+    res.status(500).json({ message: "Error fetching attendance stats" });
   }
 };
 
@@ -5563,6 +5817,59 @@ export const uploadProfilePhoto = async (req, res) => {
   }
 };
 
+export const removeProfilePhoto = async (req, res) => {
+  try {
+    const targetEmpId = String(req.params?.emp_id || req.user?.emp_id || "").trim();
+    if (!targetEmpId) {
+      return res.status(400).json({ message: "Target employee is required" });
+    }
+
+    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
+    if (!viewer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const targetEmployee = await getEmployeeProfile(pool, targetEmpId);
+    if (!targetEmployee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const canManageTarget =
+      viewer.role === "Admin" ||
+      viewer.role === "HR" ||
+      viewer.emp_id === targetEmpId ||
+      (viewer.role === "Supervisor" &&
+        String(viewer.designation || "").trim().toLowerCase() ===
+          String(targetEmployee.designation || "").trim().toLowerCase());
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot remove this file" });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT profile_photo FROM employees WHERE emp_id = ?",
+      [targetEmpId],
+    );
+
+    const oldPhotoPath = String(rows?.[0]?.profile_photo || "").trim();
+    await pool.query("UPDATE employees SET profile_photo = NULL WHERE emp_id = ?", [
+      targetEmpId,
+    ]);
+
+    if (oldPhotoPath) {
+      const fullOldPath = path.join(process.cwd(), oldPhotoPath);
+      if (fs.existsSync(fullOldPath)) {
+        fs.unlinkSync(fullOldPath);
+      }
+    }
+
+    return res.json({ message: "Profile photo removed successfully" });
+  } catch (error) {
+    console.error("Error in removeProfilePhoto:", error);
+    return res.status(500).json({ message: "Error removing profile photo" });
+  }
+};
+
 export const replaceResignationFile = async (req, res) => {
   const requester = await getEmployeeProfile(pool, req.user?.emp_id);
   const resignationId = req.params?.id;
@@ -5636,6 +5943,84 @@ export const replaceResignationFile = async (req, res) => {
   } catch (error) {
     console.error("DB Error in replaceResignationFile:", error);
     return res.status(500).json({ message: "Error replacing resignation file" });
+  }
+};
+
+export const removeResignationFile = async (req, res) => {
+  const requester = await getEmployeeProfile(pool, req.user?.emp_id);
+  const resignationId = req.params?.id;
+  const fileField = String(req.body?.file_field || "").trim();
+  const oldFileKeyFromBody = String(req.body?.old_file_key || "").trim();
+
+  if (!requester) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const allowedFields = {
+    endorsement_file_key: "endorsement_file_key",
+    clearance_file_key: "clearance_file_key",
+  };
+
+  const columnName = allowedFields[fileField];
+  if (!columnName) {
+    return res.status(400).json({ message: "Invalid file field" });
+  }
+
+  try {
+    await ensureResignationsTable();
+
+    const [rows] = await pool.query(
+      `SELECT r.id, r.emp_id, r.endorsement_file_key, r.clearance_file_key, e.designation, COALESCE(e.role, 'RankAndFile') AS role
+       FROM resignations r
+       JOIN employees e ON e.emp_id = r.emp_id
+       WHERE r.id = ?
+       LIMIT 1`,
+      [resignationId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Resignation request not found" });
+    }
+
+    const target = rows[0];
+    const targetRole = normalizeRole(target.role);
+    const canManageTarget =
+      requester.role === "Admin" ||
+      requester.role === "HR" ||
+      requester.emp_id === target.emp_id ||
+      (requester.role === "Supervisor" &&
+        String(requester.designation || "").trim().toLowerCase() ===
+          String(target.designation || "").trim().toLowerCase() &&
+        targetRole !== "Admin");
+
+    if (!canManageTarget) {
+      return res.status(403).json({ message: "You cannot remove this file" });
+    }
+
+    const oldFileKey =
+      oldFileKeyFromBody ||
+      String(
+        columnName === "endorsement_file_key"
+          ? target.endorsement_file_key
+          : target.clearance_file_key,
+      ).trim();
+
+    await pool.query(`UPDATE resignations SET ${columnName} = NULL WHERE id = ?`, [
+      resignationId,
+    ]);
+
+    if (oldFileKey) {
+      try {
+        await deleteS3ObjectQuietly(oldFileKey);
+      } catch (deleteError) {
+        console.error("S3 cleanup error in removeResignationFile:", deleteError);
+      }
+    }
+
+    return res.json({ message: "Resignation file removed successfully" });
+  } catch (error) {
+    console.error("DB Error in removeResignationFile:", error);
+    return res.status(500).json({ message: "Error removing resignation file" });
   }
 };
 

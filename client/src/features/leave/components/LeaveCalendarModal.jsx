@@ -1,11 +1,14 @@
-import React from "react";
-import { badgeClass } from "../leaveConstants";
+import React, { useMemo } from "react";
+import { badgeClass, calendarStatusCardClass } from "../leaveConstants";
+import { formatLongDate } from "@/features/leave/utils/date.utils";
 
 const LeaveCalendarModal = ({
   setSelectedDate,
   selectedDateStr,
   selectedLeaves,
 }) => {
+  const orderedLeaves = useMemo(() => selectedLeaves || [], [selectedLeaves]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4"
@@ -43,10 +46,10 @@ const LeaveCalendarModal = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {selectedLeaves.map((l) => (
+              {orderedLeaves.map((l) => (
                 <div
                   key={l.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  className={`rounded-xl p-4 shadow-sm ${calendarStatusCardClass[l.calendar_status] || "border border-slate-200 bg-white"}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -60,8 +63,8 @@ const LeaveCalendarModal = ({
                           `(${Number(l.days_applied || 0).toFixed(2)} days)`}
                       </p>
                       <p className="m-0 mt-1 text-xs text-slate-500">
-                        {new Date(l.date_from).toLocaleDateString()} to{" "}
-                        {new Date(l.date_to).toLocaleDateString()}
+                        {formatLongDate(l.date_from)} to{" "}
+                        {formatLongDate(l.date_to)}
                       </p>
                       {l.supervisor_remarks && (
                         <p className="m-0 mt-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs italic text-slate-600">

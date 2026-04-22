@@ -58,7 +58,6 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
     payrollRecord.period_start || `${period}-01`,
   ).toLocaleString("default", { month: "long", year: "numeric" });
 
-  // Data Prep: Deductions
   let deductionItems = payrollRecord.deduction_reasons
     ? String(payrollRecord.deduction_reasons)
         .split(" | ")
@@ -68,22 +67,13 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
         })
     : [];
 
-  const totalAbsenceVal = Number(payrollRecord.absence_deductions || 0);
-  if (totalAbsenceVal > 0) {
-    const alreadyListed = deductionItems.some(
-      (item) =>
-        item.label.toLowerCase().includes("absence") ||
-        item.label.toLowerCase().includes("undertime"),
-    );
-    if (!alreadyListed) {
-      deductionItems.unshift({
-        label: "Absences / Undertime",
-        amount: fmtPeso(totalAbsenceVal),
-      });
-    }
+  if (Number(payrollRecord.absence_deductions) > 0) {
+    deductionItems.unshift({
+      label: "Absences / Undertime",
+      amount: fmtPeso(payrollRecord.absence_deductions),
+    });
   }
 
-  // Data Prep: Incentives
   const incentiveLines = payrollRecord.incentive_reasons
     ? String(payrollRecord.incentive_reasons)
         .split(" | ")
@@ -93,6 +83,8 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
 
   // PDF Generation
   const page = await browser.newPage();
+  await page.setDefaultNavigationTimeout(60000);
+  // Optimization: Use domcontentloaded instead of networkidle0 for speed
   const pdfHtmlContent = `
         <!DOCTYPE html>
         <html>
@@ -155,11 +147,22 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
               <div class="footer-note">*** WAH Confidential - Maximum Restrictions ***</div>
             </div>
           </div>
-        </body>
-        </html>
-      `;
+          <div class="summary-section">
+            <div class="summary-table">
+              <div class="summary-line" style="font-weight:bold;"><span>PAY SUMMARY</span><span>PHP</span></div>
+              <div class="summary-line"><span>Total Gross</span><span>${fmtPeso(payrollRecord.gross_pay)}</span></div>
+              <div class="summary-line"><span>Total Deductions</span><span>${fmtPeso(payrollRecord.absence_deductions)}</span></div>
+              <div class="net-pay"><span>NET SALARY & WAGES:</span><span>${fmtPeso(payrollRecord.net_pay)}</span></div>
+            </div>
+          </div>
+          <div class="footer-note">*** WAH Confidential - Maximum Restrictions ***</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 
-  await page.setContent(pdfHtmlContent, { waitUntil: "networkidle0" });
+  await page.setContent(pdfHtmlContent, { waitUntil: "domcontentloaded" });
   const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
 
   // Close the page to free up memory, but keep the browser open!
@@ -172,9 +175,8 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
     html: `<div style="font-family:sans-serif;color:#333;line-height:1.5"><p>Good day!</p><p>Kindly see the attached <b>Payslip</b> for your reference.</p><p>You can also see the payslip in <b>WahPayroll.com</b></p><p>If you have any concerns, please don't hesitate to let me know.</p><p style="margin-bottom:0">--</p><div style="margin-top:5px"><strong style="color:#1a3a5f">Finance Team</strong><br><strong style="color:#2b78c5;font-size:1.1em">Wireless Access for Health Initiative Inc. (WAH)</strong></div><div style="margin-top:15px;font-size:.9em;color:#666">2nd Floor, Diwa ng Tarlac, Romulo Blvd.<br>San Vicente, Tarlac City 2300<br>Web: <a href="http://www.wah.ph" style="color:#2b78c5">www.wah.ph</a> | FB: <a href="http://www.facebook.com/wah.ph" style="color:#2b78c5">wah.ph</a> | LinkedIn: <a href="https://linkedin.com/company/wahteam" style="color:#2b78c5">wahteam</a><br>Telefax: +6345 985 5607<br>Mobile: +63917 529 7095 / +63998 565 1432</div><div style="margin-top:25px;font-size:.75em;color:#444;border-top:1px solid #eee;padding-top:10px;text-align:justify"><strong>CONFIDENTIALITY NOTICE:</strong> This email, including attachments, is for the intended recipient(s) and may contain confidential information. Unauthorized review, use, or distribution is prohibited. If you are not the intended recipient, please contact the sender and destroy all copies.</div></div>`,
     attachments: [
       {
-        filename: `Payslip_${payrollRecord.last_name}_${period}.pdf`,
+        filename: `Payslip_${payrollRecord.last_name}.pdf`,
         content: pdfBuffer,
-        contentType: "application/pdf",
       },
     ],
   });
@@ -186,16 +188,14 @@ export const sendBulkPayslips = async (req, res) => {
   try {
     const { period } = req.body;
     const payrolls = await getPayrollForBulk(pool, period);
-
-    if (!payrolls || payrolls.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No payroll records found for this period." });
-    }
+    if (!payrolls?.length)
+      return res.status(404).json({ message: "No records found." });
 
     // Reuse the global browser instance
     const browser = await getBrowserInstance();
 
+    // Process in small parallel chunks (faster than sequential, safer than all-at-once)
+    const chunkSize = 3;
     let successCount = 0;
     let failureCount = 0;
 
@@ -223,11 +223,9 @@ export const sendBulkPayslips = async (req, res) => {
       await Promise.all(batchPromises);
     }
 
-    res.status(200).json({
-      success: true,
-      message: `Bulk processing complete.`,
-      details: { sent: successCount, failed: failureCount },
-    });
+    res
+      .status(200)
+      .json({ success: true, message: `Sent ${successCount} payslips.` });
   } catch (error) {
     console.error("Bulk Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -239,13 +237,10 @@ export const sendPayslip = async (req, res) => {
   try {
     const { emp_id } = req.params;
     const { period } = req.body;
-
     const payrollRecord = await getPayrollByEmployee(pool, emp_id, period);
 
-    if (!payrollRecord)
-      return res.status(404).json({ message: "Payroll record not found" });
-    if (!payrollRecord.email)
-      return res.status(400).json({ message: "Employee email not found." });
+    if (!payrollRecord?.email)
+      return res.status(404).json({ message: "Not found" });
 
     // OPTIMIZATION 5: Return Early (Fire and Forget)
     // Send success to frontend immediately
