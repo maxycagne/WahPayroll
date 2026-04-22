@@ -17,6 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 8001;
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://wah-payroll-seven.vercel.app",
 ];
 //mavsy the great

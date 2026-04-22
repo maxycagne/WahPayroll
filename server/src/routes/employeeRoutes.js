@@ -57,9 +57,11 @@ import {
   removeProfilePhoto,
   replaceResignationFile,
   removeResignationFile,
+} from "../controllers/employeeController.js";
+import {
   updateMyProfile,
   changeMyPassword,
-} from "../controllers/employeeController.js";
+} from "../controllers/profileController.js";
 import {
   authenticateToken,
   authorizeRoles,
@@ -80,7 +82,7 @@ router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
 router.get(
   "/attendance",
-  authorizeRoles("Admin", "Supervisor", "HR"),
+  authorizeRoles("Admin", "HR"),
   getAttendance,
   getAttendanceStats,
 );

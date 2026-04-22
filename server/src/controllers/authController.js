@@ -121,7 +121,13 @@ export const login = async (req, res) => {
         position: user.position || "",
         designation: user.designation || "",
         hired_date: user.hired_date || null,
-        profile_photo: user.profile_photo || null, // <--- ADD THIS LINE!
+        profile_photo: user.profile_photo || null,
+        philhealth_no: user.philhealth_no || "",
+        tin: user.tin || "",
+        sss_no: user.sss_no || "",
+        pag_ibig_mid_no: user.pag_ibig_mid_no || "",
+        pag_ibig_rtn: user.pag_ibig_rtn || "",
+        gsis_no: user.gsis_no || "",
       },
     });
   } catch (error) {
@@ -148,7 +154,7 @@ export const getMe = async (req, res) => {
     await ensureEmployeeGovernmentColumns();
 
     const [rows] = await pool.query(
-      "SELECT emp_id, first_name, last_name, email, role, position, designation, hired_date, profile_photo FROM employees WHERE emp_id = ?",
+      "SELECT emp_id, first_name, last_name, email, role, position, designation, hired_date, profile_photo, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );
 
@@ -168,7 +174,13 @@ export const getMe = async (req, res) => {
         position: user.position || "",
         designation: user.designation || "",
         hired_date: user.hired_date || null,
-        profile_photo: user.profile_photo || null, // <--- ADD THIS LINE!
+        profile_photo: user.profile_photo || null,
+        philhealth_no: user.philhealth_no || "",
+        tin: user.tin || "",
+        sss_no: user.sss_no || "",
+        pag_ibig_mid_no: user.pag_ibig_mid_no || "",
+        pag_ibig_rtn: user.pag_ibig_rtn || "",
+        gsis_no: user.gsis_no || "",
       },
     });
   } catch (error) {
