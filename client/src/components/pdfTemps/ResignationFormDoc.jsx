@@ -12,7 +12,7 @@ import {
 // Register built-in Helvetica (supports ✓)
 Font.register({ family: "Helvetica" });
 
-const header = "/images/WAHHeader.jpg"; // Use your actual path
+const header = "/images/wah-top-logo.png"; // Use your actual path
 
 const styles = StyleSheet.create({
   page: {
@@ -28,12 +28,14 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   headerImage: {
-    width: "100%",
-    minHeight: 52,
-    marginBottom: 18,
+    position: "absolute",
+    top: 10,
+    left: 10,
+    width: 60,
+    height: 60,
   },
   formTitle: {
-    marginTop: 10,
+    marginTop: 30,
     fontWeight: 500,
     fontSize: 15,
     textAlign: "center",
