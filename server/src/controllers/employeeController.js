@@ -52,7 +52,7 @@ export const getPayrollForBulk = async (connection, period) => {
   return rows; // Returns an array of all payroll objects for that month/period
 };
 
-const resolveRoleFromProfile = ({ designation, position }) => {
+export const resolveRoleFromProfile = ({ designation, position }) => {
   const normalizedDesignation = String(designation || "")
     .trim()
     .toLowerCase();
@@ -74,12 +74,12 @@ const resolveRoleFromProfile = ({ designation, position }) => {
   return "RankAndFile";
 };
 
-const WORKWEEK_DEFAULTS = {
+export const WORKWEEK_DEFAULTS = {
   "5-day": { hoursPerDay: 8, absenceUnit: 1 },
   "4-day": { hoursPerDay: 10, absenceUnit: 1.25 },
 };
 
-const normalizeWorkweekType = (type) => {
+export const normalizeWorkweekType = (type) => {
   const normalized = String(type || "")
     .trim()
     .toLowerCase();
@@ -89,7 +89,7 @@ const normalizeWorkweekType = (type) => {
   return null;
 };
 
-const ensureWorkweekConfigsTable = async (connection = pool) => {
+export const ensureWorkweekConfigsTable = async (connection = pool) => {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS workweek_configs (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -105,7 +105,7 @@ const ensureWorkweekConfigsTable = async (connection = pool) => {
   `);
 };
 
-const ensurePositionSalarySettingsTable = async (connection = pool) => {
+export const ensurePositionSalarySettingsTable = async (connection = pool) => {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS position_salary_settings (
       position VARCHAR(100) PRIMARY KEY,
@@ -138,7 +138,7 @@ const getEmpIdColumnDefinition = async (connection = pool) => {
     : "VARCHAR(50)";
 };
 
-const ensureOffsetTables = async (connection = pool) => {
+export const ensureOffsetTables = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
   await connection.query(`
@@ -403,7 +403,7 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
   }
 };
 
-const ensureResignationsTable = async (connection = pool) => {
+export const ensureResignationsTable = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
   await connection.query(`
@@ -567,7 +567,7 @@ const ensureResignationsTable = async (connection = pool) => {
   }
 };
 
-const ensureResignationDraftsTable = async (connection = pool) => {
+export const ensureResignationDraftsTable = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
   await connection.query(`
@@ -582,7 +582,7 @@ const ensureResignationDraftsTable = async (connection = pool) => {
   `);
 };
 
-const ensureNotificationsTable = async (connection = pool) => {
+export const ensureNotificationsTable = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
   await connection.query(`
@@ -604,7 +604,7 @@ const ensureNotificationsTable = async (connection = pool) => {
   `);
 };
 
-const ensureEmployeeMissingDocsTable = async (connection = pool) => {
+export const ensureEmployeeMissingDocsTable = async (connection = pool) => {
   const empIdColumn = await getEmpIdColumnDefinition(connection);
 
   await connection.query(`
@@ -618,7 +618,7 @@ const ensureEmployeeMissingDocsTable = async (connection = pool) => {
   `);
 };
 
-const ensureFileTemplatesTable = async (connection = pool) => {
+export const ensureFileTemplatesTable = async (connection = pool) => {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS file_templates (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -635,6 +635,7 @@ const ensureFileTemplatesTable = async (connection = pool) => {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 };
+
 
 export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
   const governmentColumns = [
@@ -723,7 +724,7 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
   }
 };
 
-const normalizeDateInput = (value) => {
+export const normalizeDateInput = (value) => {
   if (!value) return null;
   const raw = String(value).trim();
   if (!raw) return null;
@@ -740,7 +741,7 @@ const normalizeDateInput = (value) => {
   return `${year}-${month}-${day}`;
 };
 
-const normalizeRole = (role) => {
+export const normalizeRole = (role) => {
   const value = String(role || "")
     .trim()
     .toLowerCase();
@@ -760,7 +761,7 @@ const getDefaultLeaveAllocation = (status) => {
     : 27;
 };
 
-const getWorkweekMultiplierForDate = async (connection, date) => {
+export const getWorkweekMultiplierForDate = async (connection, date) => {
   const normDate = normalizeDateInput(date);
   if (!normDate) return 1.0;
 
@@ -781,7 +782,7 @@ const getWorkweekMultiplierForDate = async (connection, date) => {
   return 1.0;
 };
 
-const calculateLeaveCreditsInternal = async (connection, fromDate, toDate) => {
+export const calculateLeaveCreditsInternal = async (connection, fromDate, toDate) => {
   const start = new Date(fromDate);
   const end = new Date(toDate);
   let totalCredits = 0;
@@ -806,7 +807,7 @@ const calculateLeaveCreditsInternal = async (connection, fromDate, toDate) => {
   return totalCredits;
 };
 
-const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
+export const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
   const [employeeRows] = await connection.query(
     `SELECT status
      FROM employees
@@ -1518,7 +1519,7 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
   return rows;
 };
 
-const canApproverReviewRequester = (approver, requester) => {
+export const canApproverReviewRequester = (approver, requester) => {
   if (!approver || !requester) return false;
   if (approver.emp_id === requester.emp_id) return false;
 
@@ -1621,7 +1622,7 @@ const notifySupervisorsForHrRoutingNote = async (
   }
 };
 
-const notifyRequesterForDecision = async (
+export const notifyRequesterForDecision = async (
   connection,
   { requesterEmpId, moduleType, status, approverName },
 ) => {
@@ -1645,7 +1646,7 @@ const getRequestWindowText = ({ fromDate = null, toDate = null }) => {
   return `From: ${from} To: ${to}`;
 };
 
-const notifyApproversForCancellationRequest = async (
+export const notifyApproversForCancellationRequest = async (
   connection,
   {
     requester,
@@ -1678,7 +1679,7 @@ const notifyApproversForCancellationRequest = async (
   }
 };
 
-const notifyRequesterForCancellationDecision = async (
+export const notifyRequesterForCancellationDecision = async (
   connection,
   {
     requesterEmpId,
@@ -1708,7 +1709,7 @@ const notifyRequesterForCancellationDecision = async (
   });
 };
 
-const parsePeriodRange = (period) => {
+export const parsePeriodRange = (period) => {
   const isValidPeriod = /^\d{4}-\d{2}$/.test(String(period || ""));
   const base = isValidPeriod
     ? new Date(`${period}-01T00:00:00`)
@@ -1727,7 +1728,7 @@ const parsePeriodRange = (period) => {
   };
 };
 
-const getConvertedAbsenceSummary = async (periodStart, periodEnd) => {
+export const getConvertedAbsenceSummary = async (periodStart, periodEnd) => {
   await ensureWorkweekConfigsTable();
 
   const [rows] = await pool.query(
@@ -1765,26 +1766,8 @@ const getConvertedAbsenceSummary = async (periodStart, periodEnd) => {
   }, {});
 };
 
-// --- EMPLOYEES ---
-export const getAllEmployees = async (req, res) => {
-  try {
-    await ensureEmployeeGovernmentColumns();
-    const [rows] = await pool.query(
-      `SELECT *
-       FROM employees
-       WHERE registration_status = 'Approved'
-         AND emp_id NOT LIKE 'TEMP\\_%'
-       ORDER BY
-         CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
-         emp_id ASC`,
-    );
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getAllEmployees:", error);
-    res.status(500).json({ message: "Error fetching employees" });
-  }
-};
 
+// --- EMPLOYEES ---
 export const createEmployee = async (req, res) => {
   // 1. Add middle_initial to the destructured body
   const {
@@ -2321,410 +2304,6 @@ export const getAllResignations = async (req, res) => {
   }
 };
 
-// --- DASHBOARD ---
-export const getDashboardSummary = async (req, res) => {
-  try {
-    await ensureResignationsTable();
-    await ensureEmployeeMissingDocsTable();
-
-    const currentUser = await getEmployeeProfile(pool, req.user?.emp_id);
-    if (!currentUser) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    await recalculateLeaveBalanceForEmployee(pool, currentUser.emp_id);
-
-    const isAdmin = currentUser.role === "Admin";
-    const isHR = currentUser.role === "HR";
-    const isSupervisor = currentUser.role === "Supervisor";
-    const isRankAndFile = currentUser.role === "RankAndFile";
-
-    let pending = [];
-    if (isSupervisor) {
-      const [rows] = await pool.query(
-        `
-          SELECT l.*, e.first_name, e.last_name
-          FROM leave_requests l
-          JOIN employees e ON l.emp_id = e.emp_id
-          WHERE l.status = 'Pending'
-            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-            AND e.designation = ?
-            AND e.emp_id <> ?
-        `,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-      pending = rows;
-    } else if (isHR) {
-      const [rows] = await pool.query(
-        `
-          SELECT l.*, e.first_name, e.last_name
-          FROM leave_requests l
-          JOIN employees e ON l.emp_id = e.emp_id
-          WHERE l.status = 'Pending'
-            AND COALESCE(e.role, '') = 'Supervisor'
-            AND e.emp_id <> ?
-        `,
-        [currentUser.emp_id],
-      );
-      pending = rows;
-    }
-
-    let onLeave = [];
-    if (isAdmin || isHR) {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, l.leave_type
-         FROM employees e
-         JOIN leave_requests l ON e.emp_id = l.emp_id
-         WHERE CURDATE() BETWEEN l.date_from AND l.date_to
-           AND l.status = 'Approved'`,
-      );
-      onLeave = rows;
-    } else if (isSupervisor) {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, l.leave_type
-         FROM employees e
-         JOIN leave_requests l ON e.emp_id = l.emp_id
-         WHERE CURDATE() BETWEEN l.date_from AND l.date_to
-           AND l.status = 'Approved'
-           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-      onLeave = rows;
-    } else {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, l.leave_type
-         FROM employees e
-         JOIN leave_requests l ON e.emp_id = l.emp_id
-         WHERE e.emp_id = ?
-           AND CURDATE() BETWEEN l.date_from AND l.date_to
-           AND l.status = 'Approved'`,
-        [currentUser.emp_id],
-      );
-      onLeave = rows;
-    }
-
-    let absents = [];
-    if (isAdmin || isHR) {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation
-         FROM employees e
-         WHERE e.status != 'Inactive'
-           AND COALESCE(e.role, '') <> 'Admin'
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
-      );
-      absents = rows;
-    } else if (isSupervisor) {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation
-         FROM employees e
-         WHERE e.status != 'Inactive'
-           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-      absents = rows;
-    } else {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation
-         FROM employees e
-         WHERE e.emp_id = ?
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
-        [currentUser.emp_id],
-      );
-      absents = rows;
-    }
-
-    let balances = [];
-    if (isAdmin || isHR) {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
-         FROM employees e
-         JOIN leave_balances lb ON e.emp_id = lb.emp_id`,
-      );
-      balances = rows;
-    } else {
-      const [rows] = await pool.query(
-        `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
-         FROM employees e
-         JOIN leave_balances lb ON e.emp_id = lb.emp_id
-         WHERE e.emp_id = ?`,
-        [currentUser.emp_id],
-      );
-      balances = rows;
-    }
-
-    let resignations = [];
-    if (isSupervisor) {
-      const [rows] = await pool.query(
-        `
-          SELECT r.*, e.first_name, e.last_name
-          FROM resignations r
-          JOIN employees e ON r.emp_id = e.emp_id
-          WHERE r.status = 'Pending Approval'
-            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-            AND e.designation = ?
-            AND e.emp_id <> ?
-        `,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-      resignations = rows;
-    } else if (isHR) {
-      const [rows] = await pool.query(
-        `
-          SELECT r.*, e.first_name, e.last_name
-          FROM resignations r
-          JOIN employees e ON r.emp_id = e.emp_id
-          WHERE r.status = 'Pending Approval'
-            AND COALESCE(e.role, '') = 'Supervisor'
-            AND e.emp_id <> ?
-        `,
-        [currentUser.emp_id],
-      );
-      resignations = rows;
-    }
-
-    let missingDocs = [];
-    if (isAdmin || isHR) {
-      const [rows] = await pool.query(
-        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
-         FROM employee_missing_docs m
-         JOIN employees e ON m.emp_id = e.emp_id`,
-      );
-      missingDocs = rows;
-    } else if (isSupervisor) {
-      const [rows] = await pool.query(
-        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
-         FROM employee_missing_docs m
-         JOIN employees e ON m.emp_id = e.emp_id
-         WHERE COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-      missingDocs = rows;
-    } else {
-      const [rows] = await pool.query(
-        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
-         FROM employee_missing_docs m
-         JOIN employees e ON m.emp_id = e.emp_id
-         WHERE m.emp_id = ?`,
-        [currentUser.emp_id],
-      );
-      missingDocs = rows;
-    }
-
-    const [todayAttendanceRows] = await pool.query(
-      `SELECT status
-       FROM attendance
-       WHERE emp_id = ?
-         AND date = CURDATE()
-       LIMIT 1`,
-      [currentUser.emp_id],
-    );
-
-    const [myPendingLeaves] = await pool.query(
-      `SELECT COUNT(*) as total
-       FROM leave_requests
-       WHERE emp_id = ?
-         AND status = 'Pending'`,
-      [currentUser.emp_id],
-    );
-
-    const [myPendingOffsets] = await pool.query(
-      `SELECT COUNT(*) as total
-       FROM offset_applications
-       WHERE emp_id = ?
-         AND status IN ('Pending', 'Pending Approval')`,
-      [currentUser.emp_id],
-    );
-
-    const [myPendingResignations] = await pool.query(
-      `SELECT COUNT(*) as total
-       FROM resignations
-       WHERE emp_id = ?
-         AND status = 'Pending Approval'`,
-      [currentUser.emp_id],
-    );
-
-    const personalSummary = {
-      employeeStatus: currentUser.status || "N/A",
-      todayAttendanceStatus:
-        todayAttendanceRows.length > 0
-          ? String(todayAttendanceRows[0].status || "Pending")
-          : "Absent",
-      pendingRequestCount:
-        Number(myPendingLeaves[0]?.total || 0) +
-        Number(myPendingOffsets[0]?.total || 0) +
-        Number(myPendingResignations[0]?.total || 0),
-      leaveBalance: Number(balances[0]?.leave_balance || 0),
-      offsetCredits: Number(balances[0]?.offset_credits || 0),
-      hasMissingDocs: missingDocs.length > 0,
-    };
-
-    let teamSummary = null;
-    let teamAttendanceStatus = [];
-    let teamPendingRequests = [];
-
-    if (isSupervisor) {
-      const [teamMembers] = await pool.query(
-        `SELECT emp_id, first_name, last_name
-         FROM employees
-         WHERE COALESCE(role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND designation = ?
-           AND emp_id <> ?
-           AND status != 'Inactive'`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-
-      const [teamAttendanceRows] = await pool.query(
-        `SELECT a.emp_id, a.status
-         FROM attendance a
-         JOIN employees e ON e.emp_id = a.emp_id
-         WHERE a.date = CURDATE()
-           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-
-      const attendanceByEmp = teamAttendanceRows.reduce((acc, row) => {
-        acc[row.emp_id] = String(row.status || "Present");
-        return acc;
-      }, {});
-
-      teamAttendanceStatus = teamMembers.map((member) => {
-        const onLeaveMatch = onLeave.find(
-          (item) => String(item.emp_id) === String(member.emp_id),
-        );
-
-        if (onLeaveMatch) {
-          return {
-            ...member,
-            status: "On Leave",
-          };
-        }
-
-        return {
-          ...member,
-          status: attendanceByEmp[member.emp_id] || "Absent",
-        };
-      });
-
-      const presentCount = teamAttendanceStatus.filter((row) =>
-        String(row.status || "")
-          .toLowerCase()
-          .includes("present"),
-      ).length;
-      const lateCount = teamAttendanceStatus.filter((row) =>
-        String(row.status || "")
-          .toLowerCase()
-          .includes("late"),
-      ).length;
-      const onLeaveCount = teamAttendanceStatus.filter(
-        (row) => String(row.status || "").toLowerCase() === "on leave",
-      ).length;
-      const absentCount = teamAttendanceStatus.filter(
-        (row) => String(row.status || "").toLowerCase() === "absent",
-      ).length;
-
-      const [pendingOffsetRows] = await pool.query(
-        `SELECT oa.id, oa.emp_id, oa.days_applied, oa.created_at, e.first_name, e.last_name
-         FROM offset_applications oa
-         JOIN employees e ON e.emp_id = oa.emp_id
-         WHERE oa.status IN ('Pending', 'Pending Approval')
-           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?
-         ORDER BY oa.created_at DESC
-         LIMIT 20`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-
-      const [pendingResignationRows] = await pool.query(
-        `SELECT r.id, r.emp_id, r.resignation_type, r.created_at, e.first_name, e.last_name
-         FROM resignations r
-         JOIN employees e ON e.emp_id = r.emp_id
-         WHERE r.status = 'Pending Approval'
-           AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?
-         ORDER BY r.created_at DESC
-         LIMIT 20`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-
-      teamPendingRequests = [
-        ...pending.map((row) => ({
-          id: `leave-${row.id}`,
-          type: "Leave",
-          emp_id: row.emp_id,
-          first_name: row.first_name,
-          last_name: row.last_name,
-          detail: row.leave_type,
-          created_at: row.created_at || row.date_from,
-        })),
-        ...pendingOffsetRows.map((row) => ({
-          id: `offset-${row.id}`,
-          type: "Offset",
-          emp_id: row.emp_id,
-          first_name: row.first_name,
-          last_name: row.last_name,
-          detail: `${Number(row.days_applied || 0)} day(s)`,
-          created_at: row.created_at,
-        })),
-        ...pendingResignationRows.map((row) => ({
-          id: `resignation-${row.id}`,
-          type: "Resignation",
-          emp_id: row.emp_id,
-          first_name: row.first_name,
-          last_name: row.last_name,
-          detail: row.resignation_type,
-          created_at: row.created_at,
-        })),
-      ]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 20);
-
-      teamSummary = {
-        teamSize: teamMembers.length,
-        presentCount,
-        lateCount,
-        absentCount,
-        onLeaveCount,
-        pendingApprovals: teamPendingRequests.length,
-      };
-    }
-
-    if (isRankAndFile) {
-      pending = [];
-      resignations = [];
-      teamAttendanceStatus = [];
-      teamPendingRequests = [];
-    }
-
-    res.json({
-      pendingLeaves: pending,
-      onLeave,
-      absents,
-      balances,
-      resignations,
-      missingDocs,
-      personalSummary,
-      teamSummary,
-      teamAttendanceStatus,
-      teamPendingRequests,
-      recentActivities: [],
-    });
-  } catch (error) {
-    console.error("DB Error in getDashboardSummary:", error);
-    res.status(500).json({ message: "Error loading dashboard" });
-  }
-};
-
 // --- UPDATE MISSING DOCUMENTS ---
 export const updateMissingDocs = async (req, res) => {
   const { emp_id, missing_docs } = req.body;
@@ -2769,53 +2348,6 @@ export const getMyResignations = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("DB Error in getMyResignations:", error);
-    res.status(500).json({ message: "Error fetching resignations" });
-  }
-};
-
-export const getResignations = async (req, res) => {
-  try {
-    await ensureResignationsTable();
-
-    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
-    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
-
-    let query = `
-      SELECT
-        r.*,
-        e.first_name,
-        e.last_name,
-        e.designation,
-        COALESCE(e.role, 'RankAndFile') as requester_role,
-        rv.first_name as reviewer_first_name,
-        rv.last_name as reviewer_last_name
-      FROM resignations r
-      JOIN employees e ON r.emp_id = e.emp_id
-      LEFT JOIN employees rv ON r.reviewed_by = rv.emp_id
-    `;
-
-    const params = [];
-
-    if (viewer.role === "RankAndFile") {
-      query += " WHERE r.emp_id = ?";
-      params.push(viewer.emp_id);
-    } else if (viewer.role === "Supervisor") {
-      query += `
-        WHERE r.emp_id = ?
-           OR (
-             e.designation = ?
-             AND e.emp_id <> ?
-           )
-      `;
-      params.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    }
-
-    query += " ORDER BY r.created_at DESC";
-
-    const [rows] = await pool.query(query, params);
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getResignations:", error);
     res.status(500).json({ message: "Error fetching resignations" });
   }
 };
@@ -3472,918 +3004,6 @@ export const deleteAllNotifications = async (req, res) => {
 };
 
 // --- LEAVES & ATTENDANCE ---
-export const getAttendance = async (req, res) => {
-  try {
-    const [rows] = await pool.query(`
-      SELECT 
-        e.emp_id, 
-        e.first_name, 
-        e.last_name, 
-        e.status AS emp_status, 
-        (SELECT COUNT(*) FROM attendance WHERE emp_id = e.emp_id AND status = 'Absent') as total_absences,
-        a.status,
-        a.status2,
-        lb.leave_balance
-      FROM employees e
-      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
-      LEFT JOIN leave_balances lb ON e.emp_id = lb.emp_id
-      WHERE COALESCE(e.role, '') <> 'Admin'
-    `);
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getAttendance:", error);
-    res.status(500).json({ message: "Error fetching attendance" });
-  }
-};
-
-export const getAttendanceStats = async (req, res) => {
-  const { mode = "month", month, year, start, end } = req.query;
-
-  const buildMonthBounds = (monthValue) => {
-    if (!/^\d{4}-\d{2}$/.test(String(monthValue || ""))) return null;
-
-    const [yearValue, monthIndex] = String(monthValue).split("-").map(Number);
-    const firstDay = `${yearValue}-${String(monthIndex).padStart(2, "0")}-01`;
-    const lastDayDate = new Date(yearValue, monthIndex, 0);
-    const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
-    return { startDate: firstDay, endDate: lastDay };
-  };
-
-  const buildYearBounds = (yearValue) => {
-    if (!/^\d{4}$/.test(String(yearValue || ""))) return null;
-    return {
-      startDate: `${yearValue}-01-01`,
-      endDate: `${yearValue}-12-31`,
-    };
-  };
-
-  const buildRangeBounds = (startValue, endValue) => {
-    const startBounds = buildMonthBounds(startValue);
-    const endBounds = buildMonthBounds(endValue);
-    if (!startBounds || !endBounds) return null;
-
-    return startBounds.startDate <= endBounds.endDate
-      ? { startDate: startBounds.startDate, endDate: endBounds.endDate }
-      : { startDate: endBounds.startDate, endDate: startBounds.endDate };
-  };
-
-  const normalizedMode = String(mode || "month").toLowerCase();
-  const resolvedBounds =
-    normalizedMode === "year"
-      ? buildYearBounds(year)
-      : normalizedMode === "range"
-        ? buildRangeBounds(start, end)
-        : buildMonthBounds(month);
-
-  if (!resolvedBounds) {
-    return res.status(400).json({ message: "Invalid attendance stats range" });
-  }
-
-  try {
-    const [rows] = await pool.query(
-      `
-      SELECT
-        e.emp_id,
-        e.first_name,
-        e.last_name,
-        e.designation,
-        e.status AS emp_status,
-        COALESCE(att.total_absences, 0) AS total_absences,
-        COALESCE(lv.approved_leave_count, 0) AS approved_leave_count,
-        COALESCE(lv.approved_leave_days, 0) AS approved_leave_days,
-        COALESCE(lb.leave_balance, 0) AS leave_balance
-      FROM employees e
-      LEFT JOIN leave_balances lb ON e.emp_id = lb.emp_id
-      LEFT JOIN (
-        SELECT
-          emp_id,
-          COUNT(*) AS total_absences
-        FROM attendance
-        WHERE date BETWEEN ? AND ?
-          AND (status = 'Absent' OR status2 = 'Absent')
-        GROUP BY emp_id
-      ) att ON e.emp_id = att.emp_id
-      LEFT JOIN (
-        SELECT
-          emp_id,
-          COUNT(*) AS approved_leave_count,
-          SUM(
-            COALESCE(
-              approved_days,
-              DATEDIFF(date_to, date_from) + 1,
-              0
-            )
-          ) AS approved_leave_days
-        FROM leave_requests
-        WHERE date_to >= ?
-          AND date_from <= ?
-          AND status IN ('Approved', 'Partially Approved')
-        GROUP BY emp_id
-      ) lv ON e.emp_id = lv.emp_id
-      WHERE COALESCE(e.role, '') <> 'Admin'
-        AND e.status != 'Inactive'
-      ORDER BY
-        COALESCE(att.total_absences, 0) DESC,
-        COALESCE(lv.approved_leave_days, 0) DESC,
-        e.last_name ASC,
-        e.first_name ASC
-    `,
-      [
-        resolvedBounds.startDate,
-        resolvedBounds.endDate,
-        resolvedBounds.startDate,
-        resolvedBounds.endDate,
-      ],
-    );
-
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getAttendanceStats:", error);
-    res.status(500).json({ message: "Error fetching attendance stats" });
-  }
-};
-
-export const getAttendanceCalendarSummary = async (req, res) => {
-  const { month, year } = req.query;
-  try {
-    const [rows] = await pool.query(
-      `
-      SELECT DATE_FORMAT(date, '%Y-%m-%d') as date, 
-             DATE_FORMAT(date, '%Y-%m-%d') as formatted_date,
-             SUM(CASE WHEN status = 'Present' OR status2 = 'Present' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status = 'Absent' OR status2 = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN status = 'Late' OR status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
-             SUM(CASE WHEN status = 'Undertime' OR status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
-             SUM(CASE WHEN status = 'Half-Day' OR status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count
-      FROM attendance 
-      WHERE MONTH(date) = ? AND YEAR(date) = ?
-      GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
-    `,
-      [month, year],
-    );
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getAttendanceCalendarSummary:", error);
-    res.status(500).json({ message: "Error fetching calendar summary" });
-  }
-};
-
-export const getDailyAttendance = async (req, res) => {
-  const { date } = req.query;
-  try {
-    const [rows] = await pool.query(
-      `
-      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2
-      FROM employees e
-      LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
-      WHERE COALESCE(e.role, '') <> 'Admin'
-    `,
-      [date],
-    );
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getDailyAttendance:", error);
-    res.status(500).json({ message: "Error fetching daily attendance" });
-  }
-};
-
-export const saveBulkAttendance = async (req, res) => {
-  const { date, records } = req.body;
-  const connection = await pool.getConnection();
-
-  try {
-    await connection.beginTransaction();
-
-    // 1. Wipe existing attendance matching the exact formatted date string
-    await connection.query(
-      `DELETE a FROM attendance a
-       JOIN employees e ON a.emp_id = e.emp_id
-       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND COALESCE(e.role, '') <> 'Admin'`,
-      [date],
-    );
-
-    // 2. Insert the fresh records including status2
-    if (records && records.length > 0) {
-      for (const record of records) {
-        await connection.query(
-          `INSERT INTO attendance (emp_id, date, status, status2) VALUES (?, DATE(?), ?, ?)`,
-          [record.emp_id, date, record.status, record.status2 || null],
-        );
-      }
-    }
-
-    await connection.commit();
-    res.json({ message: "Attendance saved successfully" });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in saveBulkAttendance:", error);
-    res.status(500).json({ message: "Error saving attendance" });
-  } finally {
-    connection.release();
-  }
-};
-
-// New function for Admins to manually adjust leave balances
-export const adjustLeaveBalance = async (req, res) => {
-  const { id } = req.params;
-  const { adjustment } = req.body;
-  try {
-    await pool.query(
-      "UPDATE leave_balances SET leave_balance = leave_balance + ? WHERE emp_id = ?",
-      [adjustment, id],
-    );
-    res.json({ message: "Leave balance adjusted successfully" });
-  } catch (error) {
-    console.error("DB Error in adjustLeaveBalance:", error);
-    res.status(500).json({ message: "Error adjusting leave balance" });
-  }
-};
-
-//TODO:
-export const getAllLeaves = async (req, res) => {
-  try {
-    await ensureLeaveApprovalColumns();
-
-    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
-    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
-
-    let query = `
-      SELECT 
-        l.*, 
-        DATE_FORMAT(l.date_from, '%Y-%m-%d') as date_from,
-    DATE_FORMAT(l.date_to, '%Y-%m-%d') as date_to,
-        e.first_name, 
-        e.last_name, 
-        e.email,          
-        e.designation, 
-        COALESCE(e.role, 'RankAndFile') as requester_role
-      FROM leave_requests l
-      JOIN employees e ON l.emp_id = e.emp_id
-    `;
-    const queryParams = [];
-
-    if (viewer.role === "RankAndFile") {
-      query += " WHERE l.emp_id = ?";
-      queryParams.push(viewer.emp_id);
-    } else if (viewer.role === "Supervisor") {
-      query += `
-        WHERE l.emp_id = ?
-           OR (
-             e.designation = ?
-             AND e.emp_id <> ?
-           )
-      `;
-      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    }
-
-    query += " ORDER BY l.id DESC";
-
-    const [rows] = await pool.query(query, queryParams);
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getAllLeaves:", error);
-    res.status(500).json({ message: "Error fetching leaves" });
-  }
-};
-
-export const updateLeaveStatus = async (req, res) => {
-  const { id } = req.params;
-  const {
-    status,
-    supervisor_remarks,
-    approved_days,
-    approved_dates,
-    decision_mode,
-  } = req.body;
-  const trimmedRemarks = String(supervisor_remarks || "").trim();
-
-  if (
-    !["Pending", "Approved", "Denied", "Partially Approved"].includes(status)
-  ) {
-    return res.status(400).json({ message: "Invalid leave status" });
-  }
-
-  const approverId = req.user?.emp_id;
-  if (!approverId) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
-    await ensureLeaveApprovalColumns(connection);
-
-    const approver = await getEmployeeProfile(connection, approverId);
-    if (!approver) {
-      await connection.rollback();
-      return res.status(401).json({ message: "Approver not found" });
-    }
-
-    const [rows] = await connection.query(
-      "SELECT id, emp_id, date_from, date_to, status, approved_days, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
-      [id],
-    );
-
-    if (rows.length === 0) {
-      await connection.rollback();
-      return res.status(404).json({ message: "Leave request not found" });
-    }
-
-    const leaveRequest = rows[0];
-    const requester = await getEmployeeProfile(connection, leaveRequest.emp_id);
-
-    const totalRequestDays = await calculateLeaveCreditsInternal(
-      connection,
-      leaveRequest.date_from,
-      leaveRequest.date_to,
-    );
-
-    const getEffectiveApprovedDays = (statusValue, approvedDaysValue) => {
-      if (
-        !["Approved", "Partially Approved"].includes(String(statusValue || ""))
-      ) {
-        return 0;
-      }
-
-      const parsedValue = Number(approvedDaysValue);
-      if (!Number.isNaN(parsedValue) && parsedValue > 0) {
-        return parsedValue;
-      }
-
-      return String(statusValue || "") === "Approved" ? totalRequestDays : 0;
-    };
-
-    const previousEffectiveApprovedDays = getEffectiveApprovedDays(
-      leaveRequest.status,
-      leaveRequest.approved_days,
-    );
-
-    if (!canApproverReviewRequester(approver, requester)) {
-      await connection.rollback();
-      return res.status(403).json({
-        message: "You are not allowed to approve this leave request",
-      });
-    }
-
-    if (decision_mode === "cancellation") {
-      if (!["Approved", "Denied"].includes(status)) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Invalid cancellation decision status",
-        });
-      }
-
-      if (!leaveRequest.cancellation_requested_at) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "No cancellation request is pending approval",
-        });
-      }
-
-      if (status === "Denied" && !trimmedRemarks) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Reason is required for denial",
-        });
-      }
-
-      if (!["Approved", "Partially Approved"].includes(leaveRequest.status)) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Only approved leave requests can be cancelled",
-        });
-      }
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startDate = new Date(leaveRequest.date_from);
-      startDate.setHours(0, 0, 0, 0);
-      if (startDate <= today) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Cannot process cancellation on or after the start date",
-        });
-      }
-
-      if (status === "Approved") {
-        await connection.query("DELETE FROM leave_requests WHERE id = ?", [id]);
-      } else {
-        await connection.query(
-          `
-            UPDATE leave_requests
-            SET cancellation_requested_at = NULL,
-                supervisor_remarks = ?
-            WHERE id = ?
-          `,
-          [trimmedRemarks, id],
-        );
-      }
-
-      await recalculateLeaveBalanceForEmployee(connection, leaveRequest.emp_id);
-
-      await notifyRequesterForCancellationDecision(connection, {
-        requesterEmpId: leaveRequest.emp_id,
-        moduleType: "Leave",
-        status,
-        approverName: `${approver.first_name} ${approver.last_name}`.trim(),
-        fromDate: leaveRequest.date_from,
-        toDate: leaveRequest.date_to,
-        descriptor: "leave request",
-      });
-
-      await connection.commit();
-      return res.json({
-        message: `Leave cancellation ${status.toLowerCase()} successfully`,
-      });
-    }
-
-    const parsedApprovedDays =
-      approved_days !== undefined && approved_days !== null
-        ? Number(approved_days)
-        : null;
-
-    const parsedApprovedDates = Array.isArray(approved_dates)
-      ? approved_dates
-          .map((d) => String(d || "").trim())
-          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
-      : [];
-
-    if (status === "Partially Approved") {
-      if (!parsedApprovedDays || parsedApprovedDays <= 0) {
-        await connection.rollback();
-        return res.status(400).json({
-          message:
-            "approved_days must be greater than zero for partial approval",
-        });
-      }
-
-      if (parsedApprovedDays >= totalRequestDays) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "approved_days must be less than the total requested days",
-        });
-      }
-    }
-
-    if (status === "Denied" && !trimmedRemarks) {
-      await connection.rollback();
-      return res.status(400).json({
-        message: "Reason is required for denial",
-      });
-    }
-
-    const remarksValue = status === "Denied" ? trimmedRemarks : null;
-
-    if (status === "Approved" && parsedApprovedDays !== null) {
-      if (parsedApprovedDays <= 0 || parsedApprovedDays > totalRequestDays) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "approved_days is out of range for this request",
-        });
-      }
-    }
-
-    if (parsedApprovedDates.length > 0) {
-      const fromDate = new Date(leaveRequest.date_from).setHours(0, 0, 0, 0);
-      const toDate = new Date(leaveRequest.date_to).setHours(0, 0, 0, 0);
-
-      const hasOutOfRangeDate = parsedApprovedDates.some((dateString) => {
-        const value = new Date(dateString).setHours(0, 0, 0, 0);
-        return value < fromDate || value > toDate;
-      });
-
-      if (hasOutOfRangeDate) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "approved_dates contains date(s) outside the request range",
-        });
-      }
-    }
-
-    const finalApprovedDays =
-      status === "Denied"
-        ? null
-        : parsedApprovedDays !== null
-          ? parsedApprovedDays
-          : status === "Approved"
-            ? totalRequestDays
-            : null;
-
-    const finalApprovedDates =
-      status === "Denied"
-        ? null
-        : parsedApprovedDates.length > 0
-          ? JSON.stringify(parsedApprovedDates)
-          : null;
-
-    const nextEffectiveApprovedDays = getEffectiveApprovedDays(
-      status,
-      finalApprovedDays,
-    );
-
-    const leaveBalanceDelta =
-      Number(nextEffectiveApprovedDays || 0) -
-      Number(previousEffectiveApprovedDays || 0);
-
-    await connection.query(
-      `
-        UPDATE leave_requests
-        SET status = ?,
-            approved_days = ?,
-            approved_dates = ?,
-            supervisor_remarks = ?
-        WHERE id = ?
-      `,
-      [status, finalApprovedDays, finalApprovedDates, remarksValue, id],
-    );
-
-    if (leaveBalanceDelta !== 0) {
-      await recalculateLeaveBalanceForEmployee(connection, leaveRequest.emp_id);
-    }
-
-    await notifyRequesterForDecision(connection, {
-      requesterEmpId: leaveRequest.emp_id,
-      moduleType: "Leave",
-      status,
-      approverName: `${approver.first_name} ${approver.last_name}`.trim(),
-    });
-
-    await connection.commit();
-    res.json({ message: `Leave ${status}` });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in updateLeaveStatus:", error);
-    res.status(500).json({ message: "Error updating leave" });
-  } finally {
-    connection.release();
-  }
-};
-
-// --- PAYROLL ---
-// --- PAYROLL ---
-export const getAllPayroll = async (req, res) => {
-  try {
-    const { period } = req.query;
-    const { periodStart } = parsePeriodRange(period);
-    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
-
-    if (!viewer) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    let scopedWhereClause = "p.period_start = ?";
-    const scopedParams = [periodStart];
-
-    if (viewer.role === "RankAndFile") {
-      scopedWhereClause += " AND p.emp_id = ?";
-      scopedParams.push(viewer.emp_id);
-    } else if (viewer.role === "Supervisor") {
-      scopedWhereClause += `
-        AND (
-          p.emp_id = ?
-          OR (
-            COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-            AND e.designation = ?
-            AND e.emp_id <> ?
-          )
-        )
-      `;
-      scopedParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    }
-
-    // FIX: Added the WHERE clause to only fetch payrolls for the selected month!
-    const [rows] = await pool.query(
-      `SELECT
-         p.*,
-         e.first_name,
-         e.last_name,
-         e.designation,
-         e.profile_photo,
-         e.position,
-         COALESCE(adj.total_incentives, p.incentives, 0) AS recalculated_incentives,
-         COALESCE(adj.total_deductions, p.absence_deductions, 0) AS recalculated_deductions,
-         adj.adjustment_reasons,
-         adj.incentive_reasons,
-         adj.deduction_reasons
-       FROM payroll p
-       JOIN employees e ON p.emp_id = e.emp_id
-       LEFT JOIN (
-         SELECT
-           emp_id,
-           GROUP_CONCAT(
-             CASE
-               WHEN type IN ('Bonus', 'Increase') THEN CONCAT(
-                 COALESCE(NULLIF(TRIM(description), ''), 'Unspecified incentive type'),
-                 ' = ₱',
-                 FORMAT(ABS(amount), 2)
-               )
-               ELSE NULL
-             END
-             ORDER BY effective_date DESC, id DESC
-             SEPARATOR ' | '
-           ) AS incentive_reasons,
-           COALESCE(
-             SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END),
-             0
-           ) AS total_incentives,
-           GROUP_CONCAT(
-             CASE
-               WHEN type = 'Decrease' THEN CONCAT(
-                 COALESCE(NULLIF(TRIM(description), ''), 'Unspecified deduction type'),
-                 ' = ₱',
-                 FORMAT(ABS(amount), 2)
-               )
-               ELSE NULL
-             END
-             ORDER BY effective_date DESC, id DESC
-             SEPARATOR ' | '
-           ) AS deduction_reasons,
-           COALESCE(
-             SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END),
-             0
-           ) AS total_deductions,
-           GROUP_CONCAT(
-             CONCAT(
-               type,
-               ': ',
-               COALESCE(NULLIF(TRIM(description), ''), 'Unspecified type'),
-               ' = ₱',
-               FORMAT(ABS(amount), 2)
-             )
-             ORDER BY effective_date DESC, id DESC
-             SEPARATOR ' | '
-           ) AS adjustment_reasons
-         FROM salary_history
-         WHERE DATE_FORMAT(effective_date, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
-         GROUP BY emp_id
-       ) adj ON adj.emp_id = p.emp_id
-       WHERE ${scopedWhereClause}
-       ORDER BY
-         CAST(COALESCE(NULLIF(REGEXP_SUBSTR(p.emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
-         p.emp_id ASC`,
-      [periodStart, ...scopedParams],
-    );
-
-    const enrichedRows = rows.map((row) => {
-      const basicPay = Number(row.basic_pay || 0);
-      const incentives = Number(row.recalculated_incentives || 0);
-      const totalDeductions = Number(row.recalculated_deductions || 0);
-      const netPay = Number(
-        (basicPay + incentives - totalDeductions).toFixed(2),
-      );
-
-      return {
-        ...row,
-        absences_count: 0,
-        converted_absences: 0,
-        incentives,
-        absence_deductions: totalDeductions,
-        baseline_absence_deductions: 0,
-        adjustment_deductions: totalDeductions,
-        net_pay: netPay,
-      };
-    });
-
-    res.json(enrichedRows);
-  } catch (error) {
-    console.error("DB Error in getAllPayroll:", error);
-    res.status(500).json({ message: "Error fetching payroll" });
-  }
-};
-
-export const getWorkweekConfigs = async (req, res) => {
-  try {
-    await ensureWorkweekConfigsTable();
-
-    const [rows] = await pool.query(
-      `
-        SELECT
-          id,
-          workweek_type,
-          effective_from,
-          effective_to,
-          hours_per_day,
-          absence_unit,
-          created_at,
-          updated_at
-        FROM workweek_configs
-        ORDER BY effective_from DESC
-      `,
-    );
-
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getWorkweekConfigs:", error);
-    res.status(500).json({ message: "Error fetching workweek configs" });
-  }
-};
-
-export const upsertWorkweekConfig = async (req, res) => {
-  const { workweek_type, effective_from, effective_to } = req.body;
-
-  const normalizedType = normalizeWorkweekType(workweek_type);
-
-  if (!normalizedType || !effective_from) {
-    return res.status(400).json({
-      message: "workweek_type and effective_from are required",
-    });
-  }
-
-  const newFrom = new Date(effective_from);
-  const newTo = effective_to ? new Date(effective_to) : null;
-
-  if (Number.isNaN(newFrom.getTime())) {
-    return res.status(400).json({ message: "Invalid effective_from date" });
-  }
-
-  if (newTo && Number.isNaN(newTo.getTime())) {
-    return res.status(400).json({ message: "Invalid effective_to date" });
-  }
-
-  if (newTo && newTo < newFrom) {
-    return res
-      .status(400)
-      .json({ message: "effective_to must be on or after effective_from" });
-  }
-
-  const { hoursPerDay, absenceUnit } = WORKWEEK_DEFAULTS[normalizedType];
-  const normalizedTo = effective_to || null;
-  const overlapEndDate = normalizedTo || "9999-12-31";
-
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
-    await ensureWorkweekConfigsTable(connection);
-
-    const [overlaps] = await connection.query(
-      `
-        SELECT id
-        FROM workweek_configs
-        WHERE effective_from <> ?
-          AND effective_from <= ?
-          AND COALESCE(effective_to, '9999-12-31') >= ?
-        LIMIT 1
-      `,
-      [effective_from, overlapEndDate, effective_from],
-    );
-
-    if (overlaps.length > 0) {
-      await connection.rollback();
-      return res.status(409).json({
-        message: "Workweek date range overlaps with an existing configuration",
-      });
-    }
-
-    await connection.query(
-      `
-        INSERT INTO workweek_configs (
-          workweek_type,
-          effective_from,
-          effective_to,
-          hours_per_day,
-          absence_unit
-        ) VALUES (?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          workweek_type = VALUES(workweek_type),
-          effective_to = VALUES(effective_to),
-          hours_per_day = VALUES(hours_per_day),
-          absence_unit = VALUES(absence_unit)
-      `,
-      [normalizedType, effective_from, normalizedTo, hoursPerDay, absenceUnit],
-    );
-
-    await connection.commit();
-    res.json({ message: "Workweek configuration saved successfully" });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in upsertWorkweekConfig:", error);
-    res.status(500).json({ message: "Error saving workweek config" });
-  } finally {
-    connection.release();
-  }
-};
-
-export const updateWorkweekConfigById = async (req, res) => {
-  const { id } = req.params;
-  const { workweek_type, effective_from, effective_to } = req.body;
-
-  const normalizedType = normalizeWorkweekType(workweek_type);
-
-  if (!normalizedType || !effective_from) {
-    return res.status(400).json({
-      message: "workweek_type and effective_from are required",
-    });
-  }
-
-  const newFrom = new Date(effective_from);
-  const newTo = effective_to ? new Date(effective_to) : null;
-
-  if (Number.isNaN(newFrom.getTime())) {
-    return res.status(400).json({ message: "Invalid effective_from date" });
-  }
-
-  if (newTo && Number.isNaN(newTo.getTime())) {
-    return res.status(400).json({ message: "Invalid effective_to date" });
-  }
-
-  if (newTo && newTo < newFrom) {
-    return res
-      .status(400)
-      .json({ message: "effective_to must be on or after effective_from" });
-  }
-
-  const { hoursPerDay, absenceUnit } = WORKWEEK_DEFAULTS[normalizedType];
-  const normalizedTo = effective_to || null;
-  const overlapEndDate = normalizedTo || "9999-12-31";
-
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
-    await ensureWorkweekConfigsTable(connection);
-
-    const [existing] = await connection.query(
-      "SELECT id FROM workweek_configs WHERE id = ? LIMIT 1",
-      [id],
-    );
-
-    if (existing.length === 0) {
-      await connection.rollback();
-      return res.status(404).json({ message: "Workweek config not found" });
-    }
-
-    const [overlaps] = await connection.query(
-      `
-        SELECT id
-        FROM workweek_configs
-        WHERE id <> ?
-          AND effective_from <= ?
-          AND COALESCE(effective_to, '9999-12-31') >= ?
-        LIMIT 1
-      `,
-      [id, overlapEndDate, effective_from],
-    );
-
-    if (overlaps.length > 0) {
-      await connection.rollback();
-      return res.status(409).json({
-        message: "Workweek date range overlaps with an existing configuration",
-      });
-    }
-
-    await connection.query(
-      `
-        UPDATE workweek_configs
-        SET workweek_type = ?,
-            effective_from = ?,
-            effective_to = ?,
-            hours_per_day = ?,
-            absence_unit = ?
-        WHERE id = ?
-      `,
-      [
-        normalizedType,
-        effective_from,
-        normalizedTo,
-        hoursPerDay,
-        absenceUnit,
-        id,
-      ],
-    );
-
-    await connection.commit();
-    res.json({ message: "Workweek configuration updated successfully" });
-  } catch (error) {
-    await connection.rollback();
-    console.error("DB Error in updateWorkweekConfigById:", error);
-    res.status(500).json({ message: "Error updating workweek config" });
-  } finally {
-    connection.release();
-  }
-};
-
-export const deleteWorkweekConfigById = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    await ensureWorkweekConfigsTable();
-
-    const [result] = await pool.query(
-      "DELETE FROM workweek_configs WHERE id = ?",
-      [id],
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Workweek config not found" });
-    }
-
-    res.json({ message: "Workweek configuration deleted successfully" });
-  } catch (error) {
-    console.error("DB Error in deleteWorkweekConfigById:", error);
-    res.status(500).json({ message: "Error deleting workweek config" });
-  }
-};
-
 // --- OFFSET ENGINE ---
 const calculateMonthlyOffsetBalance = async (empId, year, month) => {
   await ensureOffsetTables();
@@ -4534,54 +3154,6 @@ export const fileOffsetApplication = async (req, res) => {
     res.status(500).json({ message: "Error filing offset application" });
   } finally {
     connection.release();
-  }
-};
-
-export const getOffsetApplications = async (req, res) => {
-  try {
-    await ensureOffsetTables();
-
-    const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
-    if (!viewer) return res.status(401).json({ message: "Unauthorized" });
-
-    let query = `
-      SELECT
-        oa.*,
-        e.first_name,
-        e.last_name,
-        e.designation,
-        COALESCE(e.role, 'RankAndFile') as requester_role,
-        sup.first_name as supervisor_first_name,
-        sup.last_name as supervisor_last_name
-      FROM offset_applications oa
-      JOIN employees e ON oa.emp_id = e.emp_id
-      LEFT JOIN employees sup ON oa.supervisor_emp_id = sup.emp_id
-    `;
-    const queryParams = [];
-
-    if (viewer.role === "RankAndFile") {
-      query += " WHERE oa.emp_id = ?";
-      queryParams.push(viewer.emp_id);
-    } else if (viewer.role === "Supervisor") {
-      query += `
-        WHERE oa.emp_id = ?
-           OR (
-             e.designation = ?
-             AND e.emp_id <> ?
-           )
-      `;
-      queryParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
-    }
-    // FIX: If the role is HR or Admin, the query falls through here
-    // and fetches EVERYTHING without a WHERE restriction!
-
-    query += " ORDER BY oa.created_at DESC";
-
-    const [rows] = await pool.query(query, queryParams);
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getOffsetApplications:", error);
-    res.status(500).json({ message: "Error fetching offset applications" });
   }
 };
 
@@ -5668,29 +4240,6 @@ export const getPayrollReports = async (req, res) => {
   }
 };
 
-// --- MY ATTENDANCE (For Employee Calendar) ---
-export const getMyAttendance = async (req, res) => {
-  try {
-    const empId = req.user?.emp_id;
-
-    if (!empId) {
-      return res
-        .status(400)
-        .json({ message: "Employee ID missing from token" });
-    }
-
-    const [rows] = await pool.query(
-      "SELECT date, status FROM attendance WHERE emp_id = ? ORDER BY date DESC",
-      [empId],
-    );
-
-    res.json(rows);
-  } catch (error) {
-    console.error("DB Error in getMyAttendance:", error);
-    res.status(500).json({ message: "Error fetching personal attendance" });
-  }
-};
-
 // --- RESET PAYROLL ---
 export const resetPayrollData = async (req, res) => {
   const connection = await pool.getConnection();
@@ -6024,61 +4573,4 @@ export const removeResignationFile = async (req, res) => {
   }
 };
 
-// 2. Update Personal Profile Details
-export const updateMyProfile = async (req, res) => {
-  const { email } = req.body;
-  try {
-    await pool.query("UPDATE employees SET email = ? WHERE emp_id = ?", [
-      email,
-      req.user.emp_id,
-    ]);
-    res.json({ message: "Profile updated successfully" });
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    res.status(500).json({ message: "Error updating profile" });
-  }
-};
 
-// 3. Change Password
-export const changeMyPassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  try {
-    const [rows] = await pool.query(
-      "SELECT emp_id, first_name, role, password FROM employees WHERE emp_id = ?",
-      [req.user.emp_id],
-    );
-    if (rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
-
-    const user = rows[0];
-    const stored = user.password;
-    const generatedFallback = `${user.emp_id || ""}${(user.first_name || "").replace(/\s+/g, "")}`;
-
-    let isMatch = false;
-
-    // 1. If we have a hash, use bcrypt
-    if (stored && (stored.startsWith("$2b$") || stored.startsWith("$2a$") || stored.startsWith("$2y$"))) {
-      isMatch = await bcrypt.compare(currentPassword, stored);
-    } 
-    
-    // 2. Fallback check (needed for new accounts or migration cases)
-    if (!isMatch) {
-       isMatch = (currentPassword === generatedFallback);
-    }
-
-    if (!isMatch)
-      return res.status(400).json({ message: "Incorrect current password" });
-
-    // Hash new password and save
-    const hashedPassword = await hashPassword(newPassword);
-    await pool.query("UPDATE employees SET password = ? WHERE emp_id = ?", [
-      hashedPassword,
-      req.user.emp_id,
-    ]);
-
-    res.json({ message: "Password changed successfully" });
-  } catch (error) {
-    console.error("Error changing password:", error);
-    res.status(500).json({ message: "Error changing password" });
-  }
-};

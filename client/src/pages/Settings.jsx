@@ -4,7 +4,7 @@ import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Camera, Lock, User, Eye, EyeOff } from "lucide-react"; // <-- Added Eye and EyeOff
+import { Camera, Lock, User, Eye, EyeOff, CreditCard } from "lucide-react"; // <-- Added Eye and EyeOff, CreditCard
 
 export default function Settings() {
   const { toast, showToast, clearToast } = useToast();
@@ -26,7 +26,15 @@ export default function Settings() {
   // State for forms
   const [profileForm, setProfileForm] = useState({
     email: currentUser.email || "",
-    phone: currentUser.phone || "",
+  });
+
+  const [credentialsForm, setCredentialsForm] = useState({
+    philhealth_no: currentUser.philhealth_no || "",
+    tin: currentUser.tin || "",
+    sss_no: currentUser.sss_no || "",
+    pag_ibig_mid_no: currentUser.pag_ibig_mid_no || "",
+    pag_ibig_rtn: currentUser.pag_ibig_rtn || "",
+    gsis_no: currentUser.gsis_no || "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -73,7 +81,12 @@ export default function Settings() {
         "Failed to update profile",
       );
     },
-    onSuccess: () => showToast("Profile updated successfully."),
+    onSuccess: (data, variables) => {
+      const updatedUser = { ...currentUser, ...variables };
+      localStorage.setItem("wah_user", JSON.stringify(updatedUser));
+      setCurrentUser(updatedUser);
+      showToast("Profile updated successfully.");
+    },
     onError: () => showToast("Error updating profile.", "error"),
   });
 
@@ -142,6 +155,16 @@ export default function Settings() {
           >
             <Lock className="w-4 h-4" /> Security
           </button>
+          <button
+            onClick={() => setActiveTab("credentials")}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === "credentials"
+                ? "bg-purple-600 text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <CreditCard className="w-4 h-4" /> Credentials
+          </button>
         </div>
 
         {/* Content Area */}
@@ -152,43 +175,6 @@ export default function Settings() {
                 <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">
                   Public Profile
                 </h3>
-
-                {/* Photo Upload Section */}
-                <div className="flex items-center gap-5 mb-8">
-                  <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                    {currentUser.profile_photo ? (
-                      <img
-                        src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/jpeg, image/png, image/webp"
-                      className="hidden"
-                      ref={fileInputRef}
-                      onChange={handlePhotoChange}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadPhotoMutation.isPending}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <Camera className="w-4 h-4" />
-                      {uploadPhotoMutation.isPending
-                        ? "Uploading..."
-                        : "Change Photo"}
-                    </button>
-                    <p className="text-[11px] text-gray-500 mt-2">
-                      JPG, PNG or WEBP. Max size 2MB.
-                    </p>
-                  </div>
-                </div>
 
                 {/* Details Form */}
                 <form
@@ -371,6 +357,136 @@ export default function Settings() {
                       {changePasswordMutation.isPending
                         ? "Updating..."
                         : "Update Password"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+            {activeTab === "credentials" && (
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">
+                  Government Credentials
+                </h3>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    updateProfileMutation.mutate(credentialsForm);
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        PHILHEALTH No.
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="N/A"
+                        value={credentialsForm.philhealth_no}
+                        onChange={(e) =>
+                          setCredentialsForm({
+                            ...credentialsForm,
+                            philhealth_no: e.target.value,
+                          })
+                        }
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        TIN
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="N/A"
+                        value={credentialsForm.tin}
+                        onChange={(e) =>
+                          setCredentialsForm({
+                            ...credentialsForm,
+                            tin: e.target.value,
+                          })
+                        }
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        SSS No.
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="N/A"
+                        value={credentialsForm.sss_no}
+                        onChange={(e) =>
+                          setCredentialsForm({
+                            ...credentialsForm,
+                            sss_no: e.target.value,
+                          })
+                        }
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        PAG-IBIG MID No.
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="N/A"
+                        value={credentialsForm.pag_ibig_mid_no}
+                        onChange={(e) =>
+                          setCredentialsForm({
+                            ...credentialsForm,
+                            pag_ibig_mid_no: e.target.value,
+                          })
+                        }
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        PAG-IBIG RTN
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="N/A"
+                        value={credentialsForm.pag_ibig_rtn}
+                        onChange={(e) =>
+                          setCredentialsForm({
+                            ...credentialsForm,
+                            pag_ibig_rtn: e.target.value,
+                          })
+                        }
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        GSIS No.
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="N/A"
+                        value={credentialsForm.gsis_no}
+                        onChange={(e) =>
+                          setCredentialsForm({
+                            ...credentialsForm,
+                            gsis_no: e.target.value,
+                          })
+                        }
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-4 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={updateProfileMutation.isPending}
+                      className="px-5 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {updateProfileMutation.isPending
+                        ? "Saving..."
+                        : "Save Changes"}
                     </button>
                   </div>
                 </form>

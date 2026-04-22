@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import "./config/db.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoute.ts";
+import attendanceRoutes from "./routes/attendanceRoute.ts";
 import fileRoutes from "./routes/fileRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
@@ -16,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 8001;
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://wah-payroll-seven.vercel.app",
 ];
 //mavsy the great
@@ -48,6 +51,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
+app.use("/api/employees", dashboardRoutes);
+app.use("/api/employees", attendanceRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/file", fileRoutes);
 app.use("/api/hr-reports", hrReportsRoutes);

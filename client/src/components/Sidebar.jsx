@@ -21,8 +21,8 @@ const navItems = {
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/payroll-reports", icon: BarChart3, label: "Reports" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
     { to: "/file-management", icon: FileSpreadsheet, label: "File Management" },
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
   Supervisor: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -42,8 +42,8 @@ const navItems = {
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
     { to: "/file-management", icon: FileSpreadsheet, label: "File Management" },
+    { to: "/settings", icon: Settings, label: "Settings" } // <-- ADDED
   ],
   RankAndFile: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },

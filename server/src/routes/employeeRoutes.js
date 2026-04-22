@@ -1,42 +1,24 @@
 import express from "express";
 import {
-  getAllEmployees,
   createEmployee,
   updateEmployee,
   resetEmployeePassword,
   deleteEmployee,
   toggleEmployeeActiveStatus,
-  getAllLeaves,
-  updateLeaveStatus,
   // fileLeave,
-  getAllPayroll,
   generatePayroll,
-  getAttendance,
-  getAttendanceStats,
-  adjustLeaveBalance,
-  getDashboardSummary,
   getSalaryHistory,
   updateSalaryHistoryEntry,
   deleteSalaryHistoryEntry,
   applySalaryAdjustment,
   updateBaseSalaryByPosition,
-  getAttendanceCalendarSummary,
-  getDailyAttendance,
   getAllResignations,
-  saveBulkAttendance,
-  getWorkweekConfigs,
-  upsertWorkweekConfig,
-  updateWorkweekConfigById,
-  deleteWorkweekConfigById,
   getOffsetBalance,
   fileOffsetApplication,
-  getOffsetApplications,
   updateOffsetApplicationStatus,
   getPayrollReports,
-  getMyAttendance,
   updateMissingDocs,
   getMyResignations,
-  getResignations,
   fileResignation,
   getResignationRecipient,
   getMyResignationDraft,
@@ -66,9 +48,11 @@ import {
   removeProfilePhoto,
   replaceResignationFile,
   removeResignationFile,
+} from "../controllers/employeeController.js";
+import {
   updateMyProfile,
   changeMyPassword,
-} from "../controllers/employeeController.js";
+} from "../controllers/profileController.js";
 import {
   authenticateToken,
   authorizeRoles,
@@ -85,41 +69,15 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-router.get(
-  "/dashboard-summary",
-  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
-  getDashboardSummary,
-);
-
 router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
-router.get(
-  "/my-attendance",
-  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
-  getMyAttendance,
-);
-router.get(
-  "/attendance",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getAttendance,
-  getAttendanceStats,
-);
-router.get(
-  "/attendance-stats",
-  authorizeRoles("Admin", "HR"),
-  getAttendanceStats,
-);
+
 
 router.get("/all-resignations", getAllResignations);
 router.get(
   "/my-resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getMyResignations,
-);
-router.get(
-  "/resignations",
-  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
-  getResignations,
 );
 router.post(
   "/resignations",
@@ -172,46 +130,7 @@ router.delete(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   deleteAllNotifications,
 );
-router.put("/leave-balance/:id", authorizeRoles("HR"), adjustLeaveBalance);
 
-router.get(
-  "/attendance-summary",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getAttendanceCalendarSummary,
-);
-router.get(
-  "/attendance-daily",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getDailyAttendance,
-);
-router.post(
-  "/attendance-bulk",
-  authorizeRoles("Admin", "HR"),
-  saveBulkAttendance,
-);
-
-router.get(
-  "/workweek-config",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  getWorkweekConfigs,
-);
-router.post("/workweek-config", authorizeRoles("Admin"), upsertWorkweekConfig);
-router.put(
-  "/workweek-config/:id",
-  authorizeRoles("Admin"),
-  updateWorkweekConfigById,
-);
-router.delete(
-  "/workweek-config/:id",
-  authorizeRoles("Admin"),
-  deleteWorkweekConfigById,
-);
-
-router.put(
-  "/resignations/:id",
-  authorizeRoles("Admin", "Supervisor", "HR"),
-  updateResignationStatus,
-);
 router.delete(
   "/resignations/:id/cancel",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -248,11 +167,6 @@ router.post(
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   fileOffsetApplication,
 );
-router.get(
-  "/offset-applications",
-  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
-  getOffsetApplications,
-);
 router.put(
   "/offset-applications/:id",
   authorizeRoles("Supervisor", "HR"),
@@ -279,11 +193,6 @@ router.post(
 //   authorizeRoles("Supervisor", "HR", "RankAndFile"),
 //   fileLeave,
 // );
-router.put(
-  "/leaves/:id",
-  authorizeRoles("Supervisor", "HR"),
-  updateLeaveStatus,
-);
 router.delete(
   "/leaves/:id/cancel",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -301,11 +210,6 @@ router.post(
   addHrNoteToPendingRequest,
 );
 
-router.get(
-  "/payroll",
-  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
-  getAllPayroll,
-);
 router.post("/generate-payroll", authorizeRoles("Admin"), generatePayroll);
 router.post(
   "/salary-adjustment",
@@ -348,7 +252,6 @@ router.get(
   getFileManagementInventory,
 );
 
-router.get("/", authorizeRoles("Admin", "Supervisor", "HR"), getAllEmployees);
 router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
 router.put("/:id/toggle-active", authorizeRoles("Admin", "HR"), toggleEmployeeActiveStatus);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);

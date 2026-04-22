@@ -41,6 +41,8 @@ export default function Employees({ shortcutMode = false }) {
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
   const [activeMenu, setActiveMenu] = useState(null); // For Ellipsis
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState(null);
@@ -83,6 +85,10 @@ export default function Employees({ shortcutMode = false }) {
     nextParams.delete("open");
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, shortcutMode]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
   const { data: employees = [], isLoading } = useQuery({
@@ -153,12 +159,16 @@ export default function Employees({ shortcutMode = false }) {
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, is_active }) =>
       mutationHandler(
-        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, { is_active }),
-        "Failed to toggle status"
+        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, {
+          is_active,
+        }),
+        "Failed to toggle status",
       ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(["employees"]);
-      showToast(`Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`);
+      showToast(
+        `Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`,
+      );
     },
     onError: (err) => showToast(err.message, "error"),
   });
@@ -237,6 +247,13 @@ export default function Employees({ shortcutMode = false }) {
 
     return matchesSearch && matchesStatus && matchesDesignation;
   });
+
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
 
   if (isLoading)
     return <div className="p-6 font-bold">Loading Employees...</div>;
@@ -332,7 +349,7 @@ export default function Employees({ shortcutMode = false }) {
                     </td>
                   </tr>
                 ) : (
-                  filteredEmployees.map((emp) => (
+                  paginatedEmployees.map((emp) => (
                     <tr
                       key={emp.emp_id}
                       onClick={() => setSelectedEmployeeDetails(emp)}
@@ -356,9 +373,20 @@ export default function Employees({ shortcutMode = false }) {
                       </td>
                       <td className="px-6 py-4 text-gray-600">{emp.email}</td>
                       <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                          {emp.status}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 inline-block w-fit">
+                            {emp.status}
+                          </span>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
+                              emp.is_active
+                                ? "bg-green-50 text-green-700 border-green-100"
+                                : "bg-red-50 text-red-700 border-red-100"
+                            }`}
+                          >
+                            {emp.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
                       </td>
                       {canAddEmployee && (
                         <td
@@ -426,7 +454,9 @@ export default function Employees({ shortcutMode = false }) {
                                       : "text-green-600 hover:bg-green-50"
                                   }`}
                                 >
-                                  {emp.is_active ? "Mark Inactive" : "Mark Active"}
+                                  {emp.is_active
+                                    ? "Mark Inactive"
+                                    : "Mark Active"}
                                 </button>
                                 <hr className="my-1 border-gray-100" />
                                 <button
@@ -449,6 +479,38 @@ export default function Employees({ shortcutMode = false }) {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white px-4 py-3 border border-t-0 border-gray-200 rounded-b-xl">
+              <div className="text-sm text-gray-700">
+                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                <span className="font-medium">
+                  {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}
+                </span>{" "}
+                of <span className="font-medium">{filteredEmployees.length}</span> results
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                >
+                  Previous
+                </button>
+                <div className="text-sm font-medium text-gray-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
