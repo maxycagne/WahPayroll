@@ -2,7 +2,6 @@ import React from "react";
 import Toast from "../components/Toast";
 import { useAttendance } from "../features/attendance/hooks/useAttendance";
 import { AttendanceCalendar } from "../features/attendance/components/AttendanceCalendar";
-import { AttendanceOverview } from "../features/attendance/components/AttendanceOverview";
 import { AttendanceStats } from "../features/attendance/components/AttendanceStats";
 import { AttendanceTable } from "../features/attendance/components/AttendanceTable";
 import { DateDetailsModal } from "../features/attendance/components/DateDetailsModal";
@@ -76,13 +75,6 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
               details.setIsOpen(true);
             }}
           />
-
-          <AttendanceOverview
-            search={search}
-            setSearch={setSearch}
-            stats={overviewStats}
-          />
-
           {canEditAttendance && (
             <AttendanceStats
               mode={stats.mode}

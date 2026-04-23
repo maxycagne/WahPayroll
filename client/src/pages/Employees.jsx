@@ -6,6 +6,7 @@ import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User } from "lucide-react";
+import socket from "@/hooks/io";
 
 const designationMap = {
   Operations: [
@@ -451,9 +452,17 @@ export default function Employees({ shortcutMode = false }) {
                                 )}
                                 <button
                                   onClick={() => {
+                                    if (emp.is_active) {
+                                      socket.emit("suspend-user", emp.emp_id);
+                                      queryClient.invalidateQueries([
+                                        "employees",
+                                      ]);
+                                      return;
+                                    }
+                                    // make emp active again
                                     toggleActiveMutation.mutate({
                                       id: emp.emp_id,
-                                      is_active: !emp.is_active,
+                                      is_active: true,
                                     });
                                     setActiveMenu(null);
                                   }}
@@ -498,7 +507,7 @@ export default function Employees({ shortcutMode = false }) {
               <div className="text-sm text-gray-700">
                 Showing{" "}
                 <span className="font-medium">
-                  {(currentPage - 1) * itemsPerPage + 1}
+                  {totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
                 </span>{" "}
                 to{" "}
                 <span className="font-medium">

@@ -3,37 +3,34 @@ import express from "express";
 import cors from "cors";
 import "./config/db.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
-import dashboardRoutes from "./routes/dashboardRoute.ts";
-import attendanceRoutes from "./routes/attendanceRoute.ts";
+import dashboardRoutes from "./routes/dashboardRoute.js";
+import attendanceRoutes from "./routes/attendanceRoute.js";
 import fileRoutes from "./routes/fileRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
 import path from "path";
 import hrReportsRoutes from "./routes/hrReportRoutes.js";
-import leaveRoutes from "./routes/leaveRoutes.ts";
-import profileRoutes from "./routes/profileRoutes.ts";
+import leaveRoutes from "./routes/leaveRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 import registerRoutes from "./routes/registerRoutes.js";
+import { createSocket } from "dgram";
+import { createServer } from "http";
+import { socket } from "./config/socket.js";
 
-const app = express();
 const PORT = process.env.PORT || 8001;
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "https://wah-payroll-seven.vercel.app",
+  "https://admin.socket.io",
 ];
-//mavsy the great
-// Updated CORS configuration to allow React and your custom headers
+const app = express();
+const httpServer = createServer(app);
+socket(httpServer);
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("Not allowed by CORS"));
-    },
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: [
@@ -59,6 +56,7 @@ app.use("/api/hr-reports", hrReportsRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/me", profileRoutes);
 app.use("/api/register", registerRoutes);
-app.listen(PORT, () => {
+
+httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
