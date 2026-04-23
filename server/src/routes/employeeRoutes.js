@@ -71,8 +71,6 @@ router.use(authenticateToken);
 
 router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
-
-
 router.get("/all-resignations", getAllResignations);
 router.get(
   "/my-resignations",
@@ -253,7 +251,11 @@ router.get(
 );
 
 router.post("/add", authorizeRoles("Admin", "HR"), createEmployee);
-router.put("/:id/toggle-active", authorizeRoles("Admin", "HR"), toggleEmployeeActiveStatus);
+router.put(
+  "/:id/toggle-active",
+  authorizeRoles("Admin", "HR"),
+  toggleEmployeeActiveStatus,
+);
 router.put("/:id", authorizeRoles("Admin", "HR"), updateEmployee);
 router.put(
   "/:id/reset-password",
@@ -261,7 +263,7 @@ router.put(
   resetEmployeePassword,
 );
 router.delete("/:id", authorizeRoles("Admin"), deleteEmployee);
-
+//dsasdadas
 // Setup Profile Photo Multer
 const photoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
