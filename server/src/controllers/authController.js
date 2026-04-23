@@ -68,6 +68,7 @@ export const login = async (req, res) => {
 
   try {
     await ensureEmployeeGovernmentColumns();
+    console.log(req.userAgent);
 
     const [rows] = await pool.query(
       `SELECT *
@@ -96,13 +97,25 @@ export const login = async (req, res) => {
     }
 
     if (user.is_active === 0 || user.is_active === false) {
-      return res.status(403).json({ message: "Your account is currently inactive. Please contact your administrator." });
+      return res.status(403).json({
+        message:
+          "Your account is currently inactive. Please contact your administrator.",
+      });
     }
 
     const role = normalizeRole(user.role);
 
-    const token = createAccessToken({ emp_id: user.emp_id, role });
-    const refreshToken = createRefreshToken({ emp_id: user.emp_id, role });
+    const session = crypto.randomUUID();
+    const token = createAccessToken({
+      emp_id: user.emp_id,
+      role,
+      jti: session,
+    });
+    const refreshToken = createRefreshToken({
+      emp_id: user.emp_id,
+      role,
+      jti: session,
+    });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
       secure: false, // true in production with HTTPS
@@ -110,6 +123,12 @@ export const login = async (req, res) => {
       path: "/api/auth/refresh",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    const payload = "random";
+    await pool.query(
+      "INSERT INTO sessions (emp_id, jti, user_agent) VALUES (?,  ?, ?)",
+      [user.emp_id, , session, req.userAgent],
+    );
 
     res.json({
       token,

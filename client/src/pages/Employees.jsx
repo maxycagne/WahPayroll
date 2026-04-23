@@ -6,6 +6,7 @@ import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User } from "lucide-react";
+import socket from "@/hooks/io";
 
 const designationMap = {
   Operations: [
@@ -441,9 +442,17 @@ export default function Employees({ shortcutMode = false }) {
                                 )}
                                 <button
                                   onClick={() => {
+                                    if (emp.is_active) {
+                                      socket.emit("suspend-user", emp.emp_id);
+                                      queryClient.invalidateQueries([
+                                        "employees",
+                                      ]);
+                                      return;
+                                    }
+                                    // make emp active again
                                     toggleActiveMutation.mutate({
                                       id: emp.emp_id,
-                                      is_active: !emp.is_active,
+                                      is_active: true,
                                     });
                                     setActiveMenu(null);
                                   }}
@@ -486,9 +495,14 @@ export default function Employees({ shortcutMode = false }) {
               <div className="text-sm text-gray-700">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
                 <span className="font-medium">
-                  {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}
+                  {Math.min(
+                    startIndex + itemsPerPage,
+                    filteredEmployees.length,
+                  )}
                 </span>{" "}
-                of <span className="font-medium">{filteredEmployees.length}</span> results
+                of{" "}
+                <span className="font-medium">{filteredEmployees.length}</span>{" "}
+                results
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -502,7 +516,9 @@ export default function Employees({ shortcutMode = false }) {
                   Page {currentPage} of {totalPages}
                 </div>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
                 >

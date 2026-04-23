@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -40,6 +40,8 @@ import { ReviewLeaveModal } from "./ReviewLeaveModal";
 
 import { workweekConfigQueryOptions } from "@/features/leave/utils/query.utils";
 import { getWorkingDateRangeInclusive } from "@/features/leave/utils/date.utils";
+import useSocket from "@/hooks/useSocket";
+import useConnectionStore from "@/store/useConnectionStore";
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -49,6 +51,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   currentUser,
 }) => {
   const queryClient = useQueryClient();
+  const isConnected = useConnectionStore((state) => state.isConnected);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [approvedLeaves, setApprovedLeaves] = useState<Set<any>>(new Set());
   const [reviewConfirm, setReviewConfirm] = useState<any>(null);
@@ -84,13 +87,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const payrollData = payrollQuery.data || [];
   const attendanceSummary = attendanceSummaryQuery.data || [];
 
-  const activeEmployeeCount = useMemo(() => 
-    employeesData.filter(
-      (e: any) =>
-        String(e.status || "").toLowerCase() !== "inactive" &&
-        String(e.role || "").toLowerCase() !== "admin"
-    ).length,
-    [employeesData]
+  const activeEmployeeCount = useMemo(
+    () =>
+      employeesData.filter(
+        (e: any) =>
+          String(e.status || "").toLowerCase() !== "inactive" &&
+          String(e.role || "").toLowerCase() !== "admin",
+      ).length,
+    [employeesData],
   );
 
   const pendingLeaveCount = dashboardQuery.data?.pendingLeaves?.length || 0;
@@ -99,129 +103,148 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const pendingResignationCount =
     dashboardQuery.data?.resignations?.length || 0;
 
-  const payrollTotals = useMemo(() => 
-    (payrollData as any[]).reduce(
-      (acc, row) => {
-        acc.gross += Number(row.gross_pay || 0);
-        acc.net += Number(row.net_pay || 0);
-        acc.deductions += Number(row.absence_deductions || 0);
-        return acc;
+  const payrollTotals = useMemo(
+    () =>
+      (payrollData as any[]).reduce(
+        (acc, row) => {
+          acc.gross += Number(row.gross_pay || 0);
+          acc.net += Number(row.net_pay || 0);
+          acc.deductions += Number(row.absence_deductions || 0);
+          return acc;
+        },
+        { gross: 0, net: 0, deductions: 0 },
+      ),
+    [payrollData],
+  );
+
+  const attendanceTotals = useMemo(
+    () =>
+      (attendanceSummary as any[]).reduce(
+        (acc, item) => {
+          acc.present += Number(item.present_count || 0);
+          acc.absent += Number(item.absent_count || 0);
+          acc.late += Number(item.late_count || 0);
+          return acc;
+        },
+        { present: 0, absent: 0, late: 0 },
+      ),
+    [attendanceSummary],
+  );
+
+  const attendanceChartData = useMemo(
+    () =>
+      (attendanceSummary as any[])
+        .map((item) => ({
+          day: String(item.formatted_date || item.date || "").slice(8, 10),
+          Present: Number(item.present_count || 0),
+          Absent: Number(item.absent_count || 0),
+          Late: Number(item.late_count || 0),
+        }))
+        .sort((a, b) => Number(a.day) - Number(b.day)),
+    [attendanceSummary],
+  );
+
+  const payrollChartData = useMemo(
+    () =>
+      [...(payrollData as any[])]
+        .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
+        .slice(0, 8)
+        .map((row) => ({
+          employee: `${row.emp_id}`,
+          Net: Number(row.net_pay || 0),
+          Gross: Number(row.gross_pay || 0),
+        })),
+    [payrollData],
+  );
+
+  const quickActions = useMemo(
+    () => [
+      {
+        label: "Add Employee",
+        sub: "Open Add Employee modal",
+        action: "add-employee",
+        icon: <Users className="h-4 w-4" />,
+        color: "bg-blue-50 border-blue-200 text-blue-800",
       },
-      { gross: 0, net: 0, deductions: 0 }
-    ),
-    [payrollData]
-  );
-
-  const attendanceTotals = useMemo(() => 
-    (attendanceSummary as any[]).reduce(
-      (acc, item) => {
-        acc.present += Number(item.present_count || 0);
-        acc.absent += Number(item.absent_count || 0);
-        acc.late += Number(item.late_count || 0);
-        return acc;
+      {
+        label: "Take Attendance",
+        sub: "Open attendance modal",
+        action: "take-attendance",
+        icon: <Clock3 className="h-4 w-4" />,
+        color: "bg-emerald-50 border-emerald-200 text-emerald-800",
       },
-      { present: 0, absent: 0, late: 0 }
-    ),
-    [attendanceSummary]
+      {
+        label: "Salary Settings",
+        sub: "Open Position Salary Settings",
+        action: "salary-settings",
+        icon: <HandCoins className="h-4 w-4" />,
+        color: "bg-purple-50 border-purple-200 text-purple-800",
+      },
+    ],
+    [],
   );
 
-  const attendanceChartData = useMemo(() => 
-    (attendanceSummary as any[])
-      .map((item) => ({
-        day: String(item.formatted_date || item.date || "").slice(8, 10),
-        Present: Number(item.present_count || 0),
-        Absent: Number(item.absent_count || 0),
-        Late: Number(item.late_count || 0),
-      }))
-      .sort((a, b) => Number(a.day) - Number(b.day)),
-    [attendanceSummary]
+  const cards = useMemo(
+    () => [
+      {
+        label: "Active Employees",
+        value: activeEmployeeCount,
+        borderColor: "#0f766e",
+        icon: <Users className="h-4 w-4" />,
+        clickable: false,
+        modalKey: "",
+      },
+      {
+        label: "Pending Approvals",
+        value: pendingLeaveCount + pendingResignationCount,
+        borderColor: "#7c3aed",
+        icon: <FileClock className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "pending",
+      },
+      {
+        label: "On Leave",
+        value: onLeaveCount,
+        borderColor: "#d4a017",
+        icon: <Briefcase className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "leave",
+      },
+      {
+        label: "Absent",
+        value: absentsCount,
+        borderColor: "#c0392b",
+        icon: <UserMinus className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "absent",
+      },
+    ],
+    [
+      activeEmployeeCount,
+      pendingLeaveCount,
+      pendingResignationCount,
+      onLeaveCount,
+      absentsCount,
+    ],
   );
 
-  const payrollChartData = useMemo(() => 
-    [...(payrollData as any[])]
-      .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
-      .slice(0, 8)
-      .map((row) => ({
-        employee: `${row.emp_id}`,
-        Net: Number(row.net_pay || 0),
-        Gross: Number(row.gross_pay || 0),
-      })),
-    [payrollData]
-  );
+  const handleUpdateLeaveStatus = useCallback(
+    async (id: string | number, payload: any) => {
+      try {
+        const res = await updateLeaveStatus(id, payload);
 
-  const quickActions = useMemo(() => [
-    {
-      label: "Add Employee",
-      sub: "Open Add Employee modal",
-      action: "add-employee",
-      icon: <Users className="h-4 w-4" />,
-      color: "bg-blue-50 border-blue-200 text-blue-800",
-    },
-    {
-      label: "Take Attendance",
-      sub: "Open attendance modal",
-      action: "take-attendance",
-      icon: <Clock3 className="h-4 w-4" />,
-      color: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    },
-    {
-      label: "Salary Settings",
-      sub: "Open Position Salary Settings",
-      action: "salary-settings",
-      icon: <HandCoins className="h-4 w-4" />,
-      color: "bg-purple-50 border-purple-200 text-purple-800",
-    },
-  ], []);
-
-  const cards = useMemo(() => [
-    {
-      label: "Active Employees",
-      value: activeEmployeeCount,
-      borderColor: "#0f766e",
-      icon: <Users className="h-4 w-4" />,
-      clickable: false,
-      modalKey: "",
-    },
-    {
-      label: "Pending Approvals",
-      value: pendingLeaveCount + pendingResignationCount,
-      borderColor: "#7c3aed",
-      icon: <FileClock className="h-4 w-4" />,
-      clickable: true,
-      modalKey: "pending",
-    },
-    {
-      label: "On Leave",
-      value: onLeaveCount,
-      borderColor: "#d4a017",
-      icon: <Briefcase className="h-4 w-4" />,
-      clickable: true,
-      modalKey: "leave",
-    },
-    {
-      label: "Absent",
-      value: absentsCount,
-      borderColor: "#c0392b",
-      icon: <UserMinus className="h-4 w-4" />,
-      clickable: true,
-      modalKey: "absent",
-    },
-  ], [activeEmployeeCount, pendingLeaveCount, pendingResignationCount, onLeaveCount, absentsCount]);
-
-  const handleUpdateLeaveStatus = useCallback(async (id: string | number, payload: any) => {
-    try {
-      const res = await updateLeaveStatus(id, payload);
-
-      if (res.status <= 201) {
-        setApprovedLeaves(prev => new Set([...prev, id]));
-        queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
-      } else {
-        alert("Failed to update leave request");
+        if (res.status <= 201) {
+          setApprovedLeaves((prev) => new Set([...prev, id]));
+          queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
+        } else {
+          alert("Failed to update leave request");
+        }
+      } catch (error) {
+        console.error("Error updating leave:", error);
       }
-    } catch (error) {
-      console.error("Error updating leave:", error);
-    }
-  }, [queryClient]);
+    },
+    [queryClient],
+  );
 
   const closeModal = useCallback(() => {
     setActiveModal(null);
@@ -246,26 +269,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   }, []);
 
-  const openLeaveDecisionConfirm = useCallback((employee: any) => {
-    const requestedDates = getWorkingDateRangeInclusive(
-      employee.date_from,
-      employee.date_to,
-      workweekConfigs
-    );
-    const totalDays = requestedDates.length;
+  const openLeaveDecisionConfirm = useCallback(
+    (employee: any) => {
+      const requestedDates = getWorkingDateRangeInclusive(
+        employee.date_from,
+        employee.date_to,
+        workweekConfigs,
+      );
+      const totalDays = requestedDates.length;
 
-    setReviewConfirm({
-      employee,
-      status: null,
-      totalDays,
-      isMultiDay: totalDays > 1,
-      selectedDates: requestedDates,
-      remarks: "",
-    });
-  }, [workweekConfigs]);
+      setReviewConfirm({
+        employee,
+        status: null,
+        totalDays,
+        isMultiDay: totalDays > 1,
+        selectedDates: requestedDates,
+        remarks: "",
+      });
+    },
+    [workweekConfigs],
+  );
 
   const toggleApprovedDate = useCallback((date: string) => {
-    setReviewConfirm(prev => {
+    setReviewConfirm((prev: any) => {
       if (!prev) return prev;
       const selected = new Set(prev.selectedDates || []);
       if (selected.has(date)) {
@@ -308,7 +334,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const requestedDates = getWorkingDateRangeInclusive(
       reviewConfirm.employee.date_from,
       reviewConfirm.employee.date_to,
-      workweekConfigs
+      workweekConfigs,
     );
     const selectedDates = reviewConfirm.selectedDates || [];
 
@@ -347,7 +373,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="m-0 text-[1.3rem] font-bold text-slate-900">
-              Admin Command Center
+              {isConnected}
+              {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
             </h1>
             <p className="m-0 mt-0.5 text-xs text-slate-500">
               Central overview for people, attendance, leave, payroll, and
