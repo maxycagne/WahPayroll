@@ -89,7 +89,7 @@ export default function LeaveForm({
       {/* Leave Type */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          Leave Type
+          Leave Type<span className="text-red-500">*</span>
         </label>
         <select
           value={formData.leaveType}
@@ -110,7 +110,7 @@ export default function LeaveForm({
       {/* From Date */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          From Date
+          From Date<span className="text-red-500">*</span>
         </label>
         <input
           type="date"
@@ -124,7 +124,7 @@ export default function LeaveForm({
       {/* To Date */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          To Date
+          To Date<span className="text-red-500">*</span>
           {isEmergency && (
             <span className="ml-1 text-red-600 font-bold">(Max 1 Day)</span>
           )}
@@ -238,7 +238,7 @@ export default function LeaveForm({
       {formData.leaveType !== "Offset" && !isMandated && (
         <div className="flex flex-col gap-2 md:col-span-3">
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-            Priority Level
+            Priority Level<span className="text-red-500">*</span>
           </label>
           <select
             value={formData.priority}
@@ -260,7 +260,7 @@ export default function LeaveForm({
       {/* Reason / Details */}
       <div className="flex flex-col gap-2 md:col-span-3">
         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          Reason / Details
+          Reason / Details<span className="text-red-500">*</span>
         </label>
         <textarea
           rows={3}

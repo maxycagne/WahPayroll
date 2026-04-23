@@ -867,7 +867,7 @@ function EmployeeModal({
           <div className="grid grid-cols-2 gap-2.5">
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Employee ID
+                Employee ID<span className="text-red-500">*</span>
               </label>
               <input
                 name="emp_id"
@@ -890,7 +890,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Email Address
+                Email Address<span className="text-red-500">*</span>
               </label>
               <input
                 name="email"
@@ -907,7 +907,7 @@ function EmployeeModal({
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
-                    First Name
+                    First Name<span className="text-red-500">*</span>
                   </label>
                   <input
                     name="first_name"
@@ -932,7 +932,7 @@ function EmployeeModal({
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
-                    Last Name
+                    Last Name<span className="text-red-500">*</span>
                   </label>
                   <input
                     name="last_name"
@@ -948,7 +948,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Designation
+                Designation<span className="text-red-500">*</span>
               </label>
               <select
                 name="designation"
@@ -967,7 +967,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Position
+                Position<span className="text-red-500">*</span>
               </label>
               <select
                 name="position"
@@ -989,7 +989,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Emp. Status
+                Emp. Status<span className="text-red-500">*</span>
               </label>
               <select
                 name="status"
@@ -1005,7 +1005,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Hired Date
+                Hired Date<span className="text-red-500">*</span>
               </label>
               <input
                 name="hired_date"
@@ -1019,7 +1019,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Government Details
+                Government Details (OPT)
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="flex flex-col gap-0.5">
