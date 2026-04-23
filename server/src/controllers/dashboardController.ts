@@ -649,9 +649,9 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    await ensureLeaveApprovalColumns(connection);
+    await ensureLeaveApprovalColumns(connection as any);
 
-    const approver: any = await getEmployeeProfile(connection, approverId);
+    const approver: any = await getEmployeeProfile(connection as any, approverId);
     if (!approver) {
       await connection.rollback();
       return res.status(401).json({ message: "Approver not found" });
@@ -668,7 +668,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     }
 
     const leaveRequest = rows[0];
-    const requester: any = await getEmployeeProfile(connection, leaveRequest.emp_id);
+    const requester: any = await getEmployeeProfile(connection as any, leaveRequest.emp_id);
 
     const totalRequestDays = await calculateLeaveCreditsInternal(
       connection,
