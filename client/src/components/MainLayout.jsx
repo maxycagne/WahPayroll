@@ -19,7 +19,7 @@ import axiosInterceptor from "../hooks/interceptor";
 import TopLoadingBar from "./TopLoading";
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
-
+import socket from "@/hooks/io";
 export default function MainLayout({ role }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -122,6 +122,7 @@ export default function MainLayout({ role }) {
 
   const handleLogoutConfirm = () => {
     setShowLogoutConfirmation(false);
+    socket.disconnect();
     processLogout();
   };
 

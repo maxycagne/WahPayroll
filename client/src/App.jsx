@@ -21,6 +21,7 @@ import RegistrationRequests from "./pages/RegistrationRequests";
 import axiosInterceptor from "./hooks/interceptor";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import useSocket from "./hooks/useSocket";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -223,7 +224,7 @@ const queryClient = new QueryClient();
 export default function App() {
   const [user, setUser] = useState(() => safeParseUser());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
-
+  useSocket({ user });
   useEffect(() => {
     const bootstrapAuth = async () => {
       const token = localStorage.getItem(STORAGE_TOKEN_KEY);
