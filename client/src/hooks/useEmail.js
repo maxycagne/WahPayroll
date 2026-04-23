@@ -47,6 +47,7 @@ export const useEmail = () => {
       employee_name: item.employee_name,
       position: item.position,
       date: formatDate(item.resignation_date),
+      createddate: formatDate(item.created_at),
     };
 
     try {

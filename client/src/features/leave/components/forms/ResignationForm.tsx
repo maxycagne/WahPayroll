@@ -616,6 +616,7 @@ export default function ResignationForm({
           employee_name: resignationForm.employee_name,
           position: resignationForm.position,
           resignation_date: resignationForm.last_working_day,
+          created_at: resignationForm.resignation_date,
         },
         "Submitted",
       );
