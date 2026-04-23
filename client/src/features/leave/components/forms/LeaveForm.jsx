@@ -325,22 +325,35 @@ export default function LeaveForm({
           />
         </div>
 
-        {/* Estimated Cost / Balance Info */}
         <div className="mt-1 flex items-center justify-between md:col-span-3">
           <div className="flex flex-col">
             {isDeductible ? (
-              <div className="flex items-baseline gap-2">
-                <span className="text-lg font-black text-indigo-700">
-                  {totalCredits.toFixed(2)}
-                </span>
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
-                  Credits Used
-                </span>
-              </div>
+              <>
+                <p className="m-0 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Estimated Cost
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-black text-indigo-700">
+                    {totalCredits.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                    Credits Used
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-300">|</span>
+                  <span className="text-[11px] font-semibold text-gray-500 italic">
+                    ({difference} working days)
+                  </span>
+                </div>
+              </>
             ) : (
-              <p className="m-0 text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
-                ✓ No Balance Deduction
-              </p>
+              <>
+                <p className="m-0 text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
+                  ✓ No Balance Deduction
+                </p>
+                <p className="m-0 text-[10px] text-gray-500 italic">
+                  This leave does not reduce your balance
+                </p>
+              </>
             )}
           </div>
           <div className="flex gap-2">
