@@ -16,6 +16,7 @@ import {
   safeText,
   toDateInputValue,
 } from "@/utils/text.utils";
+import { useEmail } from "@/hooks/useEmail";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -37,7 +38,11 @@ function computeOneMonthAheadDate(dateInput?: string): string {
 
   const targetYear = month === 11 ? year + 1 : year;
   const targetMonth = (month + 1) % 12;
-  const maxDayInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const maxDayInTargetMonth = new Date(
+    targetYear,
+    targetMonth + 1,
+    0,
+  ).getDate();
   const targetDay = Math.min(day, maxDayInTargetMonth);
 
   return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
@@ -71,6 +76,7 @@ export default function ResignationForm({
   fileResignationMutation,
   currentUser: currentUserProp,
 }: ResignationFormProps) {
+  const { sendResignationStatusEmail } = useEmail();
   const { showToast } = useToast();
   const currentUser = useMemo<CurrentUserLike>(() => {
     if (currentUserProp) return currentUserProp;
@@ -161,7 +167,11 @@ export default function ResignationForm({
     ) {
       setField("resignation_date", autoResignationDate);
     }
-  }, [resignationForm.request_date, resignationForm.resignation_date, setField]);
+  }, [
+    resignationForm.request_date,
+    resignationForm.resignation_date,
+    setField,
+  ]);
 
   const { data: resignationRecipient = null } =
     useQuery<ResignationRecipient | null>({
@@ -589,6 +599,14 @@ export default function ResignationForm({
           "Failed to submit resignation",
         );
       }
+      await sendResignationStatusEmail(
+        {
+          recipient_email: "info@wah.com",
+          employee_name: resignationForm.employee_name,
+          request_date: resignationForm.request_date,
+        },
+        "Submitted",
+      );
 
       if (!usedExternalMutation) {
         showToast("Resignation filed successfully.");

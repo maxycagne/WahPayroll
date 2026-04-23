@@ -106,7 +106,6 @@ export default function Employees({ shortcutMode = false }) {
   // --- MUTATIONS ---
   const addMutation = useMutation({
     mutationFn: (newData) => {
-      // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
       return axiosInterceptor.post("/api/employees/add", {
         ...newData,
@@ -486,9 +485,14 @@ export default function Employees({ shortcutMode = false }) {
               <div className="text-sm text-gray-700">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
                 <span className="font-medium">
-                  {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}
+                  {Math.min(
+                    startIndex + itemsPerPage,
+                    filteredEmployees.length,
+                  )}
                 </span>{" "}
-                of <span className="font-medium">{filteredEmployees.length}</span> results
+                of{" "}
+                <span className="font-medium">{filteredEmployees.length}</span>{" "}
+                results
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -502,7 +506,9 @@ export default function Employees({ shortcutMode = false }) {
                   Page {currentPage} of {totalPages}
                 </div>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
                 >
