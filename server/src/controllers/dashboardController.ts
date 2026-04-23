@@ -946,11 +946,31 @@ export const getAllPayroll = async (req: Request, res: Response) => {
 
     const offset = (page - 1) * limit;
 
-    const [countResult]: any = await pool.query(
-      `SELECT COUNT(*) as total FROM payroll p JOIN employees e ON p.emp_id = e.emp_id WHERE ${scopedWhereClause}`,
-      scopedParams
+    const [summaryResult]: any = await pool.query(
+      `SELECT 
+         COUNT(*) as total,
+         SUM(p.gross_pay) as total_gross,
+         SUM(COALESCE(adj.total_deductions, p.absence_deductions, 0)) as total_deductions,
+         SUM(p.basic_pay + COALESCE(adj.total_incentives, p.incentives, 0) - COALESCE(adj.total_deductions, p.absence_deductions, 0)) as total_net
+       FROM payroll p 
+       JOIN employees e ON p.emp_id = e.emp_id 
+       LEFT JOIN (
+         SELECT emp_id,
+                SUM(CASE WHEN type IN ('Bonus', 'Increase') THEN ABS(amount) ELSE 0 END) AS total_incentives,
+                SUM(CASE WHEN type = 'Decrease' THEN ABS(amount) ELSE 0 END) AS total_deductions
+         FROM salary_history
+         WHERE DATE_FORMAT(effective_date, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
+         GROUP BY emp_id
+       ) adj ON adj.emp_id = p.emp_id
+       WHERE ${scopedWhereClause}`,
+      [periodStart, ...scopedParams]
     );
-    const totalCount = countResult[0].total;
+    const totalCount = summaryResult[0]?.total || 0;
+    const summary = {
+      gross: summaryResult[0]?.total_gross || 0,
+      deductions: summaryResult[0]?.total_deductions || 0,
+      net: summaryResult[0]?.total_net || 0,
+    };
 
     const [rows]: any = await pool.query(
       `SELECT
@@ -1048,6 +1068,7 @@ export const getAllPayroll = async (req: Request, res: Response) => {
     res.json({
       data: enrichedRows,
       total: totalCount,
+      summary,
       page,
       totalPages: Math.ceil(totalCount / limit)
     });

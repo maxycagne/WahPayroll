@@ -83,19 +83,6 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
             stats={overviewStats}
           />
 
-          <div className="mt-4 mb-8">
-            <AttendanceTable
-              attendance={attendance}
-              search={search}
-              canEdit={canEditAttendance}
-              onAdjustBalance={(record) => balance.setModalData(record)}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalRecords={totalRecords}
-              setCurrentPage={setCurrentPage}
-            />
-          </div>
-
           {canEditAttendance && (
             <AttendanceStats
               mode={stats.mode}
