@@ -105,16 +105,14 @@ export const login = async (req, res) => {
 
     const role = normalizeRole(user.role);
 
-    const session = crypto.randomUUID();
+    // const session = crypto.randomUUID();
     const token = createAccessToken({
       emp_id: user.emp_id,
       role,
-      jti: session,
     });
     const refreshToken = createRefreshToken({
       emp_id: user.emp_id,
       role,
-      jti: session,
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
@@ -124,11 +122,11 @@ export const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    const payload = "random";
-    await pool.query(
-      "INSERT INTO sessions (emp_id, jti, user_agent) VALUES (?,  ?, ?)",
-      [user.emp_id, , session, req.userAgent],
-    );
+    // const payload = "random";
+    // await pool.query(
+    //   "INSERT INTO sessions (emp_id, jti, user_agent) VALUES (?,  ?, ?)",
+    //   [user.emp_id, , session, req.userAgent],
+    // );
 
     res.json({
       token,
