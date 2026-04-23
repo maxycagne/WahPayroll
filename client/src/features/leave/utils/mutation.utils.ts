@@ -1,18 +1,19 @@
 import axiosInterceptor from "@/hooks/interceptor";
+import { useFieldStore } from "../store/useFieldStore";
 import {
   createMutation,
   mutationHandler,
 } from "../hooks/createMutationHandler";
 import { useEmailNotifications } from "../hooks/useEmailNotifications";
+import { leaveUploadFieldKeys } from "../leaveConstants";
 
 //T
 
 export const useRequestMutation = ({
   showToast,
-  setApplicationModalOpen,
-  setResignationForm,
   setFormData,
   formData,
+  setApplicationModalOpen,
 }: useRequestMutation) => {
   const endpoints = {
     leave: "/api/employees/leaves",
@@ -21,19 +22,24 @@ export const useRequestMutation = ({
   };
 
   const handleSendUpdate = useEmailNotifications();
-  const ALL_KEYS = ["leaves", "offset-applications", "resignations"];
+  const ALL_KEYS = ["leaves", "offset-applications", "resignations", "dashboardSummary"];
 
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
 
   const resetLeaveForm = () => {
-    setFormData({
+    const nextFormState = {
       ...formData,
       fromDate: "",
       toDate: "",
       reason: "",
       daysApplied: "",
-      OCP: undefined,
+    };
+
+    leaveUploadFieldKeys.forEach((fieldKey) => {
+      nextFormState[fieldKey] = undefined;
     });
+
+    setFormData(nextFormState);
   };
 
   // 1
@@ -99,13 +105,7 @@ export const useRequestMutation = ({
     showToast,
     invalidateKeys: ["resignations"],
     successExtra: () => {
-      if (typeof setResignationForm === "function") {
-        setResignationForm({
-          resignation_type: "Voluntary Resignation",
-          effective_date: "",
-          reason: "",
-        });
-      }
+      useFieldStore.getState().resetForm();
       setApplicationModalOpen(false);
     },
   });
@@ -119,7 +119,7 @@ export const useRequestMutation = ({
       ),
     successMsg: "Leave request updated successfully.",
     showToast,
-    invalidateKeys: ["leaves"],
+    invalidateKeys: ["leaves", "dashboardSummary"],
     callback: async (data, variables) => {
       console.log("hit!!!!");
       await handleSendUpdate(

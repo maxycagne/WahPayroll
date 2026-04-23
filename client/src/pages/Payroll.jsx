@@ -1,10 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { apiFetch } from "../lib/api";
+import { pdf } from "@react-pdf/renderer";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { User, Mail } from "lucide-react"; // <-- ADDED Mail Icon
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import { User, Mail, FileDown } from "lucide-react";
+import PayrollSummaryDoc from "../components/pdfTemps/PayrollSummaryDoc";
 
 // --- OFFICIAL DESIGNATIONS & POSITIONS ---
 const DESIGNATIONS = {
@@ -127,7 +130,7 @@ export default function Payroll({ shortcutMode = false }) {
   const { toast, showToast, clearToast } = useToast();
   const [period, setPeriod] = useState(getCurrentPeriod);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const currentUser = useMemo(() => {
     try {
@@ -147,6 +150,7 @@ export default function Payroll({ shortcutMode = false }) {
   const [salaryBreakdownModal, setSalaryBreakdownModal] = useState(null);
   const [resetConfirmModal, setResetConfirmModal] = useState(false);
   const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
+  const [isGeneratingPayrollPdf, setIsGeneratingPayrollPdf] = useState(false);
 
   const [adjustmentType, setAdjustmentType] = useState("Incentive");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
@@ -194,6 +198,12 @@ export default function Payroll({ shortcutMode = false }) {
   const [bulkAdjustmentMode, setBulkAdjustmentMode] = useState(false);
   const [search, setSearch] = useState("");
   const [designationFilter, setDesignationFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, designationFilter, period]);
 
   const [salaryForm, setSalaryForm] = useState({
     designation: "",
@@ -210,21 +220,34 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- QUERIES ---
-  const { data: payrollData = [], isLoading: isLoadingPayroll } = useQuery({
-    queryKey: ["payroll", period],
+  const { data: responseData, isLoading: isLoadingPayroll } = useQuery({
+    queryKey: ["payroll", period, currentPage, search, designationFilter],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
-      if (!res.ok) throw new Error("Failed to fetch payroll");
-      return res.json();
+      const params = new URLSearchParams({
+        period,
+        page: currentPage,
+        limit: itemsPerPage,
+        search: search,
+        designationFilter: designationFilter,
+      });
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
+        "Failed to fetch payroll",
+      );
     },
   });
+
+  const payrollData = responseData?.data || [];
+  const totalPages = responseData?.totalPages || 1;
+  const totalRecords = responseData?.total || 0;
 
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      if (!res.ok) throw new Error("Failed to fetch employees");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees"),
+        "Failed to fetch employees",
+      );
     },
   });
 
@@ -237,11 +260,12 @@ export default function Payroll({ shortcutMode = false }) {
     enabled: Boolean(adjustmentModal?.emp_id),
     queryFn: async () => {
       const activePeriod = applyToOtherMonth ? adjustmentTargetPeriod : period;
-      const res = await apiFetch(
-        `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
+      return mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/salary-history/${adjustmentModal.emp_id}?period=${activePeriod}`,
+        ),
+        "Failed to fetch salary history",
       );
-      if (!res.ok) throw new Error("Failed to fetch salary history");
-      return res.json();
     },
   });
 
@@ -250,16 +274,12 @@ export default function Payroll({ shortcutMode = false }) {
   // NEW: Individual Email Mutation
   const sendPayslipMutation = useMutation({
     mutationFn: async (emp_id) => {
-      const res = await apiFetch(
-        `/api/employees/payroll/${emp_id}/send-payslip`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ period }),
-        },
+      return mutationHandler(
+        axiosInterceptor.post(`/api/employees/payroll/${emp_id}/send-payslip`, {
+          period,
+        }),
+        "Failed to send payslip",
       );
-      if (!res.ok) throw new Error("Failed to send payslip");
-      return res.json();
     },
     onSuccess: () => showToast("Payslip sent successfully!"),
     onError: () =>
@@ -268,21 +288,12 @@ export default function Payroll({ shortcutMode = false }) {
 
   const sendBulkPayslipsMutation = useMutation({
     mutationFn: async (selectedPeriod) => {
-      const res = await apiFetch(`/api/employees/payroll/send-bulk-payslips`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ period: selectedPeriod }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to send bulk payslips");
-      }
-
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/payroll/send-bulk-payslips", {
+          period: selectedPeriod,
+        }),
+        "Failed to send bulk payslips",
+      );
     },
     onSuccess: (data) => {
       // Using the period from the mutation argument or state
@@ -299,36 +310,23 @@ export default function Payroll({ shortcutMode = false }) {
 
   const adjustmentMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch("/api/employees/salary-adjustment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to save adjustments");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/salary-adjustment", payload),
+        "Failed to save adjustments",
+      );
     },
   });
 
   const updateHistoryEntryMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch(
-        `/api/employees/salary-history/${payload.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: payload.type,
-            amount: payload.amount,
-            description: payload.description,
-          }),
-        },
+      return mutationHandler(
+        axiosInterceptor.put(`/api/employees/salary-history/${payload.id}`, {
+          type: payload.type,
+          amount: payload.amount,
+          description: payload.description,
+        }),
+        "Failed to update adjustment",
       );
-      if (!res.ok) throw new Error("Failed to update adjustment");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -343,11 +341,10 @@ export default function Payroll({ shortcutMode = false }) {
 
   const deleteHistoryEntryMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await apiFetch(`/api/employees/salary-history/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to remove adjustment");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.delete(`/api/employees/salary-history/${id}`),
+        "Failed to remove adjustment",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -361,15 +358,10 @@ export default function Payroll({ shortcutMode = false }) {
 
   const updateBaseSalaryMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await apiFetch("/api/employees/update-base-salary", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to update base salary");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put("/api/employees/update-base-salary", payload),
+        "Failed to update base salary",
+      );
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -395,15 +387,10 @@ export default function Payroll({ shortcutMode = false }) {
 
   const generatePayrollMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiFetch("/api/employees/generate-payroll", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ period }),
-      });
-      if (!res.ok) throw new Error("Failed to generate payroll");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/generate-payroll", { period }),
+        "Failed to generate payroll",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -414,14 +401,10 @@ export default function Payroll({ shortcutMode = false }) {
 
   const resetPayrollMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiFetch("/api/employees/reset-payroll", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) throw new Error("Failed to reset payroll data");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.post("/api/employees/reset-payroll"),
+        "Failed to reset payroll data",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
@@ -757,25 +740,15 @@ export default function Payroll({ shortcutMode = false }) {
   };
 
   const designationOptions = useMemo(() => {
+    // In a paginated setup with server-side filtering, getting all designations
+    // dynamically from the fetched page might not be accurate. But we'll leave it
+    // extracting from current data or define a static list if possible.
     const unique = new Set();
     for (const row of payrollData) {
       if (row.designation) unique.add(row.designation);
     }
     return ["All", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
   }, [payrollData]);
-
-  const filteredPayroll = useMemo(() => {
-    const searchText = (search || "").toLowerCase();
-
-    return payrollData.filter((p) => {
-      const bySearch = `${p.first_name} ${p.last_name} ${p.emp_id}`
-        .toLowerCase()
-        .includes(searchText);
-      const byDesignation =
-        designationFilter === "All" || p.designation === designationFilter;
-      return bySearch && byDesignation;
-    });
-  }, [payrollData, search, designationFilter]);
 
   const currentPeriodHistory = useMemo(
     () => salaryHistoryData,
@@ -793,21 +766,48 @@ export default function Payroll({ shortcutMode = false }) {
   }, [adjustmentModal, period]);
 
   const allFilteredSelected =
-    filteredPayroll.length > 0 &&
-    filteredPayroll.every((p) => selectedEmployees.has(p.emp_id));
+    payrollData.length > 0 &&
+    payrollData.every((p) => selectedEmployees.has(p.emp_id));
 
-  const payrollSummary = useMemo(() => {
-    return filteredPayroll.reduce(
-      (acc, row) => {
-        acc.count += 1;
-        acc.gross += Number(row.gross_pay || 0);
-        acc.deductions += Number(row.absence_deductions || 0);
-        acc.net += Number(row.net_pay || 0);
-        return acc;
-      },
-      { count: 0, gross: 0, deductions: 0, net: 0 },
-    );
-  }, [filteredPayroll]);
+  const payrollSummary = responseData?.summary || { count: totalRecords, gross: 0, deductions: 0, net: 0 };
+
+  const handleGeneratePayrollPdf = async () => {
+    if (!isAdmin) return;
+    if (!Array.isArray(payrollData) || payrollData.length === 0) {
+      showToast("No payroll records found for this period.", "error");
+      return;
+    }
+
+    setIsGeneratingPayrollPdf(true);
+    try {
+      const sortedRows = [...payrollData].sort((a, b) => {
+        const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+        const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim();
+        return aName.localeCompare(bName);
+      });
+
+      const blob = await pdf(
+        <PayrollSummaryDoc rows={sortedRows} period={period} />,
+      ).toBlob();
+
+      const fileName = `payroll-summary-${period || "report"}.pdf`;
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(blobUrl);
+
+      showToast("Payroll PDF generated successfully.");
+    } catch (error) {
+      console.error("Payroll PDF generation failed:", error);
+      showToast("Failed to generate payroll PDF.", "error");
+    } finally {
+      setIsGeneratingPayrollPdf(false);
+    }
+  };
 
   if (isLoadingPayroll || isLoadingEmployees)
     return (
@@ -857,14 +857,27 @@ export default function Payroll({ shortcutMode = false }) {
                     }}
                     disabled={
                       sendBulkPayslipsMutation.isPending ||
-                      filteredPayroll.length === 0
+                      payrollData.length === 0
                     }
                     className="px-4 py-2 rounded-lg bg-indigo-600 border border-indigo-600 text-white text-sm font-semibold cursor-pointer hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
                     <Mail className="w-4 h-4" />
                     {sendBulkPayslipsMutation.isPending
-                      ? `Sending to ${filteredPayroll.length} employees...`
+                      ? `Sending to ${payrollData.length} employees...`
                       : "Email All"}
+                  </button>
+
+                  <button
+                    onClick={handleGeneratePayrollPdf}
+                    disabled={
+                      isGeneratingPayrollPdf || payrollData.length === 0
+                    }
+                    className="px-4 py-2 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    {isGeneratingPayrollPdf
+                      ? "Generating PDF..."
+                      : "Generate Payroll PDF"}
                   </button>
 
                   <button
@@ -894,7 +907,7 @@ export default function Payroll({ shortcutMode = false }) {
                 Employees
               </p>
               <p className="m-0 mt-1 text-xl font-black text-gray-900">
-                {payrollSummary.count}
+                {totalRecords}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
@@ -983,7 +996,7 @@ export default function Payroll({ shortcutMode = false }) {
                             setSelectedEmployees(
                               allFilteredSelected
                                 ? new Set()
-                                : new Set(filteredPayroll.map((p) => p.emp_id)),
+                                : new Set(payrollData.map((p) => p.emp_id)),
                             )
                           }
                           checked={allFilteredSelected}
@@ -1017,7 +1030,7 @@ export default function Payroll({ shortcutMode = false }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredPayroll.length === 0 ? (
+                  {payrollData.length === 0 ? (
                     <tr>
                       <td
                         colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
@@ -1028,7 +1041,7 @@ export default function Payroll({ shortcutMode = false }) {
                       </td>
                     </tr>
                   ) : (
-                    filteredPayroll.map((p) => (
+                    payrollData.map((p) => (
                       <tr
                         key={p.id}
                         onClick={() => {
@@ -1052,17 +1065,6 @@ export default function Payroll({ shortcutMode = false }) {
                         <td className="px-6 py-4">{p.emp_id}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                              {p.profile_photo ? (
-                                <img
-                                  src={`${API_BASE_URL}/${p.profile_photo.replace(/^\/+/, "")}`}
-                                  alt="Profile"
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <User className="h-5 w-5 text-gray-400" />
-                              )}
-                            </div>
                             <div>
                               <div className="font-bold text-gray-900">
                                 {p.first_name} {p.last_name}
@@ -1136,6 +1138,38 @@ export default function Payroll({ shortcutMode = false }) {
                   )}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
+                  <div className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                    <span className="font-medium">
+                      {Math.min(currentPage * itemsPerPage, totalRecords)}
+                    </span>{" "}
+                    of <span className="font-medium">{totalRecords}</span> results
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <div className="text-sm font-medium text-gray-700 px-2">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>

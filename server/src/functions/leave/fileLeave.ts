@@ -2,10 +2,15 @@ import pool from "../../config/db";
 import { Request, RequestHandler, Response } from "express";
 import {
   getEmployeeProfile,
+  ensureLeaveApprovalColumns,
   notifyApproversForRequest,
 } from "../../controllers/employeeController";
 import { s3Client } from "../../config/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  getLeavePolicy,
+  getRequiredDocuments,
+} from "../../constants/leavePolicy";
 
 type WithUser = Request & {
   user: {
@@ -19,10 +24,6 @@ export const fileLeave: RequestHandler = async (
   res: Response,
 ) => {
   const reqType = req as WithUser;
-
-  if (req.file) {
-    console.log(req.file.originalname);
-  }
 
   const {
     emp_id,
@@ -42,9 +43,10 @@ export const fileLeave: RequestHandler = async (
       ? emp_id
       : reqType.user?.emp_id || emp_id;
 
+  // ============ BASIC VALIDATION ============
   if (!requesterEmpId || !leave_type || !date_from || !resolvedDateTo) {
     return res.status(400).json({
-      message: "emp_id, leave_type, and date_from are required",
+      message: "emp_id, leave_type, date_from, and date_to are required",
     });
   }
 
@@ -54,8 +56,28 @@ export const fileLeave: RequestHandler = async (
     });
   }
 
+  // ============ LEAVE POLICY VALIDATION ============
+  const policy = getLeavePolicy(leave_type);
+  if (!policy) {
+    return res.status(400).json({
+      message: `Invalid leave type: ${leave_type}`,
+    });
+  }
+
+  const normalizeDocumentKey = (fieldName: string) => {
+    const normalized = String(fieldName || "").trim();
+
+    if (normalized === "OCP") return "ocp";
+    if (normalized === "doctorCert") return "doctor_cert";
+    if (normalized === "deathCert") return "death_cert";
+    if (normalized === "lwopApproval") return "lwop_approval";
+
+    return normalized;
+  };
+
   const connection = await pool.getConnection();
   try {
+    await ensureLeaveApprovalColumns(connection);
     await connection.beginTransaction();
 
     const requester = await getEmployeeProfile(connection, requesterEmpId);
@@ -71,6 +93,7 @@ export const fileLeave: RequestHandler = async (
       .trim()
       .toLowerCase();
 
+    // ============ STATUS-SPECIFIC RESTRICTIONS ============
     if (
       normalizedStatus === "job order" &&
       normalizedLeaveType === "pgt leave"
@@ -81,16 +104,142 @@ export const fileLeave: RequestHandler = async (
       });
     }
 
-    const keyItem = `OCP/${requesterEmpId}/${Date.now()}-${reqType.file?.originalname}`;
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: keyItem,
-        Body: reqType.file?.buffer,
-        ContentType: reqType.file?.mimetype,
-      }),
+    // ============ CALCULATE LEAVE DURATION ============
+    const fromDate = new Date(date_from);
+    const toDate = new Date(resolvedDateTo);
+    const daysDifference = Math.ceil(
+      (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24) + 1
     );
 
+    // Enforce one approved Birthday Leave per calendar year.
+    if (normalizedLeaveType === "birthday leave") {
+      const targetYear = fromDate.getFullYear();
+      const [existingBirthdayLeave] = await connection.query(
+        `
+        SELECT id, date_from
+        FROM leave_requests
+        WHERE emp_id = ?
+          AND LOWER(TRIM(leave_type)) = 'birthday leave'
+          AND status = 'Approved'
+          AND YEAR(date_from) = ?
+        LIMIT 1
+        `,
+        [requesterEmpId, targetYear],
+      );
+
+      if ((existingBirthdayLeave as any[]).length > 0) {
+        await connection.rollback();
+        return res.status(409).json({
+          message: `Birthday Leave can only be approved once per year. An approved Birthday Leave already exists for ${targetYear}.`,
+        });
+      }
+    }
+
+    // Validate days against policy max
+    if (daysDifference > policy.maxDays) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: `${leave_type} cannot exceed ${policy.maxDays} days (requested: ${daysDifference})`,
+      });
+    }
+
+    // ============ NOTICE WINDOW VALIDATION ============
+    if (policy.minNoticeHours > 0) {
+      const now = new Date();
+      const hoursUntilLeave = Math.ceil(
+        (fromDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+      );
+
+      if (hoursUntilLeave < policy.minNoticeHours) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: `${leave_type} requires ${Math.ceil(policy.minNoticeHours / 24)} days advance notice`,
+        });
+      }
+    }
+
+    // ============ DOCUMENT HANDLING ============
+    const documents: Record<
+      string,
+      { key: string; filename: string; uploadedAt: string }
+    > = {};
+
+    const uploadedFiles = Array.isArray((req as any).files)
+      ? ((req as any).files as Express.Multer.File[])
+      : (req as any).file
+        ? [((req as any).file as Express.Multer.File)]
+        : [];
+
+    for (const uploadedFile of uploadedFiles) {
+      const normalizedFieldName = normalizeDocumentKey(uploadedFile.fieldname);
+      const keyItem = `documents/${requesterEmpId}/${leave_type.replace(/\s+/g, "_")}/${normalizedFieldName}-${Date.now()}-${uploadedFile.originalname}`;
+
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: keyItem,
+          Body: uploadedFile.buffer,
+          ContentType: uploadedFile.mimetype,
+        }),
+      );
+
+      documents[normalizedFieldName] = {
+        key: keyItem,
+        filename: uploadedFile.originalname,
+        uploadedAt: new Date().toISOString(),
+      };
+    }
+
+    // ============ REQUIRE DOCUMENTS VALIDATION ============
+    const requiredDocs = getRequiredDocuments(leave_type);
+    for (const docType of requiredDocs) {
+      // Special handling for OCP (only required for 5+ days)
+      if (docType === "ocp" && daysDifference < 5) {
+        continue;
+      }
+
+      // Special handling for doctor cert (only required for sick leave 3+ days)
+      if (
+        docType === "doctor_cert" &&
+        leave_type === "Unscheduled - Sick Leave" &&
+        daysDifference < 3
+      ) {
+        continue;
+      }
+
+      if (!documents[docType]) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: `${leave_type} requires document: ${docType.replace(/_/g, " ")}`,
+        });
+      }
+    }
+
+    // ============ OVERLAP CHECK ============
+    const [existingApproved] = await connection.query(
+      `
+      SELECT id, status, date_from, date_to 
+      FROM leave_requests 
+      WHERE emp_id = ? 
+        AND status IN ('Approved', 'Pending')
+        AND leave_type != 'Offset'
+        AND (
+          (date_from <= ? AND date_to >= ?)
+        )
+      LIMIT 1
+      `,
+      [requesterEmpId, resolvedDateTo, date_from]
+    );
+
+    if ((existingApproved as any[]).length > 0) {
+      await connection.rollback();
+      const match = (existingApproved as any[])[0];
+      return res.status(409).json({
+        message: `Overlap detected: You already have a ${match.status} leave request for this period (${match.date_from} to ${match.date_to}).`,
+      });
+    }
+
+    // ============ INSERT LEAVE REQUEST ============
     await connection.query(
       `
         INSERT INTO leave_requests (
@@ -101,7 +250,7 @@ export const fileLeave: RequestHandler = async (
           priority,
           status,
           reason,
-          ocp
+          documents
         ) VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?)
       `,
       [
@@ -109,12 +258,13 @@ export const fileLeave: RequestHandler = async (
         leave_type,
         date_from,
         resolvedDateTo,
-        priority,
+        priority || "Medium",
         trimmedReason,
-        keyItem,
+        Object.keys(documents).length > 0 ? JSON.stringify(documents) : null,
       ],
     );
 
+    // ============ NOTIFY APPROVERS ============
     await notifyApproversForRequest(connection, {
       requester,
       moduleType: "Leave",

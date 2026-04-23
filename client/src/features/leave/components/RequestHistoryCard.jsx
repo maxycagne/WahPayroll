@@ -1,3 +1,5 @@
+import { formatLongDate } from "@/features/leave/utils/date.utils";
+
 export default function RequestHistoryCard({ myRequestHistory, badgeClass }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -47,9 +49,7 @@ export default function RequestHistoryCard({ myRequestHistory, badgeClass }) {
                     {entry.schedule}
                   </td>
                   <td className="px-4 py-2.5 text-sm font-medium text-gray-700">
-                    {entry.filed_at
-                      ? new Date(entry.filed_at).toLocaleDateString()
-                      : "-"}
+                    {entry.filed_at ? formatLongDate(entry.filed_at) : "-"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <span

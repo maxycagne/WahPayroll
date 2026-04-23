@@ -4,12 +4,13 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "tsx src/index.js",
     "dev": "tsx watch src/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1023.0",
     "@aws-sdk/s3-request-presigner": "^3.1023.0",
+    "@socket.io/admin-ui": "^0.5.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -22,10 +23,13 @@
     "mysql2": "^3.20.0",
     "nodemailer": "^8.0.5",
     "puppeteer": "^24.40.0",
+    "socket.io": "^4.8.3",
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/multer-s3": "^3.0.3",
     "@types/node": "^25.5.0",

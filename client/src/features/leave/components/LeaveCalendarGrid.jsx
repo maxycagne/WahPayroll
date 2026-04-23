@@ -1,24 +1,21 @@
 import React from "react";
 
-import {
-  getAttendanceForDate,
-  getLeavesForDate,
-} from "../utils/calendar.utils";
+import { getLeavesForDate } from "../utils/calendar.utils";
 import { pad } from "../utils/leave.utils";
-import { attendanceColors, statusColors } from "../leaveConstants";
+import { isNonWorkingDay } from "../utils/date.utils";
+import { statusColors } from "../leaveConstants";
 import LeaveCalendarModal from "./LeaveCalendarModal";
 
 const LeaveCalendarGrid = ({
   cells,
   leaves,
-  attendance,
   selectedDate,
   setSelectedDate,
   month,
   year,
-  selectedAttendance,
   selectedLeaves,
   selectedDateStr,
+  workweekConfigs = [],
 }) => {
   return (
     <>
@@ -37,8 +34,11 @@ const LeaveCalendarGrid = ({
               return <div key={"e" + i} className="min-h-22.5" />;
 
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-            const dayLeaves = getLeavesForDate(dateStr, leaves);
-            const dayAtt = getAttendanceForDate(dateStr, attendance);
+            const dayLeaves = getLeavesForDate(
+              dateStr,
+              leaves,
+              workweekConfigs,
+            );
             const isSelected = day === selectedDate;
             const visibleLeaves = dayLeaves.slice(0, 3);
             const extraLeavesCount = Math.max(
@@ -53,15 +53,21 @@ const LeaveCalendarGrid = ({
                 statusColors[firstLeaveStatus]
               : null;
 
+            const isOffDay = isNonWorkingDay(dateStr, workweekConfigs);
+
             return (
               <button
                 key={i}
                 type="button"
                 className={`relative flex min-h-22.5 cursor-pointer flex-col items-start justify-start rounded-xl p-2 text-left transition-all duration-150 ${
+                  isOffDay ? "opacity-50 bg-slate-50 cursor-not-allowed" : ""
+                } ${
                   dayLeaves.length > 0 && !isSelected
                     ? colorConfig?.border + " " + colorConfig?.bg
-                    : "border border-slate-200 bg-white"
-                } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
+                    : isOffDay
+                      ? "border border-slate-200"
+                      : "border border-slate-200 bg-white"
+                } ${isSelected ? "z-10 border-slate-900 bg-slate-900 text-white shadow-md cursor-default" : isOffDay ? "" : "hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-sm"}`}
                 onClick={() => setSelectedDate(day)}
               >
                 <span
@@ -71,19 +77,6 @@ const LeaveCalendarGrid = ({
                 </span>
 
                 <div className="mt-0.5 flex w-full flex-col gap-1">
-                  {dayAtt && dayAtt.status !== "On Leave" && (
-                    <span
-                      className={`flex w-fit rounded-md px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider ${
-                        isSelected
-                          ? "bg-white/20 text-white"
-                          : //  @ts-ignore
-                            attendanceColors[dayAtt.status] ||
-                            "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {dayAtt.status}
-                    </span>
-                  )}
                   {visibleLeaves.map((leave) => (
                     <div
                       key={leave.id}
@@ -132,7 +125,6 @@ const LeaveCalendarGrid = ({
         <LeaveCalendarModal
           setSelectedDate={setSelectedDate}
           selectedDateStr={selectedDateStr}
-          selectedAttendance={selectedAttendance}
           selectedLeaves={selectedLeaves}
         ></LeaveCalendarModal>
       )}

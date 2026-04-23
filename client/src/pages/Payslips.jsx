@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const fmt = (n) => {
   if (n === null || n === undefined || n === "") return "-";
@@ -79,14 +80,21 @@ export default function Payslips() {
     return months;
   }, []);
 
-  const { data: payrollData = [], isLoading } = useQuery({
-    queryKey: ["payroll", period],
+  const { data: responseData, isLoading } = useQuery({
+    queryKey: ["payroll", period, currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
-      if (!res.ok) throw new Error("Failed to fetch payroll");
-      return res.json();
+      const params = new URLSearchParams({
+        period,
+        search: currentUser?.emp_id || ""
+      });
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
+      );
     },
+    enabled: !!currentUser?.emp_id,
   });
+
+  const payrollData = responseData?.data || [];
 
   if (isLoading)
     return (

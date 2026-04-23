@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { URL as API_BASE_URL } from "../assets/constant";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import NDADocument from "../components/pdfTemps/NDADocument.jsx";
 import ResignationFormDocument from "../components/pdfTemps/ResignationFormDoc.jsx";
@@ -65,6 +66,18 @@ function normalizeString(value) {
     .toLowerCase();
 }
 
+function isDocOrDocxFile(file) {
+  const target = String(file?.file_name || file?.file_key || "").toLowerCase();
+  return /\.(doc|docx)(?:$|[?#])/.test(target);
+}
+
+function isPreviewSupported(file) {
+  if (!file) return false;
+  if (file.source === "generated") return true;
+  if (!file.download_url) return false;
+  return !isDocOrDocxFile(file);
+}
+
 function buildDownloadBlobUrl(file, blob) {
   const blobUrl = window.URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -83,6 +96,7 @@ export default function FileManagement() {
   const [isReplacing, setIsReplacing] = useState(false);
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [isReplacingTemplate, setIsReplacingTemplate] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState(null);
   const [templateReplaceTarget, setTemplateReplaceTarget] = useState(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
@@ -116,12 +130,10 @@ export default function FileManagement() {
   } = useQuery({
     queryKey: ["file-management", role],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/file-management");
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload.message || "Failed to load file inventory");
-      }
-      return payload;
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/file-management"),
+        "Failed to load file inventory",
+      );
     },
   });
 
@@ -132,11 +144,10 @@ export default function FileManagement() {
   } = useQuery({
     queryKey: ["file-templates", role],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/file-templates");
-      const payload = await res.json().catch(() => []);
-      if (!res.ok) {
-        throw new Error(payload.message || "Failed to load templates");
-      }
+      const payload = mutationHandler(
+        axiosInterceptor.get("/api/employees/file-templates"),
+        "Failed to load templates",
+      );
       return Array.isArray(payload) ? payload : [];
     },
   });
@@ -244,7 +255,9 @@ export default function FileManagement() {
   }, [filteredEmployees, filteredFiles]);
 
   const selectedEmployee = useMemo(
-    () => employees.find((employee) => employee.emp_id === selectedEmployeeId) || null,
+    () =>
+      employees.find((employee) => employee.emp_id === selectedEmployeeId) ||
+      null,
     [employees, selectedEmployeeId],
   );
 
@@ -292,11 +305,13 @@ export default function FileManagement() {
 
     return Array.from(groups.values()).sort((a, b) => {
       const aNewest = a.files.reduce(
-        (latest, file) => Math.max(latest, new Date(file.uploaded_at || 0).getTime()),
+        (latest, file) =>
+          Math.max(latest, new Date(file.uploaded_at || 0).getTime()),
         0,
       );
       const bNewest = b.files.reduce(
-        (latest, file) => Math.max(latest, new Date(file.uploaded_at || 0).getTime()),
+        (latest, file) =>
+          Math.max(latest, new Date(file.uploaded_at || 0).getTime()),
         0,
       );
       return bNewest - aNewest;
@@ -329,13 +344,14 @@ export default function FileManagement() {
   const buildGeneratedDocument = (file) => {
     const data = file.document_data || {};
     const employeeName =
-      String(data.employee_name || "").trim() || file.employee_name || "Employee";
+      String(data.employee_name || "").trim() ||
+      file.employee_name ||
+      "Employee";
     const interviewAnswers = Array.isArray(data.exit_interview_answers)
       ? data.exit_interview_answers
       : [];
-    const checkedReasons = (Array.isArray(data.leaving_reasons)
-      ? data.leaving_reasons
-      : []
+    const checkedReasons = (
+      Array.isArray(data.leaving_reasons) ? data.leaving_reasons : []
     )
       .map((reason) =>
         RESIGNATION_REASON_OPTIONS.findIndex(
@@ -413,6 +429,12 @@ export default function FileManagement() {
 
   const handlePreview = async (file) => {
     try {
+      if (!isPreviewSupported(file)) {
+        throw new Error(
+          "Preview is only available for PDF and supported file types",
+        );
+      }
+
       if (file.source === "generated") {
         const documentNode = buildGeneratedDocument(file);
         if (!documentNode) {
@@ -444,13 +466,10 @@ export default function FileManagement() {
         return;
       }
 
-      const res = await apiFetch(file.download_url);
-
-      if (!res.ok) {
-        throw new Error("Failed to download file");
-      }
-
-      const blob = await res.blob();
+      const blob = await mutationHandler(
+        axiosInterceptor.get(file.download_url, { responseType: "blob" }),
+        "Failed to download file",
+      );
       buildDownloadBlobUrl(file, blob);
     } catch (error) {
       showToast(error.message || "Failed to download file", "error");
@@ -490,13 +509,15 @@ export default function FileManagement() {
 
   const downloadUploadedTemplate = async (template) => {
     try {
-      const res = await apiFetch(
-        `/api/employees/file-templates/${template.id}/download`,
+      const blob = await mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/file-templates/${template.id}/download`,
+          {
+            responseType: "blob",
+          },
+        ),
+        "Failed to download template",
       );
-      if (!res.ok) {
-        throw new Error("Failed to download template");
-      }
-      const blob = await res.blob();
       buildDownloadBlobUrl(
         {
           file_name: template.original_name || template.title || "template",
@@ -511,16 +532,10 @@ export default function FileManagement() {
 
   const deleteUploadedTemplate = async (template) => {
     try {
-      const res = await apiFetch(
-        `/api/employees/file-templates/${template.id}`,
-        {
-          method: "DELETE",
-        },
+      await mutationHandler(
+        axiosInterceptor.delete(`/api/employees/file-templates/${template.id}`),
+        "Failed to delete template",
       );
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload.message || "Failed to delete template");
-      }
       showToast("Template deleted successfully.");
       await refetchTemplates();
     } catch (error) {
@@ -547,30 +562,17 @@ export default function FileManagement() {
       uploadPayload.append("title", templateReplaceTarget.title || "");
       uploadPayload.append("category", templateReplaceTarget.category || "");
 
-      const uploadRes = await apiFetch("/api/employees/file-templates", {
-        method: "POST",
-        body: uploadPayload,
-      });
-      const uploadResult = await uploadRes.json().catch(() => ({}));
-      if (!uploadRes.ok) {
-        throw new Error(
-          uploadResult.message || "Failed to upload replacement template",
-        );
-      }
-
-      const deleteRes = await apiFetch(
-        `/api/employees/file-templates/${templateReplaceTarget.id}`,
-        {
-          method: "DELETE",
-        },
+      await mutationHandler(
+        axiosInterceptor.post("/api/employees/file-templates", uploadPayload),
+        "Failed to upload replacement template",
       );
-      const deleteResult = await deleteRes.json().catch(() => ({}));
-      if (!deleteRes.ok) {
-        throw new Error(
-          deleteResult.message ||
-            "Replacement uploaded but old template could not be removed",
-        );
-      }
+
+      await mutationHandler(
+        axiosInterceptor.delete(
+          `/api/employees/file-templates/${templateReplaceTarget.id}`,
+        ),
+        "Replacement uploaded but old template could not be removed",
+      );
 
       showToast("Template replaced successfully.");
       await refetchTemplates();
@@ -596,14 +598,10 @@ export default function FileManagement() {
       payload.append("title", templateTitle);
       payload.append("category", templateCategory);
 
-      const res = await apiFetch("/api/employees/file-templates", {
-        method: "POST",
-        body: payload,
-      });
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(result.message || "Failed to upload template");
-      }
+      await mutationHandler(
+        axiosInterceptor.post("/api/employees/file-templates", payload),
+        "Failed to upload template",
+      );
 
       setTemplateTitle("");
       setTemplateCategory("");
@@ -626,33 +624,16 @@ export default function FileManagement() {
     setIsReplacing(true);
     try {
       if (replaceTarget.source === "profile") {
-        const payload = new FormData();
-        payload.append("profile_photo", file);
-
-        const res = await apiFetch(
-          `/api/employees/${replaceTarget.emp_id}/photo`,
-          {
-            method: "POST",
-            body: payload,
-          },
-        );
-
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(result.message || "Failed to replace profile photo");
-        }
+        showToast("Profile photo replacement is not supported.", "error");
+        return;
       } else {
         const uploadPayload = new FormData();
         uploadPayload.append("requiredFiles", file);
 
-        const uploadRes = await apiFetch("/api/file/upload", {
-          method: "POST",
-          body: uploadPayload,
-        });
-        const uploadResult = await uploadRes.json().catch(() => ({}));
-        if (!uploadRes.ok) {
-          throw new Error(uploadResult.message || "File upload failed");
-        }
+        const uploadResult = await mutationHandler(
+          axiosInterceptor.post("/api/file/upload", uploadPayload),
+          "File upload failed",
+        );
 
         const uploaded = Array.isArray(uploadResult.files)
           ? uploadResult.files[0]
@@ -662,22 +643,17 @@ export default function FileManagement() {
           throw new Error("Upload succeeded but no file key was returned");
         }
 
-        const replaceRes = await apiFetch(
-          `/api/employees/resignations/${replaceTarget.record_id}/file`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+        await mutationHandler(
+          axiosInterceptor.put(
+            `/api/employees/resignations/${replaceTarget.record_id}/file`,
+            {
               file_field: replaceTarget.file_field,
               file_key: uploaded.key,
               old_file_key: replaceTarget.file_key,
-            }),
-          },
+            },
+          ),
+          "Failed to replace file",
         );
-        const replaceResult = await replaceRes.json().catch(() => ({}));
-        if (!replaceRes.ok) {
-          throw new Error(replaceResult.message || "Failed to replace file");
-        }
       }
 
       showToast("File replaced successfully.");
@@ -690,6 +666,51 @@ export default function FileManagement() {
       if (event.target) {
         event.target.value = "";
       }
+    }
+  };
+
+  const handleRemove = async (file) => {
+    if (!file?.replaceable) {
+      showToast("This file cannot be removed.", "error");
+      return;
+    }
+
+    const fileLabel = file.file_type || file.file_name || "this file";
+    const shouldProceed = window.confirm(
+      `Remove ${fileLabel}? This action cannot be undone.`,
+    );
+    if (!shouldProceed) return;
+
+    setIsRemoving(true);
+    try {
+      if (file.source === "profile") {
+        await mutationHandler(
+          axiosInterceptor.delete(
+            `/api/employees/employees/${file.emp_id}/photo`,
+          ),
+          "Failed to remove profile photo",
+        );
+      } else {
+        await mutationHandler(
+          axiosInterceptor.delete(
+            `/api/employees/resignations/${file.record_id}/file`,
+            {
+              data: {
+                file_field: file.file_field,
+                old_file_key: file.file_key,
+              },
+            },
+          ),
+          "Failed to remove file",
+        );
+      }
+
+      showToast("File removed successfully.");
+      await refetch();
+    } catch (error) {
+      showToast(error.message || "Failed to remove file", "error");
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -950,7 +971,9 @@ export default function FileManagement() {
                                   {file.file_type}
                                 </p>
                                 <p className="m-0 mt-1 truncate text-xs text-slate-600">
-                                  {file.file_name || file.file_key || "Generated document"}
+                                  {file.file_name ||
+                                    file.file_key ||
+                                    "Generated document"}
                                 </p>
                                 <p className="m-0 mt-1 text-[11px] text-slate-500">
                                   {formatDate(file.uploaded_at)}
@@ -961,20 +984,25 @@ export default function FileManagement() {
                                   {file.source}
                                 </span>
                                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                                  {file.file_status || (file.source === "generated" ? "generated" : "uploaded")}
+                                  {file.file_status ||
+                                    (file.source === "generated"
+                                      ? "generated"
+                                      : "uploaded")}
                                 </span>
                               </div>
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handlePreview(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                Preview
-                              </button>
+                              {isPreviewSupported(file) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePreview(file)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Preview
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleDownload(file)}
@@ -991,6 +1019,16 @@ export default function FileManagement() {
                                 >
                                   <Upload className="h-3.5 w-3.5" />
                                   Replace
+                                </button>
+                              )}
+                              {file.replaceable && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemove(file)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove
                                 </button>
                               )}
                             </div>
@@ -1134,13 +1172,13 @@ export default function FileManagement() {
             No files match your filters.
           </p>
           <p className="m-0 mt-2 text-sm">
-            Try a different employee name or {filterAttributeLabel.toLowerCase()}.
+            Try a different employee name or{" "}
+            {filterAttributeLabel.toLowerCase()}.
           </p>
         </div>
       ) : isCardLayout ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {employeeCards.map(({ employee, files: employeeFiles }) => {
-            const profilePhoto = String(employee.profile_photo || "").trim();
             const employeeName =
               String(employee.employee_name || "").trim() ||
               employee.display_name ||
@@ -1159,17 +1197,6 @@ export default function FileManagement() {
                 className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-slate-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-200 text-slate-500">
-                    {profilePhoto ? (
-                      <img
-                        src={`${API_BASE_URL}/${String(profilePhoto).replace(/^\/+/, "")}`}
-                        alt={employee.employee_name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Users className="h-6 w-6" />
-                    )}
-                  </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="m-0 truncate text-sm font-bold text-slate-900">
                       {employeeName}
@@ -1239,14 +1266,26 @@ export default function FileManagement() {
                           <ArrowDownToLine className="h-3.5 w-3.5" />
                           Download
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => openReplacePicker(file)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
-                        >
-                          <Upload className="h-3.5 w-3.5" />
-                          Replace
-                        </button>
+                        {file.replaceable && (
+                          <button
+                            type="button"
+                            onClick={() => openReplacePicker(file)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            Replace
+                          </button>
+                        )}
+                        {file.replaceable && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(file)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remove
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1290,6 +1329,14 @@ export default function FileManagement() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
           <div className="rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-lg">
             Replacing file...
+          </div>
+        </div>
+      )}
+
+      {isRemoving && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
+          <div className="rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-lg">
+            Removing file...
           </div>
         </div>
       )}

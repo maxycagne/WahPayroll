@@ -1,21 +1,24 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Toast from "../components/Toast";
 import {
   parseDateOnly,
   getDateDiffInclusive,
   calculateBusinessDays,
-  getDateRangeInclusive,
+  getWorkingDateRangeInclusive,
+  isNonWorkingDay,
+  calculateTotalCredits,
 } from "@/features/leave/utils/date.utils";
 import { getOffsetRequestedDays } from "@/features/leave/utils/leave.utils";
 import {
   leaveTypes,
   resignationTypes,
   leavePolicy,
+  leaveUploadFieldKeys,
 } from "@/features/leave/leaveConstants";
 
 import LeaveCalendar from "@/features/leave/components/LeaveCalendar";
 import ActionButtons from "@/features/leave/components/ActionButtons";
-import OffsetBalanceCard from "@/features/leave/components/OffsetBalanceCard";
 import RequestHistoryTable from "@/features/leave/components/RequestHistoryTable";
 import ModalsContainer from "@/features/leave/components/modals/ModalsContainer";
 import { useFormData } from "@/features/leave/hooks/useFormData";
@@ -27,11 +30,16 @@ import {
   offsetApplicationsQueryOptions,
   offsetBalanceQueryOptions,
   resignationQueryOptions,
+  workweekConfigQueryOptions,
 } from "@/features/leave/utils/query.utils";
 import { useRequestMutation } from "@/features/leave/utils/mutation.utils";
 import { useHandleSubmiisions } from "@/features/leave/hooks/useHandleSubmissions";
 
 export default function Leave() {
+  const [activeMonth, setActiveMonth] = useState({
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+  });
   const formDataState = useFormData();
 
   const {
@@ -41,8 +49,6 @@ export default function Leave() {
       setData: setFormData,
       error: formError,
       setError: setFormError,
-      resignation: resignationForm,
-      setResignation: setResignationForm,
     },
     modals: {
       application: {
@@ -97,6 +103,14 @@ export default function Leave() {
     ? leaveTypes.filter((type) => type !== "PGT Leave")
     : leaveTypes;
 
+  const clearLeaveUploadFields = (formState) => {
+    const nextState = { ...formState };
+    leaveUploadFieldKeys.forEach((fieldKey) => {
+      nextState[fieldKey] = undefined;
+    });
+    return nextState;
+  };
+
   const { data: leaves = [], isLoading: isLoadingLeaves } =
     useQuery(leavesQueryOptions);
 
@@ -107,16 +121,17 @@ export default function Leave() {
   const { data: offsetApplications = [], isLoading: isLoadingOffsets } =
     useQuery(offsetApplicationsQueryOptions);
 
-  const { data: offsetBalance = {} } = useQuery(
-    offsetBalanceQueryOptions(currentUser?.emp_id || ""),
-  );
-
   const { data: myResignations = [], isLoading: isLoadingResignations } =
     useQuery(resignationQueryOptions);
+  const { data: workweekConfigs = [] } = useQuery(workweekConfigQueryOptions);
 
   const {
     user: {
-      requests: { rows: myRequestRows, history: myRequestHistory },
+      requests: {
+        rows: myRequestRows,
+        history: myRequestHistory,
+        allHistory: allRequestHistory,
+      },
     },
     calendar: { options: calendarScopeOptions, filtered: calendarLeaves },
     approvals: {
@@ -142,6 +157,19 @@ export default function Leave() {
     currentUser,
   });
 
+  const sourceHistory = isAdminRole ? allRequestHistory : myRequestHistory;
+
+  const filteredHistory = useMemo(() => {
+    return sourceHistory.filter((entry) => {
+      if (!entry.filter_date) return false;
+      const d = new Date(entry.filter_date);
+      return (
+        d.getFullYear() === activeMonth.year &&
+        d.getMonth() === activeMonth.month
+      );
+    });
+  }, [sourceHistory, activeMonth]);
+
   const {
     submitLeaveMutation,
     fileOffsetMutation,
@@ -155,7 +183,6 @@ export default function Leave() {
   } = useRequestMutation({
     showToast,
     setApplicationModalOpen,
-    setResignationForm,
     setFormData,
     formData,
   });
@@ -180,7 +207,7 @@ export default function Leave() {
         ? formData.fromDate
         : "";
     setFormData({
-      ...formData,
+      ...clearLeaveUploadFields(formData),
       leaveType: newLeaveType,
       toDate: newToDate,
       daysApplied: "",
@@ -203,8 +230,20 @@ export default function Leave() {
 
   const handleFromDateChange = (e) => {
     const newFromDate = e.target.value;
+
+    if (
+      newFromDate &&
+      formData.leaveType !== "Offset" &&
+      isNonWorkingDay(newFromDate, workweekConfigs)
+    ) {
+      setFormError("Cannot file a leave on a non-working day.");
+      return;
+    }
+
     const newToDate =
       formData.leaveType === "Birthday Leave" ? newFromDate : "";
+
+    // Also validate if the newToDate is non-working, but birthday leave is already on the fromDate
     setFormData({ ...formData, fromDate: newFromDate, toDate: newToDate });
     setFormError("");
   };
@@ -218,11 +257,17 @@ export default function Leave() {
     }
 
     if (formData.leaveType !== "Offset") {
+      if (isNonWorkingDay(toDate, workweekConfigs)) {
+        setFormError("Cannot file a leave ending on a non-working day.");
+        return;
+      }
+
       const policy = leavePolicy[formData.leaveType];
       if (formData.fromDate && toDate && policy) {
         const businessDays = calculateBusinessDays(
           new Date(formData.fromDate),
           new Date(toDate),
+          workweekConfigs,
         );
         if (businessDays > policy.maxDays) {
           setFormError(
@@ -244,7 +289,7 @@ export default function Leave() {
     const maxDays = policy.maxDays;
     while (daysAdded < maxDays) {
       startDate.setDate(startDate.getDate() + 1);
-      if (startDate.getDay() !== 0 && startDate.getDay() !== 6) daysAdded++;
+      if (!isNonWorkingDay(startDate, workweekConfigs)) daysAdded++;
     }
     return startDate.toISOString().split("T")[0];
   };
@@ -254,8 +299,12 @@ export default function Leave() {
     status,
     decisionMode = "application",
   ) => {
-    const totalDays = getDateDiffInclusive(item.date_from, item.date_to);
-    const requestedDates = getDateRangeInclusive(item.date_from, item.date_to);
+    const requestedDates = getWorkingDateRangeInclusive(
+      item.date_from,
+      item.date_to,
+      workweekConfigs,
+    );
+    const totalDays = requestedDates.length;
     const isMultiDay = totalDays > 1;
 
     setReviewConfirm({
@@ -265,7 +314,7 @@ export default function Leave() {
       item,
       isMultiDay,
       totalDays,
-      selectedDates: status === "Approved" ? requestedDates : [],
+      selectedDates: requestedDates,
       remarks: "",
     });
   };
@@ -318,6 +367,11 @@ export default function Leave() {
   const submitReviewDecision = () => {
     if (!reviewConfirm) return;
 
+    if (!reviewConfirm.status) {
+      showToast("Select Approve or Deny after reviewing the request.", "error");
+      return;
+    }
+
     const trimmedRemarks = String(reviewConfirm.remarks || "").trim();
     const isDenyDecision = reviewConfirm.status === "Denied";
 
@@ -327,6 +381,7 @@ export default function Leave() {
     }
 
     if (reviewConfirm.module === "leave") {
+      console.log("leave");
       if (reviewConfirm.decisionMode === "cancellation") {
         reviewLeaveMutation.mutate({
           id: reviewConfirm.item.id,
@@ -339,9 +394,10 @@ export default function Leave() {
         return;
       }
 
-      const requestedDates = getDateRangeInclusive(
+      const requestedDates = getWorkingDateRangeInclusive(
         reviewConfirm.item.date_from,
         reviewConfirm.item.date_to,
+        workweekConfigs,
       );
       const selectedDates = reviewConfirm.selectedDates || [];
 
@@ -449,6 +505,15 @@ export default function Leave() {
     }
   };
 
+  const totalCredits = useMemo(() => {
+    if (!formData.fromDate || !formData.toDate) return 0;
+    return calculateTotalCredits(
+      formData.fromDate,
+      formData.toDate,
+      workweekConfigs,
+    );
+  }, [formData.fromDate, formData.toDate, workweekConfigs]);
+
   if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations) {
     return (
       <div className="p-6 font-bold text-gray-800">Loading your data...</div>
@@ -456,7 +521,7 @@ export default function Leave() {
   }
 
   return (
-    <div className="max-w-full">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <ActionButtons
         currentUser={currentUser}
         isAdminRole={isAdminRole}
@@ -477,11 +542,15 @@ export default function Leave() {
         scopeOptions={calendarScopeOptions}
         activeScope={calendarScope}
         onScopeChange={setCalendarScope}
+        onMonthChange={setActiveMonth}
+        workweekConfigs={workweekConfigs}
       />
 
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <OffsetBalanceCard offsetBalance={offsetBalance} />
-        <RequestHistoryTable myRequestHistory={myRequestHistory} />
+      <div className="mt-5">
+        <RequestHistoryTable
+          myRequestHistory={filteredHistory}
+          activeMonth={activeMonth}
+        />
       </div>
 
       <ModalsContainer
@@ -499,9 +568,8 @@ export default function Leave() {
         setFormData={setFormData}
         availableLeaveTypes={availableLeaveTypes}
         difference={difference}
+        totalCredits={totalCredits}
         handleSubmitLeave={handleSubmitLeave}
-        resignationForm={resignationForm}
-        setResignationForm={setResignationForm}
         resignationTypes={resignationTypes}
         fileResignationMutation={fileResignationMutation}
         pendingModalOpen={pendingModalOpen}
@@ -536,7 +604,7 @@ export default function Leave() {
         submitLeaveMutation={submitLeaveMutation}
         reviewConfirm={reviewConfirm}
         setReviewConfirm={setReviewConfirm}
-        getDateRangeInclusive={getDateRangeInclusive}
+        getDateRangeInclusive={getWorkingDateRangeInclusive}
         toggleLeaveApprovedDate={toggleLeaveApprovedDate}
         parseDateOnly={parseDateOnly}
         getOffsetRequestedDays={getOffsetRequestedDays}
@@ -548,6 +616,7 @@ export default function Leave() {
         reviewResignationMutation={reviewResignationMutation}
         showToast={showToast}
         submitCancellationRequest={submitCancellationRequest}
+        workweekConfigs={workweekConfigs}
       />
 
       <Toast toast={toast} onClose={clearToast} />

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { apiFetch } from "../lib/api";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User } from "lucide-react";
+import socket from "@/hooks/io";
 
 const designationMap = {
   Operations: [
@@ -31,15 +32,34 @@ const designationMap = {
   ],
 };
 
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function Employees({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const canResetPassword = currentUser?.role === "Admin";
+  const canAddEmployee = ["Admin", "HR"].includes(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDesignation, setFilterDesignation] = useState("All");
   const [activeMenu, setActiveMenu] = useState(null); // For Ellipsis
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState(null);
@@ -69,6 +89,8 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   useEffect(() => {
+    if (!canAddEmployee) return;
+
     if (shortcutMode) {
       setIsAddModalOpen(true);
       return;
@@ -81,21 +103,45 @@ export default function Employees({ shortcutMode = false }) {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, shortcutMode]);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, filterStatus, filterDesignation]);
+
   // --- QUERIES ---
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["employees"],
+  const { data: responseData, isLoading, isFetching } = useQuery({
+    queryKey: [
+      "employees",
+      currentPage,
+      debouncedSearchTerm,
+      filterStatus,
+      filterDesignation,
+    ],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees");
-      return res.json();
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearchTerm,
+        status: filterStatus,
+        designation: filterDesignation,
+      });
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees?${params.toString()}`),
+        "Failed to fetch employees",
+      );
     },
   });
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const employees = responseData?.data || [];
+  const totalPages = responseData?.totalPages || 1;
+  const totalRecords = responseData?.total || 0;
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // --- MUTATIONS ---
   const addMutation = useMutation({
     mutationFn: (newData) => {
-      // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
       return axiosInterceptor.post("/api/employees/add", {
         ...newData,
@@ -113,18 +159,13 @@ export default function Employees({ shortcutMode = false }) {
 
   const updateMutation = useMutation({
     mutationFn: async (updatedData) => {
-      const res = await apiFetch(`/api/employees/${updatedData.emp_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedData),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update employee");
-      }
-
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.put(
+          `/api/employees/${updatedData.emp_id}`,
+          updatedData,
+        ),
+        "Failed to update employee",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
@@ -137,7 +178,11 @@ export default function Employees({ shortcutMode = false }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => apiFetch(`/api/employees/${id}`, { method: "DELETE" }),
+    mutationFn: (id) =>
+      mutationHandler(
+        axiosInterceptor.delete(`/api/employees/${id}`),
+        "Failed to delete employee",
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]);
       setDeleteConfirm(null);
@@ -146,27 +191,35 @@ export default function Employees({ shortcutMode = false }) {
     onError: () => showToast("Failed to delete employee.", "error"),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, is_active }) =>
+      mutationHandler(
+        axiosInterceptor.put(`/api/employees/${id}/toggle-active`, {
+          is_active,
+        }),
+        "Failed to toggle status",
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(["employees"]);
+      showToast(
+        `Employee marked as ${variables.is_active ? "Active" : "Inactive"}.`,
+      );
+    },
+    onError: (err) => showToast(err.message, "error"),
+  });
+
   const resetPasswordMutation = useMutation({
     mutationFn: async (emp) => {
-      const res = await apiFetch(
-        `/api/employees/${emp.emp_id}/reset-password`,
-        {
-          method: "PUT",
-        },
+      const data = await mutationHandler(
+        axiosInterceptor.put(`/api/employees/${emp.emp_id}/reset-password`),
+        "Failed to reset password",
       );
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to reset password");
-      }
-
       return { ...data, emp };
     },
-    onSuccess: ({ autoPassword, emp }) => {
+    onSuccess: (data, emp) => {
       setResetConfirm(null);
       showToast(
-        `Password reset for ${emp.first_name} ${emp.last_name}: ${autoPassword}`,
+        `Password reset for ${emp.first_name} ${emp.last_name}: ${data.autoPassword}`,
       );
     },
     onError: (error) => {
@@ -213,25 +266,7 @@ export default function Employees({ shortcutMode = false }) {
       hired_date: "",
     });
 
-  const filteredEmployees = employees.filter((emp) => {
-    // 1. Hide Admin accounts from the table completely
-    if (emp.role === "Admin") {
-      return false;
-    }
-
-    // 2. Existing filter logic
-    const fullName =
-      `${emp.first_name} ${emp.last_name} ${emp.emp_id}`.toLowerCase();
-    const matchesSearch = fullName.includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "All" || emp.status === filterStatus;
-    const matchesDesignation =
-      filterDesignation === "All" || emp.designation === filterDesignation;
-
-    return matchesSearch && matchesStatus && matchesDesignation;
-  });
-
-  if (isLoading)
-    return <div className="p-6 font-bold">Loading Employees...</div>;
+ 
 
   return (
     <div className="max-w-full">
@@ -241,12 +276,14 @@ export default function Employees({ shortcutMode = false }) {
             <h1 className="text-2xl font-bold text-gray-900">
               Employee Management
             </h1>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              + Add Employee
-            </button>
+            {canAddEmployee && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                + Add Employee
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -285,7 +322,8 @@ export default function Employees({ shortcutMode = false }) {
 
           {/* Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-            <table className="w-full text-left text-sm border-collapse">
+            {isLoading || isFetching ? <p>loading</p> : (
+     <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 font-bold text-gray-700">ID</th>
@@ -299,130 +337,216 @@ export default function Employees({ shortcutMode = false }) {
                     Email Address
                   </th>
                   <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-                  <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                    Actions
-                  </th>
+                  {canAddEmployee && (
+                    <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEmployees.map((emp) => (
-                  <tr
-                    key={emp.emp_id}
-                    onClick={() => setSelectedEmployeeDetails(emp)}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {/* The Circular Profile Picture */}
-                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                          {emp.profile_photo ? (
-                            <img
-                              src={`${API_BASE_URL}/${emp.profile_photo.replace(/^\/+/, "")}`}
-                              alt="Profile"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-
-                        {/* The Name */}
-                        <div className="font-semibold text-gray-800">
-                          {emp.last_name}, {emp.first_name}{" "}
-                          {emp.middle_initial ? `${emp.middle_initial}.` : ""}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="font-medium text-gray-900">
-                        {emp.designation}
-                      </div>
-                      <div className="text-xs opacity-75">{emp.position}</div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                        {emp.status}
-                      </span>
-                    </td>
+                {employees.length === 0 ? (
+                  <tr>
                     <td
-                      className="px-6 py-4 text-center relative"
-                      onClick={(e) => e.stopPropagation()}
+                      colSpan={canAddEmployee ? 6 : 5}
+                      className="px-6 py-12 text-center"
                     >
-                      <button
-                        onClick={() =>
-                          setActiveMenu(
-                            activeMenu === emp.emp_id ? null : emp.emp_id,
-                          )
-                        }
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
-                      >
-                        <svg
-                          width="20"
-                          height="20"
-                          fill="currentColor"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                        </svg>
-                      </button>
-
-                      {/* Action Menu Dropdown */}
-                      {activeMenu === emp.emp_id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setActiveMenu(null)}
-                          ></div>
-                          <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                            <button
-                              onClick={() => {
-                                setEditEmployee(emp);
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                            >
-                              Edit Info
-                            </button>
-                            {canResetPassword && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenu(null);
-                                  setResetConfirm(emp);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
-                              >
-                                Reset Password
-                              </button>
-                            )}
-                            <hr className="my-1 border-gray-100" />
-                            <button
-                              onClick={() => {
-                                setDeleteConfirm(emp);
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      <p className="m-0 text-sm font-semibold text-gray-500">
+                        No employees found
+                      </p>
+                      <p className="m-0 mt-1 text-xs text-gray-400">
+                        Try adjusting your search or filter criteria.
+                      </p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  employees.map((emp) => (
+                    <tr
+                      key={emp.emp_id}
+                      onClick={() => setSelectedEmployeeDetails(emp)}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {/* The Name */}
+                          <div className="font-semibold text-gray-800">
+                            {emp.last_name}, {emp.first_name}{" "}
+                            {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        <div className="font-medium text-gray-900">
+                          {emp.designation}
+                        </div>
+                        <div className="text-xs opacity-75">{emp.position}</div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 inline-block w-fit">
+                            {emp.status}
+                          </span>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
+                              emp.is_active
+                                ? "bg-green-50 text-green-700 border-green-100"
+                                : "bg-red-50 text-red-700 border-red-100"
+                            }`}
+                          >
+                            {emp.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      </td>
+                      {canAddEmployee && (
+                        <td
+                          className="px-6 py-4 text-center relative"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() =>
+                              setActiveMenu(
+                                activeMenu === emp.emp_id ? null : emp.emp_id,
+                              )
+                            }
+                            className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                          >
+                            <svg
+                              width="20"
+                              height="20"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                            </svg>
+                          </button>
+
+                          {/* Action Menu Dropdown */}
+                          {activeMenu === emp.emp_id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setActiveMenu(null)}
+                              ></div>
+                              <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
+                                <button
+                                  onClick={() => {
+                                    setEditEmployee(emp);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
+                                >
+                                  Edit Info
+                                </button>
+                                {canResetPassword && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveMenu(null);
+                                      setResetConfirm(emp);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                  >
+                                    Reset Password
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    if (emp.is_active) {
+                                      socket.emit("suspend-user", emp.emp_id);
+                                      queryClient.invalidateQueries([
+                                        "employees",
+                                      ]);
+                                      return;
+                                    }
+                                    // make emp active again
+                                    toggleActiveMutation.mutate({
+                                      id: emp.emp_id,
+                                      is_active: true,
+                                    });
+                                    setActiveMenu(null);
+                                  }}
+                                  disabled={toggleActiveMutation.isPending}
+                                  className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
+                                    emp.is_active
+                                      ? "text-orange-600 hover:bg-orange-50"
+                                      : "text-green-600 hover:bg-green-50"
+                                  }`}
+                                >
+                                  {emp.is_active
+                                    ? "Mark Inactive"
+                                    : "Mark Active"}
+                                </button>
+                                <hr className="my-1 border-gray-100" />
+                                <button
+                                  onClick={() => {
+                                    setDeleteConfirm(emp);
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+            )}
+       
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white px-4 py-3 border border-t-0 border-gray-200 rounded-b-xl">
+              <div className="text-sm text-gray-700">
+                Showing{" "}
+                <span className="font-medium">
+                  {totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-medium">
+                  {Math.min(currentPage * itemsPerPage, totalRecords)}
+                </span>{" "}
+                of <span className="font-medium">{totalRecords}</span> results
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                >
+                  Previous
+                </button>
+                <div className="text-sm font-medium text-gray-700 px-2">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
       {/* Modals same as before but updated with logic */}
-      {isAddModalOpen && !addConfirm && (
+      {canAddEmployee && isAddModalOpen && !addConfirm && (
         <EmployeeModal
           title="Add New Employee"
           data={formData}
+          employees={employees} // <-- Pass employees for duplicate check
           onChange={handleInputChange}
           onClose={() => {
             setIsAddModalOpen(false);
@@ -440,6 +564,7 @@ export default function Employees({ shortcutMode = false }) {
         <EmployeeModal
           title="Edit Employee Information"
           data={editEmployee}
+          employees={employees} // <-- Pass employees for duplicate check
           isEdit={true}
           onChange={(e) => {
             const { name, value } = e.target;
@@ -742,12 +867,19 @@ function EmployeeDetailsModal({ employee, onClose }) {
 function EmployeeModal({
   title,
   data,
+  employees = [], // <-- Added employees prop
   onChange,
   onClose,
   onSubmit,
   isPending,
   isEdit = false,
 }) {
+  // Check if ID is duplicate
+  const isDuplicate =
+    !isEdit &&
+    data.emp_id &&
+    employees.some((emp) => emp.emp_id === data.emp_id);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -764,7 +896,7 @@ function EmployeeModal({
           <div className="grid grid-cols-2 gap-2.5">
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Employee ID
+                Employee ID<span className="text-red-500">*</span>
               </label>
               <input
                 name="emp_id"
@@ -772,12 +904,22 @@ function EmployeeModal({
                 onChange={onChange}
                 disabled={isEdit}
                 required
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100"
+                maxLength={20}
+                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 ${
+                  isDuplicate
+                    ? "border-red-500 ring-1 ring-red-500"
+                    : "border-gray-300"
+                }`}
               />
+              {isDuplicate && (
+                <span className="text-[10px] font-bold text-red-500 mt-1">
+                  Employee ID already in use
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Email Address
+                Email Address<span className="text-red-500">*</span>
               </label>
               <input
                 name="email"
@@ -785,6 +927,7 @@ function EmployeeModal({
                 value={data.email}
                 onChange={onChange}
                 required
+                maxLength={30}
                 className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -793,13 +936,14 @@ function EmployeeModal({
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
-                    First Name
+                    First Name<span className="text-red-500">*</span>
                   </label>
                   <input
                     name="first_name"
                     value={data.first_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -817,13 +961,14 @@ function EmployeeModal({
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
-                    Last Name
+                    Last Name<span className="text-red-500">*</span>
                   </label>
                   <input
                     name="last_name"
                     value={data.last_name}
                     onChange={onChange}
                     required
+                    maxLength={30}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -832,7 +977,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Designation
+                Designation<span className="text-red-500">*</span>
               </label>
               <select
                 name="designation"
@@ -851,7 +996,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Position
+                Position<span className="text-red-500">*</span>
               </label>
               <select
                 name="position"
@@ -873,7 +1018,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Emp. Status
+                Emp. Status<span className="text-red-500">*</span>
               </label>
               <select
                 name="status"
@@ -889,7 +1034,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Hired Date
+                Hired Date<span className="text-red-500">*</span>
               </label>
               <input
                 name="hired_date"
@@ -903,7 +1048,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Government Details
+                Government Details (OPT)
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="flex flex-col gap-0.5">
@@ -914,6 +1059,7 @@ function EmployeeModal({
                     name="philhealth_no"
                     value={data.philhealth_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -925,6 +1071,7 @@ function EmployeeModal({
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -936,6 +1083,7 @@ function EmployeeModal({
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -947,6 +1095,7 @@ function EmployeeModal({
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -958,6 +1107,7 @@ function EmployeeModal({
                     name="pag_ibig_rtn"
                     value={data.pag_ibig_rtn || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -969,6 +1119,7 @@ function EmployeeModal({
                     name="gsis_no"
                     value={data.gsis_no || ""}
                     onChange={onChange}
+                    maxLength={20}
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -998,8 +1149,8 @@ function EmployeeModal({
             </button>
             <button
               type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white"
+              disabled={isPending || isDuplicate}
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending
                 ? "Processing..."

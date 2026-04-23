@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
 import {
   Bar,
   BarChart,
@@ -13,6 +12,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 
 const fmt = (n) => {
   const num = Number(n);
@@ -39,20 +40,24 @@ export default function MyReports() {
   const { data: myAttendance = [], isLoading: attendanceLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/my-attendance");
-      if (!res.ok) throw new Error("Failed to fetch attendance");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/my-attendance"),
+        "Failed to fetch attendance",
+      );
     },
   });
 
-  const { data: payrollData = [], isLoading: payrollLoading } = useQuery({
+  const { data: responsePayrollData, isLoading: payrollLoading } = useQuery({
     queryKey: ["my-payroll-report", period],
     queryFn: async () => {
-      const res = await apiFetch(`/api/employees/payroll?period=${period}`);
-      if (!res.ok) throw new Error("Failed to fetch payroll report");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}&limit=10000`),
+        "Failed to fetch payroll report",
+      );
     },
   });
+
+  const payrollData = responsePayrollData?.data || responsePayrollData || [];
 
   const myPayrollRows = payrollData.filter(
     (row) => String(row.emp_id) === String(currentUser?.emp_id),

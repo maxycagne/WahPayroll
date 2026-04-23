@@ -7,21 +7,22 @@ import {
   LogOut,
   ReceiptText,
   Users,
+  UserPlus,
   Wallet,
   Settings,
-  User, // <-- ADDED THIS IMPORT
 } from "lucide-react";
 
 const navItems = {
   Admin: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
+    { to: "/registration-requests", icon: UserPlus, label: "Registration Requests" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/payroll-reports", icon: BarChart3, label: "Reports" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
     { to: "/file-management", icon: FileSpreadsheet, label: "File Management" },
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
   Supervisor: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -35,13 +36,14 @@ const navItems = {
   HR: [
     { to: "/hr-dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
+    { to: "/registration-requests", icon: UserPlus, label: "Registration Requests" },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
-    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
     { to: "/file-management", icon: FileSpreadsheet, label: "File Management" },
+    { to: "/settings", icon: Settings, label: "Settings" } // <-- ADDED
   ],
   RankAndFile: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -56,9 +58,7 @@ const navItems = {
 export default function Sidebar({ role, onLogout, isCollapsed = false }) {
   const items = navItems[role] || navItems.RankAndFile;
 
-  // --- ADDED THESE THREE VARIABLES ---
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
   const displayName =
     currentUser.name ||
     `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() ||
@@ -123,19 +123,6 @@ export default function Sidebar({ role, onLogout, isCollapsed = false }) {
         <div
           className={`mb-4 flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}
         >
-          {/* Circular Avatar */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 overflow-hidden ring-2 ring-white/10">
-            {currentUser.profile_photo ? (
-              <img
-                src={`${API_BASE_URL}/${currentUser.profile_photo.replace(/^\/+/, "")}`}
-                alt="Profile"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <User className="h-5 w-5 text-white/70" />
-            )}
-          </div>
-
           {/* Name & Role (Hidden when collapsed) */}
           {!isCollapsed && (
             <div className="flex min-w-0 flex-col">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MainLayout from "./components/MainLayout";
@@ -17,8 +17,11 @@ import HRReports from "./pages/HRReports";
 import Payslips from "./pages/Payslips";
 import Reports from "./pages/Reports";
 import MyReports from "./pages/MyReports";
+import RegistrationRequests from "./pages/RegistrationRequests";
 import axiosInterceptor from "./hooks/interceptor";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import useSocket from "./hooks/useSocket";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -32,7 +35,7 @@ const safeParseUser = () => {
 };
 
 function RoleProtectedRoute({ user, allowedRoles, children }) {
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/login" replace />;
 
   if (!allowedRoles.includes(user.role)) {
     const defaultPath = user.role === "HR" ? "/hr-dashboard" : "/dashboard";
@@ -69,7 +72,6 @@ function AppRoutes({ user }) {
             }
           />
 
-          {/* ADDED: Missing HR Dashboard Route */}
           <Route
             path="/hr-dashboard"
             element={
@@ -88,6 +90,15 @@ function AppRoutes({ user }) {
                 allowedRoles={["Admin", "Supervisor", "HR"]}
               >
                 <Employees />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/registration-requests"
+            element={
+              <RoleProtectedRoute user={user} allowedRoles={["Admin", "HR"]}>
+                <RegistrationRequests />
               </RoleProtectedRoute>
             }
           />
@@ -213,11 +224,7 @@ const queryClient = new QueryClient();
 export default function App() {
   const [user, setUser] = useState(() => safeParseUser());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
-
-  const hasToken = useMemo(
-    () => Boolean(localStorage.getItem(STORAGE_TOKEN_KEY)),
-    [user],
-  );
+  useSocket({ user });
   useEffect(() => {
     const bootstrapAuth = async () => {
       const token = localStorage.getItem(STORAGE_TOKEN_KEY);
@@ -227,7 +234,6 @@ export default function App() {
       }
       try {
         const res = await axiosInterceptor.get("/api/auth/me");
-
         const data = res.data;
         localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
         setUser(data.user);
@@ -242,9 +248,21 @@ export default function App() {
     bootstrapAuth();
   }, []);
 
+  if (isBootstrapping) return <div className="p-10 font-bold">Loading...</div>;
+
   return (
     <QueryClientProvider client={queryClient}>
-      {!hasToken || !user ? <Login></Login> : <AppRoutes user={user} />}
+      {user ? (
+        <AppRoutes user={user} />
+      ) : (
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </BrowserRouter>
+      )}
     </QueryClientProvider>
   );
 }

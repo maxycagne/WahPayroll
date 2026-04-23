@@ -2,19 +2,32 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import Toast from "../components/Toast";
 
 import {
   dashboardSummary,
   employees,
 } from "@/components/queries/hrDashboard/queryHrDashboard";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
+import axiosInterceptor from "@/hooks/interceptor";
 import {
   updateMutationDoc,
   updateLeaveMutationOptions,
   updateResignationMutationOptions,
 } from "@/components/mutations/hrDashboard/mutationHrDashboard";
 
-import MissingDocsTracker from "@/components/hrDashboard/MissingDocsTracker";
 import UpdateDocsModal from "@/components/hrDashboard/UpdateDocsModal";
 import {
   AbsentModal,
@@ -24,12 +37,80 @@ import {
 } from "@/components/hrDashboard/StatsModal";
 import { HR_DASHBOARD_QUICK_ACCESS } from "@/assets/constantData";
 
+const fmtCompactCurrency = (value) => {
+  const number = Number(value || 0);
+  return `₱${number.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+};
+
+const DashboardLegend = () => (
+  <Legend
+    iconType="circle"
+    iconSize={8}
+    wrapperStyle={{
+      fontSize: "11px",
+      fontWeight: 600,
+      color: "#475569",
+      paddingTop: "8px",
+    }}
+  />
+);
+
+const AttendanceTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+      <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        Day {label}
+      </p>
+      <div className="mt-1 space-y-0.5">
+        {payload.map((entry) => (
+          <p
+            key={entry.dataKey}
+            className="m-0 flex items-center justify-between gap-3 text-xs font-semibold"
+            style={{ color: entry.color }}
+          >
+            <span>{entry.name}</span>
+            <span>{Number(entry.value || 0)}</span>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PayrollTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+      <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        {label}
+      </p>
+      <div className="mt-1 space-y-0.5">
+        {payload.map((entry) => (
+          <p
+            key={entry.dataKey}
+            className="m-0 flex items-center justify-between gap-3 text-xs font-semibold"
+            style={{ color: entry.color }}
+          >
+            <span>{entry.name}</span>
+            <span>{fmtCompactCurrency(entry.value)}</span>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function HRDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
+  const [period] = useState(new Date().toISOString().slice(0, 7));
+  const [year, month] = period.split("-").map(Number);
 
   // Toast notification state
   const [toast, setToast] = useState(null);
@@ -43,8 +124,30 @@ export default function HRDashboard() {
   };
   const { data: dashboardData, isLoading: isLoadingDashboard } =
     useQuery(dashboardSummary);
-  const { data: employeesData = [], isLoading: isLoadingEmployees } =
+  const { data: rawEmployeesData, isLoading: isLoadingEmployees } =
     useQuery(employees);
+  const employeesData = rawEmployeesData?.data || rawEmployeesData || [];
+
+  const { data: responsePayrollData } = useQuery({
+    queryKey: ["dashboard-payroll", period],
+    queryFn: async () => {
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}&limit=10000`),
+      );
+    },
+  });
+  const payrollData = responsePayrollData?.data || responsePayrollData || [];
+
+  const { data: attendanceSummary = [] } = useQuery({
+    queryKey: ["dashboard-attendance-summary", year, month],
+    queryFn: async () => {
+      return mutationHandler(
+        axiosInterceptor.get(
+          `/api/employees/attendance-summary?year=${year}&month=${month}`,
+        ),
+      );
+    },
+  });
 
   const updateDocsMutation = useMutation({
     ...updateMutationDoc,
@@ -143,6 +246,25 @@ export default function HRDashboard() {
   };
 
   const stats = dashboardData?.stats || [];
+  const attendanceChartData = attendanceSummary
+    .map((item) => ({
+      day: String(item.formatted_date || item.date || "").slice(8, 10),
+      Present: Number(item.present_count || 0),
+      Absent: Number(item.absent_count || 0),
+      Late: Number(item.late_count || 0),
+    }))
+    .sort((a, b) => Number(a.day) - Number(b.day));
+
+  const payrollChartData = [...payrollData]
+    .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
+    .slice(0, 5)
+    .map((row) => ({
+      employee:
+        employeesData.find((e) => String(e.emp_id) === String(row.emp_id))
+          ?.first_name || `${row.emp_id}`,
+      Net: Number(row.net_pay || 0),
+      Gross: Number(row.gross_pay || 0),
+    }));
 
   return (
     <div className="max-w-full space-y-4">
@@ -212,29 +334,92 @@ export default function HRDashboard() {
         </div>
       </section>
 
-      <MissingDocsTracker
-        missingDocs={dashboardData?.information.missingDocs}
-        onOpenModal={(empId = "") => {
-          // 1. CLOSE THE TRACKER MODAL FIRST! (This unlocks the screen)
-          setActiveModal(null);
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900">
+            Attendance Overview ({period})
+          </h3>
+          <p className="m-0 mt-1 text-[11px] text-slate-500">
+            Daily present, absent, and late counts for the selected month.
+          </p>
+          <div className="mt-3 h-[240px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={attendanceChartData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#E2E8F0"
+                />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  content={<AttendanceTooltip />}
+                  cursor={{ stroke: "#cbd5e1", strokeDasharray: "4 4" }}
+                />
+                <DashboardLegend />
+                <Line
+                  type="monotone"
+                  dataKey="Present"
+                  stroke="#0f766e"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Absent"
+                  stroke="#dc2626"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Late"
+                  stroke="#d97706"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
 
-          // 2. Set the employee ID immediately
-          setDocForm({ emp_id: empId, missing_docs: [] });
-
-          // 3. Find the name and pre-fill the search bar
-          if (empId) {
-            const emp = employeesData.find(
-              (e) => String(e.emp_id) === String(empId),
-            );
-            if (emp) setSearchQuery(`${emp.first_name} ${emp.last_name}`);
-          } else {
-            setSearchQuery("");
-          }
-
-          // 4. Open the Update Form
-          setShowDocsModal(true);
-        }}
-      />
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900">
+            Payroll Snapshot ({period})
+          </h3>
+          <p className="m-0 mt-1 text-[11px] text-slate-500">
+            Top employees by net pay for the selected payroll period.
+          </p>
+          <div className="mt-3 h-[240px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={payrollChartData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#E2E8F0"
+                />
+                <XAxis dataKey="employee" axisLine={false} tickLine={false} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `₱${Math.round(v / 1000)}k`}
+                />
+                <Tooltip
+                  content={<PayrollTooltip />}
+                  cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
+                />
+                <DashboardLegend />
+                <Bar dataKey="Gross" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Net" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
 
       <UpdateDocsModal
         open={showDocsModal}

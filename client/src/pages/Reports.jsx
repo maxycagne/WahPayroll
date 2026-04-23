@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../lib/api";
+import axiosInterceptor from "../hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import {
   BarChart,
   Bar,
@@ -54,9 +55,10 @@ export default function Reports() {
   } = useQuery({
     queryKey: ["payroll-reports"],
     queryFn: async () => {
-      const res = await apiFetch("/api/employees/payroll-reports");
-      if (!res.ok) throw new Error("Failed to fetch reports");
-      return res.json();
+      return mutationHandler(
+        axiosInterceptor.get("/api/employees/payroll-reports"),
+        "Failed to fetch reports",
+      );
     },
   });
 
@@ -124,7 +126,7 @@ export default function Reports() {
         <button
           onClick={exportCSV}
           disabled={monthlySummaryUpToCurrentMonth.length === 0}
-          className="px-5 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50 shadow-sm"
+          className="px-5 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-linear-to-r from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50 shadow-sm"
         >
           ⬇ Export CSV
         </button>
@@ -173,7 +175,7 @@ export default function Reports() {
           <h3 className="m-0 mb-4 text-base font-bold text-gray-800">
             Financial Overview (Gross vs Net)
           </h3>
-          <div className="h-[300px] w-full">
+          <div className="h-75 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
@@ -222,7 +224,7 @@ export default function Reports() {
           <h3 className="m-0 mb-4 text-base font-bold text-gray-800">
             Attendance Issues Trend
           </h3>
-          <div className="h-[300px] w-full">
+          <div className="h-75 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chartData}

@@ -58,11 +58,26 @@ export const getAllLeaves = async (req: Request, res: Response) => {
     const withSignedUrl = await Promise.all(
       (rows as any[]).map(async (row: any) => {
         let signedUrlTemp = null;
+        let signedDocuments: Record<string, any> = {};
 
-        if (row.ocp) {
+        let parsedDocuments: Record<string, any> = {};
+        if (row.documents) {
+          try {
+            parsedDocuments =
+              typeof row.documents === "string"
+                ? JSON.parse(row.documents)
+                : row.documents;
+          } catch {
+            parsedDocuments = {};
+          }
+        }
+
+        const legacyOcpKey = row.ocp || parsedDocuments?.ocp?.key || null;
+
+        if (legacyOcpKey) {
           const res = new GetObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME,
-            Key: row.ocp,
+            Key: legacyOcpKey,
             ResponseContentType: "application/octet-stream",
           });
 
@@ -70,9 +85,27 @@ export const getAllLeaves = async (req: Request, res: Response) => {
           signedUrlTemp = toUrl;
         }
 
+        if (parsedDocuments && Object.keys(parsedDocuments).length > 0) {
+          for (const [docType, docMeta] of Object.entries(parsedDocuments)) {
+            if (!docMeta?.key) continue;
+
+            const docRes = new GetObjectCommand({
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: docMeta.key,
+              ResponseContentType: "application/octet-stream",
+            });
+
+            signedDocuments[docType] = {
+              ...docMeta,
+              url: await getSignedUrl(s3Client, docRes, { expiresIn: 3600 }),
+            };
+          }
+        }
+
         return {
           ...row,
           ocp: signedUrlTemp,
+          documents: signedDocuments,
         };
       }),
     );
