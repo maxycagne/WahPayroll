@@ -150,7 +150,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
         .slice(0, 8)
         .map((row) => ({
-          employee: `${row.emp_id}`,
+          employee: row.first_name || `${row.emp_id}`,
           Net: Number(row.net_pay || 0),
           Gross: Number(row.gross_pay || 0),
         })),
@@ -234,7 +234,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const res = await updateLeaveStatus(id, payload);
 
         if (res.status <= 201) {
-          setApprovedLeaves((prev) => new Set([...prev, id]));
+          setApprovedLeaves((prev) => new Set([...Array.from(prev), id]));
           queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
         } else {
           alert("Failed to update leave request");
