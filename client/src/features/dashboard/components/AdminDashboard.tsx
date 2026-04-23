@@ -583,7 +583,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   vertical={false}
                   stroke="#E2E8F0"
                 />
-                <XAxis dataKey="employee" axisLine={false} tickLine={false} />
+                <XAxis 
+                  dataKey="employee" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  interval={0} 
+                  tick={{ fontSize: 12, fill: '#64748b' }} 
+                />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
