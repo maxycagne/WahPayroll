@@ -507,14 +507,13 @@ export default function Employees({ shortcutMode = false }) {
               <div className="text-sm text-gray-700">
                 Showing{" "}
                 <span className="font-medium">
-                  {Math.min(
-                    startIndex + itemsPerPage,
-                    filteredEmployees.length,
-                  )}
+                  {totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
                 </span>{" "}
-                of{" "}
-                <span className="font-medium">{filteredEmployees.length}</span>{" "}
-                results
+                to{" "}
+                <span className="font-medium">
+                  {Math.min(currentPage * itemsPerPage, totalRecords)}
+                </span>{" "}
+                of <span className="font-medium">{totalRecords}</span> results
               </div>
               <div className="flex items-center gap-2">
                 <button
