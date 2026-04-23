@@ -43,17 +43,17 @@ export const useEmail = () => {
 
     const templateParams = {
       email: item.recipient_email,
-      employee_name:
-        item.employee_name || `${item.first_name} ${item.last_name}`,
-      date: formatDate(item.request_date),
-      status: status,
+
+      employee_name: item.employee_name,
+      position: item.position,
+      date: formatDate(item.resignation_date),
     };
 
     try {
       await emailjs.send(serviceId, templateId, templateParams, publicKey);
       console.log("Resignation email sent successfully!");
     } catch (error) {
-      console.error("EmailJS Error (Resignation):", error);
+      console.error("EmailJS Error (Resignation):", error.text || error);
     }
   };
 

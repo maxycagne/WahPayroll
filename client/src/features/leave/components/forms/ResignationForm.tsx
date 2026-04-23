@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import Toast from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
 import { mutationHandler } from "../../hooks/createMutationHandler";
 import axiosInterceptor from "@/hooks/interceptor";
@@ -77,7 +78,7 @@ export default function ResignationForm({
   currentUser: currentUserProp,
 }: ResignationFormProps) {
   const { sendResignationStatusEmail } = useEmail();
-  const { showToast } = useToast();
+  const { toast, showToast, clearToast } = useToast();
   const currentUser = useMemo<CurrentUserLike>(() => {
     if (currentUserProp) return currentUserProp;
     try {
@@ -182,8 +183,8 @@ export default function ResignationForm({
             axiosInterceptor.get("/api/employees/resignations/recipient"),
             "Failed to load resignation recipient",
           );
-        } catch {
-          return null;
+        } catch (err) {
+          throw err;
         }
       },
       enabled: Boolean(currentUser?.emp_id),
@@ -400,28 +401,33 @@ export default function ResignationForm({
     }
   };
 
-  const validateResignationStep = (step: number): string => {
+  const validateResignationStep = (step: number): boolean => {
     if (step === 1) {
       if (!String(resignationForm.resignation_letter || "").trim()) {
-        return "Resignation letter body is required.";
+        console.log("Validation failed: Letter is empty");
+        showToast("Resignation letter body is required.", "error");
+        return false;
       }
-      return "";
+      return true;
     }
 
     if (step === 2) {
       if (!resignationForm.last_working_day) {
-        return "Last working day is required.";
+        showToast("Last working day is required.", "error");
+        return false;
       }
       if ((resignationForm.leaving_reasons || []).length === 0) {
-        return "Select at least one reason for leaving.";
+        showToast("Select at least one reason for leaving.", "error");
+        return false;
       }
       if (
         (resignationForm.leaving_reasons || []).includes("Others") &&
         !String(resignationForm.leaving_reason_other || "").trim()
       ) {
-        return "Please provide details for Others.";
+        showToast("Please provide details for Others.", "error");
+        return false;
       }
-      return "";
+      return true;
     }
 
     if (step === 3) {
@@ -429,26 +435,30 @@ export default function ResignationForm({
         (answer: string) => !String(answer || "").trim(),
       );
       if (hasBlankAnswer) {
-        return "All 16 exit interview answers are required.";
+        showToast("All 16 exit interview answers are required.", "error");
+        return false;
       }
-      return "";
+      return true;
     }
 
     if (step === 4) {
       if (!String(resignationForm.endorsement_file_key || "").trim()) {
-        return "Upload your completed endorsement form before continuing.";
+        showToast(
+          "Upload your completed endorsement form before continuing.",
+          "error",
+        );
+        return false;
       }
-      return "";
+      return true;
     }
 
-    return "";
+    return true;
   };
 
   const goToNextResignationStep = async () => {
-    const validationError = validateResignationStep(resignationStep);
-    if (validationError) {
-      setResignationWizardError(validationError);
-      return;
+    const isValid = validateResignationStep(resignationStep);
+    if (!isValid) {
+      return; // Stop here, the toast has already been fired
     }
 
     try {
@@ -529,16 +539,17 @@ export default function ResignationForm({
   };
 
   const submitResignationWizard = async () => {
-    const validationError =
-      validateResignationStep(1) ||
-      validateResignationStep(2) ||
-      validateResignationStep(3) ||
-      validateResignationStep(4);
+    const isStep1Valid = validateResignationStep(1);
+    if (!isStep1Valid) return;
 
-    if (validationError) {
-      setResignationWizardError(validationError);
-      return;
-    }
+    const isStep2Valid = validateResignationStep(2);
+    if (!isStep2Valid) return;
+
+    const isStep3Valid = validateResignationStep(3);
+    if (!isStep3Valid) return;
+
+    const isStep4Valid = validateResignationStep(4);
+    if (!isStep4Valid) return;
 
     const reasons = resignationForm.leaving_reasons || [];
     const reasonSummary = reasons.includes("Others")
@@ -603,7 +614,8 @@ export default function ResignationForm({
         {
           recipient_email: "maverickcagne@gmail.com",
           employee_name: resignationForm.employee_name,
-          request_date: resignationForm.request_date,
+          position: resignationForm.position,
+          resignation_date: resignationForm.last_working_day,
         },
         "Submitted",
       );
@@ -1070,6 +1082,7 @@ export default function ResignationForm({
           </button>
         )}
       </div>
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }
