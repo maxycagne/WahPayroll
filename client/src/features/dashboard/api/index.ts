@@ -14,10 +14,10 @@ export const getMyOffsets = () =>
   mutationHandler(axiosInterceptor.get("/api/employees/offset-applications"));
 
 export const getAllEmployees = () =>
-  mutationHandler(axiosInterceptor.get("/api/employees"));
+  mutationHandler(axiosInterceptor.get("/api/employees?limit=10000"));
 
 export const getPayroll = (period: string) =>
-  mutationHandler(axiosInterceptor.get(`/api/employees/payroll?period=${period}`));
+  mutationHandler(axiosInterceptor.get(`/api/employees/payroll?period=${period}&limit=10000`));
 
 export const getAttendanceSummary = (year: number, month: number) =>
   mutationHandler(

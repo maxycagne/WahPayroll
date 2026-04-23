@@ -91,15 +91,32 @@ export default function Employees({ shortcutMode = false }) {
   }, [searchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["employees"],
+  const { data: responseData, isLoading } = useQuery({
+    queryKey: [
+      "employees",
+      currentPage,
+      searchTerm,
+      filterStatus,
+      filterDesignation,
+    ],
     queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        status: filterStatus,
+        designation: filterDesignation,
+      });
       return mutationHandler(
-        axiosInterceptor.get("/api/employees"),
+        axiosInterceptor.get(`/api/employees?${params.toString()}`),
         "Failed to fetch employees",
       );
     },
   });
+
+  const employees = responseData?.data || [];
+  const totalPages = responseData?.totalPages || 1;
+  const totalRecords = responseData?.total || 0;
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -230,30 +247,6 @@ export default function Employees({ shortcutMode = false }) {
       hired_date: "",
     });
 
-  const filteredEmployees = employees.filter((emp) => {
-    // 1. Hide Admin accounts from the table completely
-    if (emp.role === "Admin") {
-      return false;
-    }
-
-    // 2. Existing filter logic
-    const fullName =
-      `${emp.first_name} ${emp.last_name} ${emp.emp_id}`.toLowerCase();
-    const matchesSearch = fullName.includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "All" || emp.status === filterStatus;
-    const matchesDesignation =
-      filterDesignation === "All" || emp.designation === filterDesignation;
-
-    return matchesSearch && matchesStatus && matchesDesignation;
-  });
-
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedEmployees = filteredEmployees.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
-
   if (isLoading)
     return <div className="p-6 font-bold">Loading Employees...</div>;
 
@@ -333,7 +326,7 @@ export default function Employees({ shortcutMode = false }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEmployees.length === 0 ? (
+                {employees.length === 0 ? (
                   <tr>
                     <td
                       colSpan={canAddEmployee ? 6 : 5}
@@ -348,7 +341,7 @@ export default function Employees({ shortcutMode = false }) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedEmployees.map((emp) => (
+                  employees.map((emp) => (
                     <tr
                       key={emp.emp_id}
                       onClick={() => setSelectedEmployeeDetails(emp)}
@@ -483,16 +476,15 @@ export default function Employees({ shortcutMode = false }) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between bg-white px-4 py-3 border border-t-0 border-gray-200 rounded-b-xl">
               <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                Showing{" "}
                 <span className="font-medium">
-                  {Math.min(
-                    startIndex + itemsPerPage,
-                    filteredEmployees.length,
-                  )}
+                  {(currentPage - 1) * itemsPerPage + 1}
                 </span>{" "}
-                of{" "}
-                <span className="font-medium">{filteredEmployees.length}</span>{" "}
-                results
+                to{" "}
+                <span className="font-medium">
+                  {Math.min(currentPage * itemsPerPage, totalRecords)}
+                </span>{" "}
+                of <span className="font-medium">{totalRecords}</span> results
               </div>
               <div className="flex items-center gap-2">
                 <button

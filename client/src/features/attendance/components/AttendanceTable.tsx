@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { AttendanceRecord } from "../types";
 import { badgeClass } from "../utils";
 
@@ -7,6 +7,10 @@ interface AttendanceTableProps {
   search: string;
   canEdit: boolean;
   onAdjustBalance: (record: AttendanceRecord) => void;
+  currentPage: number;
+  totalPages: number;
+  totalRecords: number;
+  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({
@@ -14,24 +18,11 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   search,
   canEdit,
   onAdjustBalance,
+  currentPage,
+  totalPages,
+  totalRecords,
+  setCurrentPage,
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
-
-  const filtered = attendance.filter((row) =>
-    `${row.first_name} ${row.last_name} ${row.emp_id}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
-
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
       <table className="w-full text-sm text-left">
@@ -46,14 +37,14 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {filtered.length === 0 ? (
+          {attendance.length === 0 ? (
             <tr>
               <td colSpan={canEdit ? 6 : 5} className="px-6 py-8 text-center text-gray-500 italic">
                 No matching attendance records found.
               </td>
             </tr>
           ) : (
-            paginated.map((row) => (
+            attendance.map((row) => (
               <tr key={row.emp_id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <p className="font-bold text-gray-900 m-0">{row.first_name} {row.last_name}</p>
@@ -97,11 +88,11 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+            Showing <span className="font-medium">{(currentPage - 1) * 6 + 1}</span> to{" "}
             <span className="font-medium">
-              {Math.min(startIndex + itemsPerPage, filtered.length)}
+              {Math.min(currentPage * 6, totalRecords)}
             </span>{" "}
-            of <span className="font-medium">{filtered.length}</span> results
+            of <span className="font-medium">{totalRecords}</span> results
           </div>
           <div className="flex items-center gap-2">
             <button

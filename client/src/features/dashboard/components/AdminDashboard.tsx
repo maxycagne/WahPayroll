@@ -80,8 +80,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     queryFn: () => getAttendanceSummary(year, month),
   });
 
-  const employeesData = employeesQuery.data || [];
-  const payrollData = payrollQuery.data || [];
+  const employeesData = employeesQuery.data?.data || employeesQuery.data || [];
+  const payrollData = payrollQuery.data?.data || payrollQuery.data || [];
   const attendanceSummary = attendanceSummaryQuery.data || [];
 
   const activeEmployeeCount = useMemo(() => 
@@ -213,7 +213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const res = await updateLeaveStatus(id, payload);
 
       if (res.status <= 201) {
-        setApprovedLeaves(prev => new Set([...prev, id]));
+        setApprovedLeaves(prev => new Set([...Array.from(prev), id]));
         queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
       } else {
         alert("Failed to update leave request");

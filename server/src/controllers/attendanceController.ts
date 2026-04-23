@@ -8,8 +8,28 @@ import {
 
 export const getAttendance = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT 
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 6;
+    const search = (req.query.search as string) || "";
+    const offset = (page - 1) * limit;
+
+    let whereClause = "COALESCE(e.role, '') <> 'Admin'";
+    const queryParams: any[] = [];
+
+    if (search) {
+      whereClause += " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.emp_id LIKE ?)";
+      const searchParam = `%${search}%`;
+      queryParams.push(searchParam, searchParam, searchParam);
+    }
+
+    const [countResult]: any = await pool.query(
+      `SELECT COUNT(*) as total FROM employees e WHERE ${whereClause}`,
+      queryParams
+    );
+    const totalCount = countResult[0].total;
+
+    const [rows] = await pool.query(
+      `SELECT 
         e.emp_id, 
         e.first_name, 
         e.last_name, 
@@ -21,9 +41,18 @@ export const getAttendance = async (req: Request, res: Response) => {
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
       LEFT JOIN leave_balances lb ON e.emp_id = lb.emp_id
-      WHERE COALESCE(e.role, '') <> 'Admin'
-    `);
-    res.json(rows);
+      WHERE ${whereClause}
+      ORDER BY e.last_name ASC, e.first_name ASC
+      LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
+    );
+
+    res.json({
+      data: rows,
+      total: totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (error) {
     console.error("DB Error in getAttendance:", error);
     res.status(500).json({ message: "Error fetching attendance" });
@@ -270,7 +299,7 @@ export const upsertWorkweekConfig = async (req: Request, res: Response) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    await ensureWorkweekConfigsTable(connection);
+    await ensureWorkweekConfigsTable(connection as any);
 
     const [overlaps]: any = await connection.query(
       `
@@ -356,7 +385,7 @@ export const updateWorkweekConfigById = async (req: Request, res: Response) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    await ensureWorkweekConfigsTable(connection);
+    await ensureWorkweekConfigsTable(connection as any);
 
     const [existing]: any = await connection.query(
       "SELECT id FROM workweek_configs WHERE id = ? LIMIT 1",
