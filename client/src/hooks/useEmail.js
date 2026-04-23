@@ -42,18 +42,22 @@ export const useEmail = () => {
     const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
     const templateParams = {
+      // 1. MATCH THE DASHBOARD: Change 'recipient_email' to 'email'
       email: item.recipient_email,
-      employee_name:
-        item.employee_name || `${item.first_name} ${item.last_name}`,
-      date: formatDate(item.request_date),
-      status: status,
+
+      // 2. MATCH THE CONTENT: Ensure these match your {{placeholders}}
+      employee_name: item.employee_name,
+      position: item.position,
+      date: formatDate(item.resignation_date),
     };
 
     try {
+      // Note: Make sure 'emailjs' is imported correctly in this file
       await emailjs.send(serviceId, templateId, templateParams, publicKey);
       console.log("Resignation email sent successfully!");
     } catch (error) {
-      console.error("EmailJS Error (Resignation):", error);
+      // This will now give you a clearer message if it fails again
+      console.error("EmailJS Error (Resignation):", error.text || error);
     }
   };
 

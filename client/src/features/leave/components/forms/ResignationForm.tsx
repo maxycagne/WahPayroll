@@ -614,7 +614,8 @@ export default function ResignationForm({
         {
           recipient_email: "maverickcagne@gmail.com",
           employee_name: resignationForm.employee_name,
-          request_date: resignationForm.request_date,
+          position: resignationForm.position,
+          resignation_date: resignationForm.last_working_day,
         },
         "Submitted",
       );
