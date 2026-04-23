@@ -149,7 +149,7 @@ export default function Toast({ toast, onClose }) {
 
   return (
     <div
-      className={`pointer-events-auto fixed right-4 top-4 z-[80] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.18)] transition-all duration-200 ${
+      className={`pointer-events-auto fixed right-4 top-4 z-[9999] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.18)] transition-all duration-200 ${
         isVisible ? "translate-y-0 opacity-100" : "-translate-y-1.5 opacity-0"
       }`}
       role={liveRole}
