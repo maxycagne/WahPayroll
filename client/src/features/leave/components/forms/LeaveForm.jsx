@@ -319,8 +319,8 @@ export default function LeaveForm({
             className="resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-500"
             placeholder={
               isMandated
-                ? "Provide details about your mandated leave..."
-                : "Provide reason..."
+                ? "Provide details about your mandated leave (e.g., estimated delivery date for maternity, relationship to deceased for bereavement)"
+                : "Provide reason or additional details for this leave request"
             }
           />
         </div>
