@@ -47,15 +47,17 @@ export default function MyReports() {
     },
   });
 
-  const { data: payrollData = [], isLoading: payrollLoading } = useQuery({
+  const { data: responsePayrollData, isLoading: payrollLoading } = useQuery({
     queryKey: ["my-payroll-report", period],
     queryFn: async () => {
       return mutationHandler(
-        axiosInterceptor.get(`/api/employees/payroll?period=${period}`),
+        axiosInterceptor.get(`/api/employees/payroll?period=${period}&limit=10000`),
         "Failed to fetch payroll report",
       );
     },
   });
+
+  const payrollData = responsePayrollData?.data || responsePayrollData || [];
 
   const myPayrollRows = payrollData.filter(
     (row) => String(row.emp_id) === String(currentUser?.emp_id),

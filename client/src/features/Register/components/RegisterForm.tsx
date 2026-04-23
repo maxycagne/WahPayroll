@@ -90,7 +90,7 @@ export const RegisterForm = () => {
           {/* Employee ID Removed from Form */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Email Address
+              Email Address <span className="text-red-500">*</span>
             </label>
             <input
               name="email"
@@ -105,7 +105,7 @@ export const RegisterForm = () => {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Password
+              Password <span className="text-red-500">*</span>
             </label>
             <input
               name="password"
@@ -121,7 +121,7 @@ export const RegisterForm = () => {
           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                First Name
+                First Name <span className="text-red-500">*</span>
               </label>
               <input
                 name="first_name"
@@ -146,7 +146,7 @@ export const RegisterForm = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Last Name
+                Last Name<span className="text-red-500">*</span>
               </label>
               <input
                 name="last_name"
@@ -161,7 +161,7 @@ export const RegisterForm = () => {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Designation
+              Designation<span className="text-red-500">*</span>
             </label>
             <select
               name="designation"
@@ -180,7 +180,7 @@ export const RegisterForm = () => {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Position
+              Position<span className="text-red-500">*</span>
             </label>
             <select
               name="position"
@@ -204,7 +204,7 @@ export const RegisterForm = () => {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Employment Status
+              Employment Status<span className="text-red-500">*</span>
             </label>
             <select
               name="status"
@@ -221,7 +221,7 @@ export const RegisterForm = () => {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
-              Hired Date
+              Hired Date<span className="text-red-500">*</span>
             </label>
             <input
               name="hired_date"

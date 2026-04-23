@@ -51,7 +51,7 @@ router.put(
 
 router.get(
   "/workweek-config",
-  authorizeRoles("Admin", "Supervisor", "HR"),
+  authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
   getWorkweekConfigs,
 );
 

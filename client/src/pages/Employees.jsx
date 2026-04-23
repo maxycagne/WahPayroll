@@ -31,6 +31,22 @@ const designationMap = {
   ],
 };
 
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function Employees({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,18 +102,26 @@ export default function Employees({ shortcutMode = false }) {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, shortcutMode]);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, filterDesignation]);
+  }, [debouncedSearchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
-  const { data: responseData, isLoading } = useQuery({
-    queryKey: ["employees", currentPage, searchTerm, filterStatus, filterDesignation],
+  const { data: responseData, isLoading, isFetching } = useQuery({
+    queryKey: [
+      "employees",
+      currentPage,
+      debouncedSearchTerm,
+      filterStatus,
+      filterDesignation,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         status: filterStatus,
         designation: filterDesignation,
       });
@@ -117,7 +141,6 @@ export default function Employees({ shortcutMode = false }) {
   // --- MUTATIONS ---
   const addMutation = useMutation({
     mutationFn: (newData) => {
-      // Auto Password Logic: ID + FirstName (No spaces)
       const autoPassword = `${newData.emp_id}${newData.first_name.replace(/\s+/g, "")}`;
       return axiosInterceptor.post("/api/employees/add", {
         ...newData,
@@ -242,8 +265,7 @@ export default function Employees({ shortcutMode = false }) {
       hired_date: "",
     });
 
-  if (isLoading)
-    return <div className="p-6 font-bold">Loading Employees...</div>;
+ 
 
   return (
     <div className="max-w-full">
@@ -299,7 +321,8 @@ export default function Employees({ shortcutMode = false }) {
 
           {/* Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-            <table className="w-full text-left text-sm border-collapse">
+            {isLoading || isFetching ? <p>loading</p> : (
+     <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 font-bold text-gray-700">ID</th>
@@ -465,13 +488,19 @@ export default function Employees({ shortcutMode = false }) {
                 )}
               </tbody>
             </table>
+            )}
+       
           </div>
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between bg-white px-4 py-3 border border-t-0 border-gray-200 rounded-b-xl">
               <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                Showing{" "}
+                <span className="font-medium">
+                  {(currentPage - 1) * itemsPerPage + 1}
+                </span>{" "}
+                to{" "}
                 <span className="font-medium">
                   {Math.min(currentPage * itemsPerPage, totalRecords)}
                 </span>{" "}
@@ -489,7 +518,9 @@ export default function Employees({ shortcutMode = false }) {
                   Page {currentPage} of {totalPages}
                 </div>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
                 >
@@ -856,7 +887,7 @@ function EmployeeModal({
           <div className="grid grid-cols-2 gap-2.5">
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Employee ID
+                Employee ID<span className="text-red-500">*</span>
               </label>
               <input
                 name="emp_id"
@@ -879,7 +910,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Email Address
+                Email Address<span className="text-red-500">*</span>
               </label>
               <input
                 name="email"
@@ -896,7 +927,7 @@ function EmployeeModal({
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
-                    First Name
+                    First Name<span className="text-red-500">*</span>
                   </label>
                   <input
                     name="first_name"
@@ -921,7 +952,7 @@ function EmployeeModal({
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 uppercase">
-                    Last Name
+                    Last Name<span className="text-red-500">*</span>
                   </label>
                   <input
                     name="last_name"
@@ -937,7 +968,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Designation
+                Designation<span className="text-red-500">*</span>
               </label>
               <select
                 name="designation"
@@ -956,7 +987,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Position
+                Position<span className="text-red-500">*</span>
               </label>
               <select
                 name="position"
@@ -978,7 +1009,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Emp. Status
+                Emp. Status<span className="text-red-500">*</span>
               </label>
               <select
                 name="status"
@@ -994,7 +1025,7 @@ function EmployeeModal({
             </div>
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Hired Date
+                Hired Date<span className="text-red-500">*</span>
               </label>
               <input
                 name="hired_date"
@@ -1008,7 +1039,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Government Details
+                Government Details (OPT)
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="flex flex-col gap-0.5">

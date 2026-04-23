@@ -16,6 +16,7 @@ import {
   safeText,
   toDateInputValue,
 } from "@/utils/text.utils";
+import { useEmail } from "@/hooks/useEmail";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -37,7 +38,11 @@ function computeOneMonthAheadDate(dateInput?: string): string {
 
   const targetYear = month === 11 ? year + 1 : year;
   const targetMonth = (month + 1) % 12;
-  const maxDayInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const maxDayInTargetMonth = new Date(
+    targetYear,
+    targetMonth + 1,
+    0,
+  ).getDate();
   const targetDay = Math.min(day, maxDayInTargetMonth);
 
   return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
@@ -71,6 +76,7 @@ export default function ResignationForm({
   fileResignationMutation,
   currentUser: currentUserProp,
 }: ResignationFormProps) {
+  const { sendResignationStatusEmail } = useEmail();
   const { showToast } = useToast();
   const currentUser = useMemo<CurrentUserLike>(() => {
     if (currentUserProp) return currentUserProp;
@@ -161,7 +167,11 @@ export default function ResignationForm({
     ) {
       setField("resignation_date", autoResignationDate);
     }
-  }, [resignationForm.request_date, resignationForm.resignation_date, setField]);
+  }, [
+    resignationForm.request_date,
+    resignationForm.resignation_date,
+    setField,
+  ]);
 
   const { data: resignationRecipient = null } =
     useQuery<ResignationRecipient | null>({
@@ -589,6 +599,14 @@ export default function ResignationForm({
           "Failed to submit resignation",
         );
       }
+      await sendResignationStatusEmail(
+        {
+          recipient_email: "maverickcagne@gmail.com",
+          employee_name: resignationForm.employee_name,
+          request_date: resignationForm.request_date,
+        },
+        "Submitted",
+      );
 
       if (!usedExternalMutation) {
         showToast("Resignation filed successfully.");
@@ -670,7 +688,7 @@ export default function ResignationForm({
           </div>
           <div className="flex flex-col gap-2 md:col-span-2">
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Resignation Letter Body
+              Resignation Letter Body<span className="text-red-500">*</span>
             </label>
             <textarea
               rows={8}
@@ -746,7 +764,7 @@ export default function ResignationForm({
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Last Working Day
+              Last Working Day<span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -759,6 +777,7 @@ export default function ResignationForm({
           <div className="md:col-span-2">
             <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Reason for Leaving (Select one or more)
+              <span className="text-red-500">*</span>
             </p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {resignationReasonOptions.map((reasonOption) => {
@@ -825,6 +844,7 @@ export default function ResignationForm({
                   <div key={question} className="space-y-1">
                     <label className="block text-xs font-bold text-gray-600">
                       {questionIndex + 1}. {question}
+                      <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       rows={3}
@@ -958,6 +978,7 @@ export default function ResignationForm({
                 <p className="m-0 text-sm font-bold text-gray-900">
                   Uploaded Endorsement File
                 </p>
+
                 <p className="m-0 mt-1 text-xs text-gray-600">
                   {resignationForm.endorsement_file_name || "endorsement-file"}
                 </p>

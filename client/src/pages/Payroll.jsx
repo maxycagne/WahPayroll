@@ -769,18 +769,7 @@ export default function Payroll({ shortcutMode = false }) {
     payrollData.length > 0 &&
     payrollData.every((p) => selectedEmployees.has(p.emp_id));
 
-  const payrollSummary = useMemo(() => {
-    return payrollData.reduce(
-      (acc, row) => {
-        acc.count += 1;
-        acc.gross += Number(row.gross_pay || 0);
-        acc.deductions += Number(row.absence_deductions || 0);
-        acc.net += Number(row.net_pay || 0);
-        return acc;
-      },
-      { count: 0, gross: 0, deductions: 0, net: 0 },
-    );
-  }, [payrollData]);
+  const payrollSummary = responseData?.summary || { count: totalRecords, gross: 0, deductions: 0, net: 0 };
 
   const handleGeneratePayrollPdf = async () => {
     if (!isAdmin) return;
@@ -918,7 +907,7 @@ export default function Payroll({ shortcutMode = false }) {
                 Employees
               </p>
               <p className="m-0 mt-1 text-xl font-black text-gray-900">
-                {payrollSummary.count}
+                {totalRecords}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
