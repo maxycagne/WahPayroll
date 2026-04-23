@@ -124,6 +124,22 @@ const getCurrentPeriod = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 };
 
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 export default function Payroll({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -197,13 +213,14 @@ export default function Payroll({ shortcutMode = false }) {
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
   const [bulkAdjustmentMode, setBulkAdjustmentMode] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearchTerm = useDebounce(search, 500);
   const [designationFilter, setDesignationFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, designationFilter, period]);
+  }, [debouncedSearchTerm, designationFilter, period]);
 
   const [salaryForm, setSalaryForm] = useState({
     designation: "",
@@ -220,14 +237,14 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- QUERIES ---
-  const { data: responseData, isLoading: isLoadingPayroll } = useQuery({
-    queryKey: ["payroll", period, currentPage, search, designationFilter],
+  const { data: responseData, isLoading: isLoadingPayroll, isFetching: isFetchingPayroll } = useQuery({
+    queryKey: ["payroll", period, currentPage, debouncedSearchTerm, designationFilter],
     queryFn: async () => {
       const params = new URLSearchParams({
         period,
         page: currentPage,
         limit: itemsPerPage,
-        search: search,
+        search: debouncedSearchTerm,
         designationFilter: designationFilter,
       });
       return mutationHandler(
@@ -240,6 +257,24 @@ export default function Payroll({ shortcutMode = false }) {
   const payrollData = responseData?.data || [];
   const totalPages = responseData?.totalPages || 1;
   const totalRecords = responseData?.total || 0;
+
+  // Unfiltered summary for the period (persists across search/filter)
+  const { data: unfilteredSummaryData } = useQuery({
+    queryKey: ["payroll-summary", period],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        period,
+        page: "1",
+        limit: "1",
+        search: "",
+        designationFilter: "All",
+      });
+      return mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
+        "Failed to fetch payroll summary",
+      );
+    },
+  });
 
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ["employees"],
@@ -769,7 +804,7 @@ export default function Payroll({ shortcutMode = false }) {
     payrollData.length > 0 &&
     payrollData.every((p) => selectedEmployees.has(p.emp_id));
 
-  const payrollSummary = responseData?.summary || { count: totalRecords, gross: 0, deductions: 0, net: 0 };
+  const payrollSummary = unfilteredSummaryData?.summary || { count: 0, gross: 0, deductions: 0, net: 0 };
 
   const handleGeneratePayrollPdf = async () => {
     if (!isAdmin) return;
@@ -809,7 +844,7 @@ export default function Payroll({ shortcutMode = false }) {
     }
   };
 
-  if (isLoadingPayroll || isLoadingEmployees)
+  if (isLoadingEmployees)
     return (
       <div className="p-6 text-gray-900 font-bold">Loading Payroll Data...</div>
     );
@@ -907,7 +942,7 @@ export default function Payroll({ shortcutMode = false }) {
                 Employees
               </p>
               <p className="m-0 mt-1 text-xl font-black text-gray-900">
-                {totalRecords}
+                {employeesData?.total || 0}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
@@ -1030,7 +1065,24 @@ export default function Payroll({ shortcutMode = false }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {payrollData.length === 0 ? (
+                  {isLoadingPayroll || isFetchingPayroll ? (
+                    Array.from({ length: itemsPerPage }).map((_, i) => (
+                      <tr key={`skeleton-${i}`}>
+                        {isAdmin && bulkAdjustmentMode && (
+                          <td className="px-6 py-4"><div className="h-4 w-4 rounded bg-gray-200 animate-pulse mx-auto" /></td>
+                        )}
+                        <td className="px-6 py-4"><div className="h-4 w-16 rounded-md bg-gray-200 animate-pulse" /></td>
+                        <td className="px-6 py-4"><div className="h-4 w-28 rounded-md bg-gray-200 animate-pulse" /></td>
+                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                        {isAdmin && !bulkAdjustmentMode && (
+                          <td className="px-6 py-4 text-right"><div className="h-4 w-24 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                        )}
+                      </tr>
+                    ))
+                  ) : payrollData.length === 0 ? (
                     <tr>
                       <td
                         colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
