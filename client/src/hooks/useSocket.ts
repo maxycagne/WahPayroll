@@ -27,7 +27,7 @@ const useSocket = ({ user }: { user: any }) => {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("force-logout", (message) => {
-      alert(message);
+      console.log(message);
       logout();
     });
     socket.connect();
