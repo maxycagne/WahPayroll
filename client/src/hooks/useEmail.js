@@ -42,7 +42,7 @@ export const useEmail = () => {
     const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
     const templateParams = {
-      email: item.recipient_email, // The email address this should be sent to (e.g., HR or the employee)
+      email: item.recipient_email,
       employee_name:
         item.employee_name || `${item.first_name} ${item.last_name}`,
       date: formatDate(item.request_date),
