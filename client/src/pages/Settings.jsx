@@ -253,7 +253,7 @@ export default function Settings() {
                   {/* --- Current Password --- */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                      Current Password
+                      Current Password<span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -285,7 +285,7 @@ export default function Settings() {
                   {/* --- New Password --- */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                      New Password
+                      New Password<span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -319,6 +319,7 @@ export default function Settings() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                       Confirm New Password
+                      <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
