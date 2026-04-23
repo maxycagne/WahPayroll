@@ -148,9 +148,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     () =>
       [...(payrollData as any[])]
         .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
-        .slice(0, 8)
+        .slice(0, 5)
         .map((row) => ({
-          employee: `${row.emp_id}`,
+          employee: `${row.first_name}`,
           Net: Number(row.net_pay || 0),
           Gross: Number(row.gross_pay || 0),
         })),
