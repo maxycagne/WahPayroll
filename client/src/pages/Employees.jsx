@@ -31,6 +31,22 @@ const designationMap = {
   ],
 };
 
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function Employees({ shortcutMode = false }) {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,16 +102,18 @@ export default function Employees({ shortcutMode = false }) {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, shortcutMode]);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, filterDesignation]);
+  }, [debouncedSearchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
-  const { data: responseData, isLoading } = useQuery({
+  const { data: responseData, isLoading, isFetching } = useQuery({
     queryKey: [
       "employees",
       currentPage,
-      searchTerm,
+      debouncedSearchTerm,
       filterStatus,
       filterDesignation,
     ],
@@ -103,7 +121,7 @@ export default function Employees({ shortcutMode = false }) {
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         status: filterStatus,
         designation: filterDesignation,
       });
@@ -247,8 +265,7 @@ export default function Employees({ shortcutMode = false }) {
       hired_date: "",
     });
 
-  if (isLoading)
-    return <div className="p-6 font-bold">Loading Employees...</div>;
+ 
 
   return (
     <div className="max-w-full">
@@ -304,7 +321,8 @@ export default function Employees({ shortcutMode = false }) {
 
           {/* Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-            <table className="w-full text-left text-sm border-collapse">
+            {isLoading || isFetching ? <p>loading</p> : (
+     <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 font-bold text-gray-700">ID</th>
@@ -470,6 +488,8 @@ export default function Employees({ shortcutMode = false }) {
                 )}
               </tbody>
             </table>
+            )}
+       
           </div>
 
           {/* Pagination Controls */}
