@@ -30,6 +30,7 @@ const useSocket = ({ user }: { user: any }) => {
       console.log(message);
       logout();
     });
+
     socket.connect();
 
     return () => {

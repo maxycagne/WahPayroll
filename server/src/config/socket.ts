@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { instrument } from "@socket.io/admin-ui";
 import suspendUser from "../sockets/suspendUser";
+import deleteUser from "../sockets/deleteUser";
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -50,5 +51,6 @@ export const socket = (httpServer: HttpServer) => {
 
     socket.join(`room:${user.emp_id}`);
     suspendUser(io, socket);
+    deleteUser(io, socket);
   });
 };

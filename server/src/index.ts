@@ -16,6 +16,7 @@ import registerRoutes from "./routes/registerRoutes.js";
 import { createSocket } from "dgram";
 import { createServer } from "http";
 import { socket } from "./config/socket.js";
+import helmet from "helmet";
 
 const PORT = process.env.PORT || 8001;
 
@@ -45,7 +46,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(helmet());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", dashboardRoutes);
