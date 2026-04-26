@@ -642,8 +642,7 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     { name: "tin", type: "VARCHAR(50)", after: "philhealth_no" },
     { name: "sss_no", type: "VARCHAR(50)", after: "tin" },
     { name: "pag_ibig_mid_no", type: "VARCHAR(50)", after: "sss_no" },
-    { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
-    { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
+    { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
     { name: "profile_photo", type: "VARCHAR(255)", after: "gsis_no" },
     {
       name: "registration_status",
@@ -1796,7 +1795,6 @@ export const createEmployee = async (req, res) => {
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
     dob,
     hired_date,
@@ -1886,8 +1884,8 @@ export const createEmployee = async (req, res) => {
 
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -1902,7 +1900,6 @@ export const createEmployee = async (req, res) => {
         tin || null,
         sss_no || null,
         pag_ibig_mid_no || null,
-        pag_ibig_rtn || null,
         gsis_no || null,
         normalizedDob,
         normalizedHiredDate,
@@ -1935,7 +1932,6 @@ export const updateEmployee = async (req, res) => {
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
     dob,
     hired_date,
@@ -1960,7 +1956,6 @@ export const updateEmployee = async (req, res) => {
            tin = ?,
            sss_no = ?,
            pag_ibig_mid_no = ?,
-           pag_ibig_rtn = ?,
            gsis_no = ?,
            dob = ?,
              hired_date = ?,
@@ -1978,7 +1973,6 @@ export const updateEmployee = async (req, res) => {
         tin || null,
         sss_no || null,
         pag_ibig_mid_no || null,
-        pag_ibig_rtn || null,
         gsis_no || null,
         normalizedDob,
         normalizedHiredDate,

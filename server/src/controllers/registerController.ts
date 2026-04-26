@@ -88,13 +88,12 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
     hired_date,
     password,
   } = req.body;
 
-  if (!first_name || !last_name || !email || !password) {
+  if (!first_name || !last_name || !email || !password || !tin || !sss_no || !pag_ibig_mid_no) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
@@ -121,9 +120,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       `INSERT INTO employees (
         emp_id, first_name, last_name, middle_initial, designation, 
         position, status, email, philhealth_no, tin, sss_no, 
-        pag_ibig_mid_no, pag_ibig_rtn, gsis_no, hired_date, 
+        pag_ibig_mid_no, gsis_no, hired_date, 
         password, role, registration_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
       [
         tempId,
         first_name,
@@ -137,7 +136,6 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         tin || null,
         sss_no || null,
         pag_ibig_mid_no || null,
-        pag_ibig_rtn || null,
         gsis_no || null,
         normalizedHiredDate,
         hashPass,
@@ -162,7 +160,7 @@ export const getPendingRequests = async (req: Request, res: Response): Promise<a
     }
 
     const [rows]: any = await pool.query(
-      `SELECT emp_id, first_name, last_name, middle_initial, email, role, position, designation, status, hired_date, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no 
+      `SELECT emp_id, first_name, last_name, middle_initial, email, role, position, designation, status, hired_date, philhealth_no, tin, sss_no, pag_ibig_mid_no, gsis_no 
        FROM employees 
        WHERE registration_status = 'Pending' 
        ORDER BY emp_id DESC`
@@ -190,7 +188,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
     hired_date,
   } = req.body;
@@ -249,7 +246,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
            tin = ?,
            sss_no = ?,
            pag_ibig_mid_no = ?,
-           pag_ibig_rtn = ?,
            gsis_no = ?,
            hired_date = ?,
            role = ?,
@@ -270,7 +266,6 @@ export const approveRequest = async (req: Request, res: Response): Promise<any> 
         tin || null,
         sss_no || null,
         pag_ibig_mid_no || null,
-        pag_ibig_rtn || null,
         gsis_no || null,
         normalizedHiredDate,
         employeeRole,

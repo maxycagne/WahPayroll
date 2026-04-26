@@ -82,7 +82,6 @@ export default function Employees({ shortcutMode = false }) {
     tin: "",
     sss_no: "",
     pag_ibig_mid_no: "",
-    pag_ibig_rtn: "",
     gsis_no: "",
     dob: "",
     hired_date: "",
@@ -264,7 +263,6 @@ export default function Employees({ shortcutMode = false }) {
       tin: "",
       sss_no: "",
       pag_ibig_mid_no: "",
-      pag_ibig_rtn: "",
       gsis_no: "",
       dob: "",
       hired_date: "",
@@ -761,12 +759,6 @@ export default function Employees({ shortcutMode = false }) {
                 <span>{addConfirm.pag_ibig_mid_no || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
-                  PAG-IBIG RTN:
-                </span>
-                <span>{addConfirm.pag_ibig_rtn || "N/A"}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="font-semibold text-gray-600">GSIS No.:</span>
                 <span>{addConfirm.gsis_no || "N/A"}</span>
               </div>
@@ -826,7 +818,6 @@ function EmployeeDetailsModal({ employee, onClose }) {
     { label: "TIN", value: employee.tin },
     { label: "SSS No.", value: employee.sss_no },
     { label: "PAG-IBIG MID No.", value: employee.pag_ibig_mid_no },
-    { label: "PAG_IBIG RTN", value: employee.pag_ibig_rtn },
     { label: "GSIS No.", value: employee.gsis_no },
   ];
 
@@ -1081,49 +1072,40 @@ function EmployeeModal({
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    TIN
+                    TIN <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
                     maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    SSS No.
+                    SSS No. <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
                     maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    PAG-IBIG MID No.
+                    PAG-IBIG MID No. <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
                     maxLength={20}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    PAG-IBIG RTN
-                  </label>
-                  <input
-                    name="pag_ibig_rtn"
-                    value={data.pag_ibig_rtn || ""}
-                    onChange={onChange}
-                    maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>

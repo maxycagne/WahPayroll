@@ -235,7 +235,7 @@ export const RegisterForm = () => {
 
           <div className="md:col-span-2 border-t border-gray-100 pt-4">
             <label className="text-sm font-bold text-purple-600 uppercase mb-3 block">
-              Government IDs (Optional)
+              Government IDs
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
@@ -251,45 +251,37 @@ export const RegisterForm = () => {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  TIN
+                  TIN <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="tin"
                   value={state.tin}
                   onChange={handleInputChange}
+                  required
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  SSS No.
+                  SSS No. <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="sss_no"
                   value={state.sss_no}
                   onChange={handleInputChange}
+                  required
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  PAG-IBIG MID
+                  PAG-IBIG MID <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="pag_ibig_mid_no"
                   value={state.pag_ibig_mid_no}
                   onChange={handleInputChange}
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  PAG-IBIG RTN
-                </label>
-                <input
-                  name="pag_ibig_rtn"
-                  value={state.pag_ibig_rtn}
-                  onChange={handleInputChange}
+                  required
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>

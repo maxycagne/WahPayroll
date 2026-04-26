@@ -18,7 +18,6 @@ export const initialState: RegisterCredentials = {
   tin: "",
   sss_no: "",
   pag_ibig_mid_no: "",
-  pag_ibig_rtn: "",
   gsis_no: "",
   hired_date: "",
 };

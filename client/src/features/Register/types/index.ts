@@ -12,7 +12,6 @@ export type RegisterCredentials = {
   tin?: string;
   sss_no?: string;
   pag_ibig_mid_no?: string;
-  pag_ibig_rtn?: string;
   gsis_no?: string;
   hired_date?: string;
 };
