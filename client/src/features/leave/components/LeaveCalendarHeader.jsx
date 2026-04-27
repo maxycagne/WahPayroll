@@ -39,14 +39,14 @@ const LeaveCalendarHeader = ({
 
       <div className="mb-3 flex items-center justify-between">
         <button
-          className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+          className="cursor-pointer rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-gray-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
           onClick={prevMonth}
         >
           ◀ Prev
         </button>
-        <h3 className="m-0 text-white font-bold text-slate-800">{monthName}</h3>
+        <h3 className="m-0 text-white font-bold">{monthName}</h3>
         <button
-          className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+          className="cursor-pointer rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-gray-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
           onClick={nextMonth}
         >
           Next ▶

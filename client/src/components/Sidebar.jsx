@@ -66,7 +66,7 @@ export default function Sidebar({ role, onLogout, isCollapsed = false }) {
 
   return (
     <aside
-      className={`flex h-full flex-col overflow-x-hidden overflow-y-auto border-r border-white/15 bg-gradient-to-b from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] text-white ${isCollapsed ? "md:w-[84px]" : "md:w-[248px]"}`}
+      className={`flex h-full flex-col overflow-x-hidden overflow-y-auto border-r border-white/10 dark:border-white/5 bg-gradient-to-b from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] dark:from-[#1e1b2e] dark:via-[#1e1b2e] dark:to-[#25213b] text-white ${isCollapsed ? "md:w-[84px]" : "md:w-[248px]"}`}
     >
       <div
         className={`border-b border-white/15 ${isCollapsed ? "px-3 py-4" : "px-5 py-5"}`}

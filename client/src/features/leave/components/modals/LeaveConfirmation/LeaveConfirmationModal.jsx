@@ -13,7 +13,7 @@ export default function LeaveConfirmationModal({
     <>
       {confirmAction && confirmAction.type === "leave" && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-800">
             <LeaveConfirmationModalHeader />
             <LeaveConfirmationModalContent confirmAction={confirmAction} />
             <LeaveConfirmationModalFooter

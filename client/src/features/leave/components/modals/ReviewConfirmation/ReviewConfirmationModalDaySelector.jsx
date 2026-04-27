@@ -26,17 +26,17 @@ export default function ReviewConfirmationModalDaySelector({
         reviewConfirm.decisionMode !== "cancellation" &&
         reviewConfirm.status === "Approved" &&
         reviewConfirm.isMultiDay && (
-          <div className="mb-4 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
+          <div className="mb-4 rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-gradient-to-br from-amber-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800">
                   Select specific days to approve
                 </p>
-                <p className="m-0 mt-1 text-[11px] text-slate-600">
+                <p className="m-0 mt-1 text-[11px] text-slate-600 dark:text-gray-400">
                   Choose the exact working days you want to approve.
                 </p>
               </div>
-              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+              <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-400">
                 {selectedDates.length} selected
               </span>
             </div>
@@ -50,7 +50,7 @@ export default function ReviewConfirmationModalDaySelector({
                     selectedDates: [...availableDates],
                   })
                 }
-                className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-50"
+                className="rounded-md border border-amber-300 dark:border-amber-800 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-400 transition hover:bg-amber-50 dark:hover:bg-gray-700"
               >
                 Select All
               </button>
@@ -62,7 +62,7 @@ export default function ReviewConfirmationModalDaySelector({
                     selectedDates: [],
                   })
                 }
-                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-gray-300 transition hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Clear
               </button>
@@ -73,7 +73,7 @@ export default function ReviewConfirmationModalDaySelector({
                 {selectedDates.map((date) => (
                   <span
                     key={date}
-                    className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+                    className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-400"
                   >
                     {formatDisplayDate(date)}
                   </span>
@@ -85,7 +85,7 @@ export default function ReviewConfirmationModalDaySelector({
               {availableDates.map((date) => (
                 <label
                   key={date}
-                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs text-gray-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/70"
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-white dark:bg-gray-800 px-3 py-2.5 text-xs text-gray-700 dark:text-gray-300 shadow-sm transition hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/70 dark:hover:bg-gray-700/70"
                 >
                   <input
                     type="checkbox"
@@ -93,13 +93,13 @@ export default function ReviewConfirmationModalDaySelector({
                     onChange={() => toggleLeaveApprovedDate(date)}
                     className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                   />
-                  <span className="leading-5 text-slate-800">
+                  <span className="leading-5 text-slate-800 dark:text-gray-200">
                     {formatDisplayDate(date)}
                   </span>
                 </label>
               ))}
             </div>
-            <p className="m-0 mt-3 text-[11px] text-slate-500">
+            <p className="m-0 mt-3 text-[11px] text-slate-500 dark:text-gray-400">
               Unselected days will remain pending for this request.
             </p>
           </div>

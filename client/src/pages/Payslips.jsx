@@ -98,17 +98,17 @@ export default function Payslips() {
 
   if (isLoading)
     return (
-      <div className="p-6 font-bold text-gray-900">Loading your payslip...</div>
+      <div className="p-6 font-bold text-gray-900 dark:text-gray-100">Loading your payslip...</div>
     );
 
   if (isAdmin) {
     return (
       <div className="max-w-full">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h1 className="m-0 text-[1.3rem] font-bold text-gray-900">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+          <h1 className="m-0 text-[1.3rem] font-bold text-gray-900 dark:text-gray-100">
             Personal Payslip
           </h1>
-          <p className="m-0 mt-2 text-sm text-gray-600">
+          <p className="m-0 mt-2 text-sm text-gray-600 dark:text-gray-400">
             Personal payslip view is not available for Admin accounts.
           </p>
         </div>
@@ -205,29 +205,29 @@ export default function Payslips() {
         `}
       </style>
 
-      <div className="print-hidden flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+      <div className="print-hidden flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
+        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100">
           My Payslips
         </h1>
 
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
             Pay Period:
             <input
               type="month"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-sky-400"
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-sky-400 dark:text-gray-100"
             />
           </label>
 
-          <button
-            className="cursor-pointer rounded-lg border-0 bg-[#0099ff] px-5 py-2.5 text-[0.92rem] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-            onClick={handleDownload}
-            disabled={!currentSlip}
-          >
-            Download Payslip PDF
-          </button>
+            <button
+              className="cursor-pointer rounded-lg border-0 bg-sky-600 px-5 py-2.5 text-[0.92rem] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+              onClick={handleDownload}
+              disabled={!currentSlip}
+            >
+              Download Payslip PDF
+            </button>
         </div>
       </div>
 
@@ -237,7 +237,7 @@ export default function Payslips() {
             key={item.value}
             type="button"
             onClick={() => setPeriod(item.value)}
-            className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${period === item.value ? "border-sky-600 bg-sky-600 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+            className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${period === item.value ? "border-sky-600 bg-sky-600 text-white" : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
           >
             {item.label}
           </button>
@@ -245,8 +245,8 @@ export default function Payslips() {
       </div>
 
       {!currentSlip ? (
-        <div className="print-hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600 shadow-sm">
-          <p className="mb-1 text-lg font-semibold text-gray-800">
+        <div className="print-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 text-center text-gray-600 dark:text-gray-400 shadow-sm">
+          <p className="mb-1 text-lg font-semibold text-gray-800 dark:text-gray-100">
             No Payslip Found
           </p>
           <p className="text-sm">
@@ -261,42 +261,42 @@ export default function Payslips() {
       ) : (
         <>
           <div className="print-hidden grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border border-sky-100 bg-sky-50 p-3">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-sky-700">
+            <div className="rounded-lg border border-sky-100 dark:border-sky-900/30 bg-sky-50 dark:bg-sky-900/10 p-3">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
                 Pay Period
               </p>
-              <p className="m-0 mt-1 text-sm font-semibold text-sky-900">
+              <p className="m-0 mt-1 text-sm font-semibold text-sky-900 dark:text-sky-200">
                 {payPeriodLabel}
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <div className="rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 Gross Pay
               </p>
-              <p className="m-0 mt-1 text-sm font-bold text-slate-900">
+              <p className="m-0 mt-1 text-sm font-bold text-slate-900 dark:text-gray-100">
                 {fmt(currentSlip.gross_pay)}
               </p>
             </div>
-            <div className="rounded-lg border border-red-100 bg-red-50 p-3">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-700">
+            <div className="rounded-lg border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 p-3">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400">
                 Deductions
               </p>
-              <p className="m-0 mt-1 text-sm font-bold text-red-700">
+              <p className="m-0 mt-1 text-sm font-bold text-red-700 dark:text-red-400">
                 -{fmt(currentSlip.absence_deductions)}
               </p>
             </div>
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+            <div className="rounded-lg border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/10 p-3">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Net Pay
               </p>
-              <p className="m-0 mt-1 text-sm font-black text-emerald-700">
+              <p className="m-0 mt-1 text-sm font-black text-emerald-700 dark:text-emerald-400">
                 {fmt(currentSlip.net_pay)}
               </p>
             </div>
           </div>
 
           <div
-            className="print-container relative max-w-[860px] overflow-hidden rounded-none border border-gray-700 bg-white p-0 shadow-sm"
+            className="print-container relative mx-auto max-w-[860px] overflow-hidden rounded-none border border-gray-700 bg-white p-0 text-slate-900 shadow-sm"
             style={{ fontFamily: '"Courier New", Courier, monospace' }}
           >
             <img
@@ -318,10 +318,10 @@ export default function Payslips() {
                   className="h-28 w-auto max-w-[220px] object-contain"
                 />
               </div>
-              <p className="absolute left-1/2 m-0 -translate-x-1/2 text-center text-[15px] font-semibold text-gray-900">
+              <p className="absolute left-1/2 m-0 -translate-x-1/2 text-center text-[15px] font-semibold text-slate-900">
                 Wireless for Health Initiative, Inc.
               </p>
-              <p className="absolute left-1/2 top-[68%] m-0 -translate-x-1/2 text-center text-[11px] text-gray-600">
+              <p className="absolute left-1/2 top-[68%] m-0 -translate-x-1/2 text-center text-[11px] text-slate-600">
                 Romulo Blvd, San Vicente, Tarlac City, Philippines
               </p>
             </div>
@@ -428,15 +428,15 @@ export default function Payslips() {
               <p className="m-0 text-[13px] font-bold italic text-[#2c3e7a]">
                 For Healthier, Happier Communities
               </p>
-              <p className="m-0 mt-1.5 text-[10px] text-gray-600">
-                <span className="font-semibold text-gray-500">Webpage:</span> http://wah.ph/{" "}
-                <span className="font-semibold text-gray-500">Email Address:</span> wah.pilipinas@wah.ph
+              <p className="m-0 mt-1.5 text-[10px] text-slate-600">
+                <span className="font-semibold text-slate-500">Webpage:</span> http://wah.ph/{" "}
+                <span className="font-semibold text-slate-500">Email Address:</span> wah.pilipinas@wah.ph
               </p>
-              <p className="m-0 mt-0.5 text-[10px] text-gray-600">
-                <span className="font-semibold text-gray-500">Facebook:</span> wah.ph{" "}
-                <span className="font-semibold text-gray-500">Twitter:</span> @wah_team{" "}
-                <span className="font-semibold text-gray-500">Instagram:</span> @wah_team{" "}
-                <span className="font-semibold text-gray-500">LinkedIn:</span> wah.ph
+              <p className="m-0 mt-0.5 text-[10px] text-slate-600">
+                <span className="font-semibold text-slate-500">Facebook:</span> wah.ph{" "}
+                <span className="font-semibold text-slate-500">Twitter:</span> @wah_team{" "}
+                <span className="font-semibold text-slate-500">Instagram:</span> @wah_team{" "}
+                <span className="font-semibold text-slate-500">LinkedIn:</span> wah.ph
               </p>
             </div>
           </div>

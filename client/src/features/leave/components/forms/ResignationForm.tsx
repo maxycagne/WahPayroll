@@ -636,21 +636,21 @@ export default function ResignationForm({
   };
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-gray-500">
+            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
               Resignation Progress
             </p>
-            <p className="mt-1 text-sm font-semibold text-gray-900">
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
               Step {resignationStep} of {resignationStepLabels.length}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs font-semibold text-gray-500">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
               {resignationStepLabels[resignationStep - 1]}
             </p>
-            <p className="text-sm font-bold text-red-600">
+            <p className="text-sm font-bold text-red-600 dark:text-red-400">
               {Math.round(
                 (resignationStep / resignationStepLabels.length) * 100,
               )}
@@ -659,7 +659,7 @@ export default function ResignationForm({
           </div>
         </div>
 
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100">
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
           <div
             className="h-full rounded-full bg-linear-to-r from-red-500 via-rose-500 to-orange-400 transition-all duration-300"
             style={{
@@ -670,7 +670,7 @@ export default function ResignationForm({
       </div>
 
       {resignationWizardError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+        <div className="rounded-lg border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm font-medium text-red-700 dark:text-red-400">
           {resignationWizardError}
         </div>
       )}
@@ -678,29 +678,29 @@ export default function ResignationForm({
       {resignationStep === 1 && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Current Date
             </label>
             <input
               type="date"
               value={resignationForm.request_date}
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Recipient (Supervisor)
             </label>
             <input
               type="text"
               value={resignationForm.recipient_name}
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
           <div className="flex flex-col gap-2 md:col-span-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Resignation Letter Body<span className="text-red-500">*</span>
             </label>
             <textarea
@@ -708,7 +708,7 @@ export default function ResignationForm({
               value={resignationForm.resignation_letter}
               onChange={(e) => setField("resignation_letter", e.target.value)}
               placeholder="Write your resignation letter here..."
-              className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full resize-none rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
         </div>
@@ -717,51 +717,51 @@ export default function ResignationForm({
       {resignationStep === 2 && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Name
             </label>
             <input
               type="text"
               value={resignationForm.employee_name}
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Position
             </label>
             <input
               type="text"
               value={resignationForm.position}
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Department / Designation
             </label>
             <input
               type="text"
               value={resignationForm.designation}
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Date of Joining
             </label>
             <input
               type="date"
               value={resignationForm.hired_date}
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Resignation Date
             </label>
             <input
@@ -769,26 +769,26 @@ export default function ResignationForm({
               value={resignationForm.resignation_date}
               readOnly
               disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
-            <p className="m-0 text-[11px] text-gray-500">
+            <p className="m-0 text-[11px] text-gray-500 dark:text-gray-400">
               Auto-calculated as one month from application date.
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Last Working Day<span className="text-red-500">*</span>
             </label>
             <input
               type="date"
               value={resignationForm.last_working_day}
               onChange={(e) => setField("last_working_day", e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+              className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
 
           <div className="md:col-span-2">
-            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Reason for Leaving (Select one or more)
               <span className="text-red-500">*</span>
             </p>
@@ -800,7 +800,7 @@ export default function ResignationForm({
                 return (
                   <label
                     key={reasonOption}
-                    className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                   >
                     <input
                       type="checkbox"
@@ -822,7 +822,7 @@ export default function ResignationForm({
                   setField("leaving_reason_other", e.target.value)
                 }
                 placeholder="Specify other reason"
-                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                className="mt-2 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
               />
             )}
           </div>
@@ -831,15 +831,15 @@ export default function ResignationForm({
 
       {resignationStep === 3 && (
         <div className="space-y-3">
-          <div className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
-            <p className="m-0 font-semibold">Instructions:</p>
+          <div className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-400">
+            <p className="m-0 font-semibold text-gray-900 dark:text-gray-100">Instructions:</p>
             <p className="m-0 mt-1">
               Please answer each question honestly. Your responses will help
               Human Resources improve services and employee experience.
             </p>
           </div>
 
-          <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600">
+          <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400">
             <span>Exit Interview Part {resignationInterviewPart} of 2</span>
             <span>Q{resignationInterviewPart === 1 ? "1-8" : "9-16"}</span>
           </div>
@@ -855,7 +855,7 @@ export default function ResignationForm({
                   (resignationInterviewPart === 1 ? 0 : 8) + idx;
                 return (
                   <div key={question} className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600">
+                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400">
                       {questionIndex + 1}. {question}
                       <span className="text-red-500">*</span>
                     </label>
@@ -871,7 +871,7 @@ export default function ResignationForm({
                           questionIndex,
                         )
                       }
-                      className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full resize-none rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
                 );
@@ -891,7 +891,7 @@ export default function ResignationForm({
               <button
                 type="button"
                 onClick={() => setResignationInterviewPart(1)}
-                className="cursor-pointer rounded-lg bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"
+                className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-4 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
               >
                 Back to Part 1
               </button>
@@ -902,7 +902,7 @@ export default function ResignationForm({
 
       {resignationStep === 4 && (
         <div className="space-y-3">
-          <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
             Download the endorsement form, complete it offline, then upload the
             signed copy.
           </div>
@@ -914,8 +914,8 @@ export default function ResignationForm({
             Download Endorsement Form (DOC)
           </a>
 
-          <div className="rounded-md border border-gray-200 bg-white p-3">
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-3">
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Upload Completed Endorsement Form
             </label>
             <input
@@ -956,24 +956,24 @@ export default function ResignationForm({
                   e.target.value = "";
                 }
               }}
-              className="block w-full text-sm"
+              className="block w-full text-sm text-gray-900 dark:text-gray-100"
             />
             {resignationForm.endorsement_file_key && (
               <div className="mt-2 space-y-2">
-                <p className="text-xs font-medium text-emerald-700">
+                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
                   Uploaded: {resignationForm.endorsement_file_name}
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsEndorsementActionsOpen(true)}
-                  className="rounded-md border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+                  className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
                 >
                   View Uploaded File
                 </button>
                 <button
                   type="button"
                   onClick={clearUploadedEndorsement}
-                  className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-red-700 hover:bg-red-100"
+                  className="rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
                 >
                   Remove File
                 </button>
@@ -985,21 +985,21 @@ export default function ResignationForm({
 
       {isEndorsementActionsOpen && (
         <div className="fixed inset-0 z-72 flex items-center justify-center bg-black/55 p-4">
-          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-xl">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="m-0 text-sm font-bold text-gray-900">
+                <p className="m-0 text-sm font-bold text-gray-900 dark:text-gray-100">
                   Uploaded Endorsement File
                 </p>
 
-                <p className="m-0 mt-1 text-xs text-gray-600">
+                <p className="m-0 mt-1 text-xs text-gray-600 dark:text-gray-400">
                   {resignationForm.endorsement_file_name || "endorsement-file"}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEndorsementActionsOpen(false)}
-                className="rounded-md border-0 bg-transparent px-2 py-1 text-gray-500 hover:text-gray-700"
+                className="rounded-md border-0 bg-transparent px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 &times;
               </button>
@@ -1020,29 +1020,29 @@ export default function ResignationForm({
 
       {resignationStep === 5 && (
         <div className="space-y-3">
-          <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
             Review your details below, then click Submit Application for
             supervisor approval.
           </div>
-          <div className="rounded-md border border-gray-200 bg-white p-3 text-sm">
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 text-sm text-gray-900 dark:text-gray-100">
             <p className="m-0">
-              <span className="font-semibold">Recipient:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Recipient:</span>{" "}
               {resignationForm.recipient_name}
             </p>
             <p className="m-0 mt-1">
-              <span className="font-semibold">Resignation Date:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Resignation Date:</span>{" "}
               {resignationForm.resignation_date || "-"}
             </p>
             <p className="m-0 mt-1">
-              <span className="font-semibold">Last Working Day:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Last Working Day:</span>{" "}
               {resignationForm.last_working_day || "-"}
             </p>
             <p className="m-0 mt-1">
-              <span className="font-semibold">Reasons Selected:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Reasons Selected:</span>{" "}
               {(resignationForm.leaving_reasons || []).join(", ") || "-"}
             </p>
             <p className="m-0 mt-1">
-              <span className="font-semibold">Endorsement:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Endorsement:</span>{" "}
               {resignationForm.endorsement_file_name || "Not uploaded"}
             </p>
           </div>
@@ -1059,7 +1059,7 @@ export default function ResignationForm({
               goToPreviousResignationStep();
             }
           }}
-          className="cursor-pointer rounded-lg bg-gray-200 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"
+          className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-5 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
         >
           {resignationStep === 1 ? "Cancel" : "Back"}
         </button>

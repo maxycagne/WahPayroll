@@ -883,7 +883,9 @@ export default function Payroll({ shortcutMode = false }) {
 
   if (isLoadingEmployees)
     return (
-      <div className="p-6 text-gray-900 font-bold">Loading Payroll Data...</div>
+      <div className="p-6 text-gray-900 dark:text-gray-100 font-bold">
+        Loading Payroll Data...
+      </div>
     );
 
   return (
@@ -891,17 +893,17 @@ export default function Payroll({ shortcutMode = false }) {
       {!shortcutMode && (
         <>
           <div className="flex items-center justify-between gap-4 mb-6 flex-nowrap">
-            <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 whitespace-nowrap flex-shrink-0">
+            <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap flex-shrink-0">
               Payroll
             </h1>
             <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
-              <label className="flex items-center gap-2 text-sm text-gray-600 mr-2">
+              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mr-2">
                 Period:
                 <input
                   type="month"
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </label>
 
@@ -962,7 +964,7 @@ export default function Payroll({ shortcutMode = false }) {
 
                   <button
                     onClick={() => setResetConfirmModal(true)}
-                    className="px-4 py-2 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors"
+                    className="px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-300 dark:border-red-900/30 text-red-700 dark:text-red-400 text-sm font-semibold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
                   >
                     Reset All Data
                   </button>
@@ -972,35 +974,35 @@ export default function Payroll({ shortcutMode = false }) {
           </div>
 
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Employees
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-gray-900">
+              <p className="m-0 mt-1 text-xl font-black text-gray-900 dark:text-gray-100">
                 {employeesData?.total || 0}
               </p>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Gross Total
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-gray-900">
+              <p className="m-0 mt-1 text-xl font-black text-gray-900 dark:text-gray-100">
                 {fmt(payrollSummary.gross)}
               </p>
             </div>
-            <div className="rounded-lg border border-red-100 bg-red-50 p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-600">
+            <div className="rounded-lg border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
                 Deductions
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-red-700">
+              <p className="m-0 mt-1 text-xl font-black text-red-700 dark:text-red-300">
                 -{fmt(payrollSummary.deductions)}
               </p>
             </div>
-            <div className="rounded-lg border border-green-100 bg-green-50 p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-green-600">
+            <div className="rounded-lg border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 p-3 shadow-sm">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
                 Net Total
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-green-700">
+              <p className="m-0 mt-1 text-xl font-black text-green-700 dark:text-green-300">
                 {fmt(payrollSummary.net)}
               </p>
             </div>
@@ -1010,7 +1012,7 @@ export default function Payroll({ shortcutMode = false }) {
             <div className="flex flex-wrap gap-3 items-center">
               <input
                 type="text"
-                className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 placeholder="Search employee..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1021,7 +1023,7 @@ export default function Payroll({ shortcutMode = false }) {
                   setDesignationFilter(e.target.value);
                   setSelectedEmployees(new Set());
                 }}
-                className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {designationOptions.map((option) => (
                   <option key={option} value={option}>
@@ -1047,17 +1049,17 @@ export default function Payroll({ shortcutMode = false }) {
           </div>
 
           {!isAdmin && (
-            <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-semibold text-sky-700">
+            <div className="mb-3 rounded-lg border border-sky-200 dark:border-sky-800/30 bg-sky-50 dark:bg-sky-900/20 px-4 py-2.5 text-xs font-semibold text-sky-700 dark:text-sky-400">
               View-only mode: only Admin can generate payroll, adjust salaries,
               and update salary settings.
             </div>
           )}
 
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden mb-8">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden mb-8">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
+                  <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     {isAdmin && bulkAdjustmentMode && (
                       <th className="px-6 py-3 text-center w-12">
                         <input
@@ -1074,16 +1076,16 @@ export default function Payroll({ shortcutMode = false }) {
                         />
                       </th>
                     )}
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs">
                       ID
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs">
                       Name
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Basic Pay
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Incentives
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
@@ -1092,30 +1094,30 @@ export default function Payroll({ shortcutMode = false }) {
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                       Deductions
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Net Pay
                     </th>
                     {isAdmin && !bulkAdjustmentMode && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                      <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                         Actions
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {isLoadingPayroll || isFetchingPayroll ? (
                     Array.from({ length: itemsPerPage }).map((_, i) => (
                       <tr key={`skeleton-${i}`}>
                         {isAdmin && bulkAdjustmentMode && (
                           <td className="px-6 py-4">
-                            <div className="h-4 w-4 rounded bg-gray-200 animate-pulse mx-auto" />
+                            <div className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-800 animate-pulse mx-auto" />
                           </td>
                         )}
                         <td className="px-6 py-4">
-                          <div className="h-4 w-16 rounded-md bg-gray-200 animate-pulse" />
+                          <div className="h-4 w-16 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse" />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="h-4 w-28 rounded-md bg-gray-200 animate-pulse" />
+                          <div className="h-4 w-28 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse" />
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
@@ -1134,7 +1136,7 @@ export default function Payroll({ shortcutMode = false }) {
                         </td>
                         {isAdmin && !bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-right">
-                            <div className="h-4 w-24 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                            <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse ml-auto" />
                           </td>
                         )}
                       </tr>
@@ -1158,7 +1160,7 @@ export default function Payroll({ shortcutMode = false }) {
                             toggleEmployeeSelection(p.emp_id);
                           }
                         }}
-                        className={`hover:bg-gray-50 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : ""}`}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50 dark:bg-purple-900/20" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : ""}`}
                       >
                         {isAdmin && bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-center">
@@ -1175,10 +1177,10 @@ export default function Payroll({ shortcutMode = false }) {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div>
-                              <div className="font-bold text-gray-900">
+                              <div className="font-bold text-gray-900 dark:text-gray-100">
                                 {p.first_name} {p.last_name}
                               </div>
-                              <div className="text-xs text-gray-500 font-normal mt-0.5">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">
                                 {p.position}
                               </div>
                             </div>
@@ -1189,11 +1191,11 @@ export default function Payroll({ shortcutMode = false }) {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div
-                            className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                            className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                           >
                             {fmtSigned(p.incentives)}
                           </div>
-                          <div className="text-[11px] text-gray-500 mt-0.5">
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                             {p.incentive_reasons || "No incentive type"}
                           </div>
                         </td>
@@ -1204,11 +1206,11 @@ export default function Payroll({ shortcutMode = false }) {
                           <div className="font-semibold">
                             {fmt(p.absence_deductions)}
                           </div>
-                          <div className="text-[11px] text-gray-500 mt-0.5">
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                             {p.deduction_reasons || "No deduction type"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-purple-700">
+                        <td className="px-6 py-4 text-right font-bold text-purple-700 dark:text-purple-400">
                           {fmt(p.net_pay)}
                         </td>
                         {isAdmin && !bulkAdjustmentMode && (
@@ -1223,7 +1225,7 @@ export default function Payroll({ shortcutMode = false }) {
                                   sendPayslipMutation.isPending &&
                                   sendPayslipMutation.variables === p.emp_id
                                 }
-                                className="px-3 py-1.5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-bold border-0 cursor-pointer hover:bg-indigo-200 flex items-center gap-1.5"
+                                className="px-3 py-1.5 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-bold border-0 cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900/50 flex items-center gap-1.5"
                                 title="Send Email"
                               >
                                 <Mail className="w-3 h-3" />
@@ -1232,13 +1234,13 @@ export default function Payroll({ shortcutMode = false }) {
 
                               <button
                                 onClick={() => setSalaryBreakdownModal(p)}
-                                className="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200"
+                                className="px-3 py-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50"
                               >
                                 View
                               </button>
                               <button
                                 onClick={() => setAdjustmentModal(p)}
-                                className="px-3 py-1.5 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200"
+                                className="px-3 py-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50"
                               >
                                 Adjust
                               </button>
@@ -1253,28 +1255,31 @@ export default function Payroll({ shortcutMode = false }) {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
-                  <div className="text-sm text-gray-700">
+                <div className="flex items-center justify-between bg-white dark:bg-gray-900 px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+                  <div className="text-sm text-gray-700 dark:text-gray-400">
                     Showing{" "}
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
                       {(currentPage - 1) * itemsPerPage + 1}
                     </span>{" "}
                     to{" "}
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
                       {Math.min(currentPage * itemsPerPage, totalRecords)}
                     </span>{" "}
-                    of <span className="font-medium">{totalRecords}</span>{" "}
+                    of{" "}
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {totalRecords}
+                    </span>{" "}
                     results
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
                     >
                       Previous
                     </button>
-                    <div className="text-sm font-medium text-gray-700 px-2">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
                       Page {currentPage} of {totalPages}
                     </div>
                     <button
@@ -1282,7 +1287,7 @@ export default function Payroll({ shortcutMode = false }) {
                         setCurrentPage((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
                     >
                       Next
                     </button>
@@ -1297,7 +1302,7 @@ export default function Payroll({ shortcutMode = false }) {
       {/* Salary Settings Modal (With Grouped Preview Table & Dropdown) */}
       {isAdmin && salarySettingsModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 bg-gray-900 flex justify-between items-center text-white shrink-0">
               <h2 className="text-lg font-bold m-0">
                 Employee Salary Settings
@@ -1313,7 +1318,7 @@ export default function Payroll({ shortcutMode = false }) {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800 uppercase mb-3 border-b border-gray-200 pb-2">
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase mb-3 border-b border-gray-200 dark:border-gray-800 pb-2">
                     Update Base Salary
                   </h3>
                   <p className="text-xs text-gray-600 mb-5">
@@ -1366,11 +1371,11 @@ export default function Payroll({ shortcutMode = false }) {
                     )}
 
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                         New Monthly Base Salary
                       </label>
                       <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 dark:text-gray-400">
                           ₱
                         </span>
                         <input
@@ -1391,7 +1396,7 @@ export default function Payroll({ shortcutMode = false }) {
                             })
                           }
                           placeholder="0.00"
-                          className="w-full border border-gray-300 rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -1407,7 +1412,7 @@ export default function Payroll({ shortcutMode = false }) {
                             amount: "",
                           });
                         }}
-                        className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600 bg-white cursor-pointer hover:bg-gray-50"
+                        className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         Close
                       </button>
@@ -1436,12 +1441,12 @@ export default function Payroll({ shortcutMode = false }) {
 
       {isAdmin && confirmSalarySettingsModal && (
         <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden border border-transparent dark:border-gray-800">
             <div className="px-6 py-4 bg-gray-900 text-white">
               <h3 className="m-0 text-base font-bold">Confirm Salary Update</h3>
             </div>
             <div className="p-6 space-y-4">
-              <p className="m-0 text-sm text-gray-700 leading-relaxed">
+              <p className="m-0 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 Update monthly base salary for
                 <span className="font-bold text-gray-900">
                   {" "}
@@ -1464,7 +1469,7 @@ export default function Payroll({ shortcutMode = false }) {
                   type="button"
                   onClick={() => setConfirmSalarySettingsModal(false)}
                   disabled={updateBaseSalaryMutation.isPending}
-                  className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600 bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50"
+                  className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1487,7 +1492,7 @@ export default function Payroll({ shortcutMode = false }) {
       {/* Salary Breakdown Modal */}
       {salaryBreakdownModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
               <h2 className="text-lg font-semibold m-0">Salary Breakdown</h2>
               <button
@@ -1498,39 +1503,43 @@ export default function Payroll({ shortcutMode = false }) {
               </button>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="text-sm font-bold text-gray-700 mb-4">
+              <div className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">
                 {salaryBreakdownModal.first_name}{" "}
                 {salaryBreakdownModal.last_name}
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="font-semibold text-gray-700">Basic Pay</span>
-                  <span className="text-gray-900 font-bold">
+                <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
+                  <span className="font-semibold text-gray-700 dark:text-gray-400">
+                    Basic Pay
+                  </span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
                     {fmt(salaryBreakdownModal.basic_pay)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-red-200 bg-red-50">
-                  <span className="font-semibold text-red-700">Deductions</span>
-                  <span className="text-red-700 font-bold">
+                <div className="flex justify-between py-2 border-b border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20">
+                  <span className="font-semibold text-red-700 dark:text-red-400">
+                    Deductions
+                  </span>
+                  <span className="text-red-700 dark:text-red-400 font-bold">
                     -{fmt(salaryBreakdownModal.absence_deductions)}
                   </span>
                 </div>
                 {salaryBreakdownModal.deduction_reasons && (
-                  <div className="py-3 bg-red-50 rounded-lg border border-red-200 p-3">
-                    <p className="text-xs font-bold text-red-800 uppercase mb-2">
+                  <div className="py-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/30 p-3">
+                    <p className="text-xs font-bold text-red-800 dark:text-red-300 uppercase mb-2">
                       Deduction Types:
                     </p>
-                    <p className="text-xs text-red-900 leading-relaxed">
+                    <p className="text-xs text-red-900 dark:text-red-200 leading-relaxed">
                       {salaryBreakdownModal.deduction_reasons}
                     </p>
                   </div>
                 )}
-                <div className="flex justify-between py-2 border-b border-green-200 bg-green-50">
-                  <span className="font-semibold text-green-700">
+                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20">
+                  <span className="font-semibold text-green-700 dark:text-green-400">
                     Incentives
                   </span>
                   <span
-                    className={`font-bold ${Number(salaryBreakdownModal.incentives || 0) >= 0 ? "text-green-700" : "text-red-700"}`}
+                    className={`font-bold ${Number(salaryBreakdownModal.incentives || 0) >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}
                   >
                     {fmtSigned(salaryBreakdownModal.incentives)}
                   </span>
@@ -1544,18 +1553,20 @@ export default function Payroll({ shortcutMode = false }) {
                   </span>
                 </div>
                 {salaryBreakdownModal.incentive_reasons && (
-                  <div className="py-3 bg-yellow-50 rounded-lg border border-yellow-200 p-3">
-                    <p className="text-xs font-bold text-yellow-800 uppercase mb-2">
+                  <div className="py-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-900/30 p-3">
+                    <p className="text-xs font-bold text-yellow-800 dark:text-yellow-300 uppercase mb-2">
                       Incentive Types:
                     </p>
-                    <p className="text-xs text-yellow-900 leading-relaxed">
+                    <p className="text-xs text-yellow-900 dark:text-yellow-200 leading-relaxed">
                       {salaryBreakdownModal.incentive_reasons}
                     </p>
                   </div>
                 )}
-                <div className="flex justify-between py-3 bg-purple-50 rounded-lg p-3">
-                  <span className="font-bold text-purple-900">Net Pay</span>
-                  <span className="text-purple-900 font-black text-lg">
+                <div className="flex justify-between py-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
+                  <span className="font-bold text-purple-900 dark:text-purple-300">
+                    Net Pay
+                  </span>
+                  <span className="text-purple-900 dark:text-purple-100 font-black text-lg">
                     {fmt(salaryBreakdownModal.net_pay)}
                   </span>
                 </div>
@@ -1568,7 +1579,7 @@ export default function Payroll({ shortcutMode = false }) {
       {/* Adjustment Modal */}
       {isAdmin && adjustmentModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-5xl overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700 flex justify-between items-center text-white">
               <h2 className="text-lg font-semibold m-0">
                 {bulkAdjustmentMode ? "Bulk Adjustment" : "Adjust Salary"}
@@ -1583,13 +1594,13 @@ export default function Payroll({ shortcutMode = false }) {
             <div className="max-h-[78vh] overflow-y-auto p-6">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                 <div className="space-y-4 lg:col-span-7">
-                  <p className="text-sm font-bold text-gray-700">
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
                     {bulkAdjustmentMode
                       ? `${selectedEmployees.size} selected`
                       : `${adjustmentModal.first_name} ${adjustmentModal.last_name}`}
                   </p>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-400">
                       <input
                         type="checkbox"
                         checked={applyToOtherMonth}
@@ -1600,7 +1611,7 @@ export default function Payroll({ shortcutMode = false }) {
                     </label>
                     {applyToOtherMonth && (
                       <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-400">
                           <input
                             type="checkbox"
                             checked={applyByRange}
@@ -1618,7 +1629,7 @@ export default function Payroll({ shortcutMode = false }) {
                               onChange={(e) =>
                                 setAdjustmentRangeStart(e.target.value)
                               }
-                              className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                             />
                             <input
                               type="month"
@@ -1626,7 +1637,7 @@ export default function Payroll({ shortcutMode = false }) {
                               onChange={(e) =>
                                 setAdjustmentRangeEnd(e.target.value)
                               }
-                              className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                             />
                           </div>
                         ) : (
@@ -1636,7 +1647,7 @@ export default function Payroll({ shortcutMode = false }) {
                             onChange={(e) =>
                               setAdjustmentTargetPeriod(e.target.value)
                             }
-                            className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         )}
                       </div>
@@ -1645,14 +1656,14 @@ export default function Payroll({ shortcutMode = false }) {
                   <select
                     value={adjustmentType}
                     onChange={(e) => setAdjustmentType(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                    className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   >
                     <option value="Incentive">Incentives</option>
                     <option value="Decrease">Deductions</option>
                   </select>
                   {adjustmentType === "Decrease" ? (
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                         Deduction Type and Amount
                       </label>
                       <div className="flex gap-2 mb-2">
@@ -1661,7 +1672,7 @@ export default function Payroll({ shortcutMode = false }) {
                           onChange={(e) =>
                             setSelectedDeductionType(e.target.value)
                           }
-                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         >
                           {deductionTypes.map((type) => (
                             <option key={type} value={type}>
@@ -1712,7 +1723,7 @@ export default function Payroll({ shortcutMode = false }) {
                             }
                           }}
                           placeholder="Add deduction type"
-                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                         <button
                           type="button"
@@ -1726,7 +1737,7 @@ export default function Payroll({ shortcutMode = false }) {
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                         Incentive Type and Amount
                       </label>
                       <div className="flex gap-2 mb-2">
@@ -1735,7 +1746,7 @@ export default function Payroll({ shortcutMode = false }) {
                           onChange={(e) =>
                             setSelectedIncentiveType(e.target.value)
                           }
-                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+                          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         >
                           {incentiveTypes.map((type) => (
                             <option key={type} value={type}>
@@ -1786,7 +1797,7 @@ export default function Payroll({ shortcutMode = false }) {
                             }
                           }}
                           placeholder="Add incentive type"
-                          className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600"
+                          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                         <button
                           type="button"
@@ -1802,9 +1813,9 @@ export default function Payroll({ shortcutMode = false }) {
                 </div>
 
                 <div className="space-y-4 lg:col-span-5">
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-600">
+                      <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
                         Adjustment Lines
                       </p>
                       <button
@@ -1817,7 +1828,7 @@ export default function Payroll({ shortcutMode = false }) {
                     </div>
 
                     {adjustmentLineItems.length === 0 ? (
-                      <p className="m-0 text-xs text-gray-500">
+                      <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
                         No line items added yet. You can mix incentives and
                         deductions.
                       </p>
@@ -1826,17 +1837,17 @@ export default function Payroll({ shortcutMode = false }) {
                         {adjustmentLineItems.map((line, index) => (
                           <div
                             key={line.id}
-                            className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-2"
+                            className="flex items-center justify-between gap-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-2"
                           >
                             <div className="min-w-0">
-                              <p className="m-0 truncate text-xs font-semibold text-gray-800">
+                              <p className="m-0 truncate text-xs font-semibold text-gray-800 dark:text-gray-200">
                                 {index + 1}.{" "}
                                 {line.type === "Decrease"
                                   ? "Deduction"
                                   : "Incentive"}{" "}
                                 - {line.description}
                               </p>
-                              <p className="m-0 mt-0.5 text-xs font-bold text-gray-700">
+                              <p className="m-0 mt-0.5 text-xs font-bold text-gray-700 dark:text-gray-300">
                                 ₱{Number(line.amount || 0).toFixed(2)}
                               </p>
                             </div>
@@ -1856,7 +1867,7 @@ export default function Payroll({ shortcutMode = false }) {
                   <div className="flex justify-end gap-3 pt-1">
                     <button
                       onClick={closeAdjustmentModal}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Cancel
                     </button>
@@ -1874,8 +1885,8 @@ export default function Payroll({ shortcutMode = false }) {
                   </div>
 
                   {!bulkAdjustmentMode && (
-                    <div className="pt-2 border-t border-gray-200">
-                      <p className="text-xs font-bold text-gray-700 uppercase mb-2">
+                    <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
+                      <p className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2">
                         Recent Deductions/Incentives (
                         {applyToOtherMonth
                           ? applyByRange
@@ -1885,7 +1896,7 @@ export default function Payroll({ shortcutMode = false }) {
                         )
                       </p>
                       {currentPeriodHistory.length === 0 ? (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           No editable adjustment records found for this month.
                         </p>
                       ) : (
@@ -1893,9 +1904,9 @@ export default function Payroll({ shortcutMode = false }) {
                           {currentPeriodHistory.map((entry) => (
                             <div
                               key={entry.id}
-                              className="rounded-md border border-gray-200 bg-gray-50 p-2 flex items-center justify-between gap-2"
+                              className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-2 flex items-center justify-between gap-2"
                             >
-                              <div className="text-xs text-gray-700">
+                              <div className="text-xs text-gray-700 dark:text-gray-300">
                                 <span className="font-bold">
                                   {toUiAdjustmentCategory(entry.type) ===
                                   "Decrease"
@@ -1908,7 +1919,7 @@ export default function Payroll({ shortcutMode = false }) {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => startEditHistoryEntry(entry)}
-                                  className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-semibold border-0 cursor-pointer hover:bg-blue-200"
+                                  className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-semibold border-0 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50"
                                 >
                                   Edit
                                 </button>
@@ -1917,7 +1928,7 @@ export default function Payroll({ shortcutMode = false }) {
                                   disabled={
                                     deleteHistoryEntryMutation.isPending
                                   }
-                                  className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold border-0 cursor-pointer hover:bg-red-200 disabled:opacity-60"
+                                  className="px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-semibold border-0 cursor-pointer hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-60"
                                 >
                                   Remove
                                 </button>
@@ -1937,7 +1948,7 @@ export default function Payroll({ shortcutMode = false }) {
 
       {isAdmin && editingHistoryEntry && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
               <h2 className="text-lg font-semibold m-0">Edit Adjustment</h2>
               <button
@@ -1948,7 +1959,7 @@ export default function Payroll({ shortcutMode = false }) {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                 Type and Amount
               </label>
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
@@ -1970,7 +1981,7 @@ export default function Payroll({ shortcutMode = false }) {
                         : nextOptions[0] || "",
                     });
                   }}
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option value="Incentive">Incentives</option>
                   <option value="Decrease">Deductions</option>
@@ -1983,7 +1994,7 @@ export default function Payroll({ shortcutMode = false }) {
                       description: e.target.value,
                     })
                   }
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   {(editingHistoryEntry.type === "Decrease"
                     ? deductionTypes
@@ -2006,13 +2017,13 @@ export default function Payroll({ shortcutMode = false }) {
                     })
                   }
                   placeholder="Amount"
-                  className="w-28 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-28 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => setEditingHistoryEntry(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   Cancel
                 </button>
@@ -2032,18 +2043,18 @@ export default function Payroll({ shortcutMode = false }) {
       {/* Reset Confirmation Modal */}
       {resetConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
               Reset All Payroll Data?
             </h2>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               This will permanently delete all payroll records and salary
               adjustments. This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setResetConfirmModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 font-medium cursor-pointer hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>

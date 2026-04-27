@@ -21,7 +21,7 @@ export default function LeaveUploadField({
 
   return (
     <div className="flex flex-col gap-2 md:col-span-3">
-      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {label} {required && <span className="text-red-600">*</span>}
       </label>
       <input
@@ -34,19 +34,19 @@ export default function LeaveUploadField({
           if (!selectedFile) return;
           onChange(selectedFile);
         }}
-        className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+        className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
       />
 
       {file && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-          <p className="m-0 text-xs font-semibold text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-3 py-2">
+          <p className="m-0 text-xs font-semibold text-slate-700 dark:text-gray-300">
             Uploaded: {file.name}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={openFile}
-              className="rounded-md border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+              className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
             >
               View File
             </button>
@@ -58,7 +58,7 @@ export default function LeaveUploadField({
                 }
                 onRemove?.();
               }}
-              className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-red-700 hover:bg-red-100"
+              className="rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
             >
               Remove File
             </button>
@@ -66,7 +66,7 @@ export default function LeaveUploadField({
         </div>
       )}
 
-      {helperText && <p className="m-0 text-xs text-gray-600">{helperText}</p>}
+      {helperText && <p className="m-0 text-xs text-gray-600 dark:text-gray-400">{helperText}</p>}
     </div>
   );
 }

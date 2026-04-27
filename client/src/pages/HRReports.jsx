@@ -196,9 +196,9 @@ export default function HRReports() {
   };
 
   const statusColors = {
-    Approved: "bg-green-100 text-green-800",
-    Denied: "bg-red-100 text-red-800",
-    Pending: "bg-yellow-100 text-yellow-800",
+    Approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    Denied: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    Pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   };
 
   const chartData =
@@ -206,7 +206,7 @@ export default function HRReports() {
 
   if (isLoading)
     return (
-      <div className="p-6 font-bold text-gray-700">Loading HR Reports...</div>
+      <div className="p-6 font-bold text-gray-700 dark:text-gray-300">Loading HR Reports...</div>
     );
   if (isError)
     return (
@@ -219,29 +219,29 @@ export default function HRReports() {
     <div className="max-w-full space-y-6">
       {}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100">
           Human Resources Reports
         </h1>
         <button
           onClick={exportCSV}
           disabled={dynamicData.length === 0}
-          className="px-5 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50 shadow-sm"
+          className="w-36 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-0 text-white text-sm font-semibold cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50 shadow-sm whitespace-nowrap"
         >
           ⬇ Export CSV
         </button>
       </div>
 
       {}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Report Type
             </label>
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="leave">Leave Applications</option>
               <option value="attendance">Attendance Summary</option>
@@ -249,14 +249,14 @@ export default function HRReports() {
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Date Range
             </label>
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
               disabled={reportType === "balance"}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-400"
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="week">This Week</option>
               <option value="month">This Month</option>
@@ -272,12 +272,12 @@ export default function HRReports() {
         {kpis.map((kpi, idx) => (
           <div
             key={idx}
-            className={`bg-white rounded-xl p-4 flex flex-col gap-1 border-t-4 shadow-sm ${kpi.color}`}
+            className={`bg-white dark:bg-gray-900 rounded-xl p-4 flex flex-col gap-1 border-t-4 shadow-sm border border-gray-200 dark:border-gray-800 ${kpi.color}`}
           >
             <span className={`text-2xl font-bold ${kpi.text}`}>
               {kpi.value}
             </span>
-            <span className="text-[0.80rem] font-medium uppercase text-gray-500 tracking-wider">
+            <span className="text-[0.80rem] font-medium uppercase text-gray-500 dark:text-gray-400 tracking-wider">
               {kpi.label}
             </span>
           </div>
@@ -286,8 +286,8 @@ export default function HRReports() {
 
       {}
       {dynamicData.length > 0 && (
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="m-0 mb-4 text-base font-bold text-gray-800">
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
+          <h3 className="m-0 mb-4 text-base font-bold text-gray-800 dark:text-gray-100">
             {reportType === "leave" && "Leave Days Requested"}
             {reportType === "attendance" && "Daily Attendance Trends"}
             {reportType === "balance" && "Leave Credits Distribution"}
@@ -302,24 +302,26 @@ export default function HRReports() {
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="#E5E7EB"
+                    stroke="currentColor" className="text-gray-200 dark:text-gray-800"
                   />
                   <XAxis
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
                   <Tooltip
                     contentStyle={{
                       borderRadius: "8px",
                       border: "none",
                       boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      backgroundColor: "var(--color-gray-900)",
+                      color: "var(--color-gray-100)",
                     }}
                   />
                   <Legend
@@ -358,25 +360,27 @@ export default function HRReports() {
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="#E5E7EB"
+                    stroke="currentColor" className="text-gray-200 dark:text-gray-800"
                   />
                   <XAxis
                     dataKey="employee"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10, fill: "#6B7280" }}
+                    tick={{ fontSize: 10, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
                   <Tooltip
-                    cursor={{ fill: "transparent" }}
+                    cursor={{ fill: "var(--color-gray-800)", opacity: 0.2 }}
                     contentStyle={{
                       borderRadius: "8px",
                       border: "none",
                       boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      backgroundColor: "var(--color-gray-900)",
+                      color: "var(--color-gray-100)",
                     }}
                   />
                   <Legend
@@ -414,9 +418,9 @@ export default function HRReports() {
       )}
 
       {}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="m-0 text-base font-bold text-gray-900">
+      <section className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+          <h3 className="m-0 text-base font-bold text-gray-900 dark:text-gray-100">
             Detailed Report Data
           </h3>
         </div>
@@ -425,69 +429,69 @@ export default function HRReports() {
             <thead>
               {reportType === "leave" && (
                 <tr>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     Employee
                   </th>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50 text-center">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-center">
                     Leave Type
                   </th>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50 text-center">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-center">
                     Days
                   </th>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50 text-center">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-center">
                     From - To
                   </th>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50 text-center">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-center">
                     Status
                   </th>
                 </tr>
               )}
               {reportType === "attendance" && (
                 <tr>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     Date
                   </th>
-                  <th className="px-5 py-3 font-bold text-green-700 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-green-50/50 text-center border-l">
+                  <th className="px-5 py-3 font-bold text-green-700 dark:text-green-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-green-50/50 dark:bg-green-900/20 text-center border-l border-gray-200 dark:border-gray-800">
                     Present
                   </th>
-                  <th className="px-5 py-3 font-bold text-red-700 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-red-50/50 text-center">
+                  <th className="px-5 py-3 font-bold text-red-700 dark:text-red-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-red-50/50 dark:bg-red-900/20 text-center">
                     Absent
                   </th>
-                  <th className="px-5 py-3 font-bold text-yellow-700 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-yellow-50/50 text-center">
+                  <th className="px-5 py-3 font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-yellow-50/50 dark:bg-yellow-900/20 text-center">
                     On Leave
                   </th>
-                  <th className="px-5 py-3 font-bold text-orange-700 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-orange-50/50 text-center">
+                  <th className="px-5 py-3 font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-orange-50/50 dark:bg-orange-900/20 text-center">
                     Late
                   </th>
                 </tr>
               )}
               {reportType === "balance" && (
                 <tr>
-                  <th className="px-5 py-3 font-bold text-gray-600 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-gray-50">
+                  <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     Employee
                   </th>
-                  <th className="px-5 py-3 font-bold text-green-700 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-green-50/50 text-center border-l">
+                  <th className="px-5 py-3 font-bold text-green-700 dark:text-green-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-green-50/50 dark:bg-green-900/20 text-center border-l border-gray-200 dark:border-gray-800">
                     Leave Balance
                   </th>
-                  <th className="px-5 py-3 font-bold text-blue-700 uppercase tracking-wider text-[10px] border-b border-gray-200 bg-blue-50/50 text-center">
+                  <th className="px-5 py-3 font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-blue-50/50 dark:bg-blue-900/20 text-center">
                     Offset Credits
                   </th>
                 </tr>
               )}
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {dynamicData.length === 0 ? (
                 <tr>
                   <td
                     colSpan="6"
-                    className="px-6 py-8 text-center text-gray-500"
+                    className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
                   >
                     No data available for the selected parameters.
                   </td>
                 </tr>
               ) : (
                 dynamicData.map((report, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                  <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     {}
                     {reportType === "leave" && (
                       <>
@@ -496,13 +500,13 @@ export default function HRReports() {
                             <span>{report.employee}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-center text-gray-700 font-medium">
+                        <td className="px-5 py-3 text-center text-gray-700 dark:text-gray-300 font-medium">
                           {report.leaveType}
                         </td>
-                        <td className="px-5 py-3 text-center text-gray-800 font-bold">
+                        <td className="px-5 py-3 text-center text-gray-800 dark:text-gray-200 font-bold">
                           {report.days}
                         </td>
-                        <td className="px-5 py-3 text-center text-gray-600 text-xs">
+                        <td className="px-5 py-3 text-center text-gray-600 dark:text-gray-400 text-xs">
                           {report.dateFrom} <br /> {report.dateTo}
                         </td>
                         <td className="px-5 py-3 text-center">
@@ -518,19 +522,19 @@ export default function HRReports() {
                     {}
                     {reportType === "attendance" && (
                       <>
-                        <td className="px-5 py-3 font-bold text-gray-900 whitespace-nowrap">
+                        <td className="px-5 py-3 font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           {report.date}
                         </td>
-                        <td className="px-5 py-3 text-center text-green-700 font-bold border-l border-gray-100 bg-green-50/10">
+                        <td className="px-5 py-3 text-center text-green-700 dark:text-green-400 font-bold border-l border-gray-100 dark:border-gray-800 bg-green-50/10 dark:bg-green-900/5">
                           {report.present}
                         </td>
-                        <td className="px-5 py-3 text-center text-red-700 font-bold bg-red-50/10">
+                        <td className="px-5 py-3 text-center text-red-700 dark:text-red-400 font-bold bg-red-50/10 dark:bg-red-900/5">
                           {report.absent}
                         </td>
-                        <td className="px-5 py-3 text-center text-yellow-700 font-bold bg-yellow-50/10">
+                        <td className="px-5 py-3 text-center text-yellow-700 dark:text-yellow-400 font-bold bg-yellow-50/10 dark:bg-yellow-900/5">
                           {report.onLeave}
                         </td>
-                        <td className="px-5 py-3 text-center text-orange-700 font-bold bg-orange-50/10">
+                        <td className="px-5 py-3 text-center text-orange-700 dark:text-orange-400 font-bold bg-orange-50/10 dark:bg-orange-900/5">
                           {report.late}
                         </td>
                       </>
@@ -539,15 +543,15 @@ export default function HRReports() {
                     {}
                     {reportType === "balance" && (
                       <>
-                        <td className="px-5 py-3 font-bold text-gray-900 whitespace-nowrap">
+                        <td className="px-5 py-3 font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <span>{report.employee}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-center text-green-700 font-bold border-l border-gray-100 bg-green-50/10">
+                        <td className="px-5 py-3 text-center text-green-700 dark:text-green-400 font-bold border-l border-gray-100 dark:border-gray-800 bg-green-50/10 dark:bg-green-900/5">
                           {report.leaveBalance}
                         </td>
-                        <td className="px-5 py-3 text-center text-blue-700 font-bold bg-blue-50/10">
+                        <td className="px-5 py-3 text-center text-blue-700 dark:text-blue-400 font-bold bg-blue-50/10 dark:bg-blue-900/5">
                           {report.offsetCredits}
                         </td>
                       </>

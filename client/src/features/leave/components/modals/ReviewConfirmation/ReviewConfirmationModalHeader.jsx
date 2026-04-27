@@ -5,7 +5,7 @@ export default function ReviewConfirmationModalHeader({ reviewConfirm }) {
 
   return (
     <>
-      <h2 className="m-0 mb-2 text-lg font-semibold text-gray-900">
+      <h2 className="m-0 mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
         {!hasDecision
           ? reviewConfirm.decisionMode === "cancellation"
             ? "Review Cancellation Request"
@@ -18,7 +18,7 @@ export default function ReviewConfirmationModalHeader({ reviewConfirm }) {
               ? "Confirm Denial"
               : "Confirm Approval"}
       </h2>
-      <p className="m-0 mb-4 text-sm text-gray-600">
+      <p className="m-0 mb-4 text-sm text-gray-600 dark:text-gray-400">
         {reviewConfirm.item.first_name} {reviewConfirm.item.last_name}
         {reviewConfirm.module === "resignation"
           ? ` • ${reviewConfirm.item.resignation_type}`

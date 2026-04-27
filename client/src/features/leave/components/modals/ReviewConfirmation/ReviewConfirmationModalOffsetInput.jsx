@@ -9,8 +9,8 @@ export default function ReviewConfirmationModalOffsetInput({
         reviewConfirm.decisionMode !== "cancellation" &&
         reviewConfirm.status === "Approved" &&
         reviewConfirm.isMultiDay && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+          <div className="mb-4 rounded-lg border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 p-3">
+            <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
               Set approved offset days
             </p>
             <input
@@ -25,7 +25,7 @@ export default function ReviewConfirmationModalOffsetInput({
                   approvedDays: e.target.value,
                 })
               }
-              className="w-full rounded-md border border-amber-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full rounded-md border border-amber-300 dark:border-amber-800 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
         )}

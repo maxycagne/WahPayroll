@@ -104,14 +104,14 @@ export default function LeaveForm({
       >
         {/* Filing As */}
         <div className="flex flex-col gap-2 md:col-span-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Filing As
           </label>
           <input
             type="text"
             disabled
             value={`${currentUser.emp_id} - ${currentUser.name}`}
-            className="cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-bold text-gray-600 outline-none"
+            className="cursor-not-allowed rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5 text-sm font-bold text-gray-600 dark:text-gray-400 outline-none"
           />
         </div>
 
@@ -120,16 +120,16 @@ export default function LeaveForm({
           <div
             className={`md:col-span-3 rounded-lg border px-4 py-3 text-sm ${
               isMandated
-                ? "border-blue-200 bg-blue-50"
-                : "border-amber-200 bg-amber-50"
+                ? "border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20"
+                : "border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20"
             }`}
           >
-            <p className="m-0 font-semibold">
+            <p className="m-0 font-semibold text-gray-900 dark:text-gray-100">
               {isMandated
                 ? "📋 Legally Mandated Leave"
                 : "⚠️ Leave Without Balance Deduction"}
             </p>
-            <p className="m-0 text-xs text-gray-700 mt-1">
+            <p className="m-0 text-xs text-gray-700 dark:text-gray-300 mt-1">
               {isMandated
                 ? "This leave does not reduce your leave balance and has legal entitlements."
                 : "This leave does not deduct from your available balance. ED approval required."}
@@ -139,13 +139,13 @@ export default function LeaveForm({
 
         {/* Leave Type */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Leave Type<span className="text-red-500">*</span>
           </label>
           <select
             value={formData.leaveType}
             onChange={handleLeaveTypeChange}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
           >
             {availableLeaveTypes.map((t) => (
               <option key={t} value={t}>
@@ -154,7 +154,7 @@ export default function LeaveForm({
             ))}
           </select>
           {helperText && (
-            <p className="m-0 text-xs text-gray-600 italic mt-1">
+            <p className="m-0 text-xs text-gray-600 dark:text-gray-400 italic mt-1">
               {helperText}
             </p>
           )}
@@ -162,20 +162,20 @@ export default function LeaveForm({
 
         {/* From Date */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             From Date<span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             value={formData.fromDate}
             onChange={handleFromDateChange}
-            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 
         {/* To Date */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             To Date<span className="text-red-500">*</span>
             {isEmergency && (
               <span className="ml-1 text-red-600 font-bold">(Max 1 Day)</span>
@@ -188,7 +188,7 @@ export default function LeaveForm({
             disabled={isBirthdayLeave}
             max={getMaxToDate()}
             min={formData.fromDate}
-            className={`rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 ${isBirthdayLeave ? "cursor-not-allowed bg-gray-100 text-gray-500" : ""}`}
+            className={`rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500 ${isBirthdayLeave ? "cursor-not-allowed bg-gray-100 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400" : ""}`}
           />
         </div>
 
@@ -285,7 +285,7 @@ export default function LeaveForm({
         {/* Priority Level (hidden for Offset and Mandated leaves) */}
         {formData.leaveType !== "Offset" && !isMandated && (
           <div className="flex flex-col gap-2 md:col-span-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Priority Level<span className="text-red-500">*</span>
             </label>
             <select
@@ -296,7 +296,7 @@ export default function LeaveForm({
                   priority: e.target.value,
                 })
               }
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
@@ -307,7 +307,7 @@ export default function LeaveForm({
 
         {/* Reason / Details */}
         <div className="flex flex-col gap-2 md:col-span-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Reason / Details<span className="text-red-500">*</span>
           </label>
           <textarea
@@ -316,7 +316,7 @@ export default function LeaveForm({
             onChange={(e) =>
               setFormData({ ...formData, reason: e.target.value })
             }
-            className="resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+            className="resize-none rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
             placeholder={
               isMandated
                 ? "Provide details about your mandated leave (e.g., estimated delivery date for maternity, relationship to deceased for bereavement)"
@@ -329,28 +329,28 @@ export default function LeaveForm({
           <div className="flex flex-col">
             {isDeductible ? (
               <>
-                <p className="m-0 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                <p className="m-0 text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                   Estimated Cost
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-black text-indigo-700">
+                  <span className="text-lg font-black text-indigo-700 dark:text-indigo-400">
                     {totalCredits.toFixed(2)}
                   </span>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
                     Credits Used
                   </span>
-                  <span className="text-[10px] font-bold text-gray-300">|</span>
-                  <span className="text-[11px] font-semibold text-gray-500 italic">
+                  <span className="text-[10px] font-bold text-gray-300 dark:text-gray-800">|</span>
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 italic">
                     ({difference} working days)
                   </span>
                 </div>
               </>
             ) : (
               <>
-                <p className="m-0 text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
+                <p className="m-0 text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                   ✓ No Balance Deduction
                 </p>
-                <p className="m-0 text-[10px] text-gray-500 italic">
+                <p className="m-0 text-[10px] text-gray-500 dark:text-gray-400 italic">
                   This leave does not reduce your balance
                 </p>
               </>
@@ -360,7 +360,7 @@ export default function LeaveForm({
             <button
               type="button"
               onClick={() => setApplicationModalOpen(false)}
-              className="cursor-pointer rounded-lg bg-gray-200 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300 transition-colors"
+              className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-5 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
