@@ -1429,20 +1429,20 @@ export default function Payroll({ shortcutMode = false }) {
             <div className="p-6 space-y-4">
               <p className="m-0 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 Update monthly base salary for
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
                   {selectedSalaryEmployee
                     ? `${selectedSalaryEmployee.first_name} ${selectedSalaryEmployee.last_name}`
                     : "the selected employee"}
                 </span>
                 to
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
                   {fmt(salaryForm.amount)}
                 </span>
                 ?
               </p>
-              <p className="m-0 text-xs text-gray-500">
+              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
                 This will apply only to this employee.
               </p>
               <div className="pt-2 flex gap-3">
