@@ -160,63 +160,84 @@ export const leavePolicy = {
   // ============ NEW: LEGALLY MANDATED LEAVES (Non-Deductible) ============
   "Mandated - Maternity Leave": {
     category: "mandated",
-    maxDays: 105, // 60 before, 45 after delivery (standard PH entitlement)
-    excludeWeekends: false, // Calendar days, not working days
+    maxDays: 105, // RA 11210: 105 days paid leave (60 regular + 45 after delivery)
+    excludeWeekends: true, // Count only working days (Mon-Fri)
     annualEntitlement: 105,
     deductsFromBalance: false, // Mandated: does NOT reduce balance
     requiresDocument: ["maternity_cert"], // Medical certificate or SSS maternity benefit form
     minNoticeHours: 672, // 4 weeks advance notice if possible
     requiredApprovals: ["executive_director", "hr"],
+    eligibilityRequirements: {
+      minContributionMonths: 3, // Requires at least 3 months contributions
+      applicableTo: ["all"], // All pregnant employees
+      notes: "60 days transferable to caregiver; +30 additional days for qualified solo parents"
+    },
     helperText:
-      "Legal entitlement (RA 11165). Medical certificate and SSS maternity benefit form required. Does not reduce balance.",
+      "Legal entitlement (RA 11210): 105 paid days, 60 transferable. Requires ≥3 months contributions. Medical certificate required. Does not reduce balance.",
   },
   "Mandated - Special Leave for Women": {
     category: "mandated",
-    maxDays: 60, // Annual entitlement for women (for family care)
-    excludeWeekends: true,
+    maxDays: 60, // RA 9710: 2 months (60 days) for gynecological surgery or medical procedures
+    excludeWeekends: true, // Count only working days
     annualEntitlement: 60,
     deductsFromBalance: false, // Does NOT reduce balance
-    requiresDocument: ["family_care_doc"], // Document supporting reason (e.g., child sick leave, parent care)
-    minNoticeHours: 168, // 1 week if possible
+    requiresDocument: ["medical_cert"], // Medical certificate from OB/GYN specialist
+    minNoticeHours: 168, // 1 week if possible (or as per medical necessity)
     requiredApprovals: ["supervisor", "executive_director"],
+    eligibilityRequirements: {
+      applicableTo: ["female"], // Only for female employees
+      notes: "For gynecological surgery or medical procedures. Can be emergency-filed if medical necessary."
+    },
     helperText:
-      "Legal entitlement for women employees (RA 9710). For child or family care. Does not reduce balance.",
+      "Legal entitlement (RA 9710): 2 months (60 days) for gynecological surgery/medical procedures. Female employees only. Medical certificate required. Does not reduce balance.",
   },
   "Mandated - Paternity Leave": {
     category: "mandated",
-    maxDays: 7, // Standard paternity leave (some companies allow up to 10)
-    excludeWeekends: false, // Calendar days
+    maxDays: 7, // RA 8187: 7 days per year for married male employees
+    excludeWeekends: true, // Count only working days
     annualEntitlement: 7,
     deductsFromBalance: false, // Does NOT reduce balance
-    requiresDocument: ["birth_cert"], // Birth certificate of child
+    requiresDocument: ["birth_cert"], // Birth certificate of child / SSS registration
     minNoticeHours: 168, // Advance notice if possible
     requiredApprovals: ["executive_director", "hr"],
+    eligibilityRequirements: {
+      applicableTo: ["married_male"], // Married male employees only
+      notes: "7 days per calendar year for child birth assistance"
+    },
     helperText:
-      "Legal entitlement (RA 8187). Birth certificate required. Does not reduce balance.",
+      "Legal entitlement (RA 8187): 7 days/year for married male employees on child birth. Birth certificate required. Does not reduce balance.",
   },
   "Mandated - Solo Parent Leave": {
     category: "mandated",
-    maxDays: 7, // Annual solo parent entitlement
-    excludeWeekends: true,
+    maxDays: 7, // RA 8972: 7 days per year for qualified solo parents
+    excludeWeekends: true, // Count only working days
     annualEntitlement: 7,
     deductsFromBalance: false, // Does NOT reduce balance
-    requiresDocument: ["solo_parent_cert"], // Solo parent certificate from DSWD or Local Government
-    minNoticeHours: 168,
+    requiresDocument: ["solo_parent_cert"], // DSWD Solo Parent ID or LGU certificate
+    minNoticeHours: 168, // 1 week if possible
     requiredApprovals: ["supervisor", "executive_director"],
+    eligibilityRequirements: {
+      applicableTo: ["solo_parent"], // Registered solo parents only
+      notes: "Must have valid DSWD Solo Parent ID"
+    },
     helperText:
-      "Legal entitlement for registered solo parents (RA 8972). DSWD certificate required. Does not reduce balance.",
+      "Legal entitlement (RA 8972): 7 days/year for qualified solo parents. DSWD ID/LGU certificate required. Does not reduce balance.",
   },
   "Mandated - VAWC Leave": {
     category: "mandated",
-    maxDays: 10, // Annual VAWC leave
-    excludeWeekends: true,
+    maxDays: 10, // RA 9262: Up to 10 days per year, extendable by court/barangay order
+    excludeWeekends: true, // Count only working days
     annualEntitlement: 10,
     deductsFromBalance: false, // Does NOT reduce balance
     requiresDocument: ["vawc_cert"], // Protection order, police report, or barangay certification
     minNoticeHours: 0, // Emergency: can be filed immediately for safety
     requiredApprovals: ["executive_director", "hr"],
+    eligibilityRequirements: {
+      applicableTo: ["female"], // Primarily for female victims of violence
+      notes: "Can be extended beyond 10 days with valid court/barangay order. Emergency filing allowed."
+    },
     helperText:
-      "Legal entitlement for victims of violence (RA 9262). Protection order or police report required. Does not reduce balance.",
+      "Legal entitlement (RA 9262): Up to 10 days/year for violence victims. Protection order/police report required. Extendable by court order. Does not reduce balance.",
   },
 };
 

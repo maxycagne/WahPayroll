@@ -285,3 +285,69 @@ export function isFutureDateString(dateValue: DateInput) {
 
   return target > today;
 }
+
+/**
+ * Calculates the end date for mandated leave given a start date and number of working days.
+ * Excludes weekends (Saturday and Sunday) from the count.
+ * @param startDate - The start date of the leave
+ * @param workingDaysRequired - Number of working days (excluding weekends) needed
+ * @param configs - Optional workweek configurations
+ * @returns The calculated end date in YYYY-MM-DD format
+ */
+export function calculateMandatedLeaveEndDate(
+  startDate: DateInput,
+  workingDaysRequired: number,
+  configs: any[] = []
+): string {
+  if (!startDate || workingDaysRequired <= 0) return "";
+  
+  let count = 0;
+  const current = parseDateOnly(startDate);
+  
+  while (count < workingDaysRequired) {
+    // Check if current day is a working day (not a weekend)
+    // For mandated leaves, we only exclude Sat/Sun, not considering 4-day workweek
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
+      count++;
+    }
+    
+    if (count < workingDaysRequired) {
+      current.setDate(current.getDate() + 1);
+    }
+  }
+  
+  const year = current.getFullYear();
+  const month = String(current.getMonth() + 1).padStart(2, "0");
+  const day = String(current.getDate()).padStart(2, "0");
+  
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Counts working days (excluding weekends) between two dates
+ * Useful for determining effective leave days in mandated leave requests
+ * @param startDate - Start date
+ * @param endDate - End date
+ * @returns Number of working days (Mon-Fri) between dates inclusive
+ */
+export function countWorkingDaysExcludingWeekends(
+  startDate: DateInput,
+  endDate: DateInput
+): number {
+  if (!startDate || !endDate) return 0;
+  
+  let count = 0;
+  const current = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
+  
+  while (current <= end) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+}
