@@ -106,7 +106,7 @@ export const RegisterForm = () => {
               onChange={handleInputChange}
               required
               maxLength={20}
-              placeholder="EMP-001"
+              placeholder="Empoyee ID"
               className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
             />
           </div>
