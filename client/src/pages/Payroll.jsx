@@ -1324,70 +1324,23 @@ export default function Payroll({ shortcutMode = false }) {
                   <form onSubmit={handleBaseSalaryUpdate} className="space-y-5">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                        Select Designation (Optional Filter)
+                        Select Employee
                       </label>
                       <input
                         type="text"
                         list="salary-employee-options"
                         value={salaryEmployeeSearch}
-                        onChange={(e) =>
-                          setSalaryForm({
-                            ...salaryForm,
-                            designation: e.target.value,
-                            position: "", // Reset position when designation changes
-                          })
-                        }
+                        onChange={(e) => handleSalaryEmployeeSearchChange(e.target.value)}
                         className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="">All Designations</option>
-                        {Object.keys(DESIGNATIONS).map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
-                          </option>
+                        placeholder="Type to search employee..."
+                      />
+                      <datalist id="salary-employee-options">
+                        {salaryEmployeeOptions.map((emp) => (
+                          <option key={emp.emp_id} value={getSalaryEmployeeLabel(emp)} />
                         ))}
                       </datalist>
                     </div>
 
-                    {/* POSITION DROPDOWN */}
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                        Select Position
-                      </label>
-                      <select
-                        required
-                        value={salaryForm.position}
-                        onChange={(e) =>
-                          setSalaryForm({
-                            ...salaryForm,
-                            position: e.target.value,
-                          })
-                        }
-                        className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="" disabled>
-                          Choose Position...
-                        </option>
-                        {salaryForm.designation
-                          ? // Show only positions for the selected designation
-                            DESIGNATIONS[salaryForm.designation].map((pos) => (
-                              <option key={pos} value={pos}>
-                                {pos}
-                              </option>
-                            ))
-                          : // Show all positions grouped if no designation is selected
-                            Object.entries(DESIGNATIONS).map(
-                              ([dept, positions]) => (
-                                <optgroup key={dept} label={dept}>
-                                  {positions.map((pos) => (
-                                    <option key={pos} value={pos}>
-                                      {pos}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ),
-                            )}
-                      </select>
-                    </div>
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
