@@ -3726,40 +3726,37 @@ export const generatePayroll = async (req, res) => {
   }
 };
 export const updateBaseSalaryByPosition = async (req, res) => {
-  const { position, amount } = req.body;
+  const { emp_id, amount } = req.body;
 
-  if (!position || amount === undefined || amount === null) {
-    return res
-      .status(400)
-      .json({ message: "Position and amount are required" });
+  if (!emp_id || amount === undefined || amount === null) {
+    return res.status(400).json({ message: "Employee and amount are required" });
+  }
+
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount) || numericAmount < 0) {
+    return res.status(400).json({ message: "Amount must be a valid non-negative number" });
   }
 
   try {
-    await ensurePositionSalarySettingsTable();
-
-    await pool.query(
-      `INSERT INTO position_salary_settings (position, amount)
-       VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
-      [position, amount],
+    const [employeeResult] = await pool.query(
+      "UPDATE employees SET basic_pay = ? WHERE emp_id = ?",
+      [numericAmount, emp_id],
     );
 
-    // 1. Fixed: Changed 'base_salary' to 'basic_pay' for the employees table
-    await pool.query("UPDATE employees SET basic_pay = ? WHERE position = ?", [
-      amount,
-      position,
-    ]);
+    if (!employeeResult?.affectedRows) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
 
-    // 2. Update the payroll table as well
     await pool.query(
-      `UPDATE payroll p
-       JOIN employees e ON p.emp_id = e.emp_id
-       SET p.basic_pay = ?
-       WHERE e.position = ?`,
-      [amount, position],
+      `UPDATE payroll
+       SET basic_pay = ?,
+           gross_pay = ROUND(? + COALESCE(incentives, 0), 2),
+           net_pay = ROUND((? + COALESCE(incentives, 0)) - COALESCE(absence_deductions, 0), 2)
+       WHERE emp_id = ?`,
+      [numericAmount, numericAmount, numericAmount, emp_id],
     );
 
-    res.json({ message: "Base salary updated successfully" });
+    res.json({ message: "Base salary updated successfully for employee" });
   } catch (error) {
     console.error("DB Error in updateBaseSalaryByPosition:", error);
     res.status(500).json({ message: "Error updating base salary" });
