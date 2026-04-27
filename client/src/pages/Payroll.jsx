@@ -1089,7 +1089,6 @@ export default function Payroll({ shortcutMode = false }) {
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                       Total Salary (Gross)
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Deductions
                     </th>
@@ -1130,6 +1129,9 @@ export default function Payroll({ shortcutMode = false }) {
                         <td className="px-6 py-4 text-right">
                           <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        </td>
                         {isAdmin && !bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-right">
                             <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse ml-auto" />
@@ -1140,7 +1142,7 @@ export default function Payroll({ shortcutMode = false }) {
                   ) : payrollData.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
+                        colSpan={isAdmin ? 8 : 7}
                         className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No payroll records found for {period}. Click "Generate
@@ -1194,6 +1196,9 @@ export default function Payroll({ shortcutMode = false }) {
                           <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                             {p.incentive_reasons || "No incentive type"}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">
+                          {fmt(p.gross_pay)}
                         </td>
                         <td className="px-6 py-4 text-right text-red-600 dark:text-red-400">
                           <div className="font-semibold">
