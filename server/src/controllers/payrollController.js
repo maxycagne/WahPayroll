@@ -147,12 +147,8 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
               <div class="footer-note">*** WAH Confidential - Maximum Restrictions ***</div>
             </div>
           </div>
-          
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+        </body>
+        </html>`;
 
   await page.setContent(pdfHtmlContent, { waitUntil: "domcontentloaded" });
   const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
