@@ -612,7 +612,7 @@ export default function ResignationForm({
       }
       await sendResignationStatusEmail(
         {
-          recipient_email: "finance@wah.ph",
+          recipient_email: "info@wah.ph",
           employee_name: resignationForm.employee_name,
           position: resignationForm.position,
           resignation_date: resignationForm.last_working_day,
