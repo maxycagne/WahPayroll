@@ -1088,7 +1088,7 @@ export default function Payroll({ shortcutMode = false }) {
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Incentives
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Total Salary (Gross)
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
@@ -1525,11 +1525,11 @@ export default function Payroll({ shortcutMode = false }) {
                     {fmtSigned(salaryBreakdownModal.incentives)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-indigo-200 bg-indigo-50">
-                  <span className="font-semibold text-indigo-700">
+                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20">
+                  <span className="font-semibold text-green-700 dark:text-green-400">
                     Total Salary (Gross)
                   </span>
-                  <span className="text-indigo-700 font-bold">
+                  <span className="text-green-700 font-bold dark:text-green-400">
                     {fmt(salaryBreakdownModal.gross_pay)}
                   </span>
                 </div>
