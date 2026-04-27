@@ -129,45 +129,45 @@ export default function MyReports() {
 
   if (attendanceLoading || payrollLoading) {
     return (
-      <div className="p-6 font-bold text-gray-800">Loading reports...</div>
+      <div className="p-6 font-bold text-gray-800 dark:text-gray-300">Loading reports...</div>
     );
   }
 
   return (
     <div className="max-w-full space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900">
+        <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100">
           My Reports
         </h1>
-        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
           Period:
           <input
             type="month"
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 dark:text-gray-100"
           />
         </label>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="m-0 mb-3 text-base font-bold text-gray-900">
+      <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+        <h2 className="m-0 mb-3 text-base font-bold text-gray-900 dark:text-gray-100">
           Personal Attendance Report
         </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
           {[
-            ["Total Logs", attendanceSummary.total, "text-slate-900"],
-            ["Present", attendanceSummary.Present, "text-green-700"],
-            ["Absent", attendanceSummary.Absent, "text-red-700"],
-            ["Late", attendanceSummary.Late, "text-amber-700"],
-            ["Undertime", attendanceSummary.Undertime, "text-orange-700"],
-            ["Half-Day", attendanceSummary["Half-Day"], "text-purple-700"],
+            ["Total Logs", attendanceSummary.total, "text-slate-900 dark:text-gray-100"],
+            ["Present", attendanceSummary.Present, "text-green-700 dark:text-green-400"],
+            ["Absent", attendanceSummary.Absent, "text-red-700 dark:text-red-400"],
+            ["Late", attendanceSummary.Late, "text-amber-700 dark:text-amber-400"],
+            ["Undertime", attendanceSummary.Undertime, "text-orange-700 dark:text-orange-400"],
+            ["Half-Day", attendanceSummary["Half-Day"], "text-purple-700 dark:text-purple-400"],
           ].map(([label, value, color]) => (
             <div
               key={label}
-              className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-center"
+              className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 text-center"
             >
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {label}
               </p>
               <p className={`m-0 mt-1 text-xl font-black ${color}`}>{value}</p>
@@ -177,12 +177,12 @@ export default function MyReports() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="m-0 mb-3 text-base font-bold text-gray-900">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <h2 className="m-0 mb-3 text-base font-bold text-gray-900 dark:text-gray-100">
             Attendance Trend (Last 6 Months)
           </h2>
           {attendanceTrend.length === 0 ? (
-            <p className="m-0 py-10 text-center text-sm font-medium text-gray-500">
+            <p className="m-0 py-10 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               No attendance trend data yet.
             </p>
           ) : (
@@ -195,21 +195,29 @@ export default function MyReports() {
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="#E5E7EB"
+                    stroke="currentColor" className="text-gray-200 dark:text-gray-800"
                   />
                   <XAxis
                     dataKey="month"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
                     allowDecimals={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      backgroundColor: "var(--color-gray-900)",
+                      color: "var(--color-gray-100)",
+                    }}
+                  />
                   <Legend
                     wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
                   />
@@ -240,8 +248,8 @@ export default function MyReports() {
           )}
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="m-0 mb-3 text-base font-bold text-gray-900">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <h2 className="m-0 mb-3 text-base font-bold text-gray-900 dark:text-gray-100">
             Payroll Breakdown (
             {new Date(`${period}-01`).toLocaleString("default", {
               month: "short",
@@ -250,7 +258,7 @@ export default function MyReports() {
             )
           </h2>
           {payrollBreakdown.length === 0 ? (
-            <p className="m-0 py-10 text-center text-sm font-medium text-gray-500">
+            <p className="m-0 py-10 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               No payroll data to visualize for this period.
             </p>
           ) : (
@@ -263,21 +271,31 @@ export default function MyReports() {
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="#E5E7EB"
+                    stroke="currentColor" className="text-gray-200 dark:text-gray-800"
                   />
                   <XAxis
                     dataKey="metric"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#6B7280" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }} className="text-gray-500 dark:text-gray-400"
                     tickFormatter={(v) => `P${Math.round(v / 1000)}k`}
                   />
-                  <Tooltip formatter={(value) => fmt(value)} />
+                  <Tooltip
+                    cursor={{ fill: "var(--color-gray-800)", opacity: 0.2 }}
+                    formatter={(value) => fmt(value)}
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      backgroundColor: "var(--color-gray-900)",
+                      color: "var(--color-gray-100)",
+                    }}
+                  />
                   <Bar dataKey="amount" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -286,12 +304,12 @@ export default function MyReports() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
-          <h2 className="m-0 text-base font-bold text-gray-900">
+      <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+          <h2 className="m-0 text-base font-bold text-gray-900 dark:text-gray-100">
             Personal Payroll Report
           </h2>
-          <span className="text-xs font-semibold text-gray-500">
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
             {new Date(`${period}-01`).toLocaleString("default", {
               month: "long",
               year: "numeric",
@@ -302,44 +320,44 @@ export default function MyReports() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
-              <tr className="border-b border-gray-200 bg-white">
-                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Basic Pay
                 </th>
-                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Incentives
                 </th>
-                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Deductions
                 </th>
-                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Net Pay
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {myPayrollRows.length === 0 ? (
                 <tr>
                   <td
                     colSpan="4"
-                    className="px-4 py-6 text-center text-sm font-medium text-gray-500"
+                    className="px-4 py-6 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
                   >
                     No payroll report available for this period.
                   </td>
                 </tr>
               ) : (
                 myPayrollRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-2.5 font-semibold text-gray-800">
+                  <tr key={row.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td className="px-4 py-2.5 font-semibold text-gray-800 dark:text-gray-200">
                       {fmt(row.basic_pay)}
                     </td>
-                    <td className="px-4 py-2.5 text-green-700">
+                    <td className="px-4 py-2.5 text-green-700 dark:text-green-400">
                       +{fmt(row.incentives)}
                     </td>
-                    <td className="px-4 py-2.5 text-red-700">
+                    <td className="px-4 py-2.5 text-red-700 dark:text-red-400">
                       -{fmt(row.absence_deductions)}
                     </td>
-                    <td className="px-4 py-2.5 font-bold text-blue-700">
+                    <td className="px-4 py-2.5 font-bold text-blue-700 dark:text-blue-400">
                       {fmt(row.net_pay)}
                     </td>
                   </tr>

@@ -11,7 +11,7 @@ export default function ReviewConfirmationModalFooter({
       <button
         type="button"
         onClick={() => setReviewConfirm(null)}
-        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
       >
         Cancel
       </button>
@@ -23,7 +23,7 @@ export default function ReviewConfirmationModalFooter({
             onClick={() =>
               setReviewConfirm({ ...reviewConfirm, status: "Denied" })
             }
-            className="rounded-lg border border-red-200 bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-200"
+            className="rounded-lg border border-red-200 dark:border-red-900/30 bg-red-100 dark:bg-red-900/20 px-4 py-2 text-sm font-semibold text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors"
           >
             {isCancellation ? "Keep Request" : "Deny"}
           </button>
@@ -32,7 +32,7 @@ export default function ReviewConfirmationModalFooter({
             onClick={() =>
               setReviewConfirm({ ...reviewConfirm, status: "Approved" })
             }
-            className="rounded-lg border border-green-200 bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200"
+            className="rounded-lg border border-green-200 dark:border-green-900/30 bg-green-100 dark:bg-green-900/20 px-4 py-2 text-sm font-semibold text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors"
           >
             {isCancellation ? "Approve Cancel" : "Approve"}
           </button>
@@ -48,7 +48,7 @@ export default function ReviewConfirmationModalFooter({
                 remarks: "",
               })
             }
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
           >
             Back
           </button>

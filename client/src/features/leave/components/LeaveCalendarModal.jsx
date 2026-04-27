@@ -15,10 +15,10 @@ const LeaveCalendarModal = ({
       onClick={() => setSelectedDate(null)}
     >
       <div
-        className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-700 px-5 py-4 text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 bg-gradient-to-r from-slate-900 to-slate-700 px-5 py-4 text-white">
           <div>
             <h4 className="m-0 text-base font-bold">Date Details</h4>
             <p className="m-0 mt-1 text-xs text-slate-200">
@@ -39,9 +39,9 @@ const LeaveCalendarModal = ({
           </button>
         </div>
 
-        <div className="max-h-[72vh] overflow-y-auto bg-slate-50 p-5">
+        <div className="max-h-[72vh] overflow-y-auto bg-slate-50 dark:bg-gray-800/50 p-5">
           {selectedLeaves.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-sm text-slate-600 dark:text-gray-400">
               No leave records found for this date.
             </div>
           ) : (
@@ -49,25 +49,25 @@ const LeaveCalendarModal = ({
               {orderedLeaves.map((l) => (
                 <div
                   key={l.id}
-                  className={`rounded-xl p-4 shadow-sm ${calendarStatusCardClass[l.calendar_status] || "border border-slate-200 bg-white"}`}
+                  className={`rounded-xl p-4 shadow-sm ${calendarStatusCardClass[l.calendar_status] || "border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900"}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="m-0 text-sm font-bold text-indigo-700">
+                      <p className="m-0 text-sm font-bold text-indigo-700 dark:text-indigo-400">
                         {l.first_name} {l.last_name}
                       </p>
-                      <p className="m-0 mt-1 text-sm font-bold text-slate-900">
+                      <p className="m-0 mt-1 text-sm font-bold text-slate-900 dark:text-gray-100">
                         {l.leave_type}{" "}
                         {l.leave_type === "Offset" &&
                           Number(l.days_applied || 0) > 0 &&
                           `(${Number(l.days_applied || 0).toFixed(2)} days)`}
                       </p>
-                      <p className="m-0 mt-1 text-xs text-slate-500">
+                      <p className="m-0 mt-1 text-xs text-slate-500 dark:text-gray-400">
                         {formatLongDate(l.date_from)} to{" "}
                         {formatLongDate(l.date_to)}
                       </p>
                       {l.supervisor_remarks && (
-                        <p className="m-0 mt-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs italic text-slate-600">
+                        <p className="m-0 mt-2 rounded-md border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 p-2 text-xs italic text-slate-600 dark:text-gray-400">
                           "{l.supervisor_remarks}"
                         </p>
                       )}

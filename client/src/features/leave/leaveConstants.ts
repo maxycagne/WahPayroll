@@ -221,13 +221,13 @@ export const leavePolicy = {
 };
 
 export const badgeClass = {
-  Approved: "bg-green-100 text-green-800",
-  Denied: "bg-red-100 text-red-800",
-  Pending: "bg-yellow-100 text-yellow-800",
-  "Pending Approval": "bg-yellow-100 text-yellow-800",
-  "Cancellation Requested": "bg-amber-100 text-amber-800",
-  Rejected: "bg-red-100 text-red-800",
-  "Partially Approved": "bg-amber-100 text-amber-800",
+  Approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  Denied: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  Pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  "Pending Approval": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  "Cancellation Requested": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  Rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  "Partially Approved": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
 export const calendarStatusOrder = {
@@ -238,41 +238,41 @@ export const calendarStatusOrder = {
 };
 
 export const calendarStatusCardClass = {
-  Pending: "border border-yellow-200 bg-yellow-50/80",
-  Approved: "border border-green-200 bg-green-50/80",
-  "Partially Approved": "border border-amber-200 bg-amber-50/80",
-  Denied: "border border-red-200 bg-red-50/80",
+  Pending: "border border-yellow-200 dark:border-yellow-900/30 bg-yellow-50/80 dark:bg-yellow-900/20",
+  Approved: "border border-green-200 dark:border-green-900/30 bg-green-50/80 dark:bg-green-900/20",
+  "Partially Approved": "border border-amber-200 dark:border-amber-900/30 bg-amber-50/80 dark:bg-amber-900/20",
+  Denied: "border border-red-200 dark:border-red-900/30 bg-red-50/80 dark:bg-red-900/20",
 };
 
 export const statusColors = {
   Approved: {
-    bg: "bg-green-50",
+    bg: "bg-green-50 dark:bg-green-900/20",
     border: "border-l-4 border-l-green-500",
-    text: "text-green-700",
+    text: "text-green-700 dark:text-green-400",
   },
   Pending: {
-    bg: "bg-yellow-50",
+    bg: "bg-yellow-50 dark:bg-yellow-900/20",
     border: "border-l-4 border-l-yellow-500",
-    text: "text-yellow-700",
+    text: "text-yellow-700 dark:text-yellow-400",
   },
   Denied: {
-    bg: "bg-red-50",
+    bg: "bg-red-50 dark:bg-red-900/20",
     border: "border-l-4 border-l-red-500",
-    text: "text-red-700",
+    text: "text-red-700 dark:text-red-400",
   },
   "Partially Approved": {
-    bg: "bg-amber-50",
+    bg: "bg-amber-50 dark:bg-amber-900/20",
     border: "border-l-4 border-l-amber-500",
-    text: "text-amber-700",
+    text: "text-amber-700 dark:text-amber-400",
   },
 };
 
 export const attendanceColors = {
-  Present: "text-green-600 bg-green-50",
-  Absent: "text-red-600 bg-red-50",
-  Late: "text-orange-600 bg-orange-50",
-  Undertime: "text-orange-600 bg-orange-50",
-  "Half-Day": "text-purple-600 bg-purple-50",
+  Present: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20",
+  Absent: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20",
+  Late: "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20",
+  Undertime: "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20",
+  "Half-Day": "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20",
 };
 
 // ============ HELPER FUNCTIONS ============

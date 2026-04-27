@@ -728,20 +728,20 @@ export default function FileManagement() {
           }
         }}
       >
-        <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-5 py-4">
+        <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-5 py-4">
             <div>
-              <p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-gray-500">
+              <p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
                 Templates
               </p>
-              <h2 className="m-0 mt-1 text-lg font-bold text-gray-900">
+              <h2 className="m-0 mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
                 Downloadable Templates
               </h2>
             </div>
             <button
               type="button"
               onClick={() => setIsTemplatesOpen(false)}
-              className="rounded-md border-0 bg-transparent px-2 py-1 text-lg text-gray-500 hover:text-gray-700"
+              className="rounded-md border-0 bg-transparent px-2 py-1 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer"
             >
               &times;
             </button>
@@ -749,11 +749,11 @@ export default function FileManagement() {
 
           <div className="max-h-[72vh] overflow-auto p-5">
             {canManageTemplates && (
-              <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="m-0 text-sm font-bold text-slate-900">
+              <div className="mb-5 rounded-2xl border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/30 p-4">
+                <p className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
                   Manage Uploaded Templates
                 </p>
-                <p className="m-0 mt-1 text-sm text-slate-600">
+                <p className="m-0 mt-1 text-sm text-slate-600 dark:text-gray-400">
                   Upload shared templates for all users in the file management
                   portal.
                 </p>
@@ -763,7 +763,7 @@ export default function FileManagement() {
                     value={templateTitle}
                     onChange={(event) => setTemplateTitle(event.target.value)}
                     placeholder="Template title"
-                    className="min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="min-w-[220px] rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-sky-500"
                   />
                   <input
                     type="text"
@@ -772,7 +772,7 @@ export default function FileManagement() {
                       setTemplateCategory(event.target.value)
                     }
                     placeholder="Category (optional)"
-                    className="min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="min-w-[220px] rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-sky-500"
                   />
                   <button
                     type="button"
@@ -791,16 +791,16 @@ export default function FileManagement() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="rounded-2xl border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/30 p-4 text-sm text-slate-700 dark:text-gray-400">
               Resignation documents are generated dynamically per application in
               File Management. This section is for uploaded shared templates.
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="m-0 text-sm font-bold text-slate-900">
+            <div className="mt-6 rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              <p className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
                 Uploaded Templates
               </p>
-              <p className="m-0 mt-1 text-sm text-slate-600">
+              <p className="m-0 mt-1 text-sm text-slate-600 dark:text-gray-400">
                 Download shared templates uploaded by Admin/HR.
               </p>
 
@@ -817,13 +817,13 @@ export default function FileManagement() {
                   {uploadedTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-3 py-2.5"
                     >
                       <div className="min-w-0">
-                        <p className="m-0 truncate text-sm font-semibold text-slate-900">
+                        <p className="m-0 truncate text-sm font-semibold text-slate-900 dark:text-gray-100">
                           {template.title}
                         </p>
-                        <p className="m-0 mt-0.5 text-xs text-slate-500">
+                        <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
                           {template.category || "General"} •{" "}
                           {template.original_name} •{" "}
                           {formatDate(template.created_at)}
@@ -879,17 +879,17 @@ export default function FileManagement() {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-        <div className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-5 py-4">
             <div>
-              <p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-slate-500">
+              <p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-gray-400">
                 Employee Files
               </p>
-              <h2 className="m-0 mt-1 text-lg font-bold text-slate-900">
+              <h2 className="m-0 mt-1 text-lg font-bold text-slate-900 dark:text-gray-100">
                 {selectedEmployee.display_name ||
                   getDisplayName(selectedEmployee)}
               </h2>
-              <p className="m-0 mt-1 text-sm text-slate-600">
+              <p className="m-0 mt-1 text-sm text-slate-600 dark:text-gray-400">
                 {selectedEmployee.position || "-"} •{" "}
                 {selectedEmployee.designation || "-"}
               </p>
@@ -897,16 +897,16 @@ export default function FileManagement() {
             <button
               type="button"
               onClick={closeEmployeeModal}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 cursor-pointer"
             >
               <X className="h-4 w-4" />
               Close
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto">
+          <div className="min-h-0 flex-1 overflow-auto bg-white dark:bg-gray-900">
             <div className="min-h-0 overflow-auto">
-              <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
+              <div className="sticky top-0 z-10 border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
                 <div className="flex flex-wrap gap-2">
                   {[
                     { key: "all", label: "All", count: modalSourceCounts.all },
@@ -927,8 +927,8 @@ export default function FileManagement() {
                       onClick={() => setModalSourceFilter(option.key)}
                       className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
                         modalSourceFilter === option.key
-                          ? "bg-slate-900 text-white"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? "bg-slate-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                          : "bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-700"
                       }`}
                     >
                       {option.label} ({option.count})
@@ -948,13 +948,13 @@ export default function FileManagement() {
                   {modalFileGroups.map((group) => (
                     <section
                       key={group.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                      className="rounded-xl border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/40 p-3"
                     >
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-700">
+                        <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-gray-300">
                           {group.requestType} Application #{group.id}
                         </p>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                        <span className="rounded-full bg-white dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-gray-400">
                           {group.requestStatus}
                         </span>
                       </div>
@@ -963,27 +963,27 @@ export default function FileManagement() {
                         {group.files.map((file) => (
                           <div
                             key={file.id}
-                            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left"
+                            className="w-full rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-left"
                           >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="m-0 truncate text-sm font-bold text-slate-900">
+                                <p className="m-0 truncate text-sm font-bold text-slate-900 dark:text-gray-100">
                                   {file.file_type}
                                 </p>
-                                <p className="m-0 mt-1 truncate text-xs text-slate-600">
+                                <p className="m-0 mt-1 truncate text-xs text-slate-600 dark:text-gray-400">
                                   {file.file_name ||
                                     file.file_key ||
                                     "Generated document"}
                                 </p>
-                                <p className="m-0 mt-1 text-[11px] text-slate-500">
+                                <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-500">
                                   {formatDate(file.uploaded_at)}
                                 </p>
                               </div>
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                                <span className="rounded-full bg-slate-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-gray-400">
                                   {file.source}
                                 </span>
-                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                                   {file.file_status ||
                                     (file.source === "generated"
                                       ? "generated"
@@ -1099,22 +1099,22 @@ export default function FileManagement() {
           </div>
         </div>
 
-        <div className="border-b border-slate-200 bg-white px-4 py-3 md:px-5">
+        <div className="border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 md:px-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <Search className="h-4 w-4 text-slate-400" />
+              <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 px-3 py-2">
+                <Search className="h-4 w-4 text-slate-400 dark:text-gray-500" />
                 <input
                   type="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search employee, position, designation, or file name"
-                  className="w-full border-0 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  className="w-full border-0 bg-transparent text-sm outline-none placeholder:text-slate-400 dark:text-gray-200"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <Users className="h-4 w-4 shrink-0 text-slate-400" />
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+                <Users className="h-4 w-4 shrink-0 text-slate-400 dark:text-gray-500" />
                 <div className="flex flex-wrap gap-2">
                   {designationOptions.map((option) => {
                     const isActive = designationFilter === option.value;
@@ -1124,10 +1124,10 @@ export default function FileManagement() {
                         type="button"
                         onClick={() => setDesignationFilter(option.value)}
                         aria-pressed={isActive}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
                           isActive
-                            ? "bg-slate-900 text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            ? "bg-slate-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                            : "bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-700"
                         }`}
                       >
                         {option.label}
@@ -1142,7 +1142,7 @@ export default function FileManagement() {
               <button
                 type="button"
                 onClick={() => refetch()}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <RefreshCw className="h-4 w-4" />
                 Refresh
@@ -1150,7 +1150,7 @@ export default function FileManagement() {
               <button
                 type="button"
                 onClick={() => setIsTemplatesOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-100 px-3 py-2 text-xs font-semibold text-white dark:text-gray-900 hover:bg-slate-800 dark:hover:bg-gray-200 cursor-pointer"
               >
                 <Shield className="h-4 w-4" />
                 Templates
@@ -1161,14 +1161,14 @@ export default function FileManagement() {
       </div>
 
       {isCardLayout && employeeCards.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600 shadow-sm">
-          <p className="m-0 text-lg font-semibold text-slate-800">
+        <div className="rounded-3xl border border-dashed border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-10 text-center text-slate-600 dark:text-gray-400 shadow-sm">
+          <p className="m-0 text-lg font-semibold text-slate-800 dark:text-gray-200">
             No employees are available in this scope.
           </p>
         </div>
       ) : !isCardLayout && filteredFiles.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600 shadow-sm">
-          <p className="m-0 text-lg font-semibold text-slate-800">
+        <div className="rounded-3xl border border-dashed border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-10 text-center text-slate-600 dark:text-gray-400 shadow-sm">
+          <p className="m-0 text-lg font-semibold text-slate-800 dark:text-gray-200">
             No files match your filters.
           </p>
           <p className="m-0 mt-2 text-sm">
@@ -1194,27 +1194,27 @@ export default function FileManagement() {
                 type="button"
                 onClick={() => openEmployeeModal(employee.emp_id)}
                 aria-label={`Open files for ${employeeName}, ${employeePosition}`}
-                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-slate-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                className="w-full rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 text-left shadow-sm transition hover:border-slate-300 dark:hover:border-gray-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <h2 className="m-0 truncate text-sm font-bold text-slate-900">
+                    <h2 className="m-0 truncate text-sm font-bold text-slate-900 dark:text-gray-100">
                       {employeeName}
                     </h2>
-                    <p className="m-0 mt-0.5 truncate text-xs text-slate-600">
+                    <p className="m-0 mt-0.5 truncate text-xs text-slate-600 dark:text-gray-400">
                       {employeePosition}
                     </p>
-                    <p className="m-0 mt-1 truncate text-[11px] text-slate-500">
+                    <p className="m-0 mt-1 truncate text-[11px] text-slate-500 dark:text-gray-500">
                       {employeeDesignation} • {employee.emp_id}
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-gray-800 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-gray-300">
                       <Eye className="h-3 w-3" />
                       {employeeFiles.length} file
                       {employeeFiles.length === 1 ? "" : "s"}
                     </span>
-                    <p className="m-0 mt-1 text-[11px] text-slate-500">
+                    <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-500">
                       View Files
                     </p>
                   </div>
@@ -1224,11 +1224,11 @@ export default function FileManagement() {
           })}
         </div>
       ) : (
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-3xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50">
-                <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500">
+              <thead className="sticky top-0 bg-slate-50 dark:bg-gray-800">
+                <tr className="border-b border-slate-200 dark:border-gray-700 text-[11px] uppercase tracking-wider text-slate-500 dark:text-gray-400">
                   <th className="px-5 py-3">Employee</th>
                   <th className="px-5 py-3">File Type</th>
                   <th className="px-5 py-3">File Name</th>
@@ -1236,24 +1236,24 @@ export default function FileManagement() {
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
                 {filteredFiles.map((file) => (
-                  <tr key={file.id} className="hover:bg-slate-50/70">
+                  <tr key={file.id} className="hover:bg-slate-50/70 dark:hover:bg-gray-800/50">
                     <td className="px-5 py-4">
-                      <div className="font-semibold text-slate-900">
+                      <div className="font-semibold text-slate-900 dark:text-gray-100">
                         {file.employee_name}
                       </div>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className="mt-1 text-xs text-slate-500 dark:text-gray-400">
                         {file.position || "-"} • {file.designation || "-"}
                       </div>
                     </td>
-                    <td className="px-5 py-4 font-medium text-slate-800">
+                    <td className="px-5 py-4 font-medium text-slate-800 dark:text-gray-200">
                       {file.file_type}
                     </td>
-                    <td className="px-5 py-4 text-slate-600">
+                    <td className="px-5 py-4 text-slate-600 dark:text-gray-400">
                       {file.file_name || file.file_key}
                     </td>
-                    <td className="px-5 py-4 text-slate-600">
+                    <td className="px-5 py-4 text-slate-600 dark:text-gray-400">
                       {formatDate(file.uploaded_at)}
                     </td>
                     <td className="px-5 py-4 text-right">

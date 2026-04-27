@@ -12,7 +12,7 @@ export default function LeaveConfirmationModalFooter({
       <button
         type="button"
         onClick={() => setConfirmAction(null)}
-        className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium cursor-pointer hover:bg-gray-50 shadow-sm"
+        className="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors"
       >
         Cancel
       </button>

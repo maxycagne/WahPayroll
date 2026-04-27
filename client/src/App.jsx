@@ -22,6 +22,7 @@ import axiosInterceptor from "./hooks/interceptor";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import useSocket from "./hooks/useSocket";
+import { useThemeStore } from "./store/useThemeStore";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
@@ -247,6 +248,16 @@ export default function App() {
     };
     bootstrapAuth();
   }, []);
+
+  const { theme } = useThemeStore();
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
 
   if (isBootstrapping) return <div className="p-10 font-bold">Loading...</div>;
 

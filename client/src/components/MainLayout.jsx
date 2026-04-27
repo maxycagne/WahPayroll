@@ -149,10 +149,10 @@ export default function MainLayout({ role }) {
 
   const isMutating = useIsMutating();
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb]">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#f7f4ff] to-[#f5f6fb] dark:from-[#1a1826] dark:to-[#161421]">
       {isMutating ? <TopLoadingBar show={true}></TopLoadingBar> : <></>}
 
-      <header className="sticky top-0 z-20 border-b border-white/15 bg-gradient-to-r from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] px-4 py-3 text-white shadow-sm backdrop-blur md:px-7">
+      <header className="sticky top-0 z-20 border-b border-white/10 dark:border-white/5 bg-gradient-to-r from-[#3e0d75] via-[#4d128f] to-[#5a1ea2] dark:from-[#1e1b2e] dark:via-[#1e1b2e] dark:to-[#1e1b2e] px-4 py-3 text-white shadow-sm backdrop-blur-md md:px-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
@@ -199,16 +199,16 @@ export default function MainLayout({ role }) {
             </button>
 
             {openNotifications && (
-              <div className="absolute right-0 top-11 z-30 w-96 max-w-[90vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                  <h3 className="m-0 text-sm font-bold text-slate-900">
+              <div className="absolute right-0 top-11 z-30 w-96 max-w-[90vw] overflow-hidden rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 px-4 py-3">
+                  <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
                     Notifications
                   </h3>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => markAllReadMutation.mutate()}
-                      className="inline-flex items-center gap-1 bg-transparent text-xs font-semibold text-violet-700 border-0 cursor-pointer"
+                      className="inline-flex items-center gap-1 bg-transparent text-xs font-semibold text-violet-700 dark:text-violet-400 border-0 cursor-pointer"
                     >
                       <CheckCheck className="h-3.5 w-3.5" />
                       Mark all read
@@ -239,20 +239,20 @@ export default function MainLayout({ role }) {
                     notifications.map((item) => (
                       <div
                         key={item.id}
-                        className={`flex items-start justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 ${item.status === "Unread" ? "bg-violet-50/45" : ""}`}
+                        className={`flex items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-gray-800/50 ${item.status === "Unread" ? "bg-violet-50/45 dark:bg-violet-900/10" : ""}`}
                       >
                         <button
                           type="button"
                           onClick={() => handleNotificationClick(item)}
                           className="flex-1 cursor-pointer border-0 bg-transparent p-0 text-left"
                         >
-                          <p className="m-0 text-sm font-semibold text-slate-900">
+                          <p className="m-0 text-sm font-semibold text-slate-900 dark:text-gray-100">
                             {item.title}
                           </p>
-                          <p className="m-0 mt-1 text-xs text-slate-600">
+                          <p className="m-0 mt-1 text-xs text-slate-600 dark:text-gray-400">
                             {item.message}
                           </p>
-                          <p className="m-0 mt-1 text-[11px] text-slate-400">
+                          <p className="m-0 mt-1 text-[11px] text-slate-400 dark:text-gray-500">
                             {new Date(item.created_at).toLocaleString()}
                           </p>
                         </button>
@@ -299,8 +299,8 @@ export default function MainLayout({ role }) {
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirmation && (
-        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-0 w-full max-w-[400px] overflow-hidden">
+        <div className="fixed inset-0 bg-gray-950/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-0 w-full max-w-[400px] overflow-hidden border border-gray-200 dark:border-gray-800">
             <div className="flex items-center justify-between bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
               <h2 className="m-0 text-lg font-semibold text-white">
                 Confirm Logout
@@ -313,14 +313,14 @@ export default function MainLayout({ role }) {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="m-0 text-gray-700">
+              <p className="m-0 text-gray-700 dark:text-gray-300">
                 Are you sure you want to log out?
               </p>
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <button
                   type="button"
                   onClick={() => setShowLogoutConfirmation(false)}
-                  className="flex-1 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-pointer hover:bg-gray-200 transition-colors border-0"
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-0"
                 >
                   No
                 </button>

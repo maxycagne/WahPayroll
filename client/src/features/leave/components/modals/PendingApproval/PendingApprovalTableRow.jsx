@@ -18,38 +18,38 @@ export default function PendingApprovalTableRow({
   const canDirectDecision = !isHRRole || canHrDirectDecision(item);
 
   return (
-    <tr className="transition-colors hover:bg-gray-50/50">
-      <td className="px-4 py-2.5 text-sm font-semibold text-gray-800">
+    <tr className="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
+      <td className="px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200">
         {item.first_name} {item.last_name}
       </td>
-      <td className="px-4 py-2.5 text-sm font-bold text-indigo-700">
+      <td className="px-4 py-2.5 text-sm font-bold text-indigo-700 dark:text-indigo-400">
         {item.request_group === "resignation"
           ? `${isCancellationRequest ? "Cancellation • " : "Resignation • "}${item.unified_type}`
           : `${isCancellationRequest ? "Cancellation • " : ""}${item.unified_type}${item.isOffset && Number(item.days_applied || 0) > 0 ? ` (${Number(item.days_applied || 0).toFixed(2)} days)` : ""}`}
       </td>
-      <td className="px-4 py-2.5 text-sm text-gray-700">
+      <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">
         {item.request_group === "resignation"
           ? item.effective_date
             ? formatLongDate(item.effective_date)
             : "N/A"
           : `${formatLongDate(item.date_from)} - ${formatLongDate(item.date_to)}`}
       </td>
-      <td className="max-w-65 px-4 py-2.5 text-xs text-gray-700">
+      <td className="max-w-65 px-4 py-2.5 text-xs text-gray-700 dark:text-gray-300">
         {isCancellationRequest
           ? item.cancellation_reason || "-"
           : item.hr_note || "-"}
       </td>
-      <td className="px-4 py-2.5 text-xs font-medium text-gray-600">
+      <td className="px-4 py-2.5 text-xs font-medium text-gray-600 dark:text-gray-400">
         {item.cancellation_requested_at
           ? new Date(item.cancellation_requested_at).toLocaleString()
           : "-"}
       </td>
-      <td className="px-4 py-2.5 text-xs font-medium text-gray-600">
+      <td className="px-4 py-2.5 text-xs font-medium text-gray-600 dark:text-gray-400">
         {item.ocp ? (
           <a
             download
             href={`${item.ocp}`}
-            className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700 hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1 rounded-md border border-sky-200 dark:border-sky-900/30 bg-sky-100 dark:bg-sky-900/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-400 hover:bg-sky-200 dark:hover:bg-sky-900/60 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Download
           </a>
@@ -63,7 +63,7 @@ export default function PendingApprovalTableRow({
             <button
               type="button"
               onClick={() => openResignationReview(item)}
-              className="rounded-md border border-indigo-200 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+              className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
             >
               Review Application
             </button>
@@ -86,7 +86,7 @@ export default function PendingApprovalTableRow({
                   : openLeaveDecisionConfirm(item, undefined, decisionMode);
                 setPendingModalOpen(false);
               }}
-              className="rounded-md border border-indigo-200 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+              className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
             >
               {isCancellationRequest
                 ? "Review Cancel Request"

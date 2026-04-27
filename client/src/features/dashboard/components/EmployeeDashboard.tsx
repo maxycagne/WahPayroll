@@ -21,13 +21,13 @@ interface EmployeeDashboardProps {
 }
 
 const badgeClass: Record<string, string> = {
-  Present: "bg-emerald-100 text-emerald-800",
-  Late: "bg-amber-100 text-amber-800",
-  Undertime: "bg-rose-100 text-rose-800",
-  "Half-Day": "bg-orange-100 text-orange-800",
-  Absent: "bg-red-100 text-red-800",
-  "On Leave": "bg-violet-100 text-violet-800",
-  Pending: "bg-slate-100 text-slate-700",
+  Present: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+  Late: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  Undertime: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400",
+  "Half-Day": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  Absent: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  "On Leave": "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
+  Pending: "bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400",
 };
 
 export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
@@ -108,7 +108,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
   if (dashLoading || attLoading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 font-semibold text-slate-700 dark:text-gray-300 shadow-sm">
         Loading My Dashboard...
       </div>
     );
@@ -117,28 +117,28 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   return (
     <div className="max-w-full space-y-6">
       <div>
-        <h1 className="m-0 text-[1.6rem] font-bold text-slate-900">
+        <h1 className="m-0 text-[1.6rem] font-bold text-slate-900 dark:text-gray-100">
           Welcome back,{" "}
           {currentUser?.first_name || currentUser?.name || "Employee"}!
         </h1>
-        <p className="m-0 mt-1 text-sm text-slate-500">
+        <p className="m-0 mt-1 text-sm text-slate-500 dark:text-gray-400">
           Here is what is happening with your account today.
         </p>
-        <p className="m-0 mt-2 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+        <p className="m-0 mt-2 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
           Employment Status: {employeeStatus}
         </p>
       </div>
 
       {myMissingDocsRecord && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
-          <span className="mt-0.5 rounded-md bg-white p-1 text-red-600">
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 p-4 shadow-sm">
+          <span className="mt-0.5 rounded-md bg-white dark:bg-gray-800 p-1 text-red-600 dark:text-red-400">
             <AlertTriangle className="h-4 w-4" />
           </span>
           <div>
-            <h3 className="m-0 mb-1 text-sm font-bold text-red-800">
+            <h3 className="m-0 mb-1 text-sm font-bold text-red-800 dark:text-red-400">
               Action Required: Missing Documents
             </h3>
-            <p className="m-0 text-xs leading-5 text-red-700">
+            <p className="m-0 text-xs leading-5 text-red-700 dark:text-red-300">
               HR has flagged your profile for missing requirements:{" "}
               <span className="font-bold">
                 {myMissingDocsRecord.missing_docs}
@@ -150,15 +150,15 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col justify-between rounded-xl border border-emerald-200/70 bg-white p-5 shadow-sm">
-          <p className="m-0 mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+        <div className="flex flex-col justify-between rounded-xl border border-emerald-200/70 dark:border-emerald-900/30 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <p className="m-0 mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-gray-400">
             Leave Balance
           </p>
           <div className="flex items-baseline gap-2">
-            <h2 className="m-0 text-4xl font-black text-slate-900">
+            <h2 className="m-0 text-4xl font-black text-slate-900 dark:text-gray-100">
               {displayedLeaveBalance}
             </h2>
-            <span className="text-sm font-medium text-slate-500">
+            <span className="text-sm font-medium text-slate-500 dark:text-gray-400">
               Days Remaining
             </span>
           </div>
@@ -167,24 +167,24 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         <div className="flex flex-col gap-2">
           <button
             onClick={() => navigate("/leave")}
-            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm transition-colors hover:bg-slate-50 cursor-pointer"
+            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
           >
-            <span className="rounded-md bg-violet-100 p-1.5 text-violet-700">
+            <span className="rounded-md bg-violet-100 dark:bg-violet-900/30 p-1.5 text-violet-700 dark:text-violet-400">
               <CalendarPlus2 className="h-4 w-4" />
             </span>
-            <span className="text-sm font-bold text-slate-800">
+            <span className="text-sm font-bold text-slate-800 dark:text-gray-200">
               File a Leave Request
             </span>
             <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </button>
           <button
             onClick={() => navigate("/leave")}
-            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm transition-colors hover:bg-slate-50 cursor-pointer"
+            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
           >
-            <span className="rounded-md bg-indigo-100 p-1.5 text-indigo-700">
+            <span className="rounded-md bg-indigo-100 dark:bg-indigo-900/30 p-1.5 text-indigo-700 dark:text-indigo-400">
               <Clock3 className="h-4 w-4" />
             </span>
-            <span className="text-sm font-bold text-slate-800">
+            <span className="text-sm font-bold text-slate-800 dark:text-gray-200">
               File an Offset
             </span>
             <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
@@ -193,9 +193,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-5 py-3">
-            <h3 className="m-0 text-sm font-bold text-slate-900">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+          <div className="border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-5 py-3">
+            <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
               Recent Attendance (Last 5 Days)
             </h3>
           </div>
@@ -212,10 +212,10 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                   return (
                     <div
                       key={idx}
-                      className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-0 last:pb-0"
+                      className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 pb-3 last:border-0 last:pb-0"
                     >
                       <div>
-                        <p className="m-0 text-sm font-semibold text-slate-800">
+                        <p className="m-0 text-sm font-semibold text-slate-800 dark:text-gray-200">
                           {new Date(log.date).toLocaleDateString(undefined, {
                             weekday: "short",
                             month: "short",
@@ -235,7 +235,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             )}
             <button
               onClick={() => navigate("/attendance")}
-              className="mt-4 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100 cursor-pointer"
+              className="mt-4 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 py-2 text-xs font-bold text-slate-600 dark:text-gray-300 transition-colors hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer"
             >
               View Full Calendar
               <ArrowRight className="h-3.5 w-3.5" />
@@ -243,25 +243,25 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3">
-            <h3 className="m-0 text-sm font-bold text-slate-900">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-5 py-3">
+            <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
               My Pending Requests
             </h3>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-400">
               {pendingRequests.length} Pending
             </span>
           </div>
           <div className="flex-1 p-5 overflow-y-auto max-h-[300px]">
             {pendingRequests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <span className="mb-2 rounded-full bg-emerald-100 p-2 text-emerald-700">
+                <span className="mb-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2 text-emerald-700 dark:text-emerald-400">
                   <FolderClock className="h-5 w-5" />
                 </span>
-                <p className="m-0 text-sm font-semibold text-slate-700">
+                <p className="m-0 text-sm font-semibold text-slate-700 dark:text-gray-300">
                   You are all caught up!
                 </p>
-                <p className="m-0 mt-1 text-xs text-slate-500">
+                <p className="m-0 mt-1 text-xs text-slate-500 dark:text-gray-400">
                   No pending requests waiting for approval.
                 </p>
               </div>
@@ -270,9 +270,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                 {pendingRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3"
+                    className="flex items-start gap-3 rounded-lg border border-slate-100 dark:border-gray-800 bg-slate-50/80 dark:bg-gray-800/50 p-3"
                   >
-                    <div className="mt-0.5 rounded-md bg-white p-1.5 text-violet-700 ring-1 ring-slate-200">
+                    <div className="mt-0.5 rounded-md bg-white dark:bg-gray-800 p-1.5 text-violet-700 dark:text-violet-400 ring-1 ring-slate-200 dark:ring-gray-700">
                       {req.type === "Leave" ? (
                         <CalendarPlus2 className="h-3.5 w-3.5" />
                       ) : (
@@ -280,15 +280,15 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="m-0 text-sm font-bold text-slate-900">
+                      <p className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
                         {req.type} Request
                       </p>
-                      <p className="m-0 text-xs text-slate-600">{req.title}</p>
-                      <p className="m-0 mt-1 text-[10px] text-slate-400">
+                      <p className="m-0 text-xs text-slate-600 dark:text-gray-400">{req.title}</p>
+                      <p className="m-0 mt-1 text-[10px] text-slate-400 dark:text-gray-500">
                         Filed on {new Date(req.date).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                    <span className="rounded bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
                       Pending
                     </span>
                   </div>
