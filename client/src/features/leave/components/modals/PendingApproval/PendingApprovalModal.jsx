@@ -109,7 +109,7 @@ export default function PendingApprovalModal({
     <>
       {pendingModalOpen && isApprover && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-          <div className="w-full max-w-5xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          <div className="w-full max-w-5xl overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
             <PendingApprovalModalHeader
               setPendingModalOpen={setPendingModalOpen}
             />

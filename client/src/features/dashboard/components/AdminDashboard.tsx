@@ -362,32 +362,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     attendanceSummaryQuery.isLoading
   )
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 font-semibold text-slate-700 dark:text-gray-300 shadow-sm">
         Loading Dashboard...
       </div>
     );
 
   return (
     <div className="max-w-full space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="m-0 text-[1.3rem] font-bold text-slate-900">
-              {isConnected}
+            <h1 className="m-0 text-[1.3rem] font-bold text-slate-900 dark:text-gray-100">
               {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
             </h1>
-            <p className="m-0 mt-0.5 text-xs text-slate-500">
+            <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
               Central overview for people, attendance, leave, payroll, and
               approvals.
             </p>
           </div>
-          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 transition-all duration-200 hover:border-violet-300 hover:bg-violet-50">
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300 transition-all duration-200 hover:border-violet-300 dark:hover:border-violet-900/50 hover:bg-violet-50 dark:hover:bg-violet-900/20">
             Payroll Period
             <input
               type="month"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-violet-500"
+              className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs font-semibold text-slate-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-violet-500"
             />
           </label>
         </div>
@@ -400,19 +399,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             type="button"
             onClick={() => c.clickable && setActiveModal(c.modalKey)}
             disabled={!c.clickable}
-            className={`group relative rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 ${
+            className={`group relative rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-all duration-200 ${
               c.clickable
-                ? "cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
+                ? "cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-gray-700 hover:shadow-md active:translate-y-0"
                 : "cursor-default"
             }`}
             style={{ boxShadow: `inset 0 3px 0 0 ${c.borderColor}` }}
           >
             <div className="p-3.5 text-left">
-              <p className="m-0 mb-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <p className="m-0 mb-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 <span style={{ color: c.borderColor }}>{c.icon}</span>
                 {c.label}
               </p>
-              <p className="m-0 mb-1 text-[11px] font-medium text-slate-600">
+              <p className="m-0 mb-1 text-[11px] font-medium text-slate-600 dark:text-gray-300">
                 {c.label === "Pending Approvals"
                   ? `${pendingLeaveCount} leaves + ${pendingResignationCount} resignations`
                   : c.label === "Absent"
@@ -428,7 +427,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {c.value}
               </p>
               {c.clickable && (
-                <p className="m-0 mt-1 text-[10px] text-slate-400 transition-colors group-hover:text-slate-500">
+                <p className="m-0 mt-1 text-[10px] text-slate-400 dark:text-gray-500 transition-colors group-hover:text-slate-500 dark:group-hover:text-gray-400">
                   Click to view
                 </p>
               )}
@@ -438,33 +437,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/20 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
             Total Gross Payroll
           </p>
-          <p className="m-0 mt-1 text-xl font-black text-emerald-800">
+          <p className="m-0 mt-1 text-xl font-black text-emerald-800 dark:text-emerald-300">
             ₱
             {payrollTotals.gross.toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
           </p>
         </div>
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-700">
+        <div className="rounded-xl border border-sky-200 dark:border-sky-900/30 bg-sky-50 dark:bg-sky-900/20 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
             Total Net Payroll
           </p>
-          <p className="m-0 mt-1 text-xl font-black text-sky-800">
+          <p className="m-0 mt-1 text-xl font-black text-sky-800 dark:text-sky-300">
             ₱
             {payrollTotals.net.toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
           </p>
         </div>
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
             Total Deductions
           </p>
-          <p className="m-0 mt-1 text-xl font-black text-rose-800">
+          <p className="m-0 mt-1 text-xl font-black text-rose-800 dark:text-rose-300">
             ₱
             {payrollTotals.deductions.toLocaleString(undefined, {
               maximumFractionDigits: 2,
@@ -473,12 +472,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="m-0 text-sm font-bold text-slate-900">
+          <h2 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Quick Actions
           </h2>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
             Core Modules
           </span>
         </div>
@@ -487,16 +486,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               key={action.action}
               onClick={() => openQuickAction(action)}
-              className={`group rounded-lg border p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${action.color}`}
+              className={`group rounded-lg border dark:border-gray-700 p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${action.color} dark:bg-gray-800 dark:text-gray-200`}
             >
               <span className="inline-flex items-center gap-2 text-xs font-bold">
                 {action.icon}
                 {action.label}
               </span>
-              <p className="m-0 mt-1 text-[11px] text-slate-600">
+              <p className="m-0 mt-1 text-[11px] text-slate-600 dark:text-gray-400">
                 {action.sub}
               </p>
-              <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+              <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-gray-400">
                 Open
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </span>
@@ -516,11 +515,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-          <h3 className="m-0 text-sm font-bold text-slate-900">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Attendance Overview ({period})
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-slate-500">
+          <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-400">
             Daily present, absent, and late counts for the selected month.
           </p>
           <div className="mt-3 h-[240px] w-full">
@@ -529,17 +528,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke="var(--color-gray-800)"
                 />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }} />
                 <YAxis
                   allowDecimals={false}
                   axisLine={false}
                   tickLine={false}
+                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }}
                 />
                 <RechartsTooltip
                   content={<AttendanceTooltip />}
-                  cursor={{ stroke: "#cbd5e1", strokeDasharray: "4 4" }}
+                  cursor={{ stroke: "var(--color-gray-700)", strokeDasharray: "4 4" }}
                 />
                 <DashboardLegend />
                 <Line
@@ -568,11 +568,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-          <h3 className="m-0 text-sm font-bold text-slate-900">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Payroll Snapshot ({period})
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-slate-500">
+          <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-400">
             Top employees by net pay for the selected payroll period.
           </p>
           <div className="mt-3 h-[240px] w-full">
@@ -588,16 +588,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   axisLine={false} 
                   tickLine={false} 
                   interval={0} 
-                  tick={{ fontSize: 12, fill: '#64748b' }} 
+                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }} 
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `₱${Math.round(v / 1000)}k`}
+                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }}
                 />
                 <RechartsTooltip
                   content={<PayrollTooltip />}
-                  cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
+                  cursor={{ fill: "rgba(148, 163, 184, 0.05)" }}
                 />
                 <DashboardLegend />
                 <Bar dataKey="Gross" fill="#8b5cf6" radius={[4, 4, 0, 0]} />

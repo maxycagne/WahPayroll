@@ -45,7 +45,7 @@ export default function LeaveCalendar({
     : [];
 
   return (
-    <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       <LeaveCalendarHeader
         scopeOptions={scopeOptions}
         onScopeChange={onScopeChange}

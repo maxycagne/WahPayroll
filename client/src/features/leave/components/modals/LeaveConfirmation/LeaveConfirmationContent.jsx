@@ -18,15 +18,15 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
     <div className="mb-6 space-y-4 text-sm">
       {/* Basic Info */}
       <div>
-        <p className="m-0 text-gray-600 font-medium">Type:</p>
-        <p className="m-0 text-purple-700 font-bold">
+        <p className="m-0 text-gray-600 dark:text-gray-400 font-medium">Type:</p>
+        <p className="m-0 text-purple-700 dark:text-purple-400 font-bold">
           {confirmAction.leaveType}
         </p>
       </div>
 
       <div>
-        <p className="m-0 text-gray-600 font-medium">Dates:</p>
-        <p className="m-0 text-gray-900 font-semibold">
+        <p className="m-0 text-gray-600 dark:text-gray-400 font-medium">Dates:</p>
+        <p className="m-0 text-gray-900 dark:text-gray-100 font-semibold">
           {formatLongDate(confirmAction.fromDate)} to{" "}
           {formatLongDate(confirmAction.toDate)}
         </p>
@@ -34,8 +34,8 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
 
       {confirmAction.leaveType === "Offset" && (
         <div>
-          <p className="m-0 text-gray-600 font-medium">Applied Amount:</p>
-          <p className="m-0 text-gray-900 font-semibold">
+          <p className="m-0 text-gray-600 dark:text-gray-400 font-medium">Applied Amount:</p>
+          <p className="m-0 text-gray-900 dark:text-gray-100 font-semibold">
             {confirmAction.daysApplied} Days/Hours
           </p>
         </div>
@@ -45,14 +45,14 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
       <div
         className={`rounded-lg border px-3 py-2 ${
           isDeductible
-            ? "border-orange-200 bg-orange-50"
-            : "border-blue-200 bg-blue-50"
+            ? "border-orange-200 dark:border-orange-900/30 bg-orange-50 dark:bg-orange-900/20"
+            : "border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20"
         }`}
       >
-        <p className="m-0 text-xs font-medium">
+        <p className="m-0 text-xs font-medium dark:text-gray-100">
           {isDeductible ? "💳 Balance Deduction" : "✓ No Balance Deduction"}
         </p>
-        <p className="m-0 text-xs text-gray-700 mt-1">
+        <p className="m-0 text-xs text-gray-700 dark:text-gray-400 mt-1">
           {isDeductible
             ? "This leave will reduce your leave balance."
             : "This leave does not reduce your balance."}
@@ -61,11 +61,11 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
 
       {/* Mandated Leave Notice */}
       {isMandated && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2">
-          <p className="m-0 text-xs font-bold text-blue-900">
+        <div className="rounded-lg border border-blue-300 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20 px-3 py-2">
+          <p className="m-0 text-xs font-bold text-blue-900 dark:text-blue-400">
             📋 Legally Mandated Leave
           </p>
-          <p className="m-0 text-xs text-gray-700 mt-1">
+          <p className="m-0 text-xs text-gray-700 dark:text-gray-400 mt-1">
             This is a legally mandated leave with specific entitlements and
             approval requirements.
           </p>
@@ -75,14 +75,14 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
       {/* Approval Chain */}
       {approvals.length > 0 && (
         <div>
-          <p className="m-0 text-gray-600 font-medium mb-2">Approval Chain:</p>
+          <p className="m-0 text-gray-600 dark:text-gray-400 font-medium mb-2">Approval Chain:</p>
           <div className="space-y-2">
             {approvals.map((approver, idx) => (
               <div key={idx} className="flex items-center gap-2 text-xs">
-                <div className="rounded-full bg-purple-200 px-2 py-1 font-semibold text-purple-900">
+                <div className="rounded-full bg-purple-200 dark:bg-purple-900/40 px-2 py-1 font-semibold text-purple-900 dark:text-purple-400">
                   {idx + 1}
                 </div>
-                <span className="text-gray-700">
+                <span className="text-gray-700 dark:text-gray-300">
                   {approver === "supervisor"
                     ? "Supervisor Approval"
                     : approver === "executive_director"
@@ -101,12 +101,12 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
       {/* Required Documents */}
       {requiredDocs.length > 0 && (
         <div>
-          <p className="m-0 text-gray-600 font-medium mb-2">
+          <p className="m-0 text-gray-600 dark:text-gray-400 font-medium mb-2">
             Required Documents:
           </p>
           <ul className="m-0 space-y-1 pl-4">
             {requiredDocs.map((doc, idx) => (
-              <li key={idx} className="text-xs text-gray-700">
+              <li key={idx} className="text-xs text-gray-700 dark:text-gray-400">
                 •{" "}
                 {doc
                   .replace(/_/g, " ")
@@ -119,11 +119,11 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
 
       {/* Notice Requirements */}
       {policy && policy.minNoticeHours > 0 && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2">
-          <p className="m-0 text-xs font-medium text-yellow-900">
+        <div className="rounded-lg border border-yellow-200 dark:border-yellow-900/30 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2">
+          <p className="m-0 text-xs font-medium text-yellow-900 dark:text-yellow-400">
             ⏰ Notice Requirement
           </p>
-          <p className="m-0 text-xs text-gray-700 mt-1">
+          <p className="m-0 text-xs text-gray-700 dark:text-gray-400 mt-1">
             {policy.minNoticeHours >= 168
               ? `${Math.ceil(policy.minNoticeHours / 24)} days advance notice required`
               : `${policy.minNoticeHours} hours advance notice required`}
@@ -133,9 +133,9 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
 
       {/* Leave Without Pay Note */}
       {confirmAction.leaveType === "Leave Without Pay" && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
-          <p className="m-0 text-xs font-bold text-amber-900">⚠️ Important</p>
-          <p className="m-0 text-xs text-amber-800 mt-1">
+        <div className="rounded-lg border border-amber-300 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+          <p className="m-0 text-xs font-bold text-amber-900 dark:text-amber-400">⚠️ Important</p>
+          <p className="m-0 text-xs text-amber-800 dark:text-amber-300 mt-1">
             This leave is for unregularized or zero-balance employees. Executive
             Director approval is required.
           </p>
@@ -144,9 +144,9 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
 
       {/* Emergency Leave Note */}
       {confirmAction.leaveType === "Unscheduled - Emergency Leave" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-          <p className="m-0 text-xs font-bold text-red-900">⚡ Emergency</p>
-          <p className="m-0 text-xs text-gray-700 mt-1">
+        <div className="rounded-lg border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-3 py-2">
+          <p className="m-0 text-xs font-bold text-red-900 dark:text-red-400">⚡ Emergency</p>
+          <p className="m-0 text-xs text-gray-700 dark:text-gray-400 mt-1">
             Limited to 1 day per occurrence. Notify your supervisor immediately.
           </p>
         </div>

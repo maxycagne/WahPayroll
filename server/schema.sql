@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS workweek_configs (
   UNIQUE KEY uniq_effective_from (effective_from)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
 CREATE TABLE IF NOT EXISTS leave_balances (
   emp_id VARCHAR(50) PRIMARY KEY,
   leave_balance DECIMAL(5,2) DEFAULT 0,

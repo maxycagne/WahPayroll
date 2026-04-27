@@ -46,7 +46,7 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
   } = useAttendance(shortcutMode);
 
   if (isLoading)
-    return <div className="p-6 font-bold text-slate-700">Loading Attendance...</div>;
+    return <div className="p-6 font-bold text-slate-700 dark:text-gray-300">Loading Attendance...</div>;
 
   return (
     <div className="max-w-full">
