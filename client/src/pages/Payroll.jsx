@@ -6,33 +6,8 @@ import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
-import { User, Mail, FileDown } from "lucide-react";
+import { Mail, FileDown } from "lucide-react";
 import PayrollSummaryDoc from "../components/pdfTemps/PayrollSummaryDoc";
-
-// --- OFFICIAL DESIGNATIONS & POSITIONS ---
-const DESIGNATIONS = {
-  Operations: [
-    "Supervisor(Finance & Operations)",
-    "Assistant Finance & Operations Partner",
-    "Admin & Human Resources Partner",
-  ],
-  "Health Program Partners": [
-    "Supervisor(Health Program Partner)",
-    "Health Program Partner",
-    "Profiler",
-  ],
-  "Platform Innovation": [
-    "Supervisor(Platform Innovation)",
-    "Senior Platform Innovation Partner",
-    "Platform Innovation Partner",
-    "Data Analyst",
-    "Business Analyst/Quality Assurance",
-  ],
-  "Network & System": [
-    "Supervisor(Network & Systems)",
-    "Network & Systems Partner",
-  ],
-};
 
 const DEFAULT_DEDUCTION_TYPES = [
   "CAP",
@@ -96,6 +71,9 @@ const formatMoneyOnBlur = (value) => {
   if (Number.isNaN(num)) return "";
   return num.toFixed(2);
 };
+
+const getSalaryEmployeeLabel = (employee) =>
+  `${employee?.last_name || ""}, ${employee?.first_name || ""} (${employee?.emp_id || ""})`;
 
 const getMonthsInRange = (startPeriod, endPeriod) => {
   if (!/^\d{4}-\d{2}$/.test(String(startPeriod || ""))) return [];
@@ -223,18 +201,10 @@ export default function Payroll({ shortcutMode = false }) {
   }, [debouncedSearchTerm, designationFilter, period]);
 
   const [salaryForm, setSalaryForm] = useState({
-    designation: "",
-    position: "",
+    emp_id: "",
     amount: "",
   });
-
-  const [positionSalaries, setPositionSalaries] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("wah_position_salaries") || "{}");
-    } catch {
-      return {};
-    }
-  });
+  const [salaryEmployeeSearch, setSalaryEmployeeSearch] = useState("");
 
   // --- QUERIES ---
   const {
@@ -290,11 +260,45 @@ export default function Payroll({ shortcutMode = false }) {
     queryKey: ["employees"],
     queryFn: async () => {
       return mutationHandler(
-        axiosInterceptor.get("/api/employees"),
+        axiosInterceptor.get("/api/employees?all=true"),
         "Failed to fetch employees",
       );
     },
   });
+
+  const salaryEmployeeOptions = useMemo(() => {
+    const rows = Array.isArray(employeesData?.data) ? employeesData.data : [];
+    return [...rows].sort((a, b) => {
+      const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+      const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim();
+      return aName.localeCompare(bName);
+    });
+  }, [employeesData]);
+
+  const selectedSalaryEmployee = useMemo(
+    () => salaryEmployeeOptions.find((employee) => employee.emp_id === salaryForm.emp_id),
+    [salaryEmployeeOptions, salaryForm.emp_id],
+  );
+
+  useEffect(() => {
+    if (selectedSalaryEmployee) {
+      setSalaryEmployeeSearch(getSalaryEmployeeLabel(selectedSalaryEmployee));
+    }
+  }, [selectedSalaryEmployee]);
+
+  const handleSalaryEmployeeSearchChange = (value) => {
+    setSalaryEmployeeSearch(value);
+
+    const normalized = String(value || "").trim().toLowerCase();
+    const matchedEmployee = salaryEmployeeOptions.find(
+      (employee) => getSalaryEmployeeLabel(employee).toLowerCase() === normalized,
+    );
+
+    setSalaryForm((prev) => ({
+      ...prev,
+      emp_id: matchedEmployee?.emp_id || "",
+    }));
+  };
 
   const { data: salaryHistoryData = [] } = useQuery({
     queryKey: [
@@ -408,22 +412,13 @@ export default function Payroll({ shortcutMode = false }) {
         "Failed to update base salary",
       );
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
       queryClient.invalidateQueries({ queryKey: ["employees"] });
 
-      const updatedSalaries = {
-        ...positionSalaries,
-        [variables.position]: Number(variables.amount),
-      };
-      setPositionSalaries(updatedSalaries);
-      localStorage.setItem(
-        "wah_position_salaries",
-        JSON.stringify(updatedSalaries),
-      );
-
-      showToast("Base salary updated for selected position.");
-      setSalaryForm({ designation: "", position: "", amount: "" });
+      showToast("Base salary updated for selected employee.");
+      setSalaryForm({ emp_id: "", amount: "" });
+      setSalaryEmployeeSearch("");
       setConfirmSalarySettingsModal(false);
       setSalarySettingsModal(false);
     },
@@ -622,7 +617,7 @@ export default function Payroll({ shortcutMode = false }) {
 
   const handleBaseSalaryUpdate = (e) => {
     e.preventDefault();
-    if (!salaryForm.position || !salaryForm.amount)
+    if (!salaryForm.emp_id || !salaryForm.amount)
       return showToast("Fill in all fields.", "error");
 
     setConfirmSalarySettingsModal(true);
@@ -630,7 +625,7 @@ export default function Payroll({ shortcutMode = false }) {
 
   const confirmBaseSalaryUpdate = () => {
     updateBaseSalaryMutation.mutate({
-      position: salaryForm.position,
+      emp_id: salaryForm.emp_id,
       amount: salaryForm.amount,
     });
   };
@@ -814,23 +809,44 @@ export default function Payroll({ shortcutMode = false }) {
     payrollData.length > 0 &&
     payrollData.every((p) => selectedEmployees.has(p.emp_id));
 
-  const payrollSummary = unfilteredSummaryData?.summary || {
-    count: 0,
-    gross: 0,
-    deductions: 0,
-    net: 0,
+  const payrollSummary = {
+    count: Number(unfilteredSummaryData?.total || 0),
+    gross: Number(unfilteredSummaryData?.summary?.gross || 0),
+    deductions: Number(unfilteredSummaryData?.summary?.deductions || 0),
+    net: Number(unfilteredSummaryData?.summary?.net || 0),
   };
 
   const handleGeneratePayrollPdf = async () => {
     if (!isAdmin) return;
-    if (!Array.isArray(payrollData) || payrollData.length === 0) {
+    if (!payrollSummary.count) {
       showToast("No payroll records found for this period.", "error");
       return;
     }
 
     setIsGeneratingPayrollPdf(true);
     try {
-      const sortedRows = [...payrollData].sort((a, b) => {
+      const params = new URLSearchParams({
+        period,
+        all: "true",
+        search: "",
+        designationFilter: "All",
+      });
+
+      const allPayrollResponse = await mutationHandler(
+        axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
+        "Failed to fetch complete payroll data",
+      );
+
+      const allRows = Array.isArray(allPayrollResponse?.data)
+        ? allPayrollResponse.data
+        : [];
+
+      if (allRows.length === 0) {
+        showToast("No payroll records found for this period.", "error");
+        return;
+      }
+
+      const sortedRows = [...allRows].sort((a, b) => {
         const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim();
         const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim();
         return aName.localeCompare(bName);
@@ -920,7 +936,7 @@ export default function Payroll({ shortcutMode = false }) {
                   <button
                     onClick={handleGeneratePayrollPdf}
                     disabled={
-                      isGeneratingPayrollPdf || payrollData.length === 0
+                      isGeneratingPayrollPdf || !payrollSummary.count
                     }
                     className="px-4 py-2 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
@@ -1067,6 +1083,9 @@ export default function Payroll({ shortcutMode = false }) {
                       Incentives
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                      Total Salary (Gross)
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                       Deductions
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
@@ -1106,6 +1125,9 @@ export default function Payroll({ shortcutMode = false }) {
                         <td className="px-6 py-4 text-right">
                           <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        </td>
                         {isAdmin && !bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-right">
                             <div className="h-4 w-24 rounded-md bg-gray-200 animate-pulse ml-auto" />
@@ -1116,7 +1138,7 @@ export default function Payroll({ shortcutMode = false }) {
                   ) : payrollData.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={isAdmin ? (bulkAdjustmentMode ? 7 : 7) : 6}
+                        colSpan={isAdmin ? 8 : 7}
                         className="px-6 py-8 text-center text-gray-500"
                       >
                         No payroll records found for {period}. Click "Generate
@@ -1170,6 +1192,9 @@ export default function Payroll({ shortcutMode = false }) {
                           <div className="text-[11px] text-gray-500 mt-0.5">
                             {p.incentive_reasons || "No incentive type"}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                          {fmt(p.gross_pay)}
                         </td>
                         <td className="px-6 py-4 text-right text-red-600">
                           <div className="font-semibold">
@@ -1271,7 +1296,7 @@ export default function Payroll({ shortcutMode = false }) {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 bg-gray-900 flex justify-between items-center text-white shrink-0">
               <h2 className="text-lg font-bold m-0">
-                Position Salary Settings
+                Employee Salary Settings
               </h2>
               <button
                 onClick={() => setSalarySettingsModal(false)}
@@ -1288,76 +1313,50 @@ export default function Payroll({ shortcutMode = false }) {
                     Update Base Salary
                   </h3>
                   <p className="text-xs text-gray-600 mb-5">
-                    Select a designation and position to enter the new monthly
-                    base salary. This will immediately apply to all employees
-                    currently holding this position.
+                    Select a specific employee and set their monthly base
+                    salary. This update only affects the selected employee.
                   </p>
                   <form onSubmit={handleBaseSalaryUpdate} className="space-y-5">
-                    {/* DESIGNATION DROPDOWN */}
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                        Select Designation (Optional Filter)
+                        Select Employee
                       </label>
-                      <select
-                        value={salaryForm.designation}
+                      <input
+                        type="text"
+                        list="salary-employee-options"
+                        value={salaryEmployeeSearch}
                         onChange={(e) =>
-                          setSalaryForm({
-                            ...salaryForm,
-                            designation: e.target.value,
-                            position: "", // Reset position when designation changes
-                          })
+                          handleSalaryEmployeeSearchChange(e.target.value)
                         }
+                        placeholder="Type employee name or ID"
                         className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                      >
-                        <option value="">All Designations</option>
-                        {Object.keys(DESIGNATIONS).map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
-                          </option>
+                      />
+                      <datalist id="salary-employee-options">
+                        {salaryEmployeeOptions.map((employee) => (
+                          <option
+                            key={employee.emp_id}
+                            value={getSalaryEmployeeLabel(employee)}
+                          />
                         ))}
-                      </select>
+                      </datalist>
                     </div>
 
-                    {/* POSITION DROPDOWN */}
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                        Select Position
-                      </label>
-                      <select
-                        required
-                        value={salaryForm.position}
-                        onChange={(e) =>
-                          setSalaryForm({
-                            ...salaryForm,
-                            position: e.target.value,
-                          })
-                        }
-                        className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                      >
-                        <option value="" disabled>
-                          Choose Position...
-                        </option>
-                        {salaryForm.designation
-                          ? // Show only positions for the selected designation
-                            DESIGNATIONS[salaryForm.designation].map((pos) => (
-                              <option key={pos} value={pos}>
-                                {pos}
-                              </option>
-                            ))
-                          : // Show all positions grouped if no designation is selected
-                            Object.entries(DESIGNATIONS).map(
-                              ([dept, positions]) => (
-                                <optgroup key={dept} label={dept}>
-                                  {positions.map((pos) => (
-                                    <option key={pos} value={pos}>
-                                      {pos}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ),
-                            )}
-                      </select>
-                    </div>
+                    {selectedSalaryEmployee && (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-1">
+                        <p className="m-0">
+                          <span className="font-semibold">Name:</span>{" "}
+                          {selectedSalaryEmployee.first_name} {selectedSalaryEmployee.last_name}
+                        </p>
+                        <p className="m-0">
+                          <span className="font-semibold">Position:</span>{" "}
+                          {selectedSalaryEmployee.position || "N/A"}
+                        </p>
+                        <p className="m-0">
+                          <span className="font-semibold">Current Base Salary:</span>{" "}
+                          {fmt(selectedSalaryEmployee.basic_pay)}
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -1395,9 +1394,9 @@ export default function Payroll({ shortcutMode = false }) {
                         onClick={() => {
                           setConfirmSalarySettingsModal(false);
                           setSalarySettingsModal(false);
+                          setSalaryEmployeeSearch("");
                           setSalaryForm({
-                            designation: "",
-                            position: "",
+                            emp_id: "",
                             amount: "",
                           });
                         }}
@@ -1412,7 +1411,7 @@ export default function Payroll({ shortcutMode = false }) {
                       >
                         {updateBaseSalaryMutation.isPending
                           ? "Updating..."
-                          : "Update All"}
+                          : "Update Employee"}
                       </button>
                     </div>
                   </form>
@@ -1420,7 +1419,7 @@ export default function Payroll({ shortcutMode = false }) {
 
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
                   Salary settings are Admin-only and apply per selected
-                  position.
+                  employee.
                 </div>
               </div>
             </div>
@@ -1439,7 +1438,9 @@ export default function Payroll({ shortcutMode = false }) {
                 Update monthly base salary for
                 <span className="font-bold text-gray-900">
                   {" "}
-                  {salaryForm.position}
+                  {selectedSalaryEmployee
+                    ? `${selectedSalaryEmployee.first_name} ${selectedSalaryEmployee.last_name}`
+                    : "the selected employee"}
                 </span>
                 to
                 <span className="font-bold text-gray-900">
@@ -1449,8 +1450,7 @@ export default function Payroll({ shortcutMode = false }) {
                 ?
               </p>
               <p className="m-0 text-xs text-gray-500">
-                This will apply to all current and future employees with this
-                position.
+                This will apply only to this employee.
               </p>
               <div className="pt-2 flex gap-3">
                 <button
@@ -1526,6 +1526,12 @@ export default function Payroll({ shortcutMode = false }) {
                     className={`font-bold ${Number(salaryBreakdownModal.incentives || 0) >= 0 ? "text-green-700" : "text-red-700"}`}
                   >
                     {fmtSigned(salaryBreakdownModal.incentives)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-indigo-200 bg-indigo-50">
+                  <span className="font-semibold text-indigo-700">Total Salary (Gross)</span>
+                  <span className="text-indigo-700 font-bold">
+                    {fmt(salaryBreakdownModal.gross_pay)}
                   </span>
                 </div>
                 {salaryBreakdownModal.incentive_reasons && (

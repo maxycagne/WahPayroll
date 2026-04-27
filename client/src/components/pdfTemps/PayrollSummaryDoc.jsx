@@ -65,13 +65,21 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
   },
   colName: {
-    width: "28%",
+    width: "26%",
     padding: 6,
     borderRightWidth: 1,
     borderColor: "#e5e7eb",
     fontSize: 8.5,
   },
   colBasic: {
+    width: "12%",
+    padding: 6,
+    borderRightWidth: 1,
+    borderColor: "#e5e7eb",
+    fontSize: 8.5,
+    textAlign: "right",
+  },
+  colGross: {
     width: "14%",
     padding: 6,
     borderRightWidth: 1,
@@ -80,14 +88,14 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   colDeduction: {
-    width: "22%",
+    width: "18%",
     padding: 6,
     borderRightWidth: 1,
     borderColor: "#e5e7eb",
     fontSize: 8,
   },
   colIncentive: {
-    width: "22%",
+    width: "16%",
     padding: 6,
     borderRightWidth: 1,
     borderColor: "#e5e7eb",
@@ -219,6 +227,9 @@ export default function PayrollSummaryDoc({
           <View style={styles.colIncentive}>
             <Text style={styles.headText}>Incentives (Types)</Text>
           </View>
+          <View style={styles.colGross}>
+            <Text style={styles.headText}>Total Salary (Gross)</Text>
+          </View>
           <View style={styles.colDeduction}>
             <Text style={styles.headText}>Deductions (Types)</Text>
           </View>
@@ -265,6 +276,15 @@ export default function PayrollSummaryDoc({
                 )}
               </View>
 
+              <View style={styles.colGross}>
+                <Text style={styles.rowStrong}>
+                  {money(
+                    row.gross_pay ??
+                      Number(row.basic_pay || 0) + Number(row.incentives || 0),
+                  )}
+                </Text>
+              </View>
+
               <View style={styles.colDeduction}>
                 <Text>{money(row.absence_deductions)}</Text>
                 {deductionItems.length > 0 ? (
@@ -302,6 +322,21 @@ export default function PayrollSummaryDoc({
           <View style={styles.colIncentive}>
             <Text style={styles.rowStrong}>
               {money(rows.reduce((sum, r) => sum + Number(r.incentives || 0), 0))}
+            </Text>
+          </View>
+          <View style={styles.colGross}>
+            <Text style={styles.rowStrong}>
+              {money(
+                rows.reduce(
+                  (sum, r) =>
+                    sum +
+                    Number(
+                      r.gross_pay ??
+                        Number(r.basic_pay || 0) + Number(r.incentives || 0),
+                    ),
+                  0,
+                ),
+              )}
             </Text>
           </View>
           <View style={styles.colDeduction}>
