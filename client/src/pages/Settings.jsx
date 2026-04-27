@@ -33,7 +33,6 @@ export default function Settings() {
     tin: currentUser.tin || "",
     sss_no: currentUser.sss_no || "",
     pag_ibig_mid_no: currentUser.pag_ibig_mid_no || "",
-    pag_ibig_rtn: currentUser.pag_ibig_rtn || "",
     gsis_no: currentUser.gsis_no || "",
   });
 
@@ -439,23 +438,6 @@ export default function Settings() {
                           setCredentialsForm({
                             ...credentialsForm,
                             pag_ibig_mid_no: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        PAG-IBIG RTN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.pag_ibig_rtn}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            pag_ibig_rtn: e.target.value,
                           })
                         }
                         className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"

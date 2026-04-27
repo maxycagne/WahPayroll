@@ -82,7 +82,6 @@ export default function Employees({ shortcutMode = false }) {
     tin: "",
     sss_no: "",
     pag_ibig_mid_no: "",
-    pag_ibig_rtn: "",
     gsis_no: "",
     dob: "",
     hired_date: "",
@@ -110,7 +109,11 @@ export default function Employees({ shortcutMode = false }) {
   }, [debouncedSearchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
-  const { data: responseData, isLoading, isFetching } = useQuery({
+  const {
+    data: responseData,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: [
       "employees",
       currentPage,
@@ -260,13 +263,10 @@ export default function Employees({ shortcutMode = false }) {
       tin: "",
       sss_no: "",
       pag_ibig_mid_no: "",
-      pag_ibig_rtn: "",
       gsis_no: "",
       dob: "",
       hired_date: "",
     });
-
- 
 
   return (
     <div className="max-w-full">
@@ -322,183 +322,190 @@ export default function Employees({ shortcutMode = false }) {
 
           {/* Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-            {isLoading || isFetching ? <p>loading</p> : (
-     <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 font-bold text-gray-700">ID</th>
-                  <th className="px-6 py-3 font-bold text-gray-700">
-                    Full Name
-                  </th>
-                  <th className="px-6 py-3 font-bold text-gray-700">
-                    Designation / Position
-                  </th>
-                  <th className="px-6 py-3 font-bold text-gray-700">
-                    Email Address
-                  </th>
-                  <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-                  {canAddEmployee && (
-                    <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {employees.length === 0 ? (
+            {isLoading || isFetching ? (
+              <p>loading</p>
+            ) : (
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <td
-                      colSpan={canAddEmployee ? 6 : 5}
-                      className="px-6 py-12 text-center"
-                    >
-                      <p className="m-0 text-sm font-semibold text-gray-500">
-                        No employees found
-                      </p>
-                      <p className="m-0 mt-1 text-xs text-gray-400">
-                        Try adjusting your search or filter criteria.
-                      </p>
-                    </td>
+                    <th className="px-6 py-3 font-bold text-gray-700">ID</th>
+                    <th className="px-6 py-3 font-bold text-gray-700">
+                      Full Name
+                    </th>
+                    <th className="px-6 py-3 font-bold text-gray-700">
+                      Designation / Position
+                    </th>
+                    <th className="px-6 py-3 font-bold text-gray-700">
+                      Email Address
+                    </th>
+                    <th className="px-6 py-3 font-bold text-gray-700">
+                      Status
+                    </th>
+                    {canAddEmployee && (
+                      <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
+                        Actions
+                      </th>
+                    )}
                   </tr>
-                ) : (
-                  employees.map((emp) => (
-                    <tr
-                      key={emp.emp_id}
-                      onClick={() => setSelectedEmployeeDetails(emp)}
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {/* The Name */}
-                          <div className="font-semibold text-gray-800">
-                            {emp.last_name}, {emp.first_name}{" "}
-                            {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {employees.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={canAddEmployee ? 6 : 5}
+                        className="px-6 py-12 text-center"
+                      >
+                        <p className="m-0 text-sm font-semibold text-gray-500">
+                          No employees found
+                        </p>
+                        <p className="m-0 mt-1 text-xs text-gray-400">
+                          Try adjusting your search or filter criteria.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    employees.map((emp) => (
+                      <tr
+                        key={emp.emp_id}
+                        onClick={() => setSelectedEmployeeDetails(emp)}
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {/* The Name */}
+                            <div className="font-semibold text-gray-800">
+                              {emp.last_name}, {emp.first_name}{" "}
+                              {emp.middle_initial
+                                ? `${emp.middle_initial}.`
+                                : ""}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        <div className="font-medium text-gray-900">
-                          {emp.designation}
-                        </div>
-                        <div className="text-xs opacity-75">{emp.position}</div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-2">
-                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 inline-block w-fit">
-                            {emp.status}
-                          </span>
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
-                              emp.is_active
-                                ? "bg-green-50 text-green-700 border-green-100"
-                                : "bg-red-50 text-red-700 border-red-100"
-                            }`}
-                          >
-                            {emp.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </div>
-                      </td>
-                      {canAddEmployee && (
-                        <td
-                          className="px-6 py-4 text-center relative"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() =>
-                              setActiveMenu(
-                                activeMenu === emp.emp_id ? null : emp.emp_id,
-                              )
-                            }
-                            className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
-                          >
-                            <svg
-                              width="20"
-                              height="20"
-                              fill="currentColor"
-                              viewBox="0 0 16 16"
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          <div className="font-medium text-gray-900">
+                            {emp.designation}
+                          </div>
+                          <div className="text-xs opacity-75">
+                            {emp.position}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{emp.email}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-2">
+                            <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 inline-block w-fit">
+                              {emp.status}
+                            </span>
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
+                                emp.is_active
+                                  ? "bg-green-50 text-green-700 border-green-100"
+                                  : "bg-red-50 text-red-700 border-red-100"
+                              }`}
                             >
-                              <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                            </svg>
-                          </button>
+                              {emp.is_active ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                        </td>
+                        {canAddEmployee && (
+                          <td
+                            className="px-6 py-4 text-center relative"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() =>
+                                setActiveMenu(
+                                  activeMenu === emp.emp_id ? null : emp.emp_id,
+                                )
+                              }
+                              className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
+                            >
+                              <svg
+                                width="20"
+                                height="20"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                              >
+                                <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                              </svg>
+                            </button>
 
-                          {/* Action Menu Dropdown */}
-                          {activeMenu === emp.emp_id && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-10"
-                                onClick={() => setActiveMenu(null)}
-                              ></div>
-                              <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                                <button
-                                  onClick={() => {
-                                    setEditEmployee(emp);
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                                >
-                                  Edit Info
-                                </button>
-                                {canResetPassword && (
+                            {/* Action Menu Dropdown */}
+                            {activeMenu === emp.emp_id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setActiveMenu(null)}
+                                ></div>
+                                <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
                                   <button
                                     onClick={() => {
+                                      setEditEmployee(emp);
                                       setActiveMenu(null);
-                                      setResetConfirm(emp);
                                     }}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
                                   >
-                                    Reset Password
+                                    Edit Info
                                   </button>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    if (emp.is_active) {
-                                      socket.emit("suspend-user", emp.emp_id);
-                                      queryClient.invalidateQueries([
-                                        "employees",
-                                      ]);
-                                      return;
-                                    }
-                                    // make emp active again
-                                    toggleActiveMutation.mutate({
-                                      id: emp.emp_id,
-                                      is_active: true,
-                                    });
-                                    setActiveMenu(null);
-                                  }}
-                                  disabled={toggleActiveMutation.isPending}
-                                  className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
-                                    emp.is_active
-                                      ? "text-orange-600 hover:bg-orange-50"
-                                      : "text-green-600 hover:bg-green-50"
-                                  }`}
-                                >
-                                  {emp.is_active
-                                    ? "Mark Inactive"
-                                    : "Mark Active"}
-                                </button>
-                                <hr className="my-1 border-gray-100" />
-                                <button
-                                  onClick={() => {
-                                    setDeleteConfirm(emp);
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                                  {canResetPassword && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveMenu(null);
+                                        setResetConfirm(emp);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                    >
+                                      Reset Password
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      if (emp.is_active) {
+                                        socket.emit("suspend-user", emp.emp_id);
+                                        queryClient.invalidateQueries([
+                                          "employees",
+                                        ]);
+                                        return;
+                                      }
+                                      // make emp active again
+                                      toggleActiveMutation.mutate({
+                                        id: emp.emp_id,
+                                        is_active: true,
+                                      });
+                                      setActiveMenu(null);
+                                    }}
+                                    disabled={toggleActiveMutation.isPending}
+                                    className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
+                                      emp.is_active
+                                        ? "text-orange-600 hover:bg-orange-50"
+                                        : "text-green-600 hover:bg-green-50"
+                                    }`}
+                                  >
+                                    {emp.is_active
+                                      ? "Mark Inactive"
+                                      : "Mark Active"}
+                                  </button>
+                                  <hr className="my-1 border-gray-100" />
+                                  <button
+                                    onClick={() => {
+                                      setDeleteConfirm(emp);
+                                      setActiveMenu(null);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             )}
-       
           </div>
 
           {/* Pagination Controls */}
@@ -507,7 +514,9 @@ export default function Employees({ shortcutMode = false }) {
               <div className="text-sm text-gray-700">
                 Showing{" "}
                 <span className="font-medium">
-                  {totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
+                  {totalRecords === 0
+                    ? 0
+                    : (currentPage - 1) * itemsPerPage + 1}
                 </span>{" "}
                 to{" "}
                 <span className="font-medium">
@@ -622,7 +631,12 @@ export default function Employees({ shortcutMode = false }) {
                 Cancel
               </button>
               <button
-                onClick={() => deleteMutation.mutate(deleteConfirm.emp_id)}
+                onClick={() => {
+                  console.log(deleteConfirm.emp_id);
+                  socket.emit("delete-user", deleteConfirm.emp_id);
+                  queryClient.invalidateQueries(["employees"]);
+                  // deleteMutation.mutate(deleteConfirm.emp_id);
+                }}
                 className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
               >
                 Delete
@@ -745,12 +759,6 @@ export default function Employees({ shortcutMode = false }) {
                 <span>{addConfirm.pag_ibig_mid_no || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
-                  PAG-IBIG RTN:
-                </span>
-                <span>{addConfirm.pag_ibig_rtn || "N/A"}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="font-semibold text-gray-600">GSIS No.:</span>
                 <span>{addConfirm.gsis_no || "N/A"}</span>
               </div>
@@ -810,7 +818,6 @@ function EmployeeDetailsModal({ employee, onClose }) {
     { label: "TIN", value: employee.tin },
     { label: "SSS No.", value: employee.sss_no },
     { label: "PAG-IBIG MID No.", value: employee.pag_ibig_mid_no },
-    { label: "PAG_IBIG RTN", value: employee.pag_ibig_rtn },
     { label: "GSIS No.", value: employee.gsis_no },
   ];
 
@@ -1065,49 +1072,40 @@ function EmployeeModal({
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    TIN
+                    TIN <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
                     maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    SSS No.
+                    SSS No. <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
                     maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    PAG-IBIG MID No.
+                    PAG-IBIG MID No. <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
                     maxLength={20}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    PAG-IBIG RTN
-                  </label>
-                  <input
-                    name="pag_ibig_rtn"
-                    value={data.pag_ibig_rtn || ""}
-                    onChange={onChange}
-                    maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>

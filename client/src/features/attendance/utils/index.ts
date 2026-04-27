@@ -5,6 +5,8 @@ export const badgeClass: Record<string, string> = {
   "Half-Day": "bg-orange-100 text-orange-800",
   Absent: "bg-red-100 text-red-800",
   "On Leave": "bg-purple-100 text-purple-800",
+  "No-notice-via-text": "bg-pink-100 text-pink-800",
+  "No-notice-email": "bg-fuchsia-100 text-fuchsia-800",
   Pending: "bg-gray-100 text-gray-500",
   "": "bg-gray-100 text-gray-500",
 };

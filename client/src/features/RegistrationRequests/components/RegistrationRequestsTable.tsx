@@ -226,6 +226,55 @@ export const RegistrationRequestsTable = () => {
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
+
+                <div className="md:col-span-2 border-t border-gray-100 pt-4">
+                  <label className="text-xs font-bold text-purple-600 uppercase mb-3 block">Government IDs</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">PHILHEALTH No.</label>
+                      <input
+                        value={editingRequest.philhealth_no || ""}
+                        onChange={(e) => setEditingRequest({...editingRequest, philhealth_no: e.target.value})}
+                        className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">TIN <span className="text-red-500">*</span></label>
+                      <input
+                        value={editingRequest.tin || ""}
+                        onChange={(e) => setEditingRequest({...editingRequest, tin: e.target.value})}
+                        required
+                        className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">SSS No. <span className="text-red-500">*</span></label>
+                      <input
+                        value={editingRequest.sss_no || ""}
+                        onChange={(e) => setEditingRequest({...editingRequest, sss_no: e.target.value})}
+                        required
+                        className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">PAG-IBIG MID <span className="text-red-500">*</span></label>
+                      <input
+                        value={editingRequest.pag_ibig_mid_no || ""}
+                        onChange={(e) => setEditingRequest({...editingRequest, pag_ibig_mid_no: e.target.value})}
+                        required
+                        className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">GSIS No.</label>
+                      <input
+                        value={editingRequest.gsis_no || ""}
+                        onChange={(e) => setEditingRequest({...editingRequest, gsis_no: e.target.value})}
+                        className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">

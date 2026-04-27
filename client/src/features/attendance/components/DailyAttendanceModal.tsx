@@ -295,12 +295,18 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                               !canEdit ||
                               attendanceForm[emp.emp_id] === "Absent"
                             }
-                            className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs disabled:cursor-not-allowed disabled:opacity-60 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
+                            className={`border p-1 rounded outline-none font-semibold max-w-[140px] text-xs disabled:cursor-not-allowed disabled:opacity-60 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
                           >
                             <option value="">-- None --</option>
                             <option value="Late">Late</option>
                             <option value="Undertime">Undertime</option>
                             <option value="Half-Day">Half-Day</option>
+                            <option value="No-notice-via-text">
+                              No notice via text
+                            </option>
+                            <option value="No-notice-email">
+                              No notice via email
+                            </option>
                           </select>
                         </td>
                       </tr>

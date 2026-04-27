@@ -1,10 +1,11 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { RegisterCredentials } from "../types";
 import { useRegister } from "../hooks/useRegister";
 import { initialState, registerReducer } from "../registerReducer";
 import React from "react";
 import Toast from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
+import { Eye, EyeOff } from "lucide-react";
 const designations = {
   Operations: [
     "Supervisor(Finance & Operations)",
@@ -31,12 +32,16 @@ const designations = {
 
 export const RegisterForm = () => {
   const [state, dispatch] = useReducer(registerReducer, initialState);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast, showToast, clearToast } = useToast();
   const registerMutation = useRegister(showToast);
 
   useEffect(() => {
     if (registerMutation.isSuccess) {
       dispatch({ type: "RESET_FORM" });
+      setConfirmPassword("");
     }
   }, [registerMutation.isSuccess]);
 
@@ -68,6 +73,10 @@ export const RegisterForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (state.password !== confirmPassword) {
+      showToast("Passwords do not match.", "error");
+      return;
+    }
     // Remove emp_id from data before sending
     const { emp_id, ...data } = state;
     registerMutation.mutate(data as any);
@@ -87,7 +96,21 @@ export const RegisterForm = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Employee ID Removed from Form */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-gray-500 uppercase">
+              Employee ID <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="emp_id"
+              value={state.emp_id}
+              onChange={handleInputChange}
+              required
+              maxLength={20}
+              placeholder="EMP-001"
+              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
+            />
+          </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase">
               Email Address <span className="text-red-500">*</span>
@@ -99,6 +122,7 @@ export const RegisterForm = () => {
               onChange={handleInputChange}
               required
               maxLength={50}
+              placeholder="email@gmail.com"
               className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
             />
           </div>
@@ -107,15 +131,58 @@ export const RegisterForm = () => {
             <label className="text-xs font-bold text-gray-500 uppercase">
               Password <span className="text-red-500">*</span>
             </label>
-            <input
-              name="password"
-              type="password"
-              value={state.password}
-              onChange={handleInputChange}
-              required
-              minLength={6}
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
-            />
+            <div className="relative">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={state.password}
+                onChange={handleInputChange}
+                required
+                minLength={6}
+                placeholder="*******"
+                className="w-full border border-gray-300 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-gray-400 hover:text-gray-600 p-0"
+              >
+                {showPassword ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <EyeOff className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-gray-500 uppercase">
+              Confirm Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                placeholder="*******"
+                className="w-full border border-gray-300 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-gray-400 hover:text-gray-600 p-0"
+              >
+                {showConfirmPassword ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <EyeOff className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -129,6 +196,7 @@ export const RegisterForm = () => {
                 onChange={handleInputChange}
                 required
                 maxLength={30}
+                placeholder="JuWAHn"
                 className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -141,6 +209,7 @@ export const RegisterForm = () => {
                 value={state.middle_initial}
                 onChange={handleInputChange}
                 maxLength={1}
+                placeholder="W"
                 className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -154,6 +223,7 @@ export const RegisterForm = () => {
                 onChange={handleInputChange}
                 required
                 maxLength={30}
+                placeholder="Dela Cruz"
                 className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -235,7 +305,7 @@ export const RegisterForm = () => {
 
           <div className="md:col-span-2 border-t border-gray-100 pt-4">
             <label className="text-sm font-bold text-purple-600 uppercase mb-3 block">
-              Government IDs (Optional)
+              Government IDs
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
@@ -246,50 +316,46 @@ export const RegisterForm = () => {
                   name="philhealth_no"
                   value={state.philhealth_no}
                   onChange={handleInputChange}
+                  placeholder="XX-XXXXXXXXX-X"
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  TIN
+                  TIN <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="tin"
                   value={state.tin}
                   onChange={handleInputChange}
+                  placeholder="XXX-XXX-XXX-XXX"
+                  required
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  SSS No.
+                  SSS No. <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="sss_no"
                   value={state.sss_no}
                   onChange={handleInputChange}
+                  required
+                  placeholder="XX - XXXXXXX - X"
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  PAG-IBIG MID
+                  PAG-IBIG MID <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="pag_ibig_mid_no"
                   value={state.pag_ibig_mid_no}
                   onChange={handleInputChange}
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">
-                  PAG-IBIG RTN
-                </label>
-                <input
-                  name="pag_ibig_rtn"
-                  value={state.pag_ibig_rtn}
-                  onChange={handleInputChange}
+                  required
+                  placeholder="XXXX-XXXX-XXXX"
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>
@@ -301,6 +367,7 @@ export const RegisterForm = () => {
                   name="gsis_no"
                   value={state.gsis_no}
                   onChange={handleInputChange}
+                  placeholder="XXXXXXXXXX"
                   className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none"
                 />
               </div>

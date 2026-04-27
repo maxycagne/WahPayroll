@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS employees (
   tin VARCHAR(50),
   sss_no VARCHAR(50),
   pag_ibig_mid_no VARCHAR(50),
-  pag_ibig_rtn VARCHAR(50),
   gsis_no VARCHAR(50),
   dob DATE,
   hired_date DATE,

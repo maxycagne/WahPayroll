@@ -34,7 +34,10 @@ export default function Login() {
         username,
         password,
       });
+
       const data = res.data;
+
+      if (res.status !== 200) throw new Error(data.message);
 
       handleLocalLogin(data.token, data.user);
       window.location.href =
@@ -169,9 +172,11 @@ export default function Login() {
 
                   {login.error && (
                     <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      {login.error?.response?.data?.message ||
-                        login.error?.message ||
-                        "Invalid username or password."}
+                      {login.error?.response?.status === 429
+                        ? `${login.error.response.data.error} Wait ${login.error.response.data.retryAfter}.`
+                        : login.error?.response?.data?.message ||
+                          login.error?.message ||
+                          "Invalid username or password."}
                     </div>
                   )}
 

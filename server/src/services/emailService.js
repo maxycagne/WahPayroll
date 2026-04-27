@@ -19,7 +19,7 @@ const emailService = {
     try {
       const info = await transporter.sendMail({
         // TODO : CHANGE TO Finance email
-        from: '"Finance WAH" <cagnemaverick@gmail.com>',
+        from: '"Finance WAH" <finance@wah.ph>',
         to,
         subject,
         html,

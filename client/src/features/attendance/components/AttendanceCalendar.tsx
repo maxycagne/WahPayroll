@@ -138,6 +138,16 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                         • {dayData.absent_count} Absent
                       </div>
                     )}
+                    {dayData.no_notice_text_count > 0 && (
+                      <div className="w-full truncate rounded-md border border-pink-200 bg-pink-50 px-1.5 py-0.5 text-[10px] font-bold text-pink-700">
+                        • {dayData.no_notice_text_count} No notice (text)
+                      </div>
+                    )}
+                    {dayData.no_notice_email_count > 0 && (
+                      <div className="w-full truncate rounded-md border border-fuchsia-200 bg-fuchsia-50 px-1.5 py-0.5 text-[10px] font-bold text-fuchsia-700">
+                        • {dayData.no_notice_email_count} No notice (email)
+                      </div>
+                    )}
                   </div>
                 )}
               </button>

@@ -18,7 +18,6 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
   } = req.body;
   
@@ -38,7 +37,6 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
     const updatedTin = tin !== undefined ? tin : user.tin;
     const updatedSss = sss_no !== undefined ? sss_no : user.sss_no;
     const updatedPagIbigMid = pag_ibig_mid_no !== undefined ? pag_ibig_mid_no : user.pag_ibig_mid_no;
-    const updatedPagIbigRtn = pag_ibig_rtn !== undefined ? pag_ibig_rtn : user.pag_ibig_rtn;
     const updatedGsis = gsis_no !== undefined ? gsis_no : user.gsis_no;
 
     await pool.query(
@@ -48,7 +46,6 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
         tin = ?, 
         sss_no = ?, 
         pag_ibig_mid_no = ?, 
-        pag_ibig_rtn = ?, 
         gsis_no = ? 
       WHERE emp_id = ?`,
       [
@@ -57,7 +54,6 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
         updatedTin,
         updatedSss,
         updatedPagIbigMid,
-        updatedPagIbigRtn,
         updatedGsis,
         req.user.emp_id,
       ]

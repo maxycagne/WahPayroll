@@ -178,7 +178,7 @@ export default function Payslips() {
       <style>
         {`
           @media print {
-            @page { size: auto; margin: 14mm; }
+            @page { size: auto; margin: 0; }
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
@@ -302,8 +302,8 @@ export default function Payslips() {
             <img
               src="/images/wah-logo.png"
               alt="WAH watermark"
-              className="print-watermark pointer-events-none absolute left-1/2 top-1/2 z-0 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 object-contain"
-              style={{ opacity: 0.06 }}
+              className="print-watermark pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2 object-contain"
+              style={{ opacity: 0.06, width: '60%', maxHeight: '60%' }}
             />
 
             <div className="relative z-10 flex items-center border-b border-gray-700 px-4 py-5">
@@ -320,6 +320,9 @@ export default function Payslips() {
               </div>
               <p className="absolute left-1/2 m-0 -translate-x-1/2 text-center text-[15px] font-semibold text-gray-900">
                 Wireless for Health Initiative, Inc.
+              </p>
+              <p className="absolute left-1/2 top-[68%] m-0 -translate-x-1/2 text-center text-[11px] text-gray-600">
+                Romulo Blvd, San Vicente, Tarlac City, Philippines
               </p>
             </div>
 
@@ -421,9 +424,21 @@ export default function Payslips() {
               </div>
             </div>
 
-            <p className="relative z-10 m-0 px-6 py-3 text-center text-[14px] tracking-wide text-gray-800">
-              *** WAH Confidential - Maximum Restrictions ***
-            </p>
+            <div className="relative z-10 px-6 py-4 text-center">
+              <p className="m-0 text-[13px] font-bold italic text-[#2c3e7a]">
+                For Healthier, Happier Communities
+              </p>
+              <p className="m-0 mt-1.5 text-[10px] text-gray-600">
+                <span className="font-semibold text-gray-500">Webpage:</span> http://wah.ph/{" "}
+                <span className="font-semibold text-gray-500">Email Address:</span> wah.pilipinas@wah.ph
+              </p>
+              <p className="m-0 mt-0.5 text-[10px] text-gray-600">
+                <span className="font-semibold text-gray-500">Facebook:</span> wah.ph{" "}
+                <span className="font-semibold text-gray-500">Twitter:</span> @wah_team{" "}
+                <span className="font-semibold text-gray-500">Instagram:</span> @wah_team{" "}
+                <span className="font-semibold text-gray-500">LinkedIn:</span> wah.ph
+              </p>
+            </div>
           </div>
         </>
       )}
