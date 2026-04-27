@@ -541,7 +541,9 @@ export const getAttendanceCalendarSummary = async (req: Request, res: Response) 
              SUM(CASE WHEN status = 'Late' OR status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
              SUM(CASE WHEN status = 'Undertime' OR status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
              SUM(CASE WHEN status = 'Half-Day' OR status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count
+             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count,
+             SUM(CASE WHEN status2 = 'No-notice-via-text' THEN 1 ELSE 0 END) as no_notice_text_count,
+             SUM(CASE WHEN status2 = 'No-notice-email' THEN 1 ELSE 0 END) as no_notice_email_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
       GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
