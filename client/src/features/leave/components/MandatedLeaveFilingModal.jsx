@@ -32,15 +32,12 @@ export default function MandatedLeaveFilingModal({
     if (startDate && isMandatedLeave(leaveType)) {
       const endDate = calculateMandatedLeaveEndDate(
         startDate,
-        policy.maxDays || 7
+        policy.maxDays || 7,
       );
       setComputedEndDate(endDate);
 
       // Calculate effective working days
-      const workingDays = countWorkingDaysExcludingWeekends(
-        startDate,
-        endDate
-      );
+      const workingDays = countWorkingDaysExcludingWeekends(startDate, endDate);
       setEffectiveDays(workingDays);
     }
   }, [startDate, leaveType, policy]);
@@ -53,7 +50,7 @@ export default function MandatedLeaveFilingModal({
 
       if (requirements.minContributionMonths) {
         info.push(
-          `Requires ≥${requirements.minContributionMonths} months contributions`
+          `Requires ≥${requirements.minContributionMonths} months contributions`,
         );
       }
 
@@ -98,7 +95,7 @@ export default function MandatedLeaveFilingModal({
     for (const docType of requiredDocs) {
       if (!documents[docType]) {
         alert(
-          `Required document missing: ${docType.replace(/_/g, " ").toUpperCase()}`
+          `Required document missing: ${docType.replace(/_/g, " ").toUpperCase()}`,
         );
         return;
       }
@@ -119,7 +116,7 @@ export default function MandatedLeaveFilingModal({
     }
 
     await onSubmit(formData);
-    
+
     // Reset form
     setStartDate("");
     setComputedEndDate("");
@@ -260,7 +257,9 @@ export default function MandatedLeaveFilingModal({
           {/* Disclaimer */}
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <p className="text-xs text-amber-700 dark:text-amber-300">
-              ℹ️ This leave request will NOT deduct from your regular leave balance. It is a legally mandated entitlement. Your leave balance remains unaffected.
+              ℹ️ This leave request will NOT deduct from your regular leave
+              balance. It is a legally mandated entitlement. Your leave balance
+              remains unaffected.
             </p>
           </div>
 

@@ -16,7 +16,7 @@ export default function MandatedLeavesSection({
 
   // Filter to get only mandated leave types
   const mandatedLeaveTypes = leaveTypes.filter(
-    (type) => leavePolicy[type]?.category === "mandated"
+    (type) => leavePolicy[type]?.category === "mandated",
   );
 
   const handleOpenModal = (leaveType) => {
@@ -61,7 +61,10 @@ export default function MandatedLeavesSection({
                     {displayName}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Entitlement: <span className="font-medium">{policy.maxDays} days/year</span>
+                    Entitlement:{" "}
+                    <span className="font-medium">
+                      {policy.maxDays} days/year
+                    </span>
                   </p>
                 </div>
                 <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
@@ -80,7 +83,8 @@ export default function MandatedLeavesSection({
                     <p>
                       • Min. contributions:{" "}
                       <span className="font-medium">
-                        {policy.eligibilityRequirements.minContributionMonths} months
+                        {policy.eligibilityRequirements.minContributionMonths}{" "}
+                        months
                       </span>
                     </p>
                   )}
@@ -126,15 +130,15 @@ export default function MandatedLeavesSection({
         </h4>
         <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
           <li>
-            • These leaves are legally mandated benefits under Philippine labor laws
+            • These leaves are legally mandated benefits under Philippine labor
+            laws
           </li>
           <li>
-            • Filing dates are automatically computed excluding weekends (Sat-Sun)
+            • Filing dates are automatically computed excluding weekends
+            (Sat-Sun)
           </li>
           <li>• These leaves do NOT reduce your regular leave balance</li>
-          <li>
-            • Required documents and eligibility vary by leave type
-          </li>
+          <li>• Required documents and eligibility vary by leave type</li>
           <li>• Approval required from HR and/or Executive Director</li>
         </ul>
       </div>
