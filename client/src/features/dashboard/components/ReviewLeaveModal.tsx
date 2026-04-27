@@ -92,11 +92,11 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
       onClick={() => setReviewConfirm(null)}
     >
       <div
-        className="fixed left-[50%] top-[50%] z-[61] w-full max-w-xl translate-x-[-50%] translate-y-[-50%] rounded-xl border border-slate-200 bg-white shadow-xl"
+        className="fixed left-[50%] top-[50%] z-[61] w-full max-w-xl translate-x-[-50%] translate-y-[-50%] rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <h3 className="m-0 text-sm font-semibold text-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 px-4 py-3">
+          <h3 className="m-0 text-sm font-semibold text-slate-900 dark:text-gray-100">
             {reviewConfirm.status
               ? reviewConfirm.status === "Denied"
                 ? "Confirm Denial"
@@ -106,15 +106,15 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
           <button
             type="button"
             onClick={() => setReviewConfirm(null)}
-            className="rounded text-lg text-slate-500 transition-colors hover:text-slate-700"
+            className="rounded text-lg text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
           >
             ×
           </button>
         </div>
 
         <div className="max-h-[56vh] space-y-3 overflow-y-auto px-4 py-3">
-          <p className="m-0 text-xs text-slate-700">
-            <span className="font-semibold text-slate-900">
+          <p className="m-0 text-xs text-slate-700 dark:text-gray-300">
+            <span className="font-semibold text-slate-900 dark:text-gray-100">
               {reviewConfirm.employee.first_name}{" "}
               {reviewConfirm.employee.last_name}
             </span>{" "}
@@ -124,19 +124,19 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
           </p>
 
           {getReviewReason(reviewConfirm.employee) && (
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+            <div className="rounded-md border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-3 py-2">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-gray-400">
                 Stated Reason
               </p>
-              <p className="m-0 mt-1 text-xs text-slate-900">
+              <p className="m-0 mt-1 text-xs text-slate-900 dark:text-gray-100">
                 {getReviewReason(reviewConfirm.employee)}
               </p>
             </div>
           )}
 
           {getReviewFiles(reviewConfirm.employee).length > 0 && (
-            <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
-              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-800">
+            <div className="rounded-md border border-sky-200 dark:border-sky-900/30 bg-sky-50 dark:bg-sky-900/10 px-3 py-2">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-400">
                 Uploaded Files
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -146,7 +146,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     href={file.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center rounded-md border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-100"
+                    className="inline-flex items-center rounded-md border border-sky-200 dark:border-sky-900/50 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/30"
                   >
                     {String(file.label || file.key).replace(/_/g, " ")}
                   </a>
@@ -156,12 +156,12 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
           )}
 
           {reviewConfirm.status ? (
-            <p className="m-0 text-xs text-slate-700">
+            <p className="m-0 text-xs text-slate-700 dark:text-gray-300">
               Are you sure you want to {reviewConfirm.status.toLowerCase()}{" "}
               this leave request?
             </p>
           ) : (
-            <p className="m-0 text-xs text-slate-700">
+            <p className="m-0 text-xs text-slate-700 dark:text-gray-300">
               Review all details first, then choose Approve or Deny.
             </p>
           )}
@@ -177,17 +177,17 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
               const selectedDates = reviewConfirm.selectedDates || [];
 
               return (
-                <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-gray-900 p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                      <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
                         Select specific days to approve
                       </p>
-                      <p className="m-0 mt-1 text-[11px] text-slate-600">
+                      <p className="m-0 mt-1 text-[11px] text-slate-600 dark:text-gray-400">
                         Pick the working days that should move forward.
                       </p>
                     </div>
-                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                    <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                       {selectedDates.length} selected
                     </span>
                   </div>
@@ -201,7 +201,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                           selectedDates: [...availableDates],
                         })
                       }
-                      className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-50"
+                      className="rounded-md border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-400 transition hover:bg-amber-50 dark:hover:bg-amber-900/30"
                     >
                       Select All
                     </button>
@@ -213,7 +213,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                           selectedDates: [],
                         })
                       }
-                      className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                      className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-gray-300 transition hover:bg-slate-50 dark:hover:bg-gray-700"
                     >
                       Clear
                     </button>
@@ -224,7 +224,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                       {selectedDates.map((date: string) => (
                         <span
                           key={date}
-                          className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+                          className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300"
                         >
                           {formatLongDate(date)}
                         </span>
@@ -236,21 +236,21 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     {availableDates.map((date: string) => (
                       <label
                         key={date}
-                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-[11px] text-slate-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/70"
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-white dark:bg-gray-800/50 px-3 py-2.5 text-[11px] text-slate-700 dark:text-gray-300 shadow-sm transition hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/70 dark:hover:bg-amber-900/20"
                       >
                         <input
                           type="checkbox"
                           checked={selectedDates.includes(date)}
                           onChange={() => toggleApprovedDate(date)}
-                          className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                          className="mt-0.5 h-4 w-4 rounded border-amber-300 dark:border-gray-700 text-amber-600 focus:ring-amber-500 dark:bg-gray-900"
                         />
-                        <span className="leading-5 text-slate-800">
+                        <span className="leading-5 text-slate-800 dark:text-gray-200">
                           {formatLongDate(date)}
                         </span>
                       </label>
                     ))}
                   </div>
-                  <p className="m-0 mt-3 text-[11px] font-semibold text-amber-800">
+                  <p className="m-0 mt-3 text-[11px] font-semibold text-amber-800 dark:text-amber-400">
                     Selected: {selectedDates.length} day(s)
                   </p>
                 </div>
@@ -259,7 +259,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
 
           {reviewConfirm.status === "Denied" && (
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 Reason (required)
               </label>
               <textarea
@@ -271,18 +271,18 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     remarks: e.target.value,
                   })
                 }
-                className="w-full resize-none rounded-md border border-slate-300 px-2.5 py-2 text-xs outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-full resize-none rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-2 text-xs text-slate-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500"
                 placeholder="Enter reason for denial"
               />
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-4 py-3">
           <button
             type="button"
             onClick={() => setReviewConfirm(null)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:shadow active:translate-y-px"
+            className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-gray-700 hover:shadow active:translate-y-px"
           >
             Cancel
           </button>
@@ -297,7 +297,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     remarks: "",
                   })
                 }
-                className="rounded-md border border-red-200 bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 transition-all duration-200 hover:bg-red-200"
+                className="rounded-md border border-red-200 dark:border-red-900/30 bg-red-100 dark:bg-red-900/40 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400 transition-all duration-200 hover:bg-red-200 dark:hover:bg-red-900/60"
               >
                 Deny
               </button>
@@ -309,7 +309,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     status: "Approved",
                   })
                 }
-                className="rounded-md border border-green-200 bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
+                className="rounded-md border border-green-200 dark:border-green-900/30 bg-green-100 dark:bg-green-900/40 px-3 py-1.5 text-xs font-semibold text-green-700 dark:text-green-400 transition-all duration-200 hover:bg-green-200 dark:hover:bg-green-900/60"
               >
                 Approve
               </button>
@@ -325,7 +325,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     remarks: "",
                   })
                 }
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50"
+                className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Back
               </button>
@@ -341,6 +341,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
             </>
           )}
         </div>
+
       </div>
     </div>
   );

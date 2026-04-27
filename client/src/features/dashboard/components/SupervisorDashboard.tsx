@@ -334,7 +334,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               (teamPendingRequests as any[]).map((row) => (
                 <div
                   key={row.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                  className="rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="m-0 text-xs font-bold text-slate-900 dark:text-gray-100">
@@ -408,7 +408,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               myPendingRequests.map((row) => (
                 <div
                   key={row.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                  className="rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-2"
                 >
                   <div className="flex items-center justify-between">
                     <p className="m-0 text-xs font-bold text-slate-900 dark:text-gray-100">

@@ -586,7 +586,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke="var(--color-gray-800)"
                 />
                 <XAxis
                   dataKey="employee"
