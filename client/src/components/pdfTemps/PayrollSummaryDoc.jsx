@@ -310,18 +310,34 @@ export default function PayrollSummaryDoc({
         })}
 
         {/* Totals Row */}
-        <View style={[styles.tableRow, { backgroundColor: '#f3f4f6', borderTopWidth: 2, borderTopColor: '#374151' }]} wrap={false}>
+        <View
+          style={[
+            styles.tableRow,
+            {
+              backgroundColor: "#f3f4f6",
+              borderTopWidth: 2,
+              borderTopColor: "#374151",
+            },
+          ]}
+          wrap={false}
+        >
           <View style={styles.colName}>
-            <Text style={[styles.rowStrong, { fontSize: 9 }]}>TOTAL ({rows.length} employees)</Text>
+            <Text style={[styles.rowStrong, { fontSize: 9 }]}>
+              TOTAL ({rows.length} employees)
+            </Text>
           </View>
           <View style={styles.colBasic}>
             <Text style={styles.rowStrong}>
-              {money(rows.reduce((sum, r) => sum + Number(r.basic_pay || 0), 0))}
+              {money(
+                rows.reduce((sum, r) => sum + Number(r.basic_pay || 0), 0),
+              )}
             </Text>
           </View>
           <View style={styles.colIncentive}>
             <Text style={styles.rowStrong}>
-              {money(rows.reduce((sum, r) => sum + Number(r.incentives || 0), 0))}
+              {money(
+                rows.reduce((sum, r) => sum + Number(r.incentives || 0), 0),
+              )}
             </Text>
           </View>
           <View style={styles.colGross}>
@@ -341,7 +357,12 @@ export default function PayrollSummaryDoc({
           </View>
           <View style={styles.colDeduction}>
             <Text style={styles.rowStrong}>
-              {money(rows.reduce((sum, r) => sum + Number(r.absence_deductions || 0), 0))}
+              {money(
+                rows.reduce(
+                  (sum, r) => sum + Number(r.absence_deductions || 0),
+                  0,
+                ),
+              )}
             </Text>
           </View>
           <View style={styles.colNet}>

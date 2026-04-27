@@ -276,7 +276,10 @@ export default function Payroll({ shortcutMode = false }) {
   }, [employeesData]);
 
   const selectedSalaryEmployee = useMemo(
-    () => salaryEmployeeOptions.find((employee) => employee.emp_id === salaryForm.emp_id),
+    () =>
+      salaryEmployeeOptions.find(
+        (employee) => employee.emp_id === salaryForm.emp_id,
+      ),
     [salaryEmployeeOptions, salaryForm.emp_id],
   );
 
@@ -289,9 +292,12 @@ export default function Payroll({ shortcutMode = false }) {
   const handleSalaryEmployeeSearchChange = (value) => {
     setSalaryEmployeeSearch(value);
 
-    const normalized = String(value || "").trim().toLowerCase();
+    const normalized = String(value || "")
+      .trim()
+      .toLowerCase();
     const matchedEmployee = salaryEmployeeOptions.find(
-      (employee) => getSalaryEmployeeLabel(employee).toLowerCase() === normalized,
+      (employee) =>
+        getSalaryEmployeeLabel(employee).toLowerCase() === normalized,
     );
 
     setSalaryForm((prev) => ({
@@ -935,9 +941,7 @@ export default function Payroll({ shortcutMode = false }) {
 
                   <button
                     onClick={handleGeneratePayrollPdf}
-                    disabled={
-                      isGeneratingPayrollPdf || !payrollSummary.count
-                    }
+                    disabled={isGeneratingPayrollPdf || !payrollSummary.count}
                     className="px-4 py-2 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
                     <FileDown className="w-4 h-4" />
@@ -1345,14 +1349,17 @@ export default function Payroll({ shortcutMode = false }) {
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-1">
                         <p className="m-0">
                           <span className="font-semibold">Name:</span>{" "}
-                          {selectedSalaryEmployee.first_name} {selectedSalaryEmployee.last_name}
+                          {selectedSalaryEmployee.first_name}{" "}
+                          {selectedSalaryEmployee.last_name}
                         </p>
                         <p className="m-0">
                           <span className="font-semibold">Position:</span>{" "}
                           {selectedSalaryEmployee.position || "N/A"}
                         </p>
                         <p className="m-0">
-                          <span className="font-semibold">Current Base Salary:</span>{" "}
+                          <span className="font-semibold">
+                            Current Base Salary:
+                          </span>{" "}
                           {fmt(selectedSalaryEmployee.basic_pay)}
                         </p>
                       </div>
@@ -1529,7 +1536,9 @@ export default function Payroll({ shortcutMode = false }) {
                   </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-indigo-200 bg-indigo-50">
-                  <span className="font-semibold text-indigo-700">Total Salary (Gross)</span>
+                  <span className="font-semibold text-indigo-700">
+                    Total Salary (Gross)
+                  </span>
                   <span className="text-indigo-700 font-bold">
                     {fmt(salaryBreakdownModal.gross_pay)}
                   </span>
