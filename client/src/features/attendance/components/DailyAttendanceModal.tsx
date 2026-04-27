@@ -291,22 +291,21 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                                   .value as AttendanceStatus,
                               })
                             }
-                            disabled={
-                              !canEdit ||
-                              attendanceForm[emp.emp_id] === "Absent"
-                            }
-                            className={`border p-1 rounded outline-none font-semibold max-w-[140px] text-xs disabled:cursor-not-allowed disabled:opacity-60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
+                            disabled={!canEdit}
+                            className={`border p-1 rounded outline-none font-semibold max-w-[255px] text-xs disabled:cursor-not-allowed disabled:opacity-60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
                           >
                             <option value="">-- None --</option>
-                            <option value="Late">Late</option>
-                            <option value="Undertime">Undertime</option>
-                            <option value="Half-Day">Half-Day</option>
-                            <option value="No-notice-via-text">
-                              No notice via text
-                            </option>
-                            <option value="No-notice-email">
-                              No notice via email
-                            </option>
+                            {attendanceForm[emp.emp_id] === "Absent" ? (
+                              <option value="No-notice-via-text">
+                                No notice via text/No notice via email
+                              </option>
+                            ) : (
+                              <>
+                                <option value="Late">Late</option>
+                                <option value="Undertime">Undertime</option>
+                                <option value="Half-Day">Half-Day</option>
+                              </>
+                            )}
                           </select>
                         </td>
                       </tr>

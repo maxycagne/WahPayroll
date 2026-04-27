@@ -1088,10 +1088,10 @@ export default function Payroll({ shortcutMode = false }) {
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Incentives
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Total Salary (Gross)
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Deductions
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
@@ -1145,7 +1145,7 @@ export default function Payroll({ shortcutMode = false }) {
                     <tr>
                       <td
                         colSpan={isAdmin ? 8 : 7}
-                        className="px-6 py-8 text-center text-gray-500"
+                        className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No payroll records found for {period}. Click "Generate
                         Payroll" to calculate.
@@ -1199,10 +1199,10 @@ export default function Payroll({ shortcutMode = false }) {
                             {p.incentive_reasons || "No incentive type"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">
                           {fmt(p.gross_pay)}
                         </td>
-                        <td className="px-6 py-4 text-right text-red-600">
+                        <td className="px-6 py-4 text-right text-red-600 dark:text-red-400">
                           <div className="font-semibold">
                             {fmt(p.absence_deductions)}
                           </div>
@@ -1321,13 +1321,14 @@ export default function Payroll({ shortcutMode = false }) {
                   <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase mb-3 border-b border-gray-200 dark:border-gray-800 pb-2">
                     Update Base Salary
                   </h3>
-                  <p className="text-xs text-gray-600 mb-5">
-                    Select a specific employee and set their monthly base
-                    salary. This update only affects the selected employee.
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-5">
+                    Select a designation and position to enter the new monthly
+                    base salary. This will immediately apply to all employees
+                    currently holding this position.
                   </p>
                   <form onSubmit={handleBaseSalaryUpdate} className="space-y-5">
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                         Select Employee
                       </label>
                       <input
@@ -1337,38 +1338,18 @@ export default function Payroll({ shortcutMode = false }) {
                         onChange={(e) =>
                           handleSalaryEmployeeSearchChange(e.target.value)
                         }
-                        placeholder="Type employee name or ID"
-                        className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                        className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        placeholder="Type to search employee..."
                       />
                       <datalist id="salary-employee-options">
-                        {salaryEmployeeOptions.map((employee) => (
+                        {salaryEmployeeOptions.map((emp) => (
                           <option
-                            key={employee.emp_id}
-                            value={getSalaryEmployeeLabel(employee)}
+                            key={emp.emp_id}
+                            value={getSalaryEmployeeLabel(emp)}
                           />
                         ))}
                       </datalist>
                     </div>
-
-                    {selectedSalaryEmployee && (
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-1">
-                        <p className="m-0">
-                          <span className="font-semibold">Name:</span>{" "}
-                          {selectedSalaryEmployee.first_name}{" "}
-                          {selectedSalaryEmployee.last_name}
-                        </p>
-                        <p className="m-0">
-                          <span className="font-semibold">Position:</span>{" "}
-                          {selectedSalaryEmployee.position || "N/A"}
-                        </p>
-                        <p className="m-0">
-                          <span className="font-semibold">
-                            Current Base Salary:
-                          </span>{" "}
-                          {fmt(selectedSalaryEmployee.basic_pay)}
-                        </p>
-                      </div>
-                    )}
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
@@ -1544,11 +1525,11 @@ export default function Payroll({ shortcutMode = false }) {
                     {fmtSigned(salaryBreakdownModal.incentives)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-indigo-200 bg-indigo-50">
-                  <span className="font-semibold text-indigo-700">
+                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20">
+                  <span className="font-semibold text-green-700 dark:text-green-400">
                     Total Salary (Gross)
                   </span>
-                  <span className="text-indigo-700 font-bold">
+                  <span className="text-green-700 font-bold dark:text-green-400">
                     {fmt(salaryBreakdownModal.gross_pay)}
                   </span>
                 </div>
