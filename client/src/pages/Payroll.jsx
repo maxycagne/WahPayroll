@@ -237,8 +237,18 @@ export default function Payroll({ shortcutMode = false }) {
   });
 
   // --- QUERIES ---
-  const { data: responseData, isLoading: isLoadingPayroll, isFetching: isFetchingPayroll } = useQuery({
-    queryKey: ["payroll", period, currentPage, debouncedSearchTerm, designationFilter],
+  const {
+    data: responseData,
+    isLoading: isLoadingPayroll,
+    isFetching: isFetchingPayroll,
+  } = useQuery({
+    queryKey: [
+      "payroll",
+      period,
+      currentPage,
+      debouncedSearchTerm,
+      designationFilter,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         period,
@@ -804,7 +814,12 @@ export default function Payroll({ shortcutMode = false }) {
     payrollData.length > 0 &&
     payrollData.every((p) => selectedEmployees.has(p.emp_id));
 
-  const payrollSummary = unfilteredSummaryData?.summary || { count: 0, gross: 0, deductions: 0, net: 0 };
+  const payrollSummary = unfilteredSummaryData?.summary || {
+    count: 0,
+    gross: 0,
+    deductions: 0,
+    net: 0,
+  };
 
   const handleGeneratePayrollPdf = async () => {
     if (!isAdmin) return;
@@ -1049,10 +1064,10 @@ export default function Payroll({ shortcutMode = false }) {
                       Basic Pay
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                      Deductions
+                      Incentives
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
-                      Incentives
+                      Deductions
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
                       Net Pay
@@ -1069,16 +1084,32 @@ export default function Payroll({ shortcutMode = false }) {
                     Array.from({ length: itemsPerPage }).map((_, i) => (
                       <tr key={`skeleton-${i}`}>
                         {isAdmin && bulkAdjustmentMode && (
-                          <td className="px-6 py-4"><div className="h-4 w-4 rounded bg-gray-200 animate-pulse mx-auto" /></td>
+                          <td className="px-6 py-4">
+                            <div className="h-4 w-4 rounded bg-gray-200 animate-pulse mx-auto" />
+                          </td>
                         )}
-                        <td className="px-6 py-4"><div className="h-4 w-16 rounded-md bg-gray-200 animate-pulse" /></td>
-                        <td className="px-6 py-4"><div className="h-4 w-28 rounded-md bg-gray-200 animate-pulse" /></td>
-                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
-                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
-                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
-                        <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 w-16 rounded-md bg-gray-200 animate-pulse" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 w-28 rounded-md bg-gray-200 animate-pulse" />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        </td>
                         {isAdmin && !bulkAdjustmentMode && (
-                          <td className="px-6 py-4 text-right"><div className="h-4 w-24 rounded-md bg-gray-200 animate-pulse ml-auto" /></td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="h-4 w-24 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                          </td>
                         )}
                       </tr>
                     ))
@@ -1130,14 +1161,6 @@ export default function Payroll({ shortcutMode = false }) {
                         <td className="px-6 py-4 text-right">
                           {fmt(p.basic_pay)}
                         </td>
-                        <td className="px-6 py-4 text-right text-red-600">
-                          <div className="font-semibold">
-                            {fmt(p.absence_deductions)}
-                          </div>
-                          <div className="text-[11px] text-gray-500 mt-0.5">
-                            {p.deduction_reasons || "No deduction type"}
-                          </div>
-                        </td>
                         <td className="px-6 py-4 text-right">
                           <div
                             className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
@@ -1146,6 +1169,14 @@ export default function Payroll({ shortcutMode = false }) {
                           </div>
                           <div className="text-[11px] text-gray-500 mt-0.5">
                             {p.incentive_reasons || "No incentive type"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right text-red-600">
+                          <div className="font-semibold">
+                            {fmt(p.absence_deductions)}
+                          </div>
+                          <div className="text-[11px] text-gray-500 mt-0.5">
+                            {p.deduction_reasons || "No deduction type"}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right font-bold text-purple-700">
@@ -1195,11 +1226,16 @@ export default function Payroll({ shortcutMode = false }) {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200">
                   <div className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                    Showing{" "}
+                    <span className="font-medium">
+                      {(currentPage - 1) * itemsPerPage + 1}
+                    </span>{" "}
+                    to{" "}
                     <span className="font-medium">
                       {Math.min(currentPage * itemsPerPage, totalRecords)}
                     </span>{" "}
-                    of <span className="font-medium">{totalRecords}</span> results
+                    of <span className="font-medium">{totalRecords}</span>{" "}
+                    results
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1213,7 +1249,9 @@ export default function Payroll({ shortcutMode = false }) {
                       Page {currentPage} of {totalPages}
                     </div>
                     <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
                       disabled={currentPage === totalPages}
                       className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
                     >
