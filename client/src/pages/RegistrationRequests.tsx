@@ -1,3 +1,4 @@
+import React from "react";
 import { RegistrationRequestsTable } from "@/features/RegistrationRequests/components/RegistrationRequestsTable";
 
 const RegistrationRequests = () => {
