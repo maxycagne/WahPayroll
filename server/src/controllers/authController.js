@@ -68,6 +68,7 @@ export const login = async (req, res) => {
 
   try {
     await ensureEmployeeGovernmentColumns();
+    console.log(req.userAgent);
 
     const [rows] = await pool.query(
       `SELECT *
@@ -96,13 +97,23 @@ export const login = async (req, res) => {
     }
 
     if (user.is_active === 0 || user.is_active === false) {
-      return res.status(403).json({ message: "Your account is currently inactive. Please contact your administrator." });
+      return res.status(403).json({
+        message:
+          "Your account is currently inactive. Please contact your administrator.",
+      });
     }
 
     const role = normalizeRole(user.role);
 
-    const token = createAccessToken({ emp_id: user.emp_id, role });
-    const refreshToken = createRefreshToken({ emp_id: user.emp_id, role });
+    // const session = crypto.randomUUID();
+    const token = createAccessToken({
+      emp_id: user.emp_id,
+      role,
+    });
+    const refreshToken = createRefreshToken({
+      emp_id: user.emp_id,
+      role,
+    });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
       secure: false, // true in production with HTTPS
@@ -110,6 +121,12 @@ export const login = async (req, res) => {
       path: "/api/auth/refresh",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    // const payload = "random";
+    // await pool.query(
+    //   "INSERT INTO sessions (emp_id, jti, user_agent) VALUES (?,  ?, ?)",
+    //   [user.emp_id, , session, req.userAgent],
+    // );
 
     res.json({
       token,
@@ -128,7 +145,6 @@ export const login = async (req, res) => {
         tin: user.tin || "",
         sss_no: user.sss_no || "",
         pag_ibig_mid_no: user.pag_ibig_mid_no || "",
-        pag_ibig_rtn: user.pag_ibig_rtn || "",
         gsis_no: user.gsis_no || "",
       },
     });
@@ -156,7 +172,7 @@ export const getMe = async (req, res) => {
     await ensureEmployeeGovernmentColumns();
 
     const [rows] = await pool.query(
-      "SELECT emp_id, first_name, last_name, email, role, position, designation, hired_date, profile_photo, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no FROM employees WHERE emp_id = ?",
+      "SELECT emp_id, first_name, last_name, email, role, position, designation, hired_date, profile_photo, philhealth_no, tin, sss_no, pag_ibig_mid_no, gsis_no FROM employees WHERE emp_id = ?",
       [req.user.emp_id],
     );
 
@@ -181,7 +197,6 @@ export const getMe = async (req, res) => {
         tin: user.tin || "",
         sss_no: user.sss_no || "",
         pag_ibig_mid_no: user.pag_ibig_mid_no || "",
-        pag_ibig_rtn: user.pag_ibig_rtn || "",
         gsis_no: user.gsis_no || "",
       },
     });

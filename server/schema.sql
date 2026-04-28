@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS employees (
   tin VARCHAR(50),
   sss_no VARCHAR(50),
   pag_ibig_mid_no VARCHAR(50),
-  pag_ibig_rtn VARCHAR(50),
   gsis_no VARCHAR(50),
   dob DATE,
   hired_date DATE,
@@ -59,6 +58,7 @@ CREATE TABLE IF NOT EXISTS workweek_configs (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_effective_from (effective_from)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE IF NOT EXISTS leave_balances (
   emp_id VARCHAR(50) PRIMARY KEY,

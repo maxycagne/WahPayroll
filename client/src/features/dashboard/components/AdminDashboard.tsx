@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -40,6 +40,8 @@ import { ReviewLeaveModal } from "./ReviewLeaveModal";
 
 import { workweekConfigQueryOptions } from "@/features/leave/utils/query.utils";
 import { getWorkingDateRangeInclusive } from "@/features/leave/utils/date.utils";
+import useSocket from "@/hooks/useSocket";
+import useConnectionStore from "@/store/useConnectionStore";
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -49,6 +51,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   currentUser,
 }) => {
   const queryClient = useQueryClient();
+  const isConnected = useConnectionStore((state) => state.isConnected);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [approvedLeaves, setApprovedLeaves] = useState<Set<any>>(new Set());
   const [reviewConfirm, setReviewConfirm] = useState<any>(null);
@@ -84,13 +87,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const payrollData = payrollQuery.data?.data || payrollQuery.data || [];
   const attendanceSummary = attendanceSummaryQuery.data || [];
 
-  const activeEmployeeCount = useMemo(() => 
-    employeesData.filter(
-      (e: any) =>
-        String(e.status || "").toLowerCase() !== "inactive" &&
-        String(e.role || "").toLowerCase() !== "admin"
-    ).length,
-    [employeesData]
+  const activeEmployeeCount = useMemo(
+    () =>
+      employeesData.filter(
+        (e: any) =>
+          String(e.status || "").toLowerCase() !== "inactive" &&
+          String(e.role || "").toLowerCase() !== "admin",
+      ).length,
+    [employeesData],
   );
 
   const pendingLeaveCount = dashboardQuery.data?.pendingLeaves?.length || 0;
@@ -99,128 +103,148 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const pendingResignationCount =
     dashboardQuery.data?.resignations?.length || 0;
 
-  const payrollTotals = useMemo(() => 
-    (payrollData as any[]).reduce(
-      (acc, row) => {
-        acc.gross += Number(row.gross_pay || 0);
-        acc.net += Number(row.net_pay || 0);
-        acc.deductions += Number(row.absence_deductions || 0);
-        return acc;
+  const payrollTotals = useMemo(
+    () =>
+      (payrollData as any[]).reduce(
+        (acc, row) => {
+          acc.gross += Number(row.gross_pay || 0);
+          acc.net += Number(row.net_pay || 0);
+          acc.deductions += Number(row.absence_deductions || 0);
+          return acc;
+        },
+        { gross: 0, net: 0, deductions: 0 },
+      ),
+    [payrollData],
+  );
+
+  const attendanceTotals = useMemo(
+    () =>
+      (attendanceSummary as any[]).reduce(
+        (acc, item) => {
+          acc.present += Number(item.present_count || 0);
+          acc.absent += Number(item.absent_count || 0);
+          acc.late += Number(item.late_count || 0);
+          return acc;
+        },
+        { present: 0, absent: 0, late: 0 },
+      ),
+    [attendanceSummary],
+  );
+
+  const attendanceChartData = useMemo(
+    () =>
+      (attendanceSummary as any[])
+        .map((item) => ({
+          day: String(item.formatted_date || item.date || "").slice(8, 10),
+          Present: Number(item.present_count || 0),
+          Absent: Number(item.absent_count || 0),
+          Late: Number(item.late_count || 0),
+        }))
+        .sort((a, b) => Number(a.day) - Number(b.day)),
+    [attendanceSummary],
+  );
+
+  const payrollChartData = useMemo(
+    () =>
+      [...(payrollData as any[])]
+        .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
+        .slice(0, 5)
+        .map((row) => ({
+          employee: row.first_name || `${row.emp_id}`,
+          Net: Number(row.net_pay || 0),
+          Gross: Number(row.gross_pay || 0),
+        })),
+    [payrollData],
+  );
+
+  const quickActions = useMemo(
+    () => [
+      {
+        label: "Add Employee",
+        sub: "Open Add Employee modal",
+        action: "add-employee",
+        icon: <Users className="h-4 w-4" />,
+        color: "bg-blue-50 border-blue-200 text-blue-800",
       },
-      { gross: 0, net: 0, deductions: 0 }
-    ),
-    [payrollData]
-  );
-
-  const attendanceTotals = useMemo(() => 
-    (attendanceSummary as any[]).reduce(
-      (acc, item) => {
-        acc.present += Number(item.present_count || 0);
-        acc.absent += Number(item.absent_count || 0);
-        acc.late += Number(item.late_count || 0);
-        return acc;
+      {
+        label: "Take Attendance",
+        sub: "Open attendance modal",
+        action: "take-attendance",
+        icon: <Clock3 className="h-4 w-4" />,
+        color: "bg-emerald-50 border-emerald-200 text-emerald-800",
       },
-      { present: 0, absent: 0, late: 0 }
-    ),
-    [attendanceSummary]
+      {
+        label: "Salary Settings",
+        sub: "Open Position Salary Settings",
+        action: "salary-settings",
+        icon: <HandCoins className="h-4 w-4" />,
+        color: "bg-purple-50 border-purple-200 text-purple-800",
+      },
+    ],
+    [],
   );
 
-  const attendanceChartData = useMemo(() => 
-    (attendanceSummary as any[])
-      .map((item) => ({
-        day: String(item.formatted_date || item.date || "").slice(8, 10),
-        Present: Number(item.present_count || 0),
-        Absent: Number(item.absent_count || 0),
-        Late: Number(item.late_count || 0),
-      }))
-      .sort((a, b) => Number(a.day) - Number(b.day)),
-    [attendanceSummary]
+  const cards = useMemo(
+    () => [
+      {
+        label: "Active Employees",
+        value: activeEmployeeCount,
+        borderColor: "#0f766e",
+        icon: <Users className="h-4 w-4" />,
+        clickable: false,
+        modalKey: "",
+      },
+      {
+        label: "Pending Approvals",
+        value: pendingLeaveCount + pendingResignationCount,
+        borderColor: "#7c3aed",
+        icon: <FileClock className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "pending",
+      },
+      {
+        label: "On Leave",
+        value: onLeaveCount,
+        borderColor: "#d4a017",
+        icon: <Briefcase className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "leave",
+      },
+      {
+        label: "Absent",
+        value: absentsCount,
+        borderColor: "#c0392b",
+        icon: <UserMinus className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "absent",
+      },
+    ],
+    [
+      activeEmployeeCount,
+      pendingLeaveCount,
+      pendingResignationCount,
+      onLeaveCount,
+      absentsCount,
+    ],
   );
 
-  const payrollChartData = [...payrollData]
-    .sort((a, b) => Number(b.net_pay || 0) - Number(a.net_pay || 0))
-    .slice(0, 5)
-    .map((row) => ({
-      employee:
-        employeesData.find((e) => String(e.emp_id) === String(row.emp_id))
-          ?.first_name || `${row.emp_id}`,
-      Net: Number(row.net_pay || 0),
-      Gross: Number(row.gross_pay || 0),
-    }));
+  const handleUpdateLeaveStatus = useCallback(
+    async (id: string | number, payload: any) => {
+      try {
+        const res = await updateLeaveStatus(id, payload);
 
-  const quickActions = useMemo(() => [
-    {
-      label: "Add Employee",
-      sub: "Open Add Employee modal",
-      action: "add-employee",
-      icon: <Users className="h-4 w-4" />,
-      color: "bg-blue-50 border-blue-200 text-blue-800",
-    },
-    {
-      label: "Take Attendance",
-      sub: "Open attendance modal",
-      action: "take-attendance",
-      icon: <Clock3 className="h-4 w-4" />,
-      color: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    },
-    {
-      label: "Salary Settings",
-      sub: "Open Position Salary Settings",
-      action: "salary-settings",
-      icon: <HandCoins className="h-4 w-4" />,
-      color: "bg-purple-50 border-purple-200 text-purple-800",
-    },
-  ], []);
-
-  const cards = useMemo(() => [
-    {
-      label: "Active Employees",
-      value: activeEmployeeCount,
-      borderColor: "#0f766e",
-      icon: <Users className="h-4 w-4" />,
-      clickable: false,
-      modalKey: "",
-    },
-    {
-      label: "Pending Approvals",
-      value: pendingLeaveCount + pendingResignationCount,
-      borderColor: "#7c3aed",
-      icon: <FileClock className="h-4 w-4" />,
-      clickable: true,
-      modalKey: "pending",
-    },
-    {
-      label: "On Leave",
-      value: onLeaveCount,
-      borderColor: "#d4a017",
-      icon: <Briefcase className="h-4 w-4" />,
-      clickable: true,
-      modalKey: "leave",
-    },
-    {
-      label: "Absent",
-      value: absentsCount,
-      borderColor: "#c0392b",
-      icon: <UserMinus className="h-4 w-4" />,
-      clickable: true,
-      modalKey: "absent",
-    },
-  ], [activeEmployeeCount, pendingLeaveCount, pendingResignationCount, onLeaveCount, absentsCount]);
-
-  const handleUpdateLeaveStatus = useCallback(async (id: string | number, payload: any) => {
-    try {
-      const res = await updateLeaveStatus(id, payload);
-
-      if (res.status <= 201) {
-        setApprovedLeaves(prev => new Set([...Array.from(prev), id]));
-        queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
-      } else {
-        alert("Failed to update leave request");
+        if (res.status <= 201) {
+          setApprovedLeaves((prev) => new Set([...Array.from(prev), id]));
+          queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
+        } else {
+          alert("Failed to update leave request");
+        }
+      } catch (error) {
+        console.error("Error updating leave:", error);
       }
-    } catch (error) {
-      console.error("Error updating leave:", error);
-    }
-  }, [queryClient]);
+    },
+    [queryClient],
+  );
 
   const closeModal = useCallback(() => {
     setActiveModal(null);
@@ -245,26 +269,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   }, []);
 
-  const openLeaveDecisionConfirm = useCallback((employee: any) => {
-    const requestedDates = getWorkingDateRangeInclusive(
-      employee.date_from,
-      employee.date_to,
-      workweekConfigs
-    );
-    const totalDays = requestedDates.length;
+  const openLeaveDecisionConfirm = useCallback(
+    (employee: any) => {
+      const requestedDates = getWorkingDateRangeInclusive(
+        employee.date_from,
+        employee.date_to,
+        workweekConfigs,
+      );
+      const totalDays = requestedDates.length;
 
-    setReviewConfirm({
-      employee,
-      status: null,
-      totalDays,
-      isMultiDay: totalDays > 1,
-      selectedDates: requestedDates,
-      remarks: "",
-    });
-  }, [workweekConfigs]);
+      setReviewConfirm({
+        employee,
+        status: null,
+        totalDays,
+        isMultiDay: totalDays > 1,
+        selectedDates: requestedDates,
+        remarks: "",
+      });
+    },
+    [workweekConfigs],
+  );
 
   const toggleApprovedDate = useCallback((date: string) => {
-    setReviewConfirm(prev => {
+    setReviewConfirm((prev: any) => {
       if (!prev) return prev;
       const selected = new Set(prev.selectedDates || []);
       if (selected.has(date)) {
@@ -307,7 +334,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const requestedDates = getWorkingDateRangeInclusive(
       reviewConfirm.employee.date_from,
       reviewConfirm.employee.date_to,
-      workweekConfigs
+      workweekConfigs,
     );
     const selectedDates = reviewConfirm.selectedDates || [];
 
@@ -335,31 +362,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     attendanceSummaryQuery.isLoading
   )
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 font-semibold text-slate-700 dark:text-gray-300 shadow-sm">
         Loading Dashboard...
       </div>
     );
 
   return (
     <div className="max-w-full space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="m-0 text-[1.3rem] font-bold text-slate-900">
-              Admin Command Center
+            <h1 className="m-0 text-[1.3rem] font-bold text-slate-900 dark:text-gray-100">
+              {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
             </h1>
-            <p className="m-0 mt-0.5 text-xs text-slate-500">
+            <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
               Central overview for people, attendance, leave, payroll, and
               approvals.
             </p>
           </div>
-          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 transition-all duration-200 hover:border-violet-300 hover:bg-violet-50">
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300 transition-all duration-200 hover:border-violet-300 dark:hover:border-violet-900/50 hover:bg-violet-50 dark:hover:bg-violet-900/20">
             Payroll Period
             <input
               type="month"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-violet-500"
+              className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs font-semibold text-slate-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-violet-500"
             />
           </label>
         </div>
@@ -372,19 +399,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             type="button"
             onClick={() => c.clickable && setActiveModal(c.modalKey)}
             disabled={!c.clickable}
-            className={`group relative rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 ${
+            className={`group relative rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-all duration-200 ${
               c.clickable
-                ? "cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
+                ? "cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-gray-700 hover:shadow-md active:translate-y-0"
                 : "cursor-default"
             }`}
             style={{ boxShadow: `inset 0 3px 0 0 ${c.borderColor}` }}
           >
             <div className="p-3.5 text-left">
-              <p className="m-0 mb-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <p className="m-0 mb-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 <span style={{ color: c.borderColor }}>{c.icon}</span>
                 {c.label}
               </p>
-              <p className="m-0 mb-1 text-[11px] font-medium text-slate-600">
+              <p className="m-0 mb-1 text-[11px] font-medium text-slate-600 dark:text-gray-300">
                 {c.label === "Pending Approvals"
                   ? `${pendingLeaveCount} leaves + ${pendingResignationCount} resignations`
                   : c.label === "Absent"
@@ -400,7 +427,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {c.value}
               </p>
               {c.clickable && (
-                <p className="m-0 mt-1 text-[10px] text-slate-400 transition-colors group-hover:text-slate-500">
+                <p className="m-0 mt-1 text-[10px] text-slate-400 dark:text-gray-500 transition-colors group-hover:text-slate-500 dark:group-hover:text-gray-400">
                   Click to view
                 </p>
               )}
@@ -410,33 +437,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/20 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
             Total Gross Payroll
           </p>
-          <p className="m-0 mt-1 text-xl font-black text-emerald-800">
+          <p className="m-0 mt-1 text-xl font-black text-emerald-800 dark:text-emerald-300">
             ₱
             {payrollTotals.gross.toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
           </p>
         </div>
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-700">
+        <div className="rounded-xl border border-sky-200 dark:border-sky-900/30 bg-sky-50 dark:bg-sky-900/20 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
             Total Net Payroll
           </p>
-          <p className="m-0 mt-1 text-xl font-black text-sky-800">
+          <p className="m-0 mt-1 text-xl font-black text-sky-800 dark:text-sky-300">
             ₱
             {payrollTotals.net.toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
           </p>
         </div>
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
-          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 p-3 shadow-sm transition-all duration-200 hover:shadow-md">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
             Total Deductions
           </p>
-          <p className="m-0 mt-1 text-xl font-black text-rose-800">
+          <p className="m-0 mt-1 text-xl font-black text-rose-800 dark:text-rose-300">
             ₱
             {payrollTotals.deductions.toLocaleString(undefined, {
               maximumFractionDigits: 2,
@@ -445,12 +472,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="m-0 text-sm font-bold text-slate-900">
+          <h2 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Quick Actions
           </h2>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
             Core Modules
           </span>
         </div>
@@ -459,16 +486,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               key={action.action}
               onClick={() => openQuickAction(action)}
-              className={`group rounded-lg border p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${action.color}`}
+              className={`group rounded-lg border dark:border-gray-700 p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${action.color} dark:bg-gray-800 dark:text-gray-200`}
             >
               <span className="inline-flex items-center gap-2 text-xs font-bold">
                 {action.icon}
                 {action.label}
               </span>
-              <p className="m-0 mt-1 text-[11px] text-slate-600">
+              <p className="m-0 mt-1 text-[11px] text-slate-600 dark:text-gray-400">
                 {action.sub}
               </p>
-              <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+              <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-gray-400">
                 Open
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </span>
@@ -488,11 +515,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-          <h3 className="m-0 text-sm font-bold text-slate-900">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Attendance Overview ({period})
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-slate-500">
+          <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-400">
             Daily present, absent, and late counts for the selected month.
           </p>
           <div className="mt-3 h-[240px] w-full">
@@ -501,17 +528,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke="var(--color-gray-800)"
                 />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }} />
                 <YAxis
                   allowDecimals={false}
                   axisLine={false}
                   tickLine={false}
+                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }}
                 />
                 <RechartsTooltip
                   content={<AttendanceTooltip />}
-                  cursor={{ stroke: "#cbd5e1", strokeDasharray: "4 4" }}
+                  cursor={{ stroke: "var(--color-gray-700)", strokeDasharray: "4 4" }}
                 />
                 <DashboardLegend />
                 <Line
@@ -540,11 +568,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-          <h3 className="m-0 text-sm font-bold text-slate-900">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Payroll Snapshot ({period})
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-slate-500">
+          <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-400">
             Top employees by net pay for the selected payroll period.
           </p>
           <div className="mt-3 h-[240px] w-full">
@@ -555,15 +583,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   vertical={false}
                   stroke="#E2E8F0"
                 />
-                <XAxis dataKey="employee" axisLine={false} tickLine={false} />
+                <XAxis 
+                  dataKey="employee" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  interval={0} 
+                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }} 
+                />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `₱${Math.round(v / 1000)}k`}
+                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }}
                 />
                 <RechartsTooltip
                   content={<PayrollTooltip />}
-                  cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
+                  cursor={{ fill: "rgba(148, 163, 184, 0.05)" }}
                 />
                 <DashboardLegend />
                 <Bar dataKey="Gross" fill="#8b5cf6" radius={[4, 4, 0, 0]} />

@@ -34,7 +34,10 @@ export default function Login() {
         username,
         password,
       });
+
       const data = res.data;
+
+      if (res.status !== 200) throw new Error(data.message);
 
       handleLocalLogin(data.token, data.user);
       window.location.href =
@@ -43,9 +46,9 @@ export default function Login() {
   });
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-[#3d0d74] via-[#50109a] to-[#6c2eb9] p-4 md:p-8">
+    <div className="min-h-screen bg-linear-to-br from-[#3d0d74] via-[#50109a] to-[#6c2eb9] p-4 md:p-8 flex items-center justify-center">
       {}
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-white/20 bg-white/95 shadow-2xl md:h-[calc(100vh-4rem)] md:grid-cols-2">
+      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-white/20 bg-white/95 dark:bg-gray-900/95 shadow-2xl md:h-[calc(100vh-4rem)] md:grid-cols-2 w-full">
         <section className="relative hidden md:flex flex-col justify-between overflow-hidden bg-[#4a148c] p-10 text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.16),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.10),transparent_30%)]" />
 
@@ -94,13 +97,13 @@ export default function Login() {
         </section>
 
         {}
-        <section className="flex items-center justify-center overflow-y-auto bg-white p-6 md:p-10">
-          <Card className="w-full max-w-md border border-slate-200 shadow-none">
+        <section className="flex items-center justify-center overflow-y-auto bg-white dark:bg-gray-900 p-6 md:p-10">
+          <Card className="w-full max-w-md border border-slate-200 dark:border-gray-800 shadow-none bg-white dark:bg-gray-900">
             <CardHeader className="space-y-2 pb-4">
-              <CardTitle className="text-2xl font-semibold text-slate-900">
+              <CardTitle className="text-2xl font-semibold text-slate-900 dark:text-gray-100">
                 Sign in
               </CardTitle>
-              <CardDescription className="text-sm text-slate-500">
+              <CardDescription className="text-sm text-slate-500 dark:text-gray-400">
                 Enter your account credentials to continue.
               </CardDescription>
             </CardHeader>
@@ -116,7 +119,7 @@ export default function Login() {
                   <Field className="space-y-2">
                     <FieldLabel
                       htmlFor="username"
-                      className="text-sm font-medium text-slate-700"
+                      className="text-sm font-medium text-slate-700 dark:text-gray-300"
                     >
                       Username
                     </FieldLabel>
@@ -129,14 +132,14 @@ export default function Login() {
                         setUsername(e.target.value.replace(/\s+/g, ""))
                       }
                       required
-                      className="h-11 rounded-lg border-slate-300 bg-white"
+                      className="h-11 rounded-lg border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100"
                     />
                   </Field>
 
                   <Field className="space-y-2">
                     <FieldLabel
                       htmlFor="password"
-                      className="text-sm font-medium text-slate-700"
+                      className="text-sm font-medium text-slate-700 dark:text-gray-300"
                     >
                       Password
                     </FieldLabel>
@@ -148,12 +151,12 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="h-11 w-full rounded-lg border-slate-300 bg-white pr-10"
+                        className="h-11 w-full rounded-lg border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 pr-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none"
                         aria-label={
                           showPassword ? "Hide password" : "Show password"
                         }
@@ -168,33 +171,35 @@ export default function Login() {
                   </Field>
 
                   {login.error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      {login.error?.response?.data?.message ||
-                        login.error?.message ||
-                        "Invalid username or password."}
+                    <div className="rounded-lg border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+                      {login.error?.response?.status === 429
+                        ? `${login.error.response.data.error} Wait ${login.error.response.data.retryAfter}.`
+                        : login.error?.response?.data?.message ||
+                          login.error?.message ||
+                          "Invalid username or password."}
                     </div>
                   )}
 
                   <Button
                     type="submit"
                     disabled={login.isPending}
-                    className="h-11 w-full rounded-lg bg-[#5a1ea2] text-sm font-semibold text-white hover:bg-[#4b1788]"
+                    className="h-11 w-full rounded-lg bg-[#5a1ea2] text-sm font-semibold text-white hover:bg-[#4b1788] dark:bg-[#6c2eb9] dark:hover:bg-[#5a1ea2]"
                   >
                     {login.isPending ? "Signing in..." : "Sign in"}
                   </Button>
 
-                  <div className="text-center text-sm text-slate-600 mt-2">
+                  <div className="text-center text-sm text-slate-600 dark:text-gray-400 mt-2">
                     Don't have an account?{" "}
                     <a
                       href="/register"
-                      className="font-medium text-[#5a1ea2] hover:text-[#4b1788]"
+                      className="font-medium text-[#5a1ea2] dark:text-[#8e44ad] hover:text-[#4b1788] dark:hover:text-[#9b59b6]"
                     >
                       Register here
                     </a>
                   </div>
 
-                  <Separator />
-                  <p className="m-0 text-center text-xs text-slate-500">
+                  <Separator className="dark:bg-gray-800" />
+                  <p className="m-0 text-center text-xs text-slate-500 dark:text-gray-500">
                     Protected system access for authorized WAH personnel.
                   </p>
                 </FieldGroup>

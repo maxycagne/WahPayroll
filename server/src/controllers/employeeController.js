@@ -636,15 +636,13 @@ export const ensureFileTemplatesTable = async (connection = pool) => {
   `);
 };
 
-
 export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
   const governmentColumns = [
     { name: "philhealth_no", type: "VARCHAR(50)", after: "email" },
     { name: "tin", type: "VARCHAR(50)", after: "philhealth_no" },
     { name: "sss_no", type: "VARCHAR(50)", after: "tin" },
     { name: "pag_ibig_mid_no", type: "VARCHAR(50)", after: "sss_no" },
-    { name: "pag_ibig_rtn", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
-    { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_rtn" },
+    { name: "gsis_no", type: "VARCHAR(50)", after: "pag_ibig_mid_no" },
     { name: "profile_photo", type: "VARCHAR(255)", after: "gsis_no" },
     {
       name: "registration_status",
@@ -654,7 +652,11 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     { name: "reviewed_by", type: "VARCHAR(50)", after: "registration_status" },
     { name: "reviewed_at", type: "TIMESTAMP NULL", after: "reviewed_by" },
     { name: "review_remarks", type: "TEXT", after: "reviewed_at" },
-    { name: "is_active", type: "BOOLEAN NOT NULL DEFAULT TRUE", after: "registration_status" },
+    {
+      name: "is_active",
+      type: "BOOLEAN NOT NULL DEFAULT TRUE",
+      after: "registration_status",
+    },
   ];
 
   for (const column of governmentColumns) {
@@ -782,7 +784,11 @@ export const getWorkweekMultiplierForDate = async (connection, date) => {
   return 1.0;
 };
 
-export const calculateLeaveCreditsInternal = async (connection, fromDate, toDate) => {
+export const calculateLeaveCreditsInternal = async (
+  connection,
+  fromDate,
+  toDate,
+) => {
   const start = new Date(fromDate);
   const end = new Date(toDate);
   let totalCredits = 0;
@@ -792,8 +798,11 @@ export const calculateLeaveCreditsInternal = async (connection, fromDate, toDate
     const dayOfWeek = current.getDay();
     // Only count Mon-Fri as potential work days (Sat=6, Sun=0)
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      const multiplier = await getWorkweekMultiplierForDate(connection, current);
-      
+      const multiplier = await getWorkweekMultiplierForDate(
+        connection,
+        current,
+      );
+
       // If 4-day, Friday (5) is also a non-working day
       const isFriday = dayOfWeek === 5;
       if (multiplier === 1.25 && isFriday) {
@@ -941,12 +950,8 @@ const getAccessibleEmployeesForFileManagement = async (connection, viewer) => {
     (column) => column.COLUMN_NAME === "updated_at",
   );
 
-  const createdAtSelect = hasCreatedAt
-    ? "created_at"
-    : "NULL AS created_at";
-  const updatedAtSelect = hasUpdatedAt
-    ? "updated_at"
-    : "NULL AS updated_at";
+  const createdAtSelect = hasCreatedAt ? "created_at" : "NULL AS created_at";
+  const updatedAtSelect = hasUpdatedAt ? "updated_at" : "NULL AS updated_at";
 
   let whereClause = `
     WHERE LOWER(COALESCE(role, '')) <> 'admin'
@@ -1118,12 +1123,16 @@ export const getFileManagementInventory = async (req, res) => {
     resignationRows.forEach((row) => {
       const employeeName = safeEmployeeDisplayName(row);
       const uploadedAt = row.updated_at || row.created_at || null;
-      const normalizedStatus = String(row.status || "").trim().toLowerCase();
+      const normalizedStatus = String(row.status || "")
+        .trim()
+        .toLowerCase();
       const isApproved =
         normalizedStatus === "approved" ||
         normalizedStatus === "approved resignation";
       const leavingReasons = parseJsonArraySafe(row.leaving_reasons_json);
-      const interviewAnswers = parseJsonArraySafe(row.exit_interview_answers_json);
+      const interviewAnswers = parseJsonArraySafe(
+        row.exit_interview_answers_json,
+      );
 
       const baseDocumentData = {
         resignation_id: row.id,
@@ -1236,7 +1245,9 @@ export const getFileManagementInventory = async (req, res) => {
     });
 
     files.sort(
-      (a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime(),
+      (a, b) =>
+        new Date(b.uploaded_at || 0).getTime() -
+        new Date(a.uploaded_at || 0).getTime(),
     );
 
     const filesByEmployee = employees.map((employee) => ({
@@ -1366,7 +1377,9 @@ export const replaceFileTemplate = async (req, res) => {
     }
 
     const existing = rows[0];
-    const nextOriginalName = String(req.file.originalname || existing.original_name || "template").trim();
+    const nextOriginalName = String(
+      req.file.originalname || existing.original_name || "template",
+    ).trim();
     const nextStorageKey = await saveDbStoredFile({
       originalName: nextOriginalName,
       mimeType: String(req.file.mimetype || "application/octet-stream"),
@@ -1766,7 +1779,6 @@ export const getConvertedAbsenceSummary = async (periodStart, periodEnd) => {
   }, {});
 };
 
-
 // --- EMPLOYEES ---
 export const createEmployee = async (req, res) => {
   // 1. Add middle_initial to the destructured body
@@ -1783,7 +1795,6 @@ export const createEmployee = async (req, res) => {
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
     dob,
     hired_date,
@@ -1873,8 +1884,8 @@ export const createEmployee = async (req, res) => {
 
     await pool.query(
       // 2. Add middle_initial to the INSERT statement and add an extra '?'
-      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, pag_ibig_rtn, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
+      `INSERT INTO employees (emp_id, first_name, last_name, middle_initial, designation, position, status, email, philhealth_no, tin, sss_no, pag_ibig_mid_no, gsis_no, dob, hired_date, password, basic_pay, role, registration_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')`,
       // 3. Add middle_initial to the array of values being saved
       [
         emp_id,
@@ -1889,7 +1900,6 @@ export const createEmployee = async (req, res) => {
         tin || null,
         sss_no || null,
         pag_ibig_mid_no || null,
-        pag_ibig_rtn || null,
         gsis_no || null,
         normalizedDob,
         normalizedHiredDate,
@@ -1922,7 +1932,6 @@ export const updateEmployee = async (req, res) => {
     tin,
     sss_no,
     pag_ibig_mid_no,
-    pag_ibig_rtn,
     gsis_no,
     dob,
     hired_date,
@@ -1947,7 +1956,6 @@ export const updateEmployee = async (req, res) => {
            tin = ?,
            sss_no = ?,
            pag_ibig_mid_no = ?,
-           pag_ibig_rtn = ?,
            gsis_no = ?,
            dob = ?,
              hired_date = ?,
@@ -1965,7 +1973,6 @@ export const updateEmployee = async (req, res) => {
         tin || null,
         sss_no || null,
         pag_ibig_mid_no || null,
-        pag_ibig_rtn || null,
         gsis_no || null,
         normalizedDob,
         normalizedHiredDate,
@@ -2037,14 +2044,16 @@ export const toggleEmployeeActiveStatus = async (req, res) => {
   try {
     const [result] = await pool.query(
       "UPDATE employees SET is_active = ? WHERE emp_id = ?",
-      [is_active, id]
+      [is_active, id],
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    res.json({ message: `Employee marked as ${is_active ? 'Active' : 'Inactive'}` });
+    res.json({
+      message: `Employee marked as ${is_active ? "Active" : "Inactive"}`,
+    });
   } catch (error) {
     console.error("DB Error in toggleEmployeeActiveStatus:", error);
     res.status(500).json({ message: "Error toggling employee status" });
@@ -3717,40 +3726,37 @@ export const generatePayroll = async (req, res) => {
   }
 };
 export const updateBaseSalaryByPosition = async (req, res) => {
-  const { position, amount } = req.body;
+  const { emp_id, amount } = req.body;
 
-  if (!position || amount === undefined || amount === null) {
-    return res
-      .status(400)
-      .json({ message: "Position and amount are required" });
+  if (!emp_id || amount === undefined || amount === null) {
+    return res.status(400).json({ message: "Employee and amount are required" });
+  }
+
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount) || numericAmount < 0) {
+    return res.status(400).json({ message: "Amount must be a valid non-negative number" });
   }
 
   try {
-    await ensurePositionSalarySettingsTable();
-
-    await pool.query(
-      `INSERT INTO position_salary_settings (position, amount)
-       VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
-      [position, amount],
+    const [employeeResult] = await pool.query(
+      "UPDATE employees SET basic_pay = ? WHERE emp_id = ?",
+      [numericAmount, emp_id],
     );
 
-    // 1. Fixed: Changed 'base_salary' to 'basic_pay' for the employees table
-    await pool.query("UPDATE employees SET basic_pay = ? WHERE position = ?", [
-      amount,
-      position,
-    ]);
+    if (!employeeResult?.affectedRows) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
 
-    // 2. Update the payroll table as well
     await pool.query(
-      `UPDATE payroll p
-       JOIN employees e ON p.emp_id = e.emp_id
-       SET p.basic_pay = ?
-       WHERE e.position = ?`,
-      [amount, position],
+      `UPDATE payroll
+       SET basic_pay = ?,
+           gross_pay = ROUND(? + COALESCE(incentives, 0), 2),
+           net_pay = ROUND((? + COALESCE(incentives, 0)) - COALESCE(absence_deductions, 0), 2)
+       WHERE emp_id = ?`,
+      [numericAmount, numericAmount, numericAmount, emp_id],
     );
 
-    res.json({ message: "Base salary updated successfully" });
+    res.json({ message: "Base salary updated successfully for employee" });
   } catch (error) {
     console.error("DB Error in updateBaseSalaryByPosition:", error);
     res.status(500).json({ message: "Error updating base salary" });
@@ -4283,7 +4289,9 @@ const ensureProfileColumn = async (connection) => {
 export const uploadProfilePhoto = async (req, res) => {
   try {
     const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
-    const targetEmpId = String(req.params?.emp_id || req.user?.emp_id || "").trim();
+    const targetEmpId = String(
+      req.params?.emp_id || req.user?.emp_id || "",
+    ).trim();
 
     if (!viewer) {
       if (req.file?.path) {
@@ -4312,8 +4320,12 @@ export const uploadProfilePhoto = async (req, res) => {
       viewer.role === "HR" ||
       viewer.emp_id === targetEmpId ||
       (viewer.role === "Supervisor" &&
-        String(viewer.designation || "").trim().toLowerCase() ===
-          String(targetEmployee.designation || "").trim().toLowerCase());
+        String(viewer.designation || "")
+          .trim()
+          .toLowerCase() ===
+          String(targetEmployee.designation || "")
+            .trim()
+            .toLowerCase());
 
     if (!canManageTarget) {
       if (req.file?.path) {
@@ -4368,7 +4380,9 @@ export const uploadProfilePhoto = async (req, res) => {
 
 export const removeProfilePhoto = async (req, res) => {
   try {
-    const targetEmpId = String(req.params?.emp_id || req.user?.emp_id || "").trim();
+    const targetEmpId = String(
+      req.params?.emp_id || req.user?.emp_id || "",
+    ).trim();
     if (!targetEmpId) {
       return res.status(400).json({ message: "Target employee is required" });
     }
@@ -4388,8 +4402,12 @@ export const removeProfilePhoto = async (req, res) => {
       viewer.role === "HR" ||
       viewer.emp_id === targetEmpId ||
       (viewer.role === "Supervisor" &&
-        String(viewer.designation || "").trim().toLowerCase() ===
-          String(targetEmployee.designation || "").trim().toLowerCase());
+        String(viewer.designation || "")
+          .trim()
+          .toLowerCase() ===
+          String(targetEmployee.designation || "")
+            .trim()
+            .toLowerCase());
 
     if (!canManageTarget) {
       return res.status(403).json({ message: "You cannot remove this file" });
@@ -4401,9 +4419,10 @@ export const removeProfilePhoto = async (req, res) => {
     );
 
     const oldPhotoPath = String(rows?.[0]?.profile_photo || "").trim();
-    await pool.query("UPDATE employees SET profile_photo = NULL WHERE emp_id = ?", [
-      targetEmpId,
-    ]);
+    await pool.query(
+      "UPDATE employees SET profile_photo = NULL WHERE emp_id = ?",
+      [targetEmpId],
+    );
 
     if (oldPhotoPath) {
       const fullOldPath = path.join(process.cwd(), oldPhotoPath);
@@ -4467,31 +4486,40 @@ export const replaceResignationFile = async (req, res) => {
       requester.role === "HR" ||
       requester.emp_id === target.emp_id ||
       (requester.role === "Supervisor" &&
-        String(requester.designation || "").trim().toLowerCase() ===
-          String(target.designation || "").trim().toLowerCase() &&
+        String(requester.designation || "")
+          .trim()
+          .toLowerCase() ===
+          String(target.designation || "")
+            .trim()
+            .toLowerCase() &&
         targetRole !== "Admin");
 
     if (!canManageTarget) {
       return res.status(403).json({ message: "You cannot replace this file" });
     }
 
-    await pool.query(
-      `UPDATE resignations SET ${columnName} = ? WHERE id = ?`,
-      [newFileKey, resignationId],
-    );
+    await pool.query(`UPDATE resignations SET ${columnName} = ? WHERE id = ?`, [
+      newFileKey,
+      resignationId,
+    ]);
 
     if (oldFileKey && oldFileKey !== newFileKey) {
       try {
         await deleteS3ObjectQuietly(oldFileKey);
       } catch (deleteError) {
-        console.error("S3 cleanup error in replaceResignationFile:", deleteError);
+        console.error(
+          "S3 cleanup error in replaceResignationFile:",
+          deleteError,
+        );
       }
     }
 
     return res.json({ message: "Resignation file replaced successfully" });
   } catch (error) {
     console.error("DB Error in replaceResignationFile:", error);
-    return res.status(500).json({ message: "Error replacing resignation file" });
+    return res
+      .status(500)
+      .json({ message: "Error replacing resignation file" });
   }
 };
 
@@ -4538,8 +4566,12 @@ export const removeResignationFile = async (req, res) => {
       requester.role === "HR" ||
       requester.emp_id === target.emp_id ||
       (requester.role === "Supervisor" &&
-        String(requester.designation || "").trim().toLowerCase() ===
-          String(target.designation || "").trim().toLowerCase() &&
+        String(requester.designation || "")
+          .trim()
+          .toLowerCase() ===
+          String(target.designation || "")
+            .trim()
+            .toLowerCase() &&
         targetRole !== "Admin");
 
     if (!canManageTarget) {
@@ -4554,15 +4586,19 @@ export const removeResignationFile = async (req, res) => {
           : target.clearance_file_key,
       ).trim();
 
-    await pool.query(`UPDATE resignations SET ${columnName} = NULL WHERE id = ?`, [
-      resignationId,
-    ]);
+    await pool.query(
+      `UPDATE resignations SET ${columnName} = NULL WHERE id = ?`,
+      [resignationId],
+    );
 
     if (oldFileKey) {
       try {
         await deleteS3ObjectQuietly(oldFileKey);
       } catch (deleteError) {
-        console.error("S3 cleanup error in removeResignationFile:", deleteError);
+        console.error(
+          "S3 cleanup error in removeResignationFile:",
+          deleteError,
+        );
       }
     }
 
@@ -4572,5 +4608,3 @@ export const removeResignationFile = async (req, res) => {
     return res.status(500).json({ message: "Error removing resignation file" });
   }
 };
-
-

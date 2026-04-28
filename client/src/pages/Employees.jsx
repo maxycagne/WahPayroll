@@ -6,6 +6,7 @@ import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "@/hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { User } from "lucide-react";
+import socket from "@/hooks/io";
 
 const designationMap = {
   Operations: [
@@ -81,7 +82,6 @@ export default function Employees({ shortcutMode = false }) {
     tin: "",
     sss_no: "",
     pag_ibig_mid_no: "",
-    pag_ibig_rtn: "",
     gsis_no: "",
     dob: "",
     hired_date: "",
@@ -109,7 +109,11 @@ export default function Employees({ shortcutMode = false }) {
   }, [debouncedSearchTerm, filterStatus, filterDesignation]);
 
   // --- QUERIES ---
-  const { data: responseData, isLoading, isFetching } = useQuery({
+  const {
+    data: responseData,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: [
       "employees",
       currentPage,
@@ -259,20 +263,17 @@ export default function Employees({ shortcutMode = false }) {
       tin: "",
       sss_no: "",
       pag_ibig_mid_no: "",
-      pag_ibig_rtn: "",
       gsis_no: "",
       dob: "",
       hired_date: "",
     });
-
- 
 
   return (
     <div className="max-w-full">
       {!shortcutMode && (
         <>
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Employee Management
             </h1>
             {canAddEmployee && (
@@ -286,16 +287,16 @@ export default function Employees({ shortcutMode = false }) {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex flex-wrap gap-4 mb-6 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
             <input
               type="text"
               placeholder="Search ID or Name..."
-              className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="flex-1 min-w-[200px] border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <select
-              className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
               value={filterDesignation}
               onChange={(e) => setFilterDesignation(e.target.value)}
             >
@@ -307,7 +308,7 @@ export default function Employees({ shortcutMode = false }) {
               ))}
             </select>
             <select
-              className="border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -320,185 +321,207 @@ export default function Employees({ shortcutMode = false }) {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
-            {isLoading || isFetching ? <p>loading</p> : (
-     <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 font-bold text-gray-700">ID</th>
-                  <th className="px-6 py-3 font-bold text-gray-700">
-                    Full Name
-                  </th>
-                  <th className="px-6 py-3 font-bold text-gray-700">
-                    Designation / Position
-                  </th>
-                  <th className="px-6 py-3 font-bold text-gray-700">
-                    Email Address
-                  </th>
-                  <th className="px-6 py-3 font-bold text-gray-700">Status</th>
-                  {canAddEmployee && (
-                    <th className="px-6 py-3 font-bold text-gray-700 text-center w-20">
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {employees.length === 0 ? (
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-visible">
+            {isLoading || isFetching ? (
+              <div className="p-12 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                  <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+                </div>
+                <p className="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400">Loading employees...</p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800">
                   <tr>
-                    <td
-                      colSpan={canAddEmployee ? 6 : 5}
-                      className="px-6 py-12 text-center"
-                    >
-                      <p className="m-0 text-sm font-semibold text-gray-500">
-                        No employees found
-                      </p>
-                      <p className="m-0 mt-1 text-xs text-gray-400">
-                        Try adjusting your search or filter criteria.
-                      </p>
-                    </td>
+                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">ID</th>
+                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                      Full Name
+                    </th>
+                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                      Designation / Position
+                    </th>
+                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                      Email Address
+                    </th>
+                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                      Status
+                    </th>
+                    {canAddEmployee && (
+                      <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300 text-center w-20">
+                        Actions
+                      </th>
+                    )}
                   </tr>
-                ) : (
-                  employees.map((emp) => (
-                    <tr
-                      key={emp.emp_id}
-                      onClick={() => setSelectedEmployeeDetails(emp)}
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {/* The Name */}
-                          <div className="font-semibold text-gray-800">
-                            {emp.last_name}, {emp.first_name}{" "}
-                            {emp.middle_initial ? `${emp.middle_initial}.` : ""}
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {employees.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={canAddEmployee ? 6 : 5}
+                        className="px-6 py-12 text-center"
+                      >
+                        <p className="m-0 text-sm font-semibold text-gray-500">
+                          No employees found
+                        </p>
+                        <p className="m-0 mt-1 text-xs text-gray-400">
+                          Try adjusting your search or filter criteria.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    employees.map((emp) => (
+                      <tr
+                        key={emp.emp_id}
+                        onClick={() => setSelectedEmployeeDetails(emp)}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                      >
+                        <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {/* The Name */}
+                            <div className="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                              {emp.last_name}, {emp.first_name}{" "}
+                              {emp.middle_initial
+                                ? `${emp.middle_initial}.`
+                                : ""}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        <div className="font-medium text-gray-900">
-                          {emp.designation}
-                        </div>
-                        <div className="text-xs opacity-75">{emp.position}</div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{emp.email}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-2">
-                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 inline-block w-fit">
-                            {emp.status}
-                          </span>
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
-                              emp.is_active
-                                ? "bg-green-50 text-green-700 border-green-100"
-                                : "bg-red-50 text-red-700 border-red-100"
-                            }`}
-                          >
-                            {emp.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </div>
-                      </td>
-                      {canAddEmployee && (
-                        <td
-                          className="px-6 py-4 text-center relative"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() =>
-                              setActiveMenu(
-                                activeMenu === emp.emp_id ? null : emp.emp_id,
-                              )
-                            }
-                            className="p-1 rounded-full hover:bg-gray-200 transition-colors border-0 bg-transparent cursor-pointer text-gray-500"
-                          >
-                            <svg
-                              width="20"
-                              height="20"
-                              fill="currentColor"
-                              viewBox="0 0 16 16"
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
+                            {emp.designation}
+                          </div>
+                          <div className="text-xs opacity-75">
+                            {emp.position}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{emp.email}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-2">
+                            <span className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-bold border border-blue-100 dark:border-blue-900/30 inline-block w-fit">
+                              {emp.status}
+                            </span>
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
+                                emp.is_active
+                                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/30"
+                                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
+                              }`}
                             >
-                              <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                            </svg>
-                          </button>
+                              {emp.is_active ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                        </td>
+                        {canAddEmployee && (
+                          <td
+                            className="px-6 py-4 text-center relative"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() =>
+                                setActiveMenu(
+                                  activeMenu === emp.emp_id ? null : emp.emp_id,
+                                )
+                              }
+                              className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-0 bg-transparent cursor-pointer text-gray-500 dark:text-gray-400"
+                            >
+                              <svg
+                                width="20"
+                                height="20"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                              >
+                                <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                              </svg>
+                            </button>
 
-                          {/* Action Menu Dropdown */}
-                          {activeMenu === emp.emp_id && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-10"
-                                onClick={() => setActiveMenu(null)}
-                              ></div>
-                              <div className="absolute right-12 top-4 z-20 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
-                                <button
-                                  onClick={() => {
-                                    setEditEmployee(emp);
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium"
-                                >
-                                  Edit Info
-                                </button>
-                                {canResetPassword && (
+                            {/* Action Menu Dropdown */}
+                            {activeMenu === emp.emp_id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setActiveMenu(null)}
+                                ></div>
+                                <div className="absolute right-12 top-4 z-20 w-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl py-1 animate-in fade-in zoom-in duration-100">
                                   <button
                                     onClick={() => {
+                                      setEditEmployee(emp);
                                       setActiveMenu(null);
-                                      setResetConfirm(emp);
                                     }}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-700 dark:hover:text-purple-300 border-0 bg-transparent cursor-pointer font-medium"
                                   >
-                                    Reset Password
+                                    Edit Info
                                   </button>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    toggleActiveMutation.mutate({
-                                      id: emp.emp_id,
-                                      is_active: !emp.is_active,
-                                    });
-                                    setActiveMenu(null);
-                                  }}
-                                  disabled={toggleActiveMutation.isPending}
-                                  className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
-                                    emp.is_active
-                                      ? "text-orange-600 hover:bg-orange-50"
-                                      : "text-green-600 hover:bg-green-50"
-                                  }`}
-                                >
-                                  {emp.is_active
-                                    ? "Mark Inactive"
-                                    : "Mark Active"}
-                                </button>
-                                <hr className="my-1 border-gray-100" />
-                                <button
-                                  onClick={() => {
-                                    setDeleteConfirm(emp);
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-0 bg-transparent cursor-pointer font-medium"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                                  {canResetPassword && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveMenu(null);
+                                        setResetConfirm(emp);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-700 dark:hover:text-purple-300 border-0 bg-transparent cursor-pointer font-medium disabled:opacity-50"
+                                    >
+                                      Reset Password
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      if (emp.is_active) {
+                                        socket.emit("suspend-user", emp.emp_id);
+                                        queryClient.invalidateQueries([
+                                          "employees",
+                                        ]);
+                                        return;
+                                      }
+                                      // make emp active again
+                                      toggleActiveMutation.mutate({
+                                        id: emp.emp_id,
+                                        is_active: true,
+                                      });
+                                      setActiveMenu(null);
+                                    }}
+                                    disabled={toggleActiveMutation.isPending}
+                                    className={`w-full text-left px-4 py-2 text-sm border-0 bg-transparent cursor-pointer font-medium ${
+                                      emp.is_active
+                                        ? "text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                                        : "text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                    }`}
+                                  >
+                                    {emp.is_active
+                                      ? "Mark Inactive"
+                                      : "Mark Active"}
+                                  </button>
+                                  <hr className="my-1 border-gray-100 dark:border-gray-800" />
+                                  <button
+                                    onClick={() => {
+                                      setDeleteConfirm(emp);
+                                      setActiveMenu(null);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border-0 bg-transparent cursor-pointer font-medium"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             )}
-       
           </div>
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-4 py-3 border border-t-0 border-gray-200 rounded-b-xl">
-              <div className="text-sm text-gray-700">
+            <div className="flex items-center justify-between bg-white dark:bg-gray-900 px-4 py-3 border border-t-0 border-gray-200 dark:border-gray-800 rounded-b-xl">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
                 Showing{" "}
                 <span className="font-medium">
-                  {(currentPage - 1) * itemsPerPage + 1}
+                  {totalRecords === 0
+                    ? 0
+                    : (currentPage - 1) * itemsPerPage + 1}
                 </span>{" "}
                 to{" "}
                 <span className="font-medium">
@@ -510,11 +533,11 @@ export default function Employees({ shortcutMode = false }) {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
                 >
                   Previous
                 </button>
-                <div className="text-sm font-medium text-gray-700 px-2">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
                   Page {currentPage} of {totalPages}
                 </div>
                 <button
@@ -522,7 +545,7 @@ export default function Employees({ shortcutMode = false }) {
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white cursor-pointer"
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
                 >
                   Next
                 </button>
@@ -592,15 +615,15 @@ export default function Employees({ shortcutMode = false }) {
 
       {/* Delete Confirmation remains unchanged */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-200 dark:border-gray-800">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
               ⚠️
             </div>
-            <h2 className="text-xl font-bold mb-2">Are you sure?</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-xl font-bold mb-2 dark:text-gray-100">Are you sure?</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               You are about to delete{" "}
-              <b>
+              <b className="dark:text-gray-200">
                 {deleteConfirm.first_name} {deleteConfirm.last_name}
               </b>
               .
@@ -608,12 +631,17 @@ export default function Employees({ shortcutMode = false }) {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600"
+                className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={() => deleteMutation.mutate(deleteConfirm.emp_id)}
+                onClick={() => {
+                  console.log(deleteConfirm.emp_id);
+                  socket.emit("delete-user", deleteConfirm.emp_id);
+                  queryClient.invalidateQueries(["employees"]);
+                  // deleteMutation.mutate(deleteConfirm.emp_id);
+                }}
                 className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
               >
                 Delete
@@ -625,27 +653,27 @@ export default function Employees({ shortcutMode = false }) {
 
       {/* Reset Password Confirmation */}
       {resetConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-16 h-16 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-200 dark:border-gray-800">
+            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
               🔐
             </div>
-            <h2 className="text-xl font-bold mb-2">Reset Password?</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-xl font-bold mb-2 dark:text-gray-100">Reset Password?</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Reset password for{" "}
-              <b>
+              <b className="dark:text-gray-200">
                 {resetConfirm.first_name} {resetConfirm.last_name}
               </b>
               ?
             </p>
-            <div className="text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-lg p-2 mb-5">
+            <div className="text-xs text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg p-2 mb-5">
               New password format: Employee ID + First Name
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setResetConfirm(null)}
                 disabled={resetPasswordMutation.isPending}
-                className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold text-gray-600 disabled:opacity-50"
+                className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
@@ -663,25 +691,25 @@ export default function Employees({ shortcutMode = false }) {
 
       {/* Add Employee Confirmation */}
       {addConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full shadow-2xl my-6">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 max-w-2xl w-full shadow-2xl my-6 border border-gray-200 dark:border-gray-800">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold mb-3">Confirm Add Employee</h2>
-              <p className="text-gray-600 text-base">
+              <h2 className="text-2xl font-bold mb-3 dark:text-gray-100">Confirm Add Employee</h2>
+              <p className="text-gray-600 dark:text-gray-400 text-base">
                 Please review and confirm the following employee information:
               </p>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3 mb-8 max-h-96 overflow-y-auto text-base">
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 space-y-3 mb-8 max-h-96 overflow-y-auto text-base">
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
+                <span className="font-semibold text-gray-600 dark:text-gray-400">
                   Employee ID:
                 </span>
-                <span className="font-mono">{addConfirm.emp_id}</span>
+                <span className="font-mono dark:text-gray-200">{addConfirm.emp_id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Name:</span>
-                <span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">Name:</span>
+                <span className="dark:text-gray-200">
                   {addConfirm.first_name}{" "}
                   {addConfirm.middle_initial
                     ? `${addConfirm.middle_initial}.`
@@ -690,67 +718,61 @@ export default function Employees({ shortcutMode = false }) {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Email:</span>
-                <span>{addConfirm.email}</span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">Email:</span>
+                <span className="dark:text-gray-200">{addConfirm.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
+                <span className="font-semibold text-gray-600 dark:text-gray-400">
                   Designation:
                 </span>
-                <span>{addConfirm.designation}</span>
+                <span className="dark:text-gray-200">{addConfirm.designation}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Position:</span>
-                <span>{addConfirm.position}</span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">Position:</span>
+                <span className="dark:text-gray-200">{addConfirm.position}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Status:</span>
-                <span>{addConfirm.status}</span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">Status:</span>
+                <span className="dark:text-gray-200">{addConfirm.status}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">Hired Date:</span>
-                <span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">Hired Date:</span>
+                <span className="dark:text-gray-200">
                   {addConfirm.hired_date
                     ? new Date(addConfirm.hired_date).toLocaleDateString()
                     : "N/A"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
+                <span className="font-semibold text-gray-600 dark:text-gray-400">
                   PHILHEALTH No.:
                 </span>
-                <span>{addConfirm.philhealth_no || "N/A"}</span>
+                <span className="dark:text-gray-200">{addConfirm.philhealth_no || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">TIN:</span>
-                <span>{addConfirm.tin || "N/A"}</span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">TIN:</span>
+                <span className="dark:text-gray-200">{addConfirm.tin || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">SSS No.:</span>
-                <span>{addConfirm.sss_no || "N/A"}</span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">SSS No.:</span>
+                <span className="dark:text-gray-200">{addConfirm.sss_no || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
+                <span className="font-semibold text-gray-600 dark:text-gray-400">
                   PAG-IBIG MID No.:
                 </span>
-                <span>{addConfirm.pag_ibig_mid_no || "N/A"}</span>
+                <span className="dark:text-gray-200">{addConfirm.pag_ibig_mid_no || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">
-                  PAG-IBIG RTN:
-                </span>
-                <span>{addConfirm.pag_ibig_rtn || "N/A"}</span>
+                <span className="font-semibold text-gray-600 dark:text-gray-400">GSIS No.:</span>
+                <span className="dark:text-gray-200">{addConfirm.gsis_no || "N/A"}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-gray-600">GSIS No.:</span>
-                <span>{addConfirm.gsis_no || "N/A"}</span>
-              </div>
-              <div className="border-t border-gray-200 pt-2 mt-2">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                 <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">
+                  <span className="font-semibold text-gray-600 dark:text-gray-400">
                     Auto-Password:
                   </span>
-                  <span className="font-mono text-purple-600 font-semibold">
+                  <span className="font-mono text-purple-600 dark:text-purple-400 font-semibold">
                     {addConfirm.emp_id}
                     {addConfirm.first_name.replace(/\s+/g, "")}
                   </span>
@@ -758,13 +780,13 @@ export default function Employees({ shortcutMode = false }) {
               </div>
             </div>
 
-            <div className="flex gap-4 pt-6 border-t border-gray-200">
+            <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => {
                   setAddConfirm(null);
                   setIsAddModalOpen(true);
                 }}
-                className="flex-1 py-3 border border-gray-300 rounded-lg font-semibold text-gray-600 hover:bg-gray-50 text-base"
+                className="flex-1 py-3 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-base"
               >
                 Cancel
               </button>
@@ -801,41 +823,40 @@ function EmployeeDetailsModal({ employee, onClose }) {
     { label: "TIN", value: employee.tin },
     { label: "SSS No.", value: employee.sss_no },
     { label: "PAG-IBIG MID No.", value: employee.pag_ibig_mid_no },
-    { label: "PAG_IBIG RTN", value: employee.pag_ibig_rtn },
     { label: "GSIS No.", value: employee.gsis_no },
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-lg w-full shadow-2xl border border-gray-200 dark:border-gray-800">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="m-0 text-xl font-bold text-gray-900">
+            <h2 className="m-0 text-xl font-bold text-gray-900 dark:text-gray-100">
               Employee Details
             </h2>
-            <p className="m-0 mt-1 text-sm text-gray-600">
+            <p className="m-0 mt-1 text-sm text-gray-600 dark:text-gray-400">
               {employee.last_name}, {employee.first_name}{" "}
               {employee.middle_initial ? `${employee.middle_initial}.` : ""}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 text-2xl bg-transparent border-0 cursor-pointer"
+            className="text-gray-500 dark:text-gray-400 text-2xl bg-transparent border-0 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             &times;
           </button>
         </div>
 
-        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div className="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
           {details.map((item) => (
             <div
               key={item.label}
-              className="flex items-center justify-between gap-4 border-b border-gray-200 pb-2 last:border-b-0 last:pb-0"
+              className="flex items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-2 last:border-b-0 last:pb-0"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {item.label}
               </span>
-              <span className="text-sm font-semibold text-gray-800 text-right">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 text-right">
                 {item.value || "N/A"}
               </span>
             </div>
@@ -845,7 +866,7 @@ function EmployeeDetailsModal({ employee, onClose }) {
         <div className="flex justify-end mt-5">
           <button
             onClick={onClose}
-            className="px-5 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
+            className="px-5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Close
           </button>
@@ -872,9 +893,9 @@ function EmployeeModal({
     employees.some((emp) => emp.emp_id === data.emp_id);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-4 py-2.5 bg-gray-900 flex justify-between items-center text-white">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-200 dark:border-gray-800">
+        <div className="px-4 py-2.5 bg-gray-900 dark:bg-black flex justify-between items-center text-white">
           <h2 className="text-base font-bold m-0">{title}</h2>
           <button
             onClick={onClose}
@@ -886,7 +907,7 @@ function EmployeeModal({
         <form onSubmit={onSubmit} className="p-3.5 space-y-2.5">
           <div className="grid grid-cols-2 gap-2.5">
             <div className="flex flex-col gap-0.5">
-              <label className="text-xs font-bold text-gray-500 uppercase">
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                 Employee ID<span className="text-red-500">*</span>
               </label>
               <input
@@ -896,10 +917,10 @@ function EmployeeModal({
                 disabled={isEdit}
                 required
                 maxLength={20}
-                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 ${
+                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
                   isDuplicate
                     ? "border-red-500 ring-1 ring-red-500"
-                    : "border-gray-300"
+                    : "border-gray-300 dark:border-gray-700"
                 }`}
               />
               {isDuplicate && (
@@ -909,7 +930,7 @@ function EmployeeModal({
               )}
             </div>
             <div className="flex flex-col gap-0.5">
-              <label className="text-xs font-bold text-gray-500 uppercase">
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                 Email Address<span className="text-red-500">*</span>
               </label>
               <input
@@ -919,14 +940,14 @@ function EmployeeModal({
                 onChange={onChange}
                 required
                 maxLength={30}
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
 
             <div className="flex flex-col gap-0.5 col-span-2">
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="col-span-1 flex flex-col gap-0.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase">
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                     First Name<span className="text-red-500">*</span>
                   </label>
                   <input
@@ -935,11 +956,11 @@ function EmployeeModal({
                     onChange={onChange}
                     required
                     maxLength={30}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase">
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                     M.I.
                   </label>
                   <input
@@ -947,11 +968,11 @@ function EmployeeModal({
                     value={data.middle_initial || ""}
                     onChange={onChange}
                     maxLength="1"
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase">
+                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                     Last Name<span className="text-red-500">*</span>
                   </label>
                   <input
@@ -960,7 +981,7 @@ function EmployeeModal({
                     onChange={onChange}
                     required
                     maxLength={30}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
               </div>
@@ -1056,49 +1077,40 @@ function EmployeeModal({
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    TIN
+                    TIN <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="tin"
                     value={data.tin || ""}
                     onChange={onChange}
                     maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    SSS No.
+                    SSS No. <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="sss_no"
                     value={data.sss_no || ""}
                     onChange={onChange}
                     maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    PAG-IBIG MID No.
+                    PAG-IBIG MID No. <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="pag_ibig_mid_no"
                     value={data.pag_ibig_mid_no || ""}
                     onChange={onChange}
                     maxLength={20}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <label className="text-[11px] font-semibold text-gray-500 uppercase">
-                    PAG-IBIG RTN
-                  </label>
-                  <input
-                    name="pag_ibig_rtn"
-                    value={data.pag_ibig_rtn || ""}
-                    onChange={onChange}
-                    maxLength={20}
+                    required
                     className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1130,11 +1142,11 @@ function EmployeeModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600"
+              className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>

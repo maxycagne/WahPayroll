@@ -1,4 +1,4 @@
-export type AttendanceStatus = "Present" | "Late" | "Undertime" | "Half-Day" | "Absent" | "On Leave" | "Pending" | "";
+export type AttendanceStatus = "Present" | "Late" | "Undertime" | "Half-Day" | "Absent" | "On Leave" | "Pending" | "No-notice-via-text" | "No-notice-email" | "";
 
 export type WorkweekType = "5-day" | "4-day";
 
@@ -21,6 +21,8 @@ export interface AttendanceCalendarSummary {
   undertime_count: number;
   halfday_count: number;
   leave_count: number;
+  no_notice_text_count: number;
+  no_notice_email_count: number;
 }
 
 export interface WorkweekConfig {

@@ -59,8 +59,8 @@ const AttendanceTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm">
-      <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+    <div className="rounded-lg border border-slate-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+      <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
         Day {label}
       </p>
       <div className="mt-1 space-y-0.5">
@@ -83,7 +83,7 @@ const PayrollTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+    <div className="rounded-lg border border-slate-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 px-3 py-2 shadow-lg backdrop-blur-sm">
       <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-slate-500">
         {label}
       </p>
@@ -231,7 +231,7 @@ export default function HRDashboard() {
 
   if (isLoadingDashboard || isLoadingEmployees) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 font-semibold text-slate-700 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 font-semibold text-slate-700 dark:text-gray-300 shadow-sm">
         Loading HR Dashboard...
       </div>
     );
@@ -239,10 +239,10 @@ export default function HRDashboard() {
 
   const quickActionTheme = {
     purple:
-      "border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800",
+      "border-violet-200 dark:border-violet-900/30 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 text-violet-800 dark:text-violet-400",
     green:
-      "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800",
-    amber: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800",
+      "border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400",
+    amber: "border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-400",
   };
 
   const stats = dashboardData?.stats || [];
@@ -271,11 +271,11 @@ export default function HRDashboard() {
       {/* Toast Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <h1 className="m-0 text-[1.3rem] font-bold text-slate-900">
+      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
+        <h1 className="m-0 text-[1.3rem] font-bold text-slate-900 dark:text-gray-100">
           HR Dashboard
         </h1>
-        <p className="m-0 mt-0.5 text-xs text-slate-500">
+        <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
           Workforce approvals, attendance signals, and document compliance in
           one view.
         </p>
@@ -287,11 +287,11 @@ export default function HRDashboard() {
             key={stat.label}
             type="button"
             onClick={() => setActiveModal(stat.modalKey)}
-            className="group relative rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+            className="group relative rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-gray-700 hover:shadow-md"
             style={{ boxShadow: `inset 0 3px 0 0 ${stat.borderColor}` }}
           >
             <div className="p-3.5 text-left">
-              <p className="m-0 mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <p className="m-0 mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 {stat.label}
               </p>
               <p
@@ -300,7 +300,7 @@ export default function HRDashboard() {
               >
                 {stat.value}
               </p>
-              <p className="m-0 mt-1 text-[10px] text-slate-400 transition-colors group-hover:text-slate-500">
+              <p className="m-0 mt-1 text-[10px] text-slate-400 dark:text-gray-500 transition-colors group-hover:text-slate-500 dark:group-hover:text-gray-400">
                 Click to view
               </p>
             </div>
@@ -309,22 +309,22 @@ export default function HRDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-bold text-slate-900">Quick Actions</h2>
+      <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-gray-100">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {HR_DASHBOARD_QUICK_ACCESS.map(
             ({ icon, label, sub, path, color }) => (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`group rounded-lg border p-3.5 text-left shadow-sm transition-colors cursor-pointer md:p-3 ${quickActionTheme[color] || "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800"}`}
+                className={`group rounded-lg border p-3.5 text-left shadow-sm transition-colors cursor-pointer md:p-3 ${quickActionTheme[color] || "border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-800 dark:text-gray-200"}`}
               >
                 <p className="mb-1 text-xl md:text-lg">{icon}</p>
-                <p className="text-sm font-semibold text-slate-900 md:text-[13px]">
+                <p className="text-sm font-semibold text-slate-900 dark:text-gray-100 md:text-[13px]">
                   {label}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-600">{sub}</p>
-                <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                <p className="mt-0.5 text-[11px] text-slate-600 dark:text-gray-400">{sub}</p>
+                <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-gray-400">
                   Open
                   <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
@@ -335,11 +335,11 @@ export default function HRDashboard() {
       </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-          <h3 className="m-0 text-sm font-bold text-slate-900">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Attendance Overview ({period})
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-slate-500">
+          <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-400">
             Daily present, absent, and late counts for the selected month.
           </p>
           <div className="mt-3 h-[240px] w-full">
@@ -348,17 +348,18 @@ export default function HRDashboard() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke={document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0'}
                 />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11}} />
                 <YAxis
                   allowDecimals={false}
                   axisLine={false}
                   tickLine={false}
+                  tick={{fill: '#94a3b8', fontSize: 11}}
                 />
                 <Tooltip
                   content={<AttendanceTooltip />}
-                  cursor={{ stroke: "#cbd5e1", strokeDasharray: "4 4" }}
+                  cursor={{ stroke: document.documentElement.classList.contains('dark') ? '#475569' : '#cbd5e1', strokeDasharray: "4 4" }}
                 />
                 <DashboardLegend />
                 <Line
@@ -387,11 +388,11 @@ export default function HRDashboard() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-          <h3 className="m-0 text-sm font-bold text-slate-900">
+        <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+          <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
             Payroll Snapshot ({period})
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-slate-500">
+          <p className="m-0 mt-1 text-[11px] text-slate-500 dark:text-gray-400">
             Top employees by net pay for the selected payroll period.
           </p>
           <div className="mt-3 h-[240px] w-full">
@@ -400,13 +401,14 @@ export default function HRDashboard() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke={document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0'}
                 />
-                <XAxis dataKey="employee" axisLine={false} tickLine={false} />
+                <XAxis dataKey="employee" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11}} />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `₱${Math.round(v / 1000)}k`}
+                  tick={{fill: '#94a3b8', fontSize: 11}}
                 />
                 <Tooltip
                   content={<PayrollTooltip />}

@@ -62,9 +62,9 @@ export default function SalaryHistory() {
   ];
 
   const typeColors = {
-    Increase: { bg: "bg-green-100", text: "text-green-800", icon: "📈" },
-    Decrease: { bg: "bg-red-100", text: "text-red-800", icon: "📉" },
-    Bonus: { bg: "bg-blue-100", text: "text-blue-800", icon: "🎁" },
+    Increase: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-800 dark:text-green-400", icon: "📈" },
+    Decrease: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-800 dark:text-red-400", icon: "📉" },
+    Bonus: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-800 dark:text-blue-400", icon: "🎁" },
   };
 
   // 1. Fetch the list of employees on mount for the dropdown
@@ -131,19 +131,19 @@ export default function SalaryHistory() {
 
   return (
     <div className="max-w-full">
-      <h1 className="m-0 text-[1.4rem] font-bold text-white mb-6">
+      <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100 mb-6">
         Salary History
       </h1>
 
       {/* Employee Selector */}
-      <div className="mb-8 rounded-lg border border-gray-200 bg-white shadow-sm p-6">
-        <label className="block text-sm font-semibold text-gray-900 mb-3">
+      <div className="mb-8 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+        <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
           Select Employee
         </label>
         <select
           value={selectedEmployee}
           onChange={(e) => setSelectedEmployee(e.target.value)}
-          className="w-full max-w-md border-[1.8px] border-gray-300 rounded-lg px-4 py-2 text-base text-gray-900 outline-none transition-colors focus:border-purple-600"
+          className="w-full max-w-md border-[1.8px] border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 text-base text-gray-900 dark:text-gray-100 outline-none transition-colors focus:border-purple-600 dark:bg-gray-800"
         >
           {employees.map((emp) => (
             <option key={emp.id} value={emp.id}>
@@ -155,82 +155,82 @@ export default function SalaryHistory() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="rounded-lg border-l-4 border-l-blue-500 border border-gray-200 bg-white shadow-sm p-6">
-          <p className="m-0 text-sm font-medium text-gray-600 mb-2">
+        <div className="rounded-lg border-l-4 border-l-blue-500 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+          <p className="m-0 text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
             Current Salary
           </p>
-          <p className="m-0 text-3xl font-bold text-blue-600">
+          <p className="m-0 text-3xl font-bold text-blue-600 dark:text-blue-400">
             ₱{(25000).toLocaleString()}
           </p>
-          <p className="m-0 text-xs text-gray-500 mt-2">As of Latest Record</p>
+          <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-2">As of Latest Record</p>
         </div>
 
-        <div className="rounded-lg border-l-4 border-l-green-500 border border-gray-200 bg-white shadow-sm p-6">
-          <p className="m-0 text-sm font-medium text-gray-600 mb-2">
+        <div className="rounded-lg border-l-4 border-l-green-500 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+          <p className="m-0 text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
             Total Increases
           </p>
-          <p className="m-0 text-3xl font-bold text-green-600">
+          <p className="m-0 text-3xl font-bold text-green-600 dark:text-green-400">
             +₱{getTotalIncreases().toLocaleString()}
           </p>
-          <p className="m-0 text-xs text-gray-500 mt-2">
+          <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-2">
             {getIncreaseCount()} adjustments
           </p>
         </div>
 
         <div
-          className={`rounded-lg border-l-4 ${getTotalChange() > 0 ? "border-l-green-500" : "border-l-red-500"} border border-gray-200 bg-white shadow-sm p-6`}
+          className={`rounded-lg border-l-4 ${getTotalChange() > 0 ? "border-l-green-500" : "border-l-red-500"} border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6`}
         >
-          <p className="m-0 text-sm font-medium text-gray-600 mb-2">
+          <p className="m-0 text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
             Net Change
           </p>
           <p
-            className={`m-0 text-3xl font-bold ${getTotalChange() > 0 ? "text-green-600" : "text-red-600"}`}
+            className={`m-0 text-3xl font-bold ${getTotalChange() > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
           >
             {getTotalChange() > 0 ? "+" : ""}₱
             {getTotalChange().toLocaleString()}
           </p>
-          <p className="m-0 text-xs text-gray-500 mt-2">From all adjustments</p>
+          <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-2">From all adjustments</p>
         </div>
       </div>
 
-      {/* Timeline */}
-      <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="m-0 text-lg font-semibold text-gray-900">
+      {}
+      <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+          <h3 className="m-0 text-lg font-semibold text-gray-900 dark:text-gray-100">
             Salary Adjustment History
           </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
                   Description
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
                   New Salary
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-400 uppercase tracking-wider">
                   Remarks
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {salaryRecords.map((record) => (
                 <tr
                   key={record.id}
-                  className="hover:bg-gray-50 transition-colors duration-150"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150"
                 >
-                  <td className="px-6 py-3 text-sm text-gray-900">
+                  <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">
                     {record.date}
                   </td>
                   <td className="px-6 py-3 text-sm">
@@ -240,25 +240,25 @@ export default function SalaryHistory() {
                       {typeColors[record.type].icon} {record.type}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-700">
+                  <td className="px-6 py-3 text-sm text-gray-700 dark:text-gray-300">
                     {record.description}
                   </td>
                   <td className="px-6 py-3 text-sm text-right font-semibold">
                     <span
                       className={
                         record.type === "Decrease"
-                          ? "text-red-600"
-                          : "text-green-600"
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-green-600 dark:text-green-400"
                       }
                     >
                       {record.type === "Decrease" ? "-" : "+"}₱
                       {record.amount.toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-sm text-right font-bold text-gray-900">
+                  <td className="px-6 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
                     ₱{record.newSalary.toLocaleString()}
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-600">
+                  <td className="px-6 py-3 text-sm text-gray-600 dark:text-gray-400">
                     {record.remarks}
                   </td>
                 </tr>

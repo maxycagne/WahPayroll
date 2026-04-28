@@ -4,9 +4,11 @@ import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Camera, Lock, User, Eye, EyeOff, CreditCard } from "lucide-react"; // <-- Added Eye and EyeOff, CreditCard
+import { Camera, Lock, User, Eye, EyeOff, CreditCard, Moon, Sun, Palette } from "lucide-react"; // <-- Added Moon, Sun, Palette
+import { useThemeStore } from "../store/useThemeStore";
 
 export default function Settings() {
+  const { theme, toggleTheme } = useThemeStore();
   const { toast, showToast, clearToast } = useToast();
   const fileInputRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(
@@ -33,7 +35,6 @@ export default function Settings() {
     tin: currentUser.tin || "",
     sss_no: currentUser.sss_no || "",
     pag_ibig_mid_no: currentUser.pag_ibig_mid_no || "",
-    pag_ibig_rtn: currentUser.pag_ibig_rtn || "",
     gsis_no: currentUser.gsis_no || "",
   });
 
@@ -128,7 +129,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl mx-auto w-full">
-      <h1 className="mb-6 text-[1.4rem] font-bold text-gray-900">
+      <h1 className="mb-6 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100">
         Account Settings
       </h1>
 
@@ -140,7 +141,7 @@ export default function Settings() {
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === "profile"
                 ? "bg-purple-600 text-white shadow-md"
-                : "text-gray-600 hover:bg-gray-100"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             }`}
           >
             <User className="w-4 h-4" /> Profile
@@ -150,7 +151,7 @@ export default function Settings() {
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === "security"
                 ? "bg-purple-600 text-white shadow-md"
-                : "text-gray-600 hover:bg-gray-100"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             }`}
           >
             <Lock className="w-4 h-4" /> Security
@@ -160,19 +161,29 @@ export default function Settings() {
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === "credentials"
                 ? "bg-purple-600 text-white shadow-md"
-                : "text-gray-600 hover:bg-gray-100"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             }`}
           >
             <CreditCard className="w-4 h-4" /> Credentials
+          </button>
+          <button
+            onClick={() => setActiveTab("appearance")}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === "appearance"
+                ? "bg-purple-600 text-white shadow-md"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+          >
+            <Palette className="w-4 h-4" /> Appearance
           </button>
         </div>
 
         {/* Content Area */}
         <div className="md:col-span-3">
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-6 animate-in fade-in duration-200">
             {activeTab === "profile" && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
                   Public Profile
                 </h3>
 
@@ -193,7 +204,7 @@ export default function Settings() {
                         type="text"
                         disabled
                         value={displayFirstName}
-                        className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+                        className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -204,7 +215,7 @@ export default function Settings() {
                         type="text"
                         disabled
                         value={displayLastName}
-                        className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+                        className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -222,7 +233,7 @@ export default function Settings() {
                           email: e.target.value,
                         })
                       }
-                      className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
 
@@ -243,7 +254,7 @@ export default function Settings() {
 
             {activeTab === "security" && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
                   Change Password
                 </h3>
                 <form
@@ -266,7 +277,7 @@ export default function Settings() {
                             currentPassword: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                       <button
                         type="button"
@@ -299,7 +310,7 @@ export default function Settings() {
                             newPassword: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                       <button
                         type="button"
@@ -333,7 +344,7 @@ export default function Settings() {
                             confirmPassword: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                       <button
                         type="button"
@@ -365,7 +376,7 @@ export default function Settings() {
             )}
             {activeTab === "credentials" && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
                   Government Credentials
                 </h3>
                 <form
@@ -390,7 +401,7 @@ export default function Settings() {
                             philhealth_no: e.target.value,
                           })
                         }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -407,7 +418,7 @@ export default function Settings() {
                             tin: e.target.value,
                           })
                         }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -424,7 +435,7 @@ export default function Settings() {
                             sss_no: e.target.value,
                           })
                         }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -441,24 +452,7 @@ export default function Settings() {
                             pag_ibig_mid_no: e.target.value,
                           })
                         }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        PAG-IBIG RTN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.pag_ibig_rtn}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            pag_ibig_rtn: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -475,7 +469,7 @@ export default function Settings() {
                             gsis_no: e.target.value,
                           })
                         }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                   </div>
@@ -491,6 +485,69 @@ export default function Settings() {
                     </button>
                   </div>
                 </form>
+              </div>
+            )}
+            {activeTab === "appearance" && (
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
+                  Appearance Settings
+                </h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4 block">
+                      Theme Preference
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        onClick={() => theme !== "light" && toggleTheme()}
+                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                          theme === "light"
+                            ? "border-purple-600 bg-purple-50/50 dark:bg-purple-900/20"
+                            : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${theme === "light" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                            <Sun className="w-5 h-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className={`text-sm font-bold ${theme === "light" ? "text-purple-900 dark:text-purple-100" : "text-gray-900 dark:text-gray-100"}`}>Light Mode</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Classic bright look</p>
+                          </div>
+                        </div>
+                        {theme === "light" && (
+                          <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-white" />
+                          </div>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => theme !== "dark" && toggleTheme()}
+                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                          theme === "dark"
+                            ? "border-purple-600 bg-purple-50/50 dark:bg-purple-900/20"
+                            : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${theme === "dark" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                            <Moon className="w-5 h-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className={`text-sm font-bold ${theme === "dark" ? "text-purple-900 dark:text-purple-100" : "text-gray-900 dark:text-gray-100"}`}>Dark Mode</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Easier on the eyes</p>
+                          </div>
+                        </div>
+                        {theme === "dark" && (
+                          <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-white" />
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

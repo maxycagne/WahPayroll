@@ -149,7 +149,7 @@ export default function Toast({ toast, onClose }) {
 
   return (
     <div
-      className={`pointer-events-auto fixed right-4 top-4 z-[9999] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.18)] transition-all duration-200 ${
+      className={`pointer-events-auto fixed right-4 top-4 z-[9999] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_10px_28px_rgba(15,23,42,0.18)] transition-all duration-200 ${
         isVisible ? "translate-y-0 opacity-100" : "-translate-y-1.5 opacity-0"
       }`}
       role={liveRole}
@@ -158,16 +158,16 @@ export default function Toast({ toast, onClose }) {
     >
       <div className="flex items-start gap-3 px-4 py-3.5">
         <div
-          className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${theme.iconBg} ${theme.iconColor}`}
+          className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${theme.iconBg} dark:bg-opacity-20 ${theme.iconColor} dark:text-opacity-100`}
         >
           <ToastIcon kind={theme.icon} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className={`m-0 text-sm font-bold tracking-tight ${theme.tone}`}>
+          <p className={`m-0 text-sm font-bold tracking-tight ${theme.tone} dark:brightness-125`}>
             {theme.title}
           </p>
-          <p className="m-0 mt-0.5 break-words text-[13px] leading-5 text-slate-700">
+          <p className="m-0 mt-0.5 break-words text-[13px] leading-5 text-slate-700 dark:text-gray-300">
             {payload.message}
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function Toast({ toast, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="mt-0.5 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-transparent text-slate-500 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+            className="mt-0.5 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-transparent text-slate-500 dark:text-gray-400 transition-colors hover:border-slate-200 dark:hover:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-800 hover:text-slate-700 dark:hover:text-gray-200"
             aria-label="Dismiss notification"
           >
             <svg
@@ -198,7 +198,7 @@ export default function Toast({ toast, onClose }) {
       </div>
 
       {hasCountdown && (
-        <div className="h-1 w-full bg-slate-100" aria-hidden="true">
+        <div className="h-1 w-full bg-slate-100 dark:bg-gray-800" aria-hidden="true">
           <div
             key={`${payload.message}-${payload.type}-${payload.createdAt || "now"}`}
             className={`h-full ${theme.progress}`}

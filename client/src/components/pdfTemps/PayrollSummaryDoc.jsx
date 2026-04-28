@@ -65,13 +65,21 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
   },
   colName: {
-    width: "28%",
+    width: "26%",
     padding: 6,
     borderRightWidth: 1,
     borderColor: "#e5e7eb",
     fontSize: 8.5,
   },
   colBasic: {
+    width: "12%",
+    padding: 6,
+    borderRightWidth: 1,
+    borderColor: "#e5e7eb",
+    fontSize: 8.5,
+    textAlign: "right",
+  },
+  colGross: {
     width: "14%",
     padding: 6,
     borderRightWidth: 1,
@@ -80,14 +88,14 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   colDeduction: {
-    width: "22%",
+    width: "18%",
     padding: 6,
     borderRightWidth: 1,
     borderColor: "#e5e7eb",
     fontSize: 8,
   },
   colIncentive: {
-    width: "22%",
+    width: "16%",
     padding: 6,
     borderRightWidth: 1,
     borderColor: "#e5e7eb",
@@ -216,11 +224,14 @@ export default function PayrollSummaryDoc({
           <View style={styles.colBasic}>
             <Text style={styles.headText}>Basic Pay</Text>
           </View>
-          <View style={styles.colDeduction}>
-            <Text style={styles.headText}>Deductions (Types)</Text>
-          </View>
           <View style={styles.colIncentive}>
             <Text style={styles.headText}>Incentives (Types)</Text>
+          </View>
+          <View style={styles.colGross}>
+            <Text style={styles.headText}>Total Salary (Gross)</Text>
+          </View>
+          <View style={styles.colDeduction}>
+            <Text style={styles.headText}>Deductions (Types)</Text>
           </View>
           <View style={styles.colNet}>
             <Text style={styles.headText}>Net Pay</Text>
@@ -248,23 +259,6 @@ export default function PayrollSummaryDoc({
                 <Text>{money(row.basic_pay)}</Text>
               </View>
 
-              <View style={styles.colDeduction}>
-                <Text>{money(row.absence_deductions)}</Text>
-                {deductionItems.length > 0 ? (
-                  deductionItems.map((item, itemIndex) => (
-                    <Text
-                      key={`deduction-${index}-${itemIndex}`}
-                      style={styles.typeText}
-                    >
-                      {item.label} ={" "}
-                      {item.amount == null ? "-" : money(item.amount)}
-                    </Text>
-                  ))
-                ) : (
-                  <Text style={styles.typeText}>No deduction type</Text>
-                )}
-              </View>
-
               <View style={styles.colIncentive}>
                 <Text>{money(row.incentives)}</Text>
                 {incentiveItems.length > 0 ? (
@@ -282,6 +276,32 @@ export default function PayrollSummaryDoc({
                 )}
               </View>
 
+              <View style={styles.colGross}>
+                <Text style={styles.rowStrong}>
+                  {money(
+                    row.gross_pay ??
+                      Number(row.basic_pay || 0) + Number(row.incentives || 0),
+                  )}
+                </Text>
+              </View>
+
+              <View style={styles.colDeduction}>
+                <Text>{money(row.absence_deductions)}</Text>
+                {deductionItems.length > 0 ? (
+                  deductionItems.map((item, itemIndex) => (
+                    <Text
+                      key={`deduction-${index}-${itemIndex}`}
+                      style={styles.typeText}
+                    >
+                      {item.label} ={" "}
+                      {item.amount == null ? "-" : money(item.amount)}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={styles.typeText}>No deduction type</Text>
+                )}
+              </View>
+
               <View style={styles.colNet}>
                 <Text style={styles.rowStrong}>{money(row.net_pay)}</Text>
               </View>
@@ -289,13 +309,68 @@ export default function PayrollSummaryDoc({
           );
         })}
 
-        <Text
-          style={styles.footer}
-          render={({ pageNumber, totalPages }) =>
-            `Payroll Summary | Page ${pageNumber} / ${totalPages}`
-          }
-          fixed
-        />
+        {/* Totals Row */}
+        <View
+          style={[
+            styles.tableRow,
+            {
+              backgroundColor: "#f3f4f6",
+              borderTopWidth: 2,
+              borderTopColor: "#374151",
+            },
+          ]}
+          wrap={false}
+        >
+          <View style={styles.colName}>
+            <Text style={[styles.rowStrong, { fontSize: 9 }]}>
+              TOTAL ({rows.length} employees)
+            </Text>
+          </View>
+          <View style={styles.colBasic}>
+            <Text style={styles.rowStrong}>
+              {money(
+                rows.reduce((sum, r) => sum + Number(r.basic_pay || 0), 0),
+              )}
+            </Text>
+          </View>
+          <View style={styles.colIncentive}>
+            <Text style={styles.rowStrong}>
+              {money(
+                rows.reduce((sum, r) => sum + Number(r.incentives || 0), 0),
+              )}
+            </Text>
+          </View>
+          <View style={styles.colGross}>
+            <Text style={styles.rowStrong}>
+              {money(
+                rows.reduce(
+                  (sum, r) =>
+                    sum +
+                    Number(
+                      r.gross_pay ??
+                        Number(r.basic_pay || 0) + Number(r.incentives || 0),
+                    ),
+                  0,
+                ),
+              )}
+            </Text>
+          </View>
+          <View style={styles.colDeduction}>
+            <Text style={styles.rowStrong}>
+              {money(
+                rows.reduce(
+                  (sum, r) => sum + Number(r.absence_deductions || 0),
+                  0,
+                ),
+              )}
+            </Text>
+          </View>
+          <View style={styles.colNet}>
+            <Text style={[styles.rowStrong, { fontSize: 9 }]}>
+              {money(rows.reduce((sum, r) => sum + Number(r.net_pay || 0), 0))}
+            </Text>
+          </View>
+        </View>
       </Page>
     </Document>
   );

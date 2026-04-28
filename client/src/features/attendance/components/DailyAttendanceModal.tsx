@@ -59,11 +59,11 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-700 px-5 py-3 text-white">
@@ -88,7 +88,7 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden bg-slate-50/60 p-3">
+        <div className="flex flex-1 flex-col overflow-hidden bg-slate-50/60 dark:bg-gray-800/20 p-3">
           {!canEdit && (
             <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
               View-only mode: Supervisors can view attendance records but cannot
@@ -97,44 +97,44 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
           )}
 
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
-            <div className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">
+            <div className="shrink-0 rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-[11px] font-semibold text-slate-700 dark:text-gray-300">
               Total: {overview.total}
             </div>
-            <div className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+            <div className="shrink-0 rounded-md border border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-400">
               Assigned: {overview.assigned}
             </div>
-            <div className="shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700">
+            <div className="shrink-0 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-300">
               Unassigned: {overview.unassigned}
             </div>
-            <div className="shrink-0 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-[11px] font-semibold text-green-700">
+            <div className="shrink-0 rounded-md border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 px-2 py-1 text-[11px] font-semibold text-green-700 dark:text-green-400">
               Present: {overview.present}
             </div>
-            <div className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700">
+            <div className="shrink-0 rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-2 py-1 text-[11px] font-semibold text-red-700 dark:text-red-400">
               Absent: {overview.absent}
             </div>
-            <div className="shrink-0 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
+            <div className="shrink-0 rounded-md border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 text-[11px] font-semibold text-purple-700 dark:text-purple-400">
               On Leave: {overview.onLeave}
             </div>
-            <div className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+            <div className="shrink-0 rounded-md border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               Late: {overview.late}
             </div>
-            <div className="shrink-0 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+            <div className="shrink-0 rounded-md border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 text-[11px] font-semibold text-rose-700 dark:text-rose-400">
               Under/Half: {overview.undertime + overview.halfDay}
             </div>
           </div>
 
-          <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2">
+          <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-2">
             <input
               type="text"
               placeholder="Search personnel..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-56 rounded-lg border border-slate-300 px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-56 rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+              className="rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="All">All Status Types</option>
               <option value="None">Unassigned</option>
@@ -148,15 +148,15 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
           </div>
 
           {canEdit && (
-            <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-2">
+            <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20 p-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-indigo-800">
+                <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-300">
                   Selected: {selectedEmployees.size}
                 </span>
                 <select
                   value={bulkStatus}
                   onChange={(e) => setBulkStatus(e.target.value)}
-                  className="rounded border border-slate-300 px-2 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">-- Select --</option>
                   <option value="Present">Present</option>
@@ -173,16 +173,16 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
               </div>
               <button
                 onClick={markAllPresent}
-                className="cursor-pointer rounded border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-200"
+                className="cursor-pointer rounded border border-emerald-200 dark:border-emerald-900/30 bg-emerald-100 dark:bg-emerald-900/20 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-400 transition-colors hover:bg-emerald-200 dark:hover:bg-emerald-900/40"
               >
                 ✓ Mark Unassigned as Present
               </button>
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
             <table className="w-full text-xs text-left">
-              <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
+              <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-gray-800 shadow-sm">
                 <tr>
                   <th className="px-3 py-1.5 w-10 text-center">
                     <input
@@ -196,21 +196,21 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                       className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </th>
-                  <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
+                  <th className="px-3 py-1.5 font-semibold text-gray-700 dark:text-gray-300 uppercase text-[11px]">
                     Employee
                   </th>
-                  <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
+                  <th className="px-3 py-1.5 font-semibold text-gray-700 dark:text-gray-300 uppercase text-[11px]">
                     Designation
                   </th>
-                  <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
+                  <th className="px-3 py-1.5 font-semibold text-gray-700 dark:text-gray-300 uppercase text-[11px]">
                     Primary Status
                   </th>
-                  <th className="px-3 py-1.5 font-semibold text-gray-700 uppercase text-[11px]">
+                  <th className="px-3 py-1.5 font-semibold text-gray-700 dark:text-gray-300 uppercase text-[11px]">
                     Secondary (Opt.)
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {loading ? (
                   <tr>
                     <td
@@ -232,7 +232,7 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                     return (
                       <tr
                         key={emp.emp_id}
-                        className={`text-xs transition-colors hover:bg-slate-50 ${isChecked ? "bg-indigo-50/60" : ""}`}
+                        className={`text-xs transition-colors hover:bg-slate-50 dark:hover:bg-gray-800/50 ${isChecked ? "bg-indigo-50/60 dark:bg-indigo-900/30" : ""}`}
                       >
                         <td className="px-3 py-1.5 text-center">
                           <input
@@ -244,14 +244,14 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                           />
                         </td>
                         <td className="px-3 py-1.5">
-                          <p className="font-bold m-0 text-gray-900 text-xs">
+                          <p className="font-bold m-0 text-gray-900 dark:text-gray-100 text-xs">
                             {emp.first_name} {emp.last_name}
                           </p>
-                          <p className="text-[10px] text-gray-500 m-0">
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 m-0">
                             {emp.emp_id}
                           </p>
                         </td>
-                        <td className="px-3 py-1.5 text-gray-600 text-xs">
+                        <td className="px-3 py-1.5 text-gray-600 dark:text-gray-400 text-xs">
                           {emp.emp_status}
                         </td>
                         <td className="px-3 py-1.5">
@@ -273,7 +273,7 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                               }
                             }}
                             disabled={!canEdit}
-                            className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs disabled:cursor-not-allowed disabled:opacity-60 ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass[""]}`}
+                            className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs disabled:cursor-not-allowed disabled:opacity-60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${badgeClass[attendanceForm[emp.emp_id]] || badgeClass[""]}`}
                           >
                             <option value="">-- None --</option>
                             <option value="Present">Present</option>
@@ -295,12 +295,18 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                               !canEdit ||
                               attendanceForm[emp.emp_id] === "Absent"
                             }
-                            className={`border p-1 rounded outline-none font-semibold max-w-[90px] text-xs disabled:cursor-not-allowed disabled:opacity-60 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
+                            className={`border p-1 rounded outline-none font-semibold max-w-[140px] text-xs disabled:cursor-not-allowed disabled:opacity-60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${badgeClass[secondaryStatusForm[emp.emp_id]] || badgeClass[""]}`}
                           >
                             <option value="">-- None --</option>
                             <option value="Late">Late</option>
                             <option value="Undertime">Undertime</option>
                             <option value="Half-Day">Half-Day</option>
+                            <option value="No-notice-via-text">
+                              No notice via text
+                            </option>
+                            <option value="No-notice-email">
+                              No notice via email
+                            </option>
                           </select>
                         </td>
                       </tr>
@@ -311,10 +317,10 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
             </table>
           </div>
 
-          <div className="mt-2 flex shrink-0 justify-end gap-2 border-t border-slate-200 pt-2">
+          <div className="mt-2 flex shrink-0 justify-end gap-2 border-t border-slate-200 dark:border-gray-800 pt-2">
             <button
               onClick={onClose}
-              className="cursor-pointer rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+              className="cursor-pointer rounded-lg border border-slate-300 dark:border-gray-700 px-4 py-1.5 text-sm font-semibold text-slate-600 dark:text-gray-300 transition-colors hover:bg-slate-100 dark:hover:bg-gray-800"
             >
               Close
             </button>

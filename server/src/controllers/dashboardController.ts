@@ -424,6 +424,7 @@ export const getAllEmployees = async (req: Request, res: Response) => {
   try {
     await ensureEmployeeGovernmentColumns();
 
+    const fetchAll = String(req.query.all || "").toLowerCase() === "true";
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 6;
     const search = (req.query.search as string) || "";
@@ -458,21 +459,28 @@ export const getAllEmployees = async (req: Request, res: Response) => {
     const totalCount = countResult[0].total;
 
     const [rows] = await pool.query(
-      `SELECT *
-       FROM employees
-       WHERE ${whereClause}
-       ORDER BY
-         CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
-         emp_id ASC
-       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      fetchAll
+        ? `SELECT *
+           FROM employees
+           WHERE ${whereClause}
+           ORDER BY
+             CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
+             emp_id ASC`
+        : `SELECT *
+           FROM employees
+           WHERE ${whereClause}
+           ORDER BY
+             CAST(COALESCE(NULLIF(REGEXP_SUBSTR(emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
+             emp_id ASC
+           LIMIT ? OFFSET ?`,
+      fetchAll ? queryParams : [...queryParams, limit, offset]
     );
 
     res.json({
       data: rows,
       total: totalCount,
-      page,
-      totalPages: Math.ceil(totalCount / limit)
+      page: fetchAll ? 1 : page,
+      totalPages: fetchAll ? 1 : Math.ceil(totalCount / limit)
     });
   } catch (error) {
     console.error("DB Error in getAllEmployees:", error);
@@ -541,7 +549,9 @@ export const getAttendanceCalendarSummary = async (req: Request, res: Response) 
              SUM(CASE WHEN status = 'Late' OR status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
              SUM(CASE WHEN status = 'Undertime' OR status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
              SUM(CASE WHEN status = 'Half-Day' OR status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count
+             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count,
+             SUM(CASE WHEN status2 = 'No-notice-via-text' THEN 1 ELSE 0 END) as no_notice_text_count,
+             SUM(CASE WHEN status2 = 'No-notice-email' THEN 1 ELSE 0 END) as no_notice_email_count
       FROM attendance 
       WHERE MONTH(date) = ? AND YEAR(date) = ?
       GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
@@ -928,6 +938,7 @@ export const getAllPayroll = async (req: Request, res: Response) => {
       scopedParams.push(viewer.emp_id, viewer.designation || "", viewer.emp_id);
     }
 
+    const fetchAll = String(req.query.all || "").toLowerCase() === "true";
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 6;
     const search = (req.query.search as string) || "";
@@ -1041,8 +1052,10 @@ export const getAllPayroll = async (req: Request, res: Response) => {
        ORDER BY
          CAST(COALESCE(NULLIF(REGEXP_SUBSTR(p.emp_id, '[0-9]+$'), ''), '0') AS UNSIGNED) ASC,
          p.emp_id ASC
-       LIMIT ? OFFSET ?`,
-      [periodStart, ...scopedParams, limit, offset],
+       ${fetchAll ? "" : "LIMIT ? OFFSET ?"}`,
+      fetchAll
+        ? [periodStart, ...scopedParams]
+        : [periodStart, ...scopedParams, limit, offset],
     );
 
     const enrichedRows = rows.map((row: any) => {
@@ -1052,12 +1065,14 @@ export const getAllPayroll = async (req: Request, res: Response) => {
       const netPay = Number(
         (basicPay + incentives - totalDeductions).toFixed(2),
       );
+      const grossPay = Number((basicPay + incentives).toFixed(2));
 
       return {
         ...row,
         absences_count: 0,
         converted_absences: 0,
         incentives,
+        gross_pay: grossPay,
         absence_deductions: totalDeductions,
         baseline_absence_deductions: 0,
         adjustment_deductions: totalDeductions,
@@ -1069,8 +1084,8 @@ export const getAllPayroll = async (req: Request, res: Response) => {
       data: enrichedRows,
       total: totalCount,
       summary,
-      page,
-      totalPages: Math.ceil(totalCount / limit)
+      page: fetchAll ? 1 : page,
+      totalPages: fetchAll ? 1 : Math.ceil(totalCount / limit)
     });
   } catch (error) {
     console.error("DB Error in getAllPayroll:", error);
