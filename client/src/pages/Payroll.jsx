@@ -336,9 +336,14 @@ export default function Payroll({ shortcutMode = false }) {
         "Failed to send payslip",
       );
     },
-    onSuccess: () => showToast("Payslip sent successfully!", "success", TOAST_DURATION_LONG),
+    onSuccess: () =>
+      showToast("Payslip sent successfully!", "success", TOAST_DURATION_LONG),
     onError: () =>
-      showToast("Failed to send payslip. Check server logs.", "error", TOAST_DURATION_LONG),
+      showToast(
+        "Failed to send payslip. Check server logs.",
+        "error",
+        TOAST_DURATION_LONG,
+      ),
   });
 
   const sendBulkPayslipsMutation = useMutation({
@@ -1148,8 +1153,7 @@ export default function Payroll({ shortcutMode = false }) {
                         colSpan={isAdmin ? 8 : 7}
                         className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
-                        No payroll records found for {period}. Click "Generate
-                        Payroll" to calculate.
+                        No payroll records found for {period}.
                       </td>
                     </tr>
                   ) : (
