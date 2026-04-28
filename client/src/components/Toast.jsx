@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const TOAST_DURATION_FALLBACK = 10000;
+const TOAST_DURATION_FALLBACK = 3000;
 const EXIT_ANIMATION_MS = 180;
 export const TOAST_DURATION_LONG = 20_000; // 15 seconds
 
