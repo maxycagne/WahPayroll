@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-const TOAST_DURATION_FALLBACK = 3000;
+const TOAST_DURATION_FALLBACK = 10000;
 const EXIT_ANIMATION_MS = 180;
+export const TOAST_DURATION_LONG = 20_000; // 15 seconds
 
 const TOAST_THEME = {
   success: {
@@ -164,7 +165,9 @@ export default function Toast({ toast, onClose }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className={`m-0 text-sm font-bold tracking-tight ${theme.tone} dark:brightness-125`}>
+          <p
+            className={`m-0 text-sm font-bold tracking-tight ${theme.tone} dark:brightness-125`}
+          >
             {theme.title}
           </p>
           <p className="m-0 mt-0.5 break-words text-[13px] leading-5 text-slate-700 dark:text-gray-300">
@@ -198,7 +201,10 @@ export default function Toast({ toast, onClose }) {
       </div>
 
       {hasCountdown && (
-        <div className="h-1 w-full bg-slate-100 dark:bg-gray-800" aria-hidden="true">
+        <div
+          className="h-1 w-full bg-slate-100 dark:bg-gray-800"
+          aria-hidden="true"
+        >
           <div
             key={`${payload.message}-${payload.type}-${payload.createdAt || "now"}`}
             className={`h-full ${theme.progress}`}

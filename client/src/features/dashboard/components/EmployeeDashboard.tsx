@@ -38,21 +38,25 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: getDashboardSummary,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: getMyAttendance,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myLeaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: getMyLeaves,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myOffsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: getMyOffsets,
+    staleTime: 5 * 60 * 1000,
   });
 
   const myBalanceRecord = useMemo(() => 

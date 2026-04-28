@@ -39,26 +39,31 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: getDashboardSummary,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: getMyAttendance,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: leaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: getSupervisorLeaves,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: offsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: getMyOffsets,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: resignations = [] } = useQuery({
     queryKey: ["resignations"],
     queryFn: getSupervisorResignations,
+    staleTime: 5 * 60 * 1000,
   });
 
   const personalSummary = useMemo(() => dashboardData?.personalSummary || {}, [dashboardData]);

@@ -64,11 +64,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const dashboardQuery = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: getDashboardSummary,
+    staleTime: 5 * 60 * 1000,
   });
 
   const employeesQuery = useQuery({
     queryKey: ["dashboard-employees"],
     queryFn: getAllEmployees,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: workweekConfigs = [] } = useQuery(workweekConfigQueryOptions);
@@ -76,11 +78,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const payrollQuery = useQuery({
     queryKey: ["dashboard-payroll", period],
     queryFn: () => getPayroll(period),
+    staleTime: 5 * 60 * 1000,
   });
 
   const attendanceSummaryQuery = useQuery({
     queryKey: ["dashboard-attendance-summary", year, month],
     queryFn: () => getAttendanceSummary(year, month),
+    staleTime: 5 * 60 * 1000,
   });
 
   const employeesData = employeesQuery.data?.data || employeesQuery.data || [];

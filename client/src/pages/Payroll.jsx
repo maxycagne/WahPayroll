@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { pdf } from "@react-pdf/renderer";
-import Toast from "../components/Toast";
+import Toast, { TOAST_DURATION_LONG } from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
@@ -336,9 +336,9 @@ export default function Payroll({ shortcutMode = false }) {
         "Failed to send payslip",
       );
     },
-    onSuccess: () => showToast("Payslip sent successfully!"),
+    onSuccess: () => showToast("Payslip sent successfully!", "success", TOAST_DURATION_LONG),
     onError: () =>
-      showToast("Failed to send payslip. Check server logs.", "error"),
+      showToast("Failed to send payslip. Check server logs.", "error", TOAST_DURATION_LONG),
   });
 
   const sendBulkPayslipsMutation = useMutation({
@@ -355,6 +355,7 @@ export default function Payroll({ shortcutMode = false }) {
       showToast(
         `Success! All payslips for ${period} have been dispatched.`,
         "success",
+        TOAST_DURATION_LONG,
       );
     },
     onError: (error) => {

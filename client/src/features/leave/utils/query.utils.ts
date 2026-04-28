@@ -13,6 +13,7 @@ export const leavesQueryOptions = queryOptions({
       axiosInterceptor.get("/api/leaves"),
       "Failed to fetch leaves",
     ),
+  staleTime: 5 * 60 * 1000,
 });
 
 /**
@@ -27,6 +28,7 @@ export const myAttendanceQueryOptions = (empId: string) =>
         axiosInterceptor.get(`/api/employees/my-attendance`),
         "Failed to fetch Attendance",
       ),
+    staleTime: 5 * 60 * 1000,
   });
 
 /**
@@ -39,6 +41,7 @@ export const offsetApplicationsQueryOptions = queryOptions({
       axiosInterceptor.get("/api/employees/offset-applications"),
       "Failed to fetch offset applications",
     ),
+  staleTime: 5 * 60 * 1000,
 });
 
 /**
@@ -53,6 +56,7 @@ export const offsetBalanceQueryOptions = (empId: string) =>
         axiosInterceptor.get(`/api/employees/offset-balance/${empId}`),
         "Failed to fetch offset balance",
       ),
+    staleTime: 5 * 60 * 1000,
   });
 
 /**
@@ -65,6 +69,7 @@ export const resignationQueryOptions = queryOptions({
       axiosInterceptor.get(`/api/employees/resignations`),
       "Failed to fetch resignations",
     ),
+  staleTime: 5 * 60 * 1000,
 });
 
 /**
@@ -77,5 +82,6 @@ export const workweekConfigQueryOptions = queryOptions({
       axiosInterceptor.get("/api/employees/workweek-config"),
       "Failed to fetch workweek config",
     ),
+  staleTime: 5 * 60 * 1000,
 });
 
