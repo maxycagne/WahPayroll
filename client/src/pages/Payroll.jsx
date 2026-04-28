@@ -883,7 +883,9 @@ export default function Payroll({ shortcutMode = false }) {
 
   if (isLoadingEmployees)
     return (
-      <div className="p-6 text-gray-900 dark:text-gray-100 font-bold">Loading Payroll Data...</div>
+      <div className="p-6 text-gray-900 dark:text-gray-100 font-bold">
+        Loading Payroll Data...
+      </div>
     );
 
   return (
@@ -1086,7 +1088,7 @@ export default function Payroll({ shortcutMode = false }) {
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Incentives
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
                       Total Salary (Gross)
                     </th>
                     <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
@@ -1263,7 +1265,10 @@ export default function Payroll({ shortcutMode = false }) {
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {Math.min(currentPage * itemsPerPage, totalRecords)}
                     </span>{" "}
-                    of <span className="font-medium text-gray-900 dark:text-gray-100">{totalRecords}</span>{" "}
+                    of{" "}
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {totalRecords}
+                    </span>{" "}
                     results
                   </div>
                   <div className="flex items-center gap-2">
@@ -1330,17 +1335,21 @@ export default function Payroll({ shortcutMode = false }) {
                         type="text"
                         list="salary-employee-options"
                         value={salaryEmployeeSearch}
-                        onChange={(e) => handleSalaryEmployeeSearchChange(e.target.value)}
+                        onChange={(e) =>
+                          handleSalaryEmployeeSearchChange(e.target.value)
+                        }
                         className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         placeholder="Type to search employee..."
                       />
                       <datalist id="salary-employee-options">
                         {salaryEmployeeOptions.map((emp) => (
-                          <option key={emp.emp_id} value={getSalaryEmployeeLabel(emp)} />
+                          <option
+                            key={emp.emp_id}
+                            value={getSalaryEmployeeLabel(emp)}
+                          />
                         ))}
                       </datalist>
                     </div>
-
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
@@ -1420,20 +1429,20 @@ export default function Payroll({ shortcutMode = false }) {
             <div className="p-6 space-y-4">
               <p className="m-0 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 Update monthly base salary for
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
                   {selectedSalaryEmployee
                     ? `${selectedSalaryEmployee.first_name} ${selectedSalaryEmployee.last_name}`
                     : "the selected employee"}
                 </span>
                 to
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
                   {fmt(salaryForm.amount)}
                 </span>
                 ?
               </p>
-              <p className="m-0 text-xs text-gray-500">
+              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
                 This will apply only to this employee.
               </p>
               <div className="pt-2 flex gap-3">
@@ -1481,13 +1490,17 @@ export default function Payroll({ shortcutMode = false }) {
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
-                  <span className="font-semibold text-gray-700 dark:text-gray-400">Basic Pay</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-400">
+                    Basic Pay
+                  </span>
                   <span className="text-gray-900 dark:text-gray-100 font-bold">
                     {fmt(salaryBreakdownModal.basic_pay)}
                   </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20">
-                  <span className="font-semibold text-red-700 dark:text-red-400">Deductions</span>
+                  <span className="font-semibold text-red-700 dark:text-red-400">
+                    Deductions
+                  </span>
                   <span className="text-red-700 dark:text-red-400 font-bold">
                     -{fmt(salaryBreakdownModal.absence_deductions)}
                   </span>
@@ -1512,11 +1525,11 @@ export default function Payroll({ shortcutMode = false }) {
                     {fmtSigned(salaryBreakdownModal.incentives)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-indigo-200 bg-indigo-50">
-                  <span className="font-semibold text-indigo-700">
+                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20">
+                  <span className="font-semibold text-green-700 dark:text-green-400">
                     Total Salary (Gross)
                   </span>
-                  <span className="text-indigo-700 font-bold">
+                  <span className="text-green-700 font-bold dark:text-green-400">
                     {fmt(salaryBreakdownModal.gross_pay)}
                   </span>
                 </div>
@@ -1531,7 +1544,9 @@ export default function Payroll({ shortcutMode = false }) {
                   </div>
                 )}
                 <div className="flex justify-between py-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                  <span className="font-bold text-purple-900 dark:text-purple-300">Net Pay</span>
+                  <span className="font-bold text-purple-900 dark:text-purple-300">
+                    Net Pay
+                  </span>
                   <span className="text-purple-900 dark:text-purple-100 font-black text-lg">
                     {fmt(salaryBreakdownModal.net_pay)}
                   </span>

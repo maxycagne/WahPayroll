@@ -201,7 +201,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
           <div className="flex-1 p-5">
             {myAttendance.length === 0 ? (
-              <p className="py-4 text-center text-sm italic text-slate-500">
+              <p className="py-4 text-center text-sm italic text-slate-500 dark:text-gray-500">
                 No recent attendance records found.
               </p>
             ) : (

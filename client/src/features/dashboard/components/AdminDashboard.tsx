@@ -372,9 +372,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="m-0 text-[1.3rem] font-bold text-slate-900 dark:text-gray-100">
-              {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
-            </h1>
             <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
               Central overview for people, attendance, leave, payroll, and
               approvals.
@@ -530,16 +527,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   vertical={false}
                   stroke="var(--color-gray-800)"
                 />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }} />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "var(--color-gray-500)" }}
+                />
                 <YAxis
                   allowDecimals={false}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }}
+                  tick={{ fontSize: 12, fill: "var(--color-gray-500)" }}
                 />
                 <RechartsTooltip
                   content={<AttendanceTooltip />}
-                  cursor={{ stroke: "var(--color-gray-700)", strokeDasharray: "4 4" }}
+                  cursor={{
+                    stroke: "var(--color-gray-700)",
+                    strokeDasharray: "4 4",
+                  }}
                 />
                 <DashboardLegend />
                 <Line
@@ -581,20 +586,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke="var(--color-gray-800)"
                 />
-                <XAxis 
-                  dataKey="employee" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  interval={0} 
-                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }} 
+                <XAxis
+                  dataKey="employee"
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  tick={{ fontSize: 12, fill: "var(--color-gray-500)" }}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `₱${Math.round(v / 1000)}k`}
-                  tick={{ fontSize: 12, fill: 'var(--color-gray-500)' }}
+                  tick={{ fontSize: 12, fill: "var(--color-gray-500)" }}
                 />
                 <RechartsTooltip
                   content={<PayrollTooltip />}

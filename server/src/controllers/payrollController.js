@@ -93,20 +93,26 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
             @page { size: A4; margin: 0; }
             * { -webkit-print-color-adjust: exact; box-sizing: border-box; }
             body { font-family: 'Courier New', Courier, monospace; margin: 0; padding: 40px; background: white; color: #1e293b; }
-            .print-container { width: 100%; border: 1.5px solid #334155; position: relative; min-height: 900px; }
+            .print-container { width: 100%; border: 1.5px solid #334155; position: relative; min-height: 900px; display: flex; flex-direction: column; }
             .header { display: flex; align-items: center; border-bottom: 1px solid #334155; padding: 15px; }
-            .header-text { flex-grow: 1; text-align: center; font-size: 16px; font-weight: bold; }
+            .header-text { flex-grow: 1; text-align: center; }
+            .header-company { font-size: 16px; margin-bottom: 5px; }
+            .header-address { font-size: 12px; color: #64748b; font-style: italic; }
             .info-section { border-bottom: 1px solid #334155; padding: 15px; font-size: 14px; }
             .grid-container { display: flex; width: 100%; border-bottom: 1px solid #334155; }
             .column { width: 50%; padding: 15px; }
             .column-left { border-right: 1px solid #334155; }
             .col-title { font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 13px; }
             .line-item { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
+            .main-content { }
             .summary-section { padding: 30px 20px; }
             .summary-table { margin: 0 auto; width: 70%; }
             .summary-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
             .net-pay { margin-top: 15px; padding-top: 10px; border-top: 2px solid #334155; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; }
-            .footer-note { text-align: center; font-size: 11px; padding: 15px; color: #64748b; position: absolute; bottom: 0; width: 100%; }
+            .footer { border-top: 1px solid #334155; text-align: center; padding: 12px 15px 14px; }
+            .footer-motto { font-style: italic; font-size: 11px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+            .footer-links { font-size: 10px; color: #64748b; line-height: 1.7; }
+            .footer-confidential { font-size: 9px; color: #94a3b8; margin-top: 5px; }
             .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; width: 450px; z-index: 0; }
             .content-layer { position: relative; z-index: 10; }
           </style>
@@ -115,38 +121,61 @@ const processSinglePayslip = async (payrollRecord, period, browser) => {
           <div class="print-container">
             ${cachedLogos.main ? `<img src="${cachedLogos.main}" class="watermark" />` : ""}
             <div class="content-layer">
-              <div class="header">
-                ${cachedLogos.top ? `<img src="${cachedLogos.top}" style="width: 120px;" />` : ""}
-                <div class="header-text">Wireless for Health Initiative, Inc.</div>
-              </div>
-              <div class="info-section">
-                <div><strong>PAYROLL PERIOD:</strong> ${payPeriodLabel}</div>
-                <div><strong>EMPLOYEE NAME:</strong> ${payrollRecord.last_name}, ${payrollRecord.first_name}</div>
-              </div>
-              <div class="grid-container">
-                <div class="column column-left">
-                  <div class="col-title"><span>EARNINGS & ALLOWANCES</span><span>PHP</span></div>
-                  <div class="line-item"><span>Basic Pay</span><span>${fmtPeso(payrollRecord.basic_pay)}</span></div>
-                  ${Number(payrollRecord.incentives) > 0 ? `<div class="line-item"><span>${incentiveLines}</span><span>${fmtPeso(payrollRecord.incentives)}</span></div>` : ""}
+              <div class="main-content">
+                <div class="header">
+                  ${cachedLogos.top ? `<img src="${cachedLogos.top}" style="width: 120px;" />` : ""}
+                  <div class="header-text">
+                    <div class="header-company">Wireless for Health Initiative, Inc.</div>
+                    <div class="header-address">Romulo Blvd, San Vicente, Tarlac City, Philippines</div>
+                  </div>
                 </div>
-                <div class="column">
-                  <div class="col-title"><span>DEDUCTIONS (IOU)</span><span>PHP</span></div>
-                  ${
-                    deductionItems.length > 0
-                      ? deductionItems
-                          .map(
-                            (i) =>
-                              `<div class="line-item"><span>${i.label}</span><span>${i.amount}</span></div>`,
-                          )
-                          .join("")
-                      : `<div class="line-item"><span>None</span><span>₱0.00</span></div>`
-                  }
+                <div class="info-section">
+                  <div><strong>PAYROLL PERIOD:</strong> ${payPeriodLabel}</div>
+                  <div><strong>EMPLOYEE NAME:</strong> ${payrollRecord.last_name}, ${payrollRecord.first_name}</div>
+                </div>
+                <div class="grid-container">
+                  <div class="column column-left">
+                    <div class="col-title"><span>EARNINGS & ALLOWANCES</span><span>PHP</span></div>
+                    <div class="line-item"><span>Basic Pay</span><span>${fmtPeso(payrollRecord.basic_pay)}</span></div>
+                    ${Number(payrollRecord.incentives) > 0 ? `<div class="line-item"><span>${incentiveLines}</span><span>${fmtPeso(payrollRecord.incentives)}</span></div>` : ""}
+                  </div>
+                  <div class="column">
+                    <div class="col-title"><span>DEDUCTIONS (IOU)</span><span>PHP</span></div>
+                    ${
+                      deductionItems.length > 0
+                        ? deductionItems
+                            .map(
+                              (i) =>
+                                `<div class="line-item"><span>${i.label}</span><span>${i.amount}</span></div>`,
+                            )
+                            .join("")
+                        : `<div class="line-item"><span>None</span><span>₱0.00</span></div>`
+                    }
+                  </div>
+                </div>
+
+                <div class="summary-section">
+                  <div class="summary-table">
+                    <div class="summary-line"><span>Total Gross</span><span>${fmtPeso(payrollRecord.gross_pay)}</span></div>
+                    <div class="summary-line"><span>Total Deductions</span><span>${fmtPeso(Number(payrollRecord.gross_pay) - Number(payrollRecord.net_pay))}</span></div>
+                    <div class="net-pay"><span>NET SALARY &amp; WAGES:</span><span>${fmtPeso(payrollRecord.net_pay)}</span></div>
+                  </div>
+                </div>
+
+                <div class="footer">
+                  <div class="footer-motto">For Healthier, Happier Communities</div>
+                  <div class="footer-links">
+                    Webpage: http://wah.ph/ Email Address: wah.pilipinas@wah.ph<br>
+                    Facebook: wah.ph &nbsp;Twitter: @wah_team &nbsp;Instagram: @wah_team &nbsp;LinkedIn: wah.ph
+                  </div>
+                  <div class="footer-confidential">*** WAH Confidential - Maximum Restrictions ***</div>
                 </div>
               </div>
-            </div> <div class="footer-note" style="z-index: 10;">*** WAH Confidential - Maximum Restrictions ***</div>
-            
-          </div> </body>
-        </html>`;
+            </div>
+          </div>
+        </body>
+        </html>
+  `;
 
   await page.setContent(pdfHtmlContent, { waitUntil: "domcontentloaded" });
   const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
