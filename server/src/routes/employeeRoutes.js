@@ -61,6 +61,7 @@ import {
   sendPayslip,
   sendBulkPayslips,
 } from "../controllers/payrollController.js";
+import { upload } from "../middleware/upload.ts";
 import multer from "multer"; // <-- THIS IS THE MISSING LINE
 import path from "path"; // <-- Make sure you have this too
 import fs from "fs";
@@ -298,13 +299,23 @@ router.get(
 router.post(
   "/file-templates",
   authorizeRoles("Admin", "HR"),
-  uploadTemplate.single("template_file"),
+  (req, res, next) => {
+    req.body.folder = "templates";
+    req.body.user = "admin";
+    next();
+  },
+  upload.single("template_file"),
   uploadFileTemplate,
 );
 router.put(
   "/file-templates/:id",
   authorizeRoles("Admin", "HR"),
-  uploadTemplate.single("template_file"),
+  (req, res, next) => {
+    req.body.folder = "templates";
+    req.body.user = "admin";
+    next();
+  },
+  upload.single("template_file"),
   replaceFileTemplate,
 );
 router.delete(

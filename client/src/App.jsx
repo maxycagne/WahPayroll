@@ -8,7 +8,7 @@ import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
 import Settings from "./pages/Settings";
-import FileManagement from "./pages/FileManagement1";
+import FileManagement from "./pages/FileManagement";
 
 // HR & Reports Pages
 import HRDashboard from "./pages/HRDashboard";

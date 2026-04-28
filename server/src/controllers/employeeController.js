@@ -3,13 +3,9 @@ import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
 import bcrypt from "bcrypt";
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3BucketName, s3Client } from "../config/s3";
-import {
-  deleteDbStoredFileByKey,
-  getDbStoredFileByKey,
-  saveDbStoredFile,
-} from "../functions/dbFileStorage.ts";
 import { isDeductibleLeave } from "../constants/leavePolicy.ts";
 
 // payrollModel.js
@@ -401,6 +397,23 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
       "ALTER TABLE leave_requests ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
     );
   }
+
+  const [leaveUpdatedAtColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'updated_at'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveUpdatedAtColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+    );
+  }
 };
 
 export const ensureResignationsTable = async (connection = pool) => {
@@ -545,6 +558,11 @@ export const ensureResignationsTable = async (connection = pool) => {
       name: "current_step",
       alter:
         "ALTER TABLE resignations ADD COLUMN current_step TINYINT DEFAULT 1 AFTER clearance_file_key",
+    },
+    {
+      name: "updated_at",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
     },
   ];
 
@@ -917,6 +935,20 @@ const parseJsonArraySafe = (value) => {
   }
 };
 
+const parseJsonObjectSafe = (value) => {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value !== "string") return {};
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+};
+
 const deleteS3ObjectQuietly = async (fileKey) => {
   const normalized = String(fileKey || "").trim();
   if (!normalized) return;
@@ -1057,6 +1089,36 @@ export const getFileManagementInventory = async (req, res) => {
         accessibleEmpIds,
       );
       resignationRows = rows;
+    }
+
+    let leaveRows = [];
+    if (accessibleEmpIds.length > 0) {
+      const placeholders = accessibleEmpIds.map(() => "?").join(",");
+      const [rows] = await pool.query(
+        `SELECT
+           l.id,
+           l.emp_id,
+           l.leave_type,
+           l.status,
+           l.date_from,
+           l.date_to,
+           l.documents,
+           l.created_at,
+           l.updated_at,
+           e.first_name,
+           e.last_name,
+           e.designation,
+           e.position,
+           COALESCE(e.role, 'RankAndFile') AS role
+         FROM leave_requests l
+         JOIN employees e ON e.emp_id = l.emp_id
+         WHERE l.emp_id IN (${placeholders})
+           AND l.documents IS NOT NULL
+           AND l.status IN ('Approved', 'Partially Approved')
+         ORDER BY l.updated_at DESC, l.created_at DESC, l.id DESC`,
+        accessibleEmpIds,
+      );
+      leaveRows = rows;
     }
 
     const files = [];
@@ -1244,6 +1306,42 @@ export const getFileManagementInventory = async (req, res) => {
       }
     });
 
+    leaveRows.forEach((row) => {
+      const employeeName = safeEmployeeDisplayName(row);
+      const uploadedAt = row.updated_at || row.created_at || null;
+      const documents = parseJsonObjectSafe(row.documents);
+
+      Object.entries(documents).forEach(([field, doc]) => {
+        if (doc && doc.key) {
+          files.push({
+            id: `leave-${row.id}-${field}`,
+            emp_id: row.emp_id,
+            employee_name: employeeName,
+            position: row.position || "-",
+            designation: row.designation || "-",
+            role: normalizeRole(row.role),
+            source: "leave",
+            file_status: "uploaded",
+            record_id: row.id,
+            application_id: row.id,
+            file_group: `leave-${row.id}`,
+            file_field: field,
+            file_type: String(field)
+              .split("_")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" "),
+            file_key: doc.key,
+            file_name: doc.filename || safeFileName(doc.key),
+            uploaded_at: doc.uploadedAt || uploadedAt,
+            download_url: `/api/file/get?filename=${encodeURIComponent(doc.key)}`,
+            replaceable: false, // Leave documents are generally not replaceable once approved
+            request_status: row.status || null,
+            request_type: row.leave_type || "Leave",
+          });
+        }
+      });
+    });
+
     files.sort(
       (a, b) =>
         new Date(b.uploaded_at || 0).getTime() -
@@ -1296,22 +1394,14 @@ export const uploadFileTemplate = async (req, res) => {
   try {
     await ensureFileTemplatesTable();
 
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file || !req.file.key) {
+      return res.status(400).json({ message: "No file uploaded to S3" });
     }
 
     const title = String(req.body?.title || "").trim();
     const category = String(req.body?.category || "").trim();
     const originalName = String(req.file.originalname || "template").trim();
     const finalTitle = title || originalName;
-
-    const storageKey = await saveDbStoredFile({
-      originalName,
-      mimeType: String(req.file.mimetype || "application/octet-stream"),
-      sizeBytes: Number(req.file.size || 0),
-      content: req.file.buffer,
-      createdBy: req.user?.emp_id || null,
-    });
 
     const [result] = await pool.query(
       `INSERT INTO file_templates (
@@ -1326,7 +1416,7 @@ export const uploadFileTemplate = async (req, res) => {
       [
         finalTitle,
         category || null,
-        storageKey,
+        req.file.key,
         originalName,
         req.file.mimetype || "application/octet-stream",
         Number(req.file.size || 0),
@@ -1343,10 +1433,10 @@ export const uploadFileTemplate = async (req, res) => {
       size_bytes: Number(req.file.size || 0),
       uploaded_by: req.user?.emp_id || null,
       created_at: new Date().toISOString(),
-      message: "Template uploaded successfully",
+      message: "Template uploaded to S3 successfully",
     });
   } catch (error) {
-    console.error("DB Error in uploadFileTemplate:", error);
+    console.error("S3 Error in uploadFileTemplate:", error);
     return res.status(500).json({ message: "Error uploading template" });
   }
 };
@@ -1360,7 +1450,7 @@ export const replaceFileTemplate = async (req, res) => {
       return res.status(400).json({ message: "Invalid template id" });
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.key) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
@@ -1380,20 +1470,13 @@ export const replaceFileTemplate = async (req, res) => {
     const nextOriginalName = String(
       req.file.originalname || existing.original_name || "template",
     ).trim();
-    const nextStorageKey = await saveDbStoredFile({
-      originalName: nextOriginalName,
-      mimeType: String(req.file.mimetype || "application/octet-stream"),
-      sizeBytes: Number(req.file.size || 0),
-      content: req.file.buffer,
-      createdBy: req.user?.emp_id || null,
-    });
 
     await pool.query(
       `UPDATE file_templates
        SET storage_key = ?, original_name = ?, mime_type = ?, size_bytes = ?
        WHERE id = ?`,
       [
-        nextStorageKey,
+        req.file.key,
         nextOriginalName,
         req.file.mimetype || "application/octet-stream",
         Number(req.file.size || 0),
@@ -1401,7 +1484,7 @@ export const replaceFileTemplate = async (req, res) => {
       ],
     );
 
-    await deleteDbStoredFileByKey(existing.storage_key);
+    await deleteS3ObjectQuietly(existing.storage_key);
 
     return res.json({
       id: templateId,
@@ -1410,10 +1493,10 @@ export const replaceFileTemplate = async (req, res) => {
       original_name: nextOriginalName,
       mime_type: req.file.mimetype || "application/octet-stream",
       size_bytes: Number(req.file.size || 0),
-      message: "Template replaced successfully",
+      message: "Template replaced in S3 successfully",
     });
   } catch (error) {
-    console.error("DB Error in replaceFileTemplate:", error);
+    console.error("S3 Error in replaceFileTemplate:", error);
     return res.status(500).json({ message: "Error replacing template" });
   }
 };
@@ -1440,20 +1523,16 @@ export const downloadFileTemplate = async (req, res) => {
     }
 
     const template = rows[0];
-    const storedFile = await getDbStoredFileByKey(template.storage_key);
-    if (!storedFile) {
-      return res.status(404).json({ message: "Template file not found" });
-    }
 
-    res.setHeader("Content-Type", template.mime_type || storedFile.mimeType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${template.original_name || storedFile.originalName}"`,
-    );
-    res.setHeader("Content-Length", String(storedFile.sizeBytes || 0));
-    return res.send(storedFile.content);
+    const command = new GetObjectCommand({
+      Bucket: s3BucketName,
+      Key: template.storage_key,
+    });
+
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return res.json({ download_url: signedUrl });
   } catch (error) {
-    console.error("DB Error in downloadFileTemplate:", error);
+    console.error("S3 Error in downloadFileTemplate:", error);
     return res.status(500).json({ message: "Error downloading template" });
   }
 };
@@ -1478,11 +1557,11 @@ export const deleteFileTemplate = async (req, res) => {
 
     const template = rows[0];
     await pool.query(`DELETE FROM file_templates WHERE id = ?`, [templateId]);
-    await deleteDbStoredFileByKey(template.storage_key);
+    await deleteS3ObjectQuietly(template.storage_key);
 
-    return res.json({ message: "Template deleted successfully" });
+    return res.json({ message: "Template deleted successfully from S3" });
   } catch (error) {
-    console.error("DB Error in deleteFileTemplate:", error);
+    console.error("S3 Error in deleteFileTemplate:", error);
     return res.status(500).json({ message: "Error deleting template" });
   }
 };
