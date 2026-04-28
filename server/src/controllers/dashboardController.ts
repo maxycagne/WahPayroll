@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
+import { s3Client, s3BucketName } from "../config/s3";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import {
   ensureResignationsTable,
   ensureEmployeeMissingDocsTable,
@@ -14,6 +16,32 @@ import {
   notifyRequesterForDecision,
   ensureLeaveApprovalColumns,
 } from "./employeeController";
+
+// Helper to delete leave documents from S3
+const deleteLeaveDocuments = async (documentsJson: any) => {
+  if (!documentsJson) return;
+  try {
+    const docs = typeof documentsJson === "string" ? JSON.parse(documentsJson) : documentsJson;
+    const deletePromises = Object.values(docs).map((doc: any) => {
+      if (doc && doc.key) {
+        return s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: s3BucketName,
+            Key: doc.key,
+          })
+        ).catch(err => {
+          if (err?.name !== "NoSuchKey") {
+            console.error(`Error deleting file ${doc.key}:`, err);
+          }
+        });
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error("Error parsing/deleting documents:", error);
+  }
+};
 
 // --- DASHBOARD ---
 export const getDashboardSummary = async (req: Request, res: Response) => {
@@ -668,7 +696,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     }
 
     const [rows]: any = await connection.query(
-      "SELECT id, emp_id, date_from, date_to, status, approved_days, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
+      "SELECT id, emp_id, date_from, date_to, status, approved_days, documents, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
       [id],
     );
 
@@ -754,6 +782,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       }
 
       if (status === "Approved") {
+        await deleteLeaveDocuments(leaveRequest.documents);
         await connection.query("DELETE FROM leave_requests WHERE id = ?", [id]);
       } else {
         await connection.query(
@@ -813,11 +842,8 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       }
     }
 
-    if (status === "Denied" && !trimmedRemarks) {
-      await connection.rollback();
-      return res.status(400).json({
-        message: "Reason is required for denial",
-      });
+    if (status === "Denied") {
+      await deleteLeaveDocuments(leaveRequest.documents);
     }
 
     const remarksValue = status === "Denied" ? trimmedRemarks : null;
@@ -879,10 +905,11 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         SET status = ?,
             approved_days = ?,
             approved_dates = ?,
-            supervisor_remarks = ?
+            supervisor_remarks = ?,
+            documents = CASE WHEN ? = 'Denied' THEN NULL ELSE documents END
         WHERE id = ?
       `,
-      [status, finalApprovedDays, finalApprovedDates, remarksValue, id],
+      [status, finalApprovedDays, finalApprovedDates, remarksValue, status, id],
     );
 
     if (leaveBalanceDelta !== 0) {

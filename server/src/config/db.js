@@ -3,25 +3,36 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// const pool = mysql.createPool({
-//   host: process.env.DB_HOST || "localhost",
-//   user: process.env.DB_USER || "root",
-//   password: process.env.DB_PASSWORD || "",
-//   database: process.env.DB_NAME || "wahpayroll",
-//   waitForConnections: true,
-//   connectionLimit: 10,
-//   queueLimit: 0,
-// });
+const isProd = process.env.NODE_ENV === "production";
 
-const pool = mysql.createPool(process.env.MYSQL_PUBLIC_URL);
+const pool = isProd
+  ? mysql.createPool(process.env.MYSQL_PUBLIC_URL)
+  : mysql.createPool({
+      host: process.env.DB_HOST || "localhost",
+      user: process.env.DB_USER || "root",
+      password: process.env.DB_PASSWORD || "",
+      database: process.env.DB_NAME || "wahpayroll",
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    });
 
-pool
-  .getConnection()
-  .then((connection) => {
-    console.log("✅ Connected to MySQL database successfully!dasdad");
-    connection.release();
-  })
-  .catch((err) => {
-    console.error("❌ Error connecting to MySQL:", err.message);
-  });
+// optional: test connection
+(async () => {
+  try {
+    const conn = await pool.getConnection();
+    console.log(
+      isProd
+        ? "✅ MySQL connected (production)"
+        : "✅ MySQL connected (development)",
+    );
+    conn.release();
+  } catch (err) {
+    console.error("❌ MySQL connection failed:", err.message);
+
+    // fail fast in production
+    if (isProd) process.exit(1);
+  }
+})();
+
 export default pool;
