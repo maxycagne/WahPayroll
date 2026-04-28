@@ -307,7 +307,6 @@ export default function Payslips() {
               className="print-watermark pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2 object-contain"
               style={{ opacity: 0.06, width: "60%", maxHeight: "60%" }}
             />
-
             <div className="relative z-10 flex items-center border-b border-gray-700 px-4 py-5">
               <div className="flex items-center justify-start pl-1">
                 <img
@@ -327,7 +326,6 @@ export default function Payslips() {
                 Romulo Blvd, San Vicente, Tarlac City, Philippines
               </p>
             </div>
-
             <div className="relative z-10 border-b border-gray-700 px-6 py-5 text-[32px]">
               <p className="m-0 text-[15px]">
                 <span className="font-bold">PAYROLL PERIOD:</span>{" "}
@@ -338,7 +336,6 @@ export default function Payslips() {
                 {currentSlip.last_name}, {currentSlip.first_name}
               </p>
             </div>
-
             <div className="relative z-10 grid grid-cols-2 border-b border-gray-700 text-[14px]">
               <div className="border-r border-gray-700 px-4 py-4">
                 <div className="mb-3 flex items-center justify-between">
@@ -404,7 +401,7 @@ export default function Payslips() {
                 </div>
               </div>
             </div>
-
+            3
             <div className="relative z-10 border-b border-gray-700 px-6 py-4">
               <div className="mx-auto w-fit text-[16px]">
                 <div className="mb-1 flex items-center justify-between gap-8">
@@ -425,7 +422,6 @@ export default function Payslips() {
                 </div>
               </div>
             </div>
-
             <div className="relative z-10 px-6 py-4 text-center">
               <p className="m-0 text-[13px] font-bold italic text-[#2c3e7a]">
                 For Healthier, Happier Communities
@@ -448,6 +444,15 @@ export default function Payslips() {
                 <span className="font-semibold text-slate-500">LinkedIn:</span>{" "}
                 wah.ph
               </p>
+              <div
+                style={{
+                  fontSize: "9px",
+                  color: "#94a3b8",
+                  marginTop: "5px",
+                }}
+              >
+                *** WAH Confidential - Maximum Restrictions ***
+              </div>
             </div>
           </div>
         </>
