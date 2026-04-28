@@ -14,6 +14,7 @@ import {
 } from "../../constants/leavePolicy";
 import {
   calculateMandatedLeaveEndDate,
+  countMandatedLeaveDays,
   countWorkingDaysExcludingWeekends,
   validateMandatedLeaveEligibility,
 } from "./mandatedLeaveUtils";
@@ -76,16 +77,25 @@ export const fileLeave: RequestHandler = async (
 
   if (isMandated) {
     // For mandated leaves, if date_to is not provided or same as date_from,
-    // auto-compute end date based on entitlement (excluding weekends)
+    // auto-compute end date based on entitlement and weekend handling rule
     if (!date_to || date_to === date_from) {
       const maxDaysEntitlement = policy.maxDays;
-      resolvedDateTo = calculateMandatedLeaveEndDate(date_from, maxDaysEntitlement);
+      // Get the excludeWeekendsInDuration flag from policy (default to true for backward compatibility)
+      const excludeWeekends = policy.excludeWeekendsInDuration !== false;
+      
+      resolvedDateTo = calculateMandatedLeaveEndDate(
+        date_from,
+        maxDaysEntitlement,
+        excludeWeekends
+      );
     }
 
-    // Calculate effective working days (excluding weekends)
-    effectiveDaysExcludingWeekends = countWorkingDaysExcludingWeekends(
+    // Calculate effective days (working days or calendar days based on the flag)
+    const excludeWeekends = policy.excludeWeekendsInDuration !== false;
+    effectiveDaysExcludingWeekends = countMandatedLeaveDays(
       date_from,
-      resolvedDateTo
+      resolvedDateTo,
+      excludeWeekends
     );
   }
 

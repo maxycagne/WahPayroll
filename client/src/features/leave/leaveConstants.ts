@@ -161,7 +161,8 @@ export const leavePolicy = {
   "Mandated - Maternity Leave": {
     category: "mandated",
     maxDays: 105, // RA 11210: 105 days paid leave (60 regular + 45 after delivery)
-    excludeWeekends: true, // Count only working days (Mon-Fri)
+    excludeWeekends: true, // Legacy property - kept for backward compatibility
+    excludeWeekendsInDuration: false, // NEW: Include all calendar days in calculation
     annualEntitlement: 105,
     deductsFromBalance: false, // Mandated: does NOT reduce balance
     requiresDocument: ["maternity_cert"], // Medical certificate or SSS maternity benefit form
@@ -178,7 +179,8 @@ export const leavePolicy = {
   "Mandated - Special Leave for Women": {
     category: "mandated",
     maxDays: 60, // RA 9710: 2 months (60 days) for gynecological surgery or medical procedures
-    excludeWeekends: true, // Count only working days
+    excludeWeekends: true, // Legacy property - kept for backward compatibility
+    excludeWeekendsInDuration: false, // NEW: Include all calendar days in calculation
     annualEntitlement: 60,
     deductsFromBalance: false, // Does NOT reduce balance
     requiresDocument: ["medical_cert"], // Medical certificate from OB/GYN specialist
@@ -194,7 +196,8 @@ export const leavePolicy = {
   "Mandated - Paternity Leave": {
     category: "mandated",
     maxDays: 7, // RA 8187: 7 days per year for married male employees
-    excludeWeekends: true, // Count only working days
+    excludeWeekends: true, // Legacy property - kept for backward compatibility
+    excludeWeekendsInDuration: true, // NEW: Exclude weekends - only count working days
     annualEntitlement: 7,
     deductsFromBalance: false, // Does NOT reduce balance
     requiresDocument: ["birth_cert"], // Birth certificate of child / SSS registration
@@ -205,12 +208,13 @@ export const leavePolicy = {
       notes: "7 days per calendar year for child birth assistance"
     },
     helperText:
-      "Legal entitlement (RA 8187): 7 days/year for married male employees on child birth. Birth certificate required. Does not reduce balance.",
+      "Legal entitlement (RA 8187): 7 working days/year for married male employees on child birth. Birth certificate required. Does not reduce balance.",
   },
   "Mandated - Solo Parent Leave": {
     category: "mandated",
     maxDays: 7, // RA 8972: 7 days per year for qualified solo parents
-    excludeWeekends: true, // Count only working days
+    excludeWeekends: true, // Legacy property - kept for backward compatibility
+    excludeWeekendsInDuration: true, // NEW: Exclude weekends - only count working days
     annualEntitlement: 7,
     deductsFromBalance: false, // Does NOT reduce balance
     requiresDocument: ["solo_parent_cert"], // DSWD Solo Parent ID or LGU certificate
@@ -221,12 +225,13 @@ export const leavePolicy = {
       notes: "Must have valid DSWD Solo Parent ID"
     },
     helperText:
-      "Legal entitlement (RA 8972): 7 days/year for qualified solo parents. DSWD ID/LGU certificate required. Does not reduce balance.",
+      "Legal entitlement (RA 8972): 7 working days/year for qualified solo parents. DSWD ID/LGU certificate required. Does not reduce balance.",
   },
   "Mandated - VAWC Leave": {
     category: "mandated",
     maxDays: 10, // RA 9262: Up to 10 days per year, extendable by court/barangay order
-    excludeWeekends: true, // Count only working days
+    excludeWeekends: true, // Legacy property - kept for backward compatibility
+    excludeWeekendsInDuration: true, // NEW: Exclude weekends - only count working days
     annualEntitlement: 10,
     deductsFromBalance: false, // Does NOT reduce balance
     requiresDocument: ["vawc_cert"], // Protection order, police report, or barangay certification
@@ -237,7 +242,7 @@ export const leavePolicy = {
       notes: "Can be extended beyond 10 days with valid court/barangay order. Emergency filing allowed."
     },
     helperText:
-      "Legal entitlement (RA 9262): Up to 10 days/year for violence victims. Protection order/police report required. Extendable by court order. Does not reduce balance.",
+      "Legal entitlement (RA 9262): Up to 10 working days/year for violence victims. Protection order/police report required. Extendable by court order. Does not reduce balance.",
   },
 };
 

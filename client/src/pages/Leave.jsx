@@ -5,6 +5,7 @@ import {
   parseDateOnly,
   getDateDiffInclusive,
   calculateBusinessDays,
+  calculateMandatedLeaveEndDate,
   getWorkingDateRangeInclusive,
   isNonWorkingDay,
   calculateTotalCredits,
@@ -14,6 +15,7 @@ import {
   leaveTypes,
   resignationTypes,
   leavePolicy,
+  isMandatedLeave,
   leaveUploadFieldKeys,
 } from "@/features/leave/leaveConstants";
 
@@ -202,10 +204,27 @@ export default function Leave() {
 
   const handleLeaveTypeChange = (e) => {
     const newLeaveType = e.target.value;
-    const newToDate =
-      newLeaveType === "Birthday Leave" && formData.fromDate
-        ? formData.fromDate
-        : "";
+
+    const newToDate = (() => {
+      if (!formData.fromDate) return "";
+
+      if (newLeaveType === "Birthday Leave") {
+        return formData.fromDate;
+      }
+
+      if (isMandatedLeave(newLeaveType)) {
+        const policy = leavePolicy[newLeaveType];
+        const excludeWeekends = policy?.excludeWeekendsInDuration !== false;
+        return calculateMandatedLeaveEndDate(
+          formData.fromDate,
+          policy?.maxDays || 7,
+          excludeWeekends,
+        );
+      }
+
+      return "";
+    })();
+
     setFormData({
       ...clearLeaveUploadFields(formData),
       leaveType: newLeaveType,
@@ -240,8 +259,23 @@ export default function Leave() {
       return;
     }
 
-    const newToDate =
-      formData.leaveType === "Birthday Leave" ? newFromDate : "";
+    const newToDate = (() => {
+      if (formData.leaveType === "Birthday Leave") {
+        return newFromDate;
+      }
+
+      if (isMandatedLeave(formData.leaveType)) {
+        const policy = leavePolicy[formData.leaveType];
+        const excludeWeekends = policy?.excludeWeekendsInDuration !== false;
+        return calculateMandatedLeaveEndDate(
+          newFromDate,
+          policy?.maxDays || 7,
+          excludeWeekends,
+        );
+      }
+
+      return "";
+    })();
 
     // Also validate if the newToDate is non-working, but birthday leave is already on the fromDate
     setFormData({ ...formData, fromDate: newFromDate, toDate: newToDate });
@@ -250,6 +284,10 @@ export default function Leave() {
 
   const handleToDateChange = (e) => {
     const toDate = e.target.value;
+    if (isMandatedLeave(formData.leaveType)) {
+      return;
+    }
+
     if (!toDate) {
       setFormData({ ...formData, toDate: "" });
       setFormError("");
@@ -284,6 +322,16 @@ export default function Leave() {
   const getMaxToDate = () => {
     if (!formData.fromDate || formData.leaveType === "Offset") return "";
     const policy = leavePolicy[formData.leaveType];
+
+    if (isMandatedLeave(formData.leaveType)) {
+      const excludeWeekends = policy?.excludeWeekendsInDuration !== false;
+      return calculateMandatedLeaveEndDate(
+        formData.fromDate,
+        policy?.maxDays || 7,
+        excludeWeekends,
+      );
+    }
+
     const startDate = new Date(formData.fromDate);
     let daysAdded = 0;
     const maxDays = policy.maxDays;

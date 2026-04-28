@@ -294,26 +294,42 @@ export function isFutureDateString(dateValue: DateInput) {
  * @param configs - Optional workweek configurations
  * @returns The calculated end date in YYYY-MM-DD format
  */
+/**
+ * Calculates the end date for mandated leave based on duration and weekend handling
+ * @param startDate - Start date of leave
+ * @param daysRequired - Number of days required
+ * @param excludeWeekends - If true, only count working days (Mon-Fri). If false, include all calendar days
+ * @returns Computed end date as YYYY-MM-DD string
+ */
 export function calculateMandatedLeaveEndDate(
   startDate: DateInput,
-  workingDaysRequired: number,
+  daysRequired: number,
+  excludeWeekends: boolean = true,
   configs: any[] = []
 ): string {
-  if (!startDate || workingDaysRequired <= 0) return "";
+  if (!startDate || daysRequired <= 0) return "";
   
   let count = 0;
   const current = parseDateOnly(startDate);
   
-  while (count < workingDaysRequired) {
-    // Check if current day is a working day (not a weekend)
-    // For mandated leaves, we only exclude Sat/Sun, not considering 4-day workweek
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
-      count++;
+  if (excludeWeekends) {
+    // Count only working days (Mon-Fri)
+    while (count < daysRequired) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
+        count++;
+      }
+      
+      if (count < daysRequired) {
+        current.setDate(current.getDate() + 1);
+      }
     }
-    
-    if (count < workingDaysRequired) {
+  } else {
+    // Count all calendar days including weekends
+    count = 1; // Start date counts as day 1
+    while (count < daysRequired) {
       current.setDate(current.getDate() + 1);
+      count++;
     }
   }
   
@@ -325,15 +341,16 @@ export function calculateMandatedLeaveEndDate(
 }
 
 /**
- * Counts working days (excluding weekends) between two dates
- * Useful for determining effective leave days in mandated leave requests
+ * Counts days between two dates with weekend handling options
  * @param startDate - Start date
  * @param endDate - End date
- * @returns Number of working days (Mon-Fri) between dates inclusive
+ * @param excludeWeekends - If true, count only working days (Mon-Fri). If false, count all calendar days
+ * @returns Number of days (or working days) between dates inclusive
  */
-export function countWorkingDaysExcludingWeekends(
+export function countMandatedLeaveDays(
   startDate: DateInput,
-  endDate: DateInput
+  endDate: DateInput,
+  excludeWeekends: boolean = true
 ): number {
   if (!startDate || !endDate) return 0;
   
@@ -341,13 +358,31 @@ export function countWorkingDaysExcludingWeekends(
   const current = parseDateOnly(startDate);
   const end = parseDateOnly(endDate);
   
-  while (current <= end) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
-      count++;
+  if (excludeWeekends) {
+    // Count only working days (Mon-Fri)
+    while (current <= end) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+        count++;
+      }
+      current.setDate(current.getDate() + 1);
     }
-    current.setDate(current.getDate() + 1);
+  } else {
+    // Count all calendar days
+    count = getDateDiffInclusiveCore({ start: startDate, end: endDate });
   }
   
   return count;
+}
+
+/**
+ * Legacy function: Counts working days (excluding weekends) between two dates
+ * Kept for backward compatibility. Use countMandatedLeaveDays instead.
+ * @deprecated Use countMandatedLeaveDays(startDate, endDate, true) instead
+ */
+export function countWorkingDaysExcludingWeekends(
+  startDate: DateInput,
+  endDate: DateInput
+): number {
+  return countMandatedLeaveDays(startDate, endDate, true);
 }

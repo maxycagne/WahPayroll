@@ -3,7 +3,7 @@
  * Mirror of client-side leaveConstants.ts for validation
  */
 
-export const leavePolicy = {
+export const leavePolicy: Record<string, any> = {
   // ============ LEGACY LEAVE TYPES ============
   "Birthday Leave": {
     category: "legacy",
@@ -115,6 +115,7 @@ export const leavePolicy = {
   "Mandated - Maternity Leave": {
     category: "mandated",
     maxDays: 105, // RA 11210: 105 days paid leave
+    excludeWeekendsInDuration: false, // Include all calendar days in calculation
     annualEntitlement: 105,
     deductsFromBalance: false,
     requiresDocument: ["maternity_cert"],
@@ -127,6 +128,7 @@ export const leavePolicy = {
   "Mandated - Special Leave for Women": {
     category: "mandated",
     maxDays: 60, // RA 9710: 2 months (60 days) for gynecological procedures
+    excludeWeekendsInDuration: false, // Include all calendar days in calculation
     annualEntitlement: 60,
     deductsFromBalance: false,
     requiresDocument: ["medical_cert"],
@@ -139,6 +141,7 @@ export const leavePolicy = {
   "Mandated - Paternity Leave": {
     category: "mandated",
     maxDays: 7, // RA 8187: 7 days per year for married males
+    excludeWeekendsInDuration: true, // Only count working days (Mon-Fri)
     annualEntitlement: 7,
     deductsFromBalance: false,
     requiresDocument: ["birth_cert"],
@@ -151,6 +154,7 @@ export const leavePolicy = {
   "Mandated - Solo Parent Leave": {
     category: "mandated",
     maxDays: 7, // RA 8972: 7 days per year for solo parents
+    excludeWeekendsInDuration: true, // Only count working days (Mon-Fri)
     annualEntitlement: 7,
     deductsFromBalance: false,
     requiresDocument: ["solo_parent_cert"],
@@ -163,6 +167,7 @@ export const leavePolicy = {
   "Mandated - VAWC Leave": {
     category: "mandated",
     maxDays: 10, // RA 9262: Up to 10 days per year for violence victims
+    excludeWeekendsInDuration: true, // Only count working days (Mon-Fri)
     annualEntitlement: 10,
     deductsFromBalance: false,
     requiresDocument: ["vawc_cert"],
@@ -177,7 +182,7 @@ export const leavePolicy = {
 /**
  * Get policy for a leave type
  */
-export function getLeavePolicy(leaveType: string) {
+export function getLeavePolicy(leaveType: string): any {
   return leavePolicy[leaveType] || null;
 }
 
