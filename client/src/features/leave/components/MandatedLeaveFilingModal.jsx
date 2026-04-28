@@ -33,16 +33,20 @@ export default function MandatedLeaveFilingModal({
     if (startDate && isMandatedLeave(leaveType)) {
       // Get the excludeWeekendsInDuration flag (default to true for backward compatibility)
       const excludeWeekends = policy.excludeWeekendsInDuration !== false;
-      
+
       const endDate = calculateMandatedLeaveEndDate(
         startDate,
         policy.maxDays || 7,
-        excludeWeekends
+        excludeWeekends,
       );
       setComputedEndDate(endDate);
 
       // Calculate effective days (working days or calendar days based on the flag)
-      const effectiveDays = countMandatedLeaveDays(startDate, endDate, excludeWeekends);
+      const effectiveDays = countMandatedLeaveDays(
+        startDate,
+        endDate,
+        excludeWeekends,
+      );
       setEffectiveDays(effectiveDays);
     }
   }, [startDate, leaveType, policy.maxDays, policy.excludeWeekendsInDuration]);
@@ -141,9 +145,9 @@ export default function MandatedLeaveFilingModal({
             <div>
               <h2 className="text-2xl font-bold">{leaveType}</h2>
               <p className="text-blue-100 text-sm mt-1">
-                {policy.maxDays} days entitlement • 
-                {policy.excludeWeekendsInDuration === false 
-                  ? " Includes weekends (calendar days)" 
+                {policy.maxDays} days entitlement •
+                {policy.excludeWeekendsInDuration === false
+                  ? " Includes weekends (calendar days)"
                   : " Excludes weekends (working days only)"}
               </p>
             </div>
@@ -211,9 +215,9 @@ export default function MandatedLeaveFilingModal({
                   Effective Leave Duration
                 </label>
                 <div className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 font-semibold">
-                  {effectiveDays} days 
-                  {policy.excludeWeekendsInDuration === false 
-                    ? " (calendar days)" 
+                  {effectiveDays} days
+                  {policy.excludeWeekendsInDuration === false
+                    ? " (calendar days)"
                     : " (working days, excluding weekends)"}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

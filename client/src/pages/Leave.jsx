@@ -564,7 +564,9 @@ export default function Leave() {
 
   if (isLoadingLeaves || isLoadingOffsets || isLoadingResignations) {
     return (
-      <div className="p-6 font-bold text-gray-800 dark:text-gray-200">Loading your data...</div>
+      <div className="p-6 font-bold text-gray-800 dark:text-gray-200">
+        Loading your data...
+      </div>
     );
   }
 
