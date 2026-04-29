@@ -7,6 +7,9 @@ import {
 import LeaveUploadField from "./LeaveUploadField";
 import Toast from "@/components/Toast"; // Import your Toast component
 import { useToast } from "@/hooks/useToast";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardSummary } from "@/features/dashboard/api";
+
 export default function LeaveForm({
   handleLeaveTypeChange,
   handleFromDateChange,
@@ -21,6 +24,12 @@ export default function LeaveForm({
   totalCredits,
   handleSubmitLeave,
 }) {
+  const { data: dashboardData } = useQuery({
+    queryKey: ["dashboardSummary"],
+    queryFn: getDashboardSummary,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const isMandated = isMandatedLeave(formData.leaveType);
   const isDeductible = isDeductibleLeave(formData.leaveType);
   const requiredDocs = getRequiredDocuments(formData.leaveType);
@@ -356,6 +365,19 @@ export default function LeaveForm({
               </>
             )}
           </div>
+          
+          {/* Display Leave Balance */}
+          {dashboardData && dashboardData.personalSummary && (
+            <div className="flex flex-col items-center justify-center px-4">
+              <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Current Balance
+              </span>
+              <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                {Number(dashboardData.personalSummary.leaveBalance || 0).toFixed(2)}
+              </span>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               type="button"
