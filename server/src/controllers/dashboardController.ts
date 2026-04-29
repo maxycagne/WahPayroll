@@ -132,20 +132,34 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
          FROM employees e
+         LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.status != 'Inactive'
            AND COALESCE(e.role, '') <> 'Admin'
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+           AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
+           AND e.emp_id NOT IN (
+             SELECT l.emp_id 
+             FROM leave_requests l 
+             WHERE CURDATE() BETWEEN l.date_from AND l.date_to 
+               AND l.status = 'Approved'
+           )`,
       );
       absents = rows;
     } else if (isSupervisor) {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
          FROM employees e
+         LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.status != 'Inactive'
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
            AND e.designation = ?
            AND e.emp_id <> ?
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+           AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
+           AND e.emp_id NOT IN (
+             SELECT l.emp_id 
+             FROM leave_requests l 
+             WHERE CURDATE() BETWEEN l.date_from AND l.date_to 
+               AND l.status = 'Approved'
+           )`,
         [currentUser.designation || "", currentUser.emp_id],
       );
       absents = rows;
@@ -153,8 +167,15 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
          FROM employees e
+         LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.emp_id = ?
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+           AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
+           AND e.emp_id NOT IN (
+             SELECT l.emp_id 
+             FROM leave_requests l 
+             WHERE CURDATE() BETWEEN l.date_from AND l.date_to 
+               AND l.status = 'Approved'
+           )`,
         [currentUser.emp_id],
       );
       absents = rows;
