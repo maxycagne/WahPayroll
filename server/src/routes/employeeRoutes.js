@@ -72,7 +72,7 @@ router.use(authenticateToken);
 
 router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
-router.get("/all-resignations", getAllResignations);
+router.get("/all-resignations", authorizeRoles("Admin", "HR"), getAllResignations);
 router.get(
   "/my-resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -100,7 +100,7 @@ router.put(
 );
 router.put(
   "/resignations/:id",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Admin", "Supervisor", "HR"),
   updateResignationStatus,
 );
 
