@@ -1,3 +1,5 @@
+import { isMandatedLeave } from "@/features/leave/leaveConstants";
+
 export default function ReviewConfirmationModalDaySelector({
   reviewConfirm,
   getDateRangeInclusive,
@@ -20,12 +22,15 @@ export default function ReviewConfirmationModalDaySelector({
   );
   const selectedDates = reviewConfirm?.selectedDates || [];
 
+  const isMandated = isMandatedLeave(reviewConfirm?.item?.leave_type);
+
   return (
     <>
       {reviewConfirm.module === "leave" &&
         reviewConfirm.decisionMode !== "cancellation" &&
         reviewConfirm.status === "Approved" &&
-        reviewConfirm.isMultiDay && (
+        reviewConfirm.isMultiDay &&
+        !isMandated && (
           <div className="mb-4 rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-gradient-to-br from-amber-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
