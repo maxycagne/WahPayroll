@@ -401,7 +401,7 @@ export default function Payslips() {
                 </div>
               </div>
             </div>
-            3
+
             <div className="relative z-10 border-b border-gray-700 px-6 py-4">
               <div className="mx-auto w-fit text-[16px]">
                 <div className="mb-1 flex items-center justify-between gap-8">
