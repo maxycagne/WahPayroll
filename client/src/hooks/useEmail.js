@@ -58,5 +58,27 @@ export const useEmail = () => {
     }
   };
 
-  return { sendLeaveStatusEmail, sendResignationStatusEmail };
+  const sendImmediateResignationEmail = async (item) => {
+    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const templateId = import.meta.env.VITE_EMAILJS_RESIGNATION_TEMPLATE_ID;
+    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+    const templateParams = {
+      email: item.recipient_email,
+      employee_name: item.employee_name,
+      position: item.position,
+      date: formatDate(item.resignation_date),
+      createddate: formatDate(item.created_at),
+      immediate_resignation: "IMMEDIATE RESIGNATION - HIGH PRIORITY",
+    };
+
+    try {
+      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      console.log("Immediate resignation email sent successfully!");
+    } catch (error) {
+      console.error("EmailJS Error (Immediate Resignation):", error.text || error);
+    }
+  };
+
+  return { sendLeaveStatusEmail, sendResignationStatusEmail, sendImmediateResignationEmail };
 };

@@ -53,6 +53,9 @@ export default function ReviewResigApp({
   if (!reviewData) return null;
 
   const progress = getResignationProgressPercent(reviewData.item);
+  const isImmediateResignation =
+    Boolean(reviewData.item?.immediate_resignation) ||
+    !reviewData.item?.last_working_day;
 
   return (
     <div className="fixed inset-0 z-[72] flex items-center justify-center bg-black/55 p-4">
@@ -66,6 +69,11 @@ export default function ReviewResigApp({
               {reviewData.item.first_name} {reviewData.item.last_name} •{" "}
               {reviewData.item.resignation_type || "Resignation"}
             </p>
+            {isImmediateResignation && (
+              <span className="mt-2 inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:bg-rose-900/30 dark:text-rose-400">
+                Immediate Resignation Request
+              </span>
+            )}
           </div>
           <button
             type="button"

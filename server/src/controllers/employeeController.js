@@ -2490,6 +2490,7 @@ export const fileResignation = async (req, res) => {
     recipient_emp_id,
     resignation_date,
     last_working_day,
+    immediate_resignation,
     leaving_reasons,
     leaving_reason_other,
     exit_interview_answers,
@@ -2575,37 +2576,54 @@ export const fileResignation = async (req, res) => {
         return res.status(404).json({ message: "Requester not found" });
       }
 
-      const computedResignationDate = computeOneMonthAheadDateString(
-        new Date(),
-      );
+      const isImmediateResignation = Boolean(immediate_resignation);
+      const resolvedResignationDate = isImmediateResignation
+        ? String(resignation_date || "").trim()
+        : computeOneMonthAheadDateString(new Date());
 
-      const parsedResignationDate = new Date(computedResignationDate);
-      const parsedLastWorkingDay = new Date(last_working_day);
+      if (isImmediateResignation && !resolvedResignationDate) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Resignation date is required for immediate resignation",
+        });
+      }
+
+      const parsedResignationDate = new Date(resolvedResignationDate);
       const parsedEffectiveDate = new Date(effective_date);
 
       if (
         Number.isNaN(parsedResignationDate.getTime()) ||
-        Number.isNaN(parsedLastWorkingDay.getTime()) ||
         Number.isNaN(parsedEffectiveDate.getTime())
       ) {
         await connection.rollback();
         return res.status(400).json({
-          message: "Resignation date and last working day must be valid dates",
+          message: "Resignation date and effective date must be valid dates",
         });
       }
 
-      if (parsedResignationDate > parsedLastWorkingDay) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Last working day must be on or after resignation date",
-        });
-      }
+      if (!isImmediateResignation) {
+        const parsedLastWorkingDay = new Date(last_working_day);
 
-      if (String(effective_date) !== String(last_working_day)) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Effective date must match last working day",
-        });
+        if (Number.isNaN(parsedLastWorkingDay.getTime())) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Last working day must be a valid date",
+          });
+        }
+
+        if (parsedResignationDate > parsedLastWorkingDay) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Last working day must be on or after resignation date",
+          });
+        }
+
+        if (String(effective_date) !== String(last_working_day)) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Effective date must match last working day",
+          });
+        }
       }
 
       if (requester?.hired_date) {
@@ -2647,8 +2665,8 @@ export const fileResignation = async (req, res) => {
           trimmedLetter,
           recipient_name || null,
           recipient_emp_id || null,
-          computedResignationDate,
-          last_working_day || null,
+          resolvedResignationDate,
+          isImmediateResignation ? null : last_working_day || null,
           JSON.stringify(parsedReasons),
           String(leaving_reason_other || "").trim() || null,
           JSON.stringify(parsedInterviewAnswers),
@@ -2661,6 +2679,45 @@ export const fileResignation = async (req, res) => {
         moduleType: "Resignation",
         requestId: result.insertId,
       });
+
+      // Send immediate resignation notification to supervisors and HR
+      if (immediate_resignation) {
+        const [hrEmployees] = await connection.query(
+          `SELECT emp_id, first_name, last_name, email FROM employees WHERE LOWER(COALESCE(role, '')) = 'hr'`,
+        );
+
+        const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
+        const highPriorityTitle = `IMMEDIATE RESIGNATION - HIGH PRIORITY: ${requesterName}`;
+        const highPriorityMessage = `${requesterName} (${requester.position || "N/A"}) has submitted an IMMEDIATE RESIGNATION effective ${effective_date}. This is a high-priority request requiring urgent attention.`;
+
+        // Notify all HR personnel
+        for (const hrEmployee of hrEmployees) {
+          await createNotification(connection, {
+            empId: hrEmployee.emp_id,
+            notificationType: "RESIGNATION_IMMEDIATE",
+            title: highPriorityTitle,
+            message: highPriorityMessage,
+            referenceType: "Resignation",
+            referenceId: result.insertId,
+          });
+        }
+
+        // Also notify supervisor (if applicable)
+        const supervisors = await getSupervisorApproversForRequester(
+          connection,
+          requester,
+        );
+        for (const supervisor of supervisors) {
+          await createNotification(connection, {
+            empId: supervisor.emp_id,
+            notificationType: "RESIGNATION_IMMEDIATE",
+            title: highPriorityTitle,
+            message: highPriorityMessage,
+            referenceType: "Resignation",
+            referenceId: result.insertId,
+          });
+        }
+      }
 
       await connection.query(
         "DELETE FROM resignation_drafts WHERE emp_id = ?",
