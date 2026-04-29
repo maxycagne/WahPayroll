@@ -63,6 +63,7 @@ function getDefaultResignationWizardState(
     designation: safeText(currentUser?.designation) || "N/A",
     hired_date: toDateInputValue(currentUser?.hired_date),
     resignation_date: "",
+    immediate_resignation: false,
     last_working_day: "",
     leaving_reasons: [],
     leaving_reason_other: "",
