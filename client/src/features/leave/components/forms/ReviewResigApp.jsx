@@ -20,13 +20,18 @@ const exitInterviewQuestions = [
 ];
 
 const reviewBadgeClass = {
-  Approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  Approved:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   Denied: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  Pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  "Pending Approval": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  "Cancellation Requested": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  Pending:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  "Pending Approval":
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  "Cancellation Requested":
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   Rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  "Partially Approved": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  "Partially Approved":
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
 function getResignationProgressPercent(item) {
@@ -120,23 +125,31 @@ export default function ReviewResigApp({
             </p>
             <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-gray-800 dark:text-gray-200 md:grid-cols-2">
               <p className="m-0">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Recipient:</span>{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  Recipient:
+                </span>{" "}
                 {reviewData.item.recipient_name || "-"}
               </p>
               <p className="m-0">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Resignation Date:</span>{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  Resignation Date:
+                </span>{" "}
                 {reviewData.item.resignation_date
                   ? formatLongDate(reviewData.item.resignation_date)
                   : "-"}
               </p>
               <p className="m-0">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Last Working Day:</span>{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  Last Working Day:
+                </span>{" "}
                 {reviewData.item.last_working_day
                   ? formatLongDate(reviewData.item.last_working_day)
                   : "-"}
               </p>
               <p className="m-0">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Effective Date:</span>{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  Effective Date:
+                </span>{" "}
                 {reviewData.item.effective_date
                   ? formatLongDate(reviewData.item.effective_date)
                   : "-"}
@@ -163,7 +176,9 @@ export default function ReviewResigApp({
               )}
               {reviewData.item.leaving_reason_other && (
                 <p className="m-0 mt-2 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Others:</span>{" "}
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">
+                    Others:
+                  </span>{" "}
                   {reviewData.item.leaving_reason_other}
                 </p>
               )}
@@ -205,7 +220,9 @@ export default function ReviewResigApp({
               Step 4 • Endorsement Form Submission
             </p>
             <p className="m-0 mt-2 text-sm text-gray-800 dark:text-gray-200">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">File Key:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                File Key:
+              </span>{" "}
               {reviewData.item.endorsement_file_key || "Not uploaded"}
             </p>
             {reviewData.item.endorsement_file_key && (
