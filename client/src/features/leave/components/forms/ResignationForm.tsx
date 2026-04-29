@@ -77,7 +77,7 @@ export default function ResignationForm({
   fileResignationMutation,
   currentUser: currentUserProp,
 }: ResignationFormProps) {
-  const { sendResignationStatusEmail } = useEmail();
+  const { sendResignationStatusEmail, sendImmediateResignationEmail } = useEmail();
   const { toast, showToast, clearToast } = useToast();
   const currentUser = useMemo<CurrentUserLike>(() => {
     if (currentUserProp) return currentUserProp;
@@ -157,6 +157,8 @@ export default function ResignationForm({
 
   useEffect(() => {
     if (!safeText(resignationForm.request_date)) return;
+    // don't auto-calculate resignation date when immediate resignation is selected
+    if (resignationForm.immediate_resignation) return;
 
     const autoResignationDate = computeOneMonthAheadDate(
       resignationForm.request_date,
@@ -171,6 +173,7 @@ export default function ResignationForm({
   }, [
     resignationForm.request_date,
     resignationForm.resignation_date,
+    resignationForm.immediate_resignation,
     setField,
   ]);
 
@@ -412,10 +415,18 @@ export default function ResignationForm({
     }
 
     if (step === 2) {
-      if (!resignationForm.last_working_day) {
-        showToast("Last working day is required.", "error");
-        return false;
+      if (resignationForm.immediate_resignation) {
+        if (!resignationForm.resignation_date) {
+          showToast("Resignation date is required for immediate resignation.", "error");
+          return false;
+        }
+      } else {
+        if (!resignationForm.last_working_day) {
+          showToast("Last working day is required.", "error");
+          return false;
+        }
       }
+
       if ((resignationForm.leaving_reasons || []).length === 0) {
         showToast("Select at least one reason for leaving.", "error");
         return false;
@@ -496,6 +507,7 @@ export default function ResignationForm({
     setField("designation", defaultResignationForm.designation);
     setField("hired_date", defaultResignationForm.hired_date);
     setField("resignation_date", defaultResignationForm.resignation_date);
+    setField("immediate_resignation", false);
     setField("last_working_day", defaultResignationForm.last_working_day);
     setField("leaving_reasons", []);
     setField(
@@ -560,16 +572,20 @@ export default function ResignationForm({
           )}; Others: ${String(resignationForm.leaving_reason_other || "").trim()}`
       : reasons.join(", ");
 
+    const resignationDateToUse = resignationForm.resignation_date || computeOneMonthAheadDate(resignationForm.request_date);
+    const effectiveDateToUse = resignationForm.immediate_resignation ? resignationDateToUse : resignationForm.last_working_day;
+
     const payload: SubmitResignationPayload = {
       emp_id: currentUser?.emp_id,
       resignation_type: "Voluntary Resignation",
-      effective_date: resignationForm.last_working_day,
+      effective_date: effectiveDateToUse,
       reason: reasonSummary,
       resignation_letter: resignationForm.resignation_letter,
       recipient_name: resignationForm.recipient_name,
       recipient_emp_id: resignationForm.recipient_emp_id || null,
-      resignation_date: computeOneMonthAheadDate(resignationForm.request_date),
-      last_working_day: resignationForm.last_working_day,
+      resignation_date: resignationDateToUse,
+      immediate_resignation: Boolean(resignationForm.immediate_resignation),
+      last_working_day: resignationForm.immediate_resignation ? null : resignationForm.last_working_day,
       leaving_reasons: resignationForm.leaving_reasons,
       leaving_reason_other: resignationForm.leaving_reason_other,
       exit_interview_answers: resignationForm.interview_answers,
@@ -610,16 +626,24 @@ export default function ResignationForm({
           "Failed to submit resignation",
         );
       }
-      await sendResignationStatusEmail(
-        {
-          recipient_email: "finance@wah.ph",
-          employee_name: resignationForm.employee_name,
-          position: resignationForm.position,
-          resignation_date: resignationForm.last_working_day,
-          created_at: resignationForm.resignation_date,
-        },
-        "Submitted",
-      );
+      await (resignationForm.immediate_resignation
+        ? sendImmediateResignationEmail({
+            recipient_email: "finance@wah.ph",
+            employee_name: resignationForm.employee_name,
+            position: resignationForm.position,
+            resignation_date: resignationDateToUse,
+            created_at: resignationForm.request_date,
+          })
+        : sendResignationStatusEmail(
+            {
+              recipient_email: "finance@wah.ph",
+              employee_name: resignationForm.employee_name,
+              position: resignationForm.position,
+              resignation_date: resignationDateToUse,
+              created_at: resignationForm.request_date,
+            },
+            "Submitted",
+          ));
 
       if (!usedExternalMutation) {
         showToast("Resignation filed successfully.");
@@ -699,6 +723,29 @@ export default function ResignationForm({
               className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
             />
           </div>
+
+          <div className="flex items-center gap-3 md:col-span-2">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(resignationForm.immediate_resignation)}
+                onChange={(e) => {
+                  setField("immediate_resignation", e.target.checked);
+                  if (e.target.checked) {
+                    setField("last_working_day", "");
+                  }
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-red-600"
+              />
+              <span className="text-sm font-semibold text-red-600">
+                Immediate Resignation Request
+              </span>
+            </label>
+            <span className="ml-2 inline-block rounded-full bg-yellow-100 text-xs text-yellow-800 px-2 py-0.5">
+              High Priority
+            </span>
+          </div>
+
           <div className="flex flex-col gap-2 md:col-span-2">
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Resignation Letter Body<span className="text-red-500">*</span>
@@ -767,25 +814,29 @@ export default function ResignationForm({
             <input
               type="date"
               value={resignationForm.resignation_date}
-              readOnly
-              disabled
-              className="cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+              onChange={(e) => setField("resignation_date", e.target.value)}
+              readOnly={!resignationForm.immediate_resignation}
+              disabled={!resignationForm.immediate_resignation}
+              className={resignationForm.immediate_resignation ? "rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500" : "cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"}
             />
             <p className="m-0 text-[11px] text-gray-500 dark:text-gray-400">
-              Auto-calculated as one month from application date.
+              {resignationForm.immediate_resignation ? "Select your intended resignation date." : "Auto-calculated as one month from application date."}
             </p>
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Last Working Day<span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={resignationForm.last_working_day}
-              onChange={(e) => setField("last_working_day", e.target.value)}
-              className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
+
+          {!resignationForm.immediate_resignation && (
+            <div className="flex flex-col gap-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Last Working Day<span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={resignationForm.last_working_day}
+                onChange={(e) => setField("last_working_day", e.target.value)}
+                className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          )}
 
           <div className="md:col-span-2">
             <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -1029,14 +1080,23 @@ export default function ResignationForm({
               <span className="font-semibold text-gray-700 dark:text-gray-300">Recipient:</span>{" "}
               {resignationForm.recipient_name}
             </p>
+            {resignationForm.immediate_resignation && (
+              <p className="m-0 mt-1">
+                <span className="inline-block rounded-full bg-yellow-100 text-xs text-yellow-800 px-2 py-0.5 font-semibold">
+                  IMMEDIATE RESIGNATION REQUEST (HIGH PRIORITY)
+                </span>
+              </p>
+            )}
             <p className="m-0 mt-1">
               <span className="font-semibold text-gray-700 dark:text-gray-300">Resignation Date:</span>{" "}
               {resignationForm.resignation_date || "-"}
             </p>
-            <p className="m-0 mt-1">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">Last Working Day:</span>{" "}
-              {resignationForm.last_working_day || "-"}
-            </p>
+            {!resignationForm.immediate_resignation && (
+              <p className="m-0 mt-1">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Last Working Day:</span>{" "}
+                {resignationForm.last_working_day || "-"}
+              </p>
+            )}
             <p className="m-0 mt-1">
               <span className="font-semibold text-gray-700 dark:text-gray-300">Reasons Selected:</span>{" "}
               {(resignationForm.leaving_reasons || []).join(", ") || "-"}

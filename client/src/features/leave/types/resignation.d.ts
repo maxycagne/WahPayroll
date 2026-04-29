@@ -19,6 +19,7 @@ interface ResignationWizardState {
   hired_date: string;
   resignation_date: string;
   last_working_day: string;
+  immediate_resignation: boolean;
   leaving_reasons: string[];
   leaving_reason_other: string;
   interview_answers: string[];
@@ -58,7 +59,8 @@ interface SubmitResignationPayload {
   recipient_name: string;
   recipient_emp_id: string | null;
   resignation_date: string;
-  last_working_day: string;
+  immediate_resignation?: boolean;
+  last_working_day: string | null;
   leaving_reasons: string[];
   leaving_reason_other: string;
   exit_interview_answers: string[];
@@ -97,6 +99,7 @@ type ResignationForm = {
   hired_date: string;
   resignation_date: string;
   last_working_day: string;
+  immediate_resignation: boolean;
 
   leaving_reasons: string[];
   leaving_reason_other: string;
