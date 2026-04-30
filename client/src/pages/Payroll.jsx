@@ -1063,7 +1063,7 @@ export default function Payroll({ shortcutMode = false }) {
 
           <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden mb-8">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
+              <table className="w-full text-sm text-left table-fixed min-w-[1250px]">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     {isAdmin && bulkAdjustmentMode && (
@@ -1082,29 +1082,29 @@ export default function Payroll({ shortcutMode = false }) {
                         />
                       </th>
                     )}
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs w-[100px]">
                       ID
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs w-[220px]">
                       Name
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right w-[120px]">
                       Basic Pay
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right w-[180px]">
                       Incentives
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
-                      Total Salary (Gross)
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right w-[140px]">
+                      Total Salary
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right w-[180px]">
                       Deductions
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right w-[120px]">
                       Net Pay
                     </th>
                     {isAdmin && !bulkAdjustmentMode && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                      <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right w-[250px]">
                         Actions
                       </th>
                     )}
@@ -1192,36 +1192,36 @@ export default function Payroll({ shortcutMode = false }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
                           {fmt(p.basic_pay)}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div
-                            className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`font-semibold whitespace-nowrap ${Number(p.incentives || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                           >
                             {fmtSigned(p.incentives)}
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 break-words whitespace-normal leading-relaxed">
                             {p.incentive_reasons || "No incentive type"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           {fmt(p.gross_pay)}
                         </td>
                         <td className="px-6 py-4 text-right text-red-600 dark:text-red-400">
-                          <div className="font-semibold">
+                          <div className="font-semibold whitespace-nowrap">
                             {fmt(p.absence_deductions)}
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 break-words whitespace-normal leading-relaxed">
                             {p.deduction_reasons || "No deduction type"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-purple-700 dark:text-purple-400">
+                        <td className="px-6 py-4 text-right font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">
                           {fmt(p.net_pay)}
                         </td>
                         {isAdmin && !bulkAdjustmentMode && (
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
