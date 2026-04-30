@@ -518,7 +518,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
 
 export function OnLeaveModal({ open, onClose, onLeave }) {
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="flex max-h-[80vh] max-w-[500px] flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
           <DialogTitle className="text-base font-semibold text-white">
@@ -555,7 +555,7 @@ export function OnLeaveModal({ open, onClose, onLeave }) {
 
 export function AbsentModal({ open, onClose, absents }) {
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="flex max-h-[80vh] max-w-[500px] flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
           <DialogTitle className="text-base font-semibold text-white">

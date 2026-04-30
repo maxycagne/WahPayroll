@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock3 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -36,6 +36,7 @@ import {
   ResignationModal,
 } from "@/components/hrDashboard/StatsModal";
 import { HR_DASHBOARD_QUICK_ACCESS } from "@/assets/constantData";
+import { DailyAttendanceModal } from "@/features/attendance/components/DailyAttendanceModal";
 
 const fmtCompactCurrency = (value) => {
   const number = Number(value || 0);
@@ -108,6 +109,7 @@ export default function HRDashboard() {
   const queryClient = useQueryClient();
 
   const [showDocsModal, setShowDocsModal] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [period] = useState(new Date().toISOString().slice(0, 7));
   const [year, month] = period.split("-").map(Number);
@@ -271,14 +273,26 @@ export default function HRDashboard() {
       {/* Toast Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
-        <h1 className="m-0 text-[1.3rem] font-bold text-slate-900 dark:text-gray-100">
-          HR Dashboard
-        </h1>
-        <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
-          Workforce approvals, attendance signals, and document compliance in
-          one view.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
+        <div>
+          <h1 className="m-0 text-[1.3rem] font-bold text-slate-900 dark:text-gray-100">
+            HR Dashboard
+          </h1>
+          <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
+            Workforce approvals, attendance signals, and document compliance in
+            one view.
+          </p>
+        </div>
+        {dashboardData?.information?.personalSummary && (
+          <div className="mt-3 sm:mt-0 text-left sm:text-right">
+            <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+              My Leave Balance
+            </p>
+            <p className="m-0 text-xl font-black text-indigo-600 dark:text-indigo-400">
+              {dashboardData.information.personalSummary.leaveBalance} Days
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -311,7 +325,22 @@ export default function HRDashboard() {
       {/* Quick Actions */}
       <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-gray-100">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <button
+            onClick={() => setShowAttendanceModal(true)}
+            className="group rounded-lg border border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-800 dark:text-blue-400 p-3.5 text-left shadow-sm transition-colors cursor-pointer md:p-3"
+          >
+            <p className="mb-1 text-xl md:text-lg"><Clock3 className="w-5 h-5" /></p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-gray-100 md:text-[13px]">
+              Take Attendance
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-600 dark:text-gray-400">Time in / Time out</p>
+            <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-gray-400">
+              Open
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </button>
+          
           {HR_DASHBOARD_QUICK_ACCESS.map(
             ({ icon, label, sub, path, color }) => (
               <button
@@ -458,6 +487,11 @@ export default function HRDashboard() {
         onClose={() => setActiveModal(null)}
         resignations={dashboardData?.information.resignations}
         mutation={updateResignationMutation}
+      />
+
+      <DailyAttendanceModal 
+        isOpen={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
       />
     </div>
   );
