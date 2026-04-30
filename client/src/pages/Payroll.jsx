@@ -199,6 +199,7 @@ export default function Payroll({ shortcutMode = false }) {
   const [designationFilter, setDesignationFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  const payrollSkeletonRows = bulkAdjustmentMode ? 8 : itemsPerPage;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -222,14 +223,16 @@ export default function Payroll({ shortcutMode = false }) {
       currentPage,
       debouncedSearchTerm,
       designationFilter,
+      bulkAdjustmentMode,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
         period,
-        page: currentPage,
+        page: bulkAdjustmentMode ? "1" : String(currentPage),
         limit: itemsPerPage,
         search: debouncedSearchTerm,
         designationFilter: designationFilter,
+        ...(bulkAdjustmentMode ? { all: "true" } : {}),
       });
       return mutationHandler(
         axiosInterceptor.get(`/api/employees/payroll?${params.toString()}`),
@@ -966,7 +969,7 @@ export default function Payroll({ shortcutMode = false }) {
 
                   <button
                     onClick={() => {
-                      setBulkAdjustmentMode(!bulkAdjustmentMode);
+                      setBulkAdjustmentMode((prev) => !prev);
                       setSelectedEmployees(new Set());
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-gray-900 text-white border-gray-900" : "bg-black text-white border-black hover:bg-gray-800"}`}
@@ -1091,7 +1094,7 @@ export default function Payroll({ shortcutMode = false }) {
                     <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       ID
                     </th>
-                    <th className="px-6 py-4 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Name
                     </th>
                     <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
@@ -1118,7 +1121,7 @@ export default function Payroll({ shortcutMode = false }) {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {isLoadingPayroll || isFetchingPayroll ? (
-                    Array.from({ length: itemsPerPage }).map((_, i) => (
+                    Array.from({ length: payrollSkeletonRows }).map((_, i) => (
                       <tr key={`skeleton-${i}`}>
                         {isAdmin && bulkAdjustmentMode && (
                           <td className="px-3 py-3">
@@ -1157,7 +1160,7 @@ export default function Payroll({ shortcutMode = false }) {
                     <tr>
                       <td
                         colSpan={isAdmin ? 7 : 6}
-                        className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
+                        className="px-3 py-6 text-center text-gray-500 dark:text-gray-400"
                       >
                         No payroll records found for {period}. kindly contact
                         Gregg if you have any concerns.
@@ -1258,7 +1261,7 @@ export default function Payroll({ shortcutMode = false }) {
               </table>
 
               {/* Pagination Controls */}
-              {totalPages > 1 && (
+              {!bulkAdjustmentMode && totalPages > 1 && (
                 <div className="flex items-center gap-2 bg-white dark:bg-gray-900 px-3 py-2 border-t border-gray-200 dark:border-gray-800">
                   <div className="text-xs text-gray-700 dark:text-gray-400">
                     Showing{" "}
