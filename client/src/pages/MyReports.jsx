@@ -223,6 +223,13 @@ export default function MyReports() {
                   />
                   <Line
                     type="monotone"
+                    dataKey="Present"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
                     dataKey="Absent"
                     stroke="#ef4444"
                     strokeWidth={3}
