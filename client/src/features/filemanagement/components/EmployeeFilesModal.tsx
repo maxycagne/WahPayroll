@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Eye, ArrowDownToLine, Upload, Trash2 } from "lucide-react";
+import { X, Eye, ArrowDownToLine, Upload, Trash2, Archive } from "lucide-react";
 import { Employee, FileDocument } from "../types";
 import { getDisplayName, formatDate, isPreviewSupported } from "../utils";
 
@@ -14,6 +14,10 @@ interface EmployeeFilesModalProps {
   onDownload: (file: FileDocument) => void;
   onReplace: (file: FileDocument) => void;
   onRemove: (file: FileDocument) => void;
+  onArchive: (file: FileDocument) => void;
+  onDelete: (file: FileDocument) => void;
+  showArchived: boolean;
+  canArchive: boolean;
 }
 
 export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
@@ -27,6 +31,10 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
   onDownload,
   onReplace,
   onRemove,
+  onArchive,
+  onDelete,
+  showArchived,
+  canArchive,
 }) => {
   if (!employee) return null;
 
@@ -38,8 +46,13 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
             <p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-gray-400">
               Employee Files
             </p>
-            <h2 className="m-0 mt-1 text-lg font-bold text-slate-900 dark:text-gray-100">
-              {employee.display_name || getDisplayName(employee)}
+            <h2 className="m-0 flex items-center gap-3 text-lg font-bold text-gray-900 dark:text-white">
+              Documents for {employee.display_name || getDisplayName(employee)}
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white ${
+                showArchived ? "bg-amber-500" : "bg-sky-500"
+              }`}>
+                {showArchived ? "Archive" : "Active"}
+              </span>
             </h2>
             <p className="m-0 mt-1 text-sm text-slate-600 dark:text-gray-400">
               {employee.position || "-"} • {employee.designation || "-"}
@@ -131,14 +144,11 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="rounded-full bg-slate-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-gray-400">
-                                {file.source}
-                              </span>
                               <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                                 {file.file_status ||
                                   (file.source === "generated"
-                                    ? "generated"
-                                    : "uploaded")}
+                                    ? "Generated"
+                                    : "Uploaded")}
                               </span>
                             </div>
                           </div>
@@ -148,7 +158,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onPreview(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 Preview
@@ -157,7 +167,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                             <button
                               type="button"
                               onClick={() => onDownload(file)}
-                              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700"
                             >
                               <ArrowDownToLine className="h-3.5 w-3.5" />
                               Download
@@ -166,23 +176,47 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onReplace(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
+                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
                               >
                                 <Upload className="h-3.5 w-3.5" />
                                 Replace
                               </button>
                             )}
-                            {file.replaceable && (
+                            {canArchive && (
                               <button
                                 type="button"
-                                onClick={() => onRemove(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                                onClick={() => onArchive(file)}
+                                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+                                  file.is_archived
+                                    ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                                    : "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                                }`}
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Remove
+                                <Archive className="h-3.5 w-3.5" />
+                                {file.is_archived ? "Unarchive" : "Archive"}
                               </button>
                             )}
-                          </div>
+                            {showArchived && canArchive && (
+                              <button
+                                type="button"
+                                onClick={() => onDelete(file)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            )}
+                              {file.replaceable && (
+                                <button
+                                  type="button"
+                                  onClick={() => onRemove(file)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove
+                                </button>
+                              )}
+                            </div>
                         </div>
                       ))}
                     </div>

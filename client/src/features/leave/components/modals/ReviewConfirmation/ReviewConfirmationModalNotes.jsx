@@ -23,7 +23,11 @@ export default function ReviewConfirmationModalNotes({ reviewConfirm }) {
     const entries = Object.entries(docs)
       .map(([key, value]) => {
         if (typeof value === "string" && value.trim().length > 0) {
-          return { key, url: value, label: key };
+          let fileUrl = value;
+          if (!fileUrl.startsWith('http') && !fileUrl.startsWith('/api/')) {
+            fileUrl = `/api/file/get?filename=${encodeURIComponent(value)}`;
+          }
+          return { key, url: fileUrl, label: key };
         }
 
         if (value && typeof value === "object") {
@@ -51,7 +55,11 @@ export default function ReviewConfirmationModalNotes({ reviewConfirm }) {
       .filter(Boolean);
 
     if (reviewConfirm?.item?.ocp) {
-      entries.push({ key: "ocp", url: reviewConfirm.item.ocp, label: "ocp" });
+      let ocpUrl = reviewConfirm.item.ocp;
+      if (!ocpUrl.startsWith('http') && !ocpUrl.startsWith('/api/')) {
+        ocpUrl = `/api/file/get?filename=${encodeURIComponent(ocpUrl)}`;
+      }
+      entries.push({ key: "ocp", url: ocpUrl, label: "ocp" });
     }
 
     const knownFileFields = [
@@ -64,7 +72,11 @@ export default function ReviewConfirmationModalNotes({ reviewConfirm }) {
     knownFileFields.forEach((field) => {
       const value = reviewConfirm?.item?.[field];
       if (typeof value === "string" && value.trim().length > 0) {
-        entries.push({ key: field, url: value, label: field });
+        let fileUrl = value;
+        if (!fileUrl.startsWith('http') && !fileUrl.startsWith('/api/')) {
+          fileUrl = `/api/file/get?filename=${encodeURIComponent(value)}`;
+        }
+        entries.push({ key: field, url: fileUrl, label: field });
       }
     });
 
@@ -103,6 +115,29 @@ export default function ReviewConfirmationModalNotes({ reviewConfirm }) {
                 href={file.url}
                 target="_blank"
                 rel="noreferrer"
+                onClick={async (e) => {
+                  if (file.url.startsWith("/api/file/get")) {
+                    e.preventDefault();
+                    try {
+                      const { mutationHandler } = await import("@/features/leave/hooks/createMutationHandler");
+                      const { default: axiosInterceptor } = await import("@/hooks/interceptor");
+                      const blob = await mutationHandler(
+                        axiosInterceptor.get(file.url, { responseType: "blob" }),
+                        "Failed to download file."
+                      );
+                      const objectUrl = window.URL.createObjectURL(blob);
+                      const anchor = document.createElement("a");
+                      anchor.href = objectUrl;
+                      anchor.download = String(file.label || file.key).replace(/_/g, " ") || "download";
+                      document.body.appendChild(anchor);
+                      anchor.click();
+                      anchor.remove();
+                      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }
+                }}
                 className="inline-flex items-center rounded-md border border-sky-200 dark:border-sky-800 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-gray-700 transition-colors"
               >
                 {String(file.label || file.key).replace(/_/g, " ")}

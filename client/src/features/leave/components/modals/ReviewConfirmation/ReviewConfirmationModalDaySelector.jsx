@@ -34,7 +34,7 @@ export default function ReviewConfirmationModalDaySelector({
           <div className="mb-4 rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-gradient-to-br from-amber-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800">
+                <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-500">
                   Select specific days to approve
                 </p>
                 <p className="m-0 mt-1 text-[11px] text-slate-600 dark:text-gray-400">

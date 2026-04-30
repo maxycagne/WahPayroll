@@ -425,7 +425,7 @@ export default function HRReports() {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse bg-white text-sm text-left">
+          <table className="w-full border-collapse bg-white dark:bg-gray-900 text-sm text-left">
             <thead>
               {reportType === "leave" && (
                 <tr>
@@ -495,7 +495,7 @@ export default function HRReports() {
                     {}
                     {reportType === "leave" && (
                       <>
-                        <td className="px-5 py-3 font-bold text-gray-900 whitespace-nowrap">
+                        <td className="px-5 py-3 font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <span>{report.employee}</span>
                           </div>
@@ -511,7 +511,7 @@ export default function HRReports() {
                         </td>
                         <td className="px-5 py-3 text-center">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusColors[report.status] || "bg-gray-100 text-gray-800"}`}
+                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusColors[report.status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"}`}
                           >
                             {report.status}
                           </span>

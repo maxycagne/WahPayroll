@@ -22,6 +22,7 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
   const [isReplacing, setIsReplacing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<FileDocument | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const buildGeneratedDocument = (file: FileDocument) => {
@@ -223,5 +224,67 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
     openReplacePicker,
     handleReplaceChange,
     handleRemove,
+    isArchiving,
+    handleArchive: async (file: FileDocument) => {
+      const currentStatus = file.is_archived || false;
+      const newStatus = !currentStatus;
+
+      if (file.source === "profile") {
+        showToast("Profile photos cannot be archived.", "error");
+        return;
+      }
+
+      let source = file.source;
+      if (source === "generated") {
+        source = file.template_type === "nda" ? "employee" : "resignation";
+      }
+
+      if (!["resignation", "leave", "employee", "profile"].includes(source)) {
+        showToast("This file type cannot be archived directly.", "error");
+        return;
+      }
+
+      const shouldProceed = window.confirm(
+        `${newStatus ? "Archive" : "Unarchive"} this file and its associated record?`,
+      );
+      if (!shouldProceed) return;
+
+      setIsArchiving(true);
+      try {
+        const { archiveFileRecord } = await import("../api");
+        console.log(`[FileOperations] Archiving record. Source: ${source}, ID: ${file.record_id}, New Status: ${newStatus}`);
+        await archiveFileRecord(source, file.record_id!, newStatus);
+        showToast(`File ${newStatus ? "archived" : "unarchived"} successfully.`);
+        await refetch();
+      } catch (error: any) {
+        showToast(error.message || "Failed to archive file", "error");
+      } finally {
+        setIsArchiving(false);
+      }
+    },
+    isDeleting: isRemoving, // Reuse the loading state or add a new one
+    handlePermanentDelete: async (file: FileDocument) => {
+      let source = file.source;
+      if (source === "generated") {
+        source = file.template_type === "nda" ? "employee" : "resignation";
+      }
+
+      const shouldProceed = window.confirm(
+        "PERMANENTLY DELETE this entire record? This action is IRREVERSIBLE and will remove the data from the database.",
+      );
+      if (!shouldProceed) return;
+
+      setIsRemoving(true);
+      try {
+        const { deleteFileRecord } = await import("../api");
+        await deleteFileRecord(source, file.record_id!);
+        showToast("Record permanently deleted.");
+        await refetch();
+      } catch (error: any) {
+        showToast(error.message || "Failed to delete record", "error");
+      } finally {
+        setIsRemoving(false);
+      }
+    },
   };
 };

@@ -5,6 +5,7 @@ import { normalizeString, getDisplayName } from "../utils";
 export const useFileFilters = (employees: Employee[], files: FileDocument[], filterAttributeKey: keyof Employee, filterAttributeLabel: string) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [designationFilter, setDesignationFilter] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
 
   const designationOptions = useMemo(() => {
     const optionsMap = new Map();
@@ -50,11 +51,21 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
         designationFilter === "all" ||
         employeeFilterValue === designationFilter;
 
-      return matchesSearch && matchesDesignation;
+      // In Card Layout, we want to show the employee if they have files that match the current view
+      // OR if we are in Active view and they have no files yet (newly added)
+      const hasMatchingFiles = files.some(f => f.emp_id === employee.emp_id && !!f.is_archived === showArchived);
+      const isNewEmployee = !showArchived && !files.some(f => f.emp_id === employee.emp_id);
+      
+      const matchesArchived = hasMatchingFiles || isNewEmployee;
+
+      return matchesSearch && matchesDesignation && matchesArchived;
     });
-  }, [designationFilter, employees, filterAttributeKey, searchTerm]);
+  }, [designationFilter, employees, files, filterAttributeKey, searchTerm, showArchived]);
 
   const filteredFiles = useMemo(() => {
+    const archivedInFiles = files.filter(f => f.is_archived).length;
+    console.log(`[FileFilters] Current view: ${showArchived ? 'Archive' : 'Active'}. Total files in memory: ${files.length}, Archived in memory: ${archivedInFiles}`);
+    
     const search = normalizeString(searchTerm);
     return files.filter((file) => {
       const fileDesignation = String(file.designation || "").trim();
@@ -79,9 +90,11 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
           filterAttributeKey === "position" ? filePosition : fileDesignation,
         ) === designationFilter;
 
-      return matchesSearch && matchesDesignation;
+      const matchesArchived = !!file.is_archived === showArchived;
+
+      return matchesSearch && matchesDesignation && matchesArchived;
     });
-  }, [designationFilter, files, filterAttributeKey, searchTerm]);
+  }, [designationFilter, files, filterAttributeKey, searchTerm, showArchived]);
 
   const employeeCards = useMemo(() => {
     return filteredEmployees.map((employee) => ({
@@ -99,5 +112,7 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
     filteredEmployees,
     filteredFiles,
     employeeCards,
+    showArchived,
+    setShowArchived,
   };
 };

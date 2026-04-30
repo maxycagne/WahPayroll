@@ -89,3 +89,36 @@ export const downloadFile = async (url: string): Promise<Blob> => {
     "Failed to download file",
   );
 };
+export const archiveFileRecord = async (
+  source: "resignation" | "leave",
+  recordId: string | number,
+  isArchived: boolean,
+): Promise<void> => {
+  return mutationHandler(
+    axiosInterceptor.put(`/api/employees/file-management/archive/${source}/${recordId}`, {
+      is_archived: isArchived,
+    }),
+    `Failed to ${isArchived ? "archive" : "unarchive"} file`,
+  );
+};
+
+export const archiveFileTemplate = async (
+  templateId: string | number,
+  isArchived: boolean,
+): Promise<void> => {
+  return mutationHandler(
+    axiosInterceptor.put(`/api/employees/file-templates/${templateId}/archive`, {
+      is_archived: isArchived,
+    }),
+    `Failed to ${isArchived ? "archive" : "unarchive"} template`,
+  );
+};
+export const deleteFileRecord = async (
+  source: string,
+  recordId: string | number,
+): Promise<void> => {
+  return mutationHandler(
+    axiosInterceptor.delete(`/api/employees/file-management/record/${source}/${recordId}`),
+    "Failed to delete record permanently",
+  );
+};

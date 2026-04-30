@@ -46,9 +46,9 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
         <div className="flex items-center justify-between border-b border-violet-200 dark:border-violet-900/50 bg-gradient-to-r from-[#4e1b8a] to-[#6630b0] px-4 py-3">
           <h2 className="m-0 text-base font-semibold text-white">
             {activeModal === "pending"
-              ? `Pending Leave Approvals`
+              ? `Pending Requests`
               : activeModal === "leave"
-                ? `Employees On Leave`
+                ? `Employees on leave today`
                 : activeModal === "absent"
                   ? `Absent Employees`
                   : `Recent Activity`}
@@ -68,7 +68,7 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
               {[...(dashboardData?.pendingLeaves || [])]
                 .sort(
                   (a, b) =>
-                    priorityOrder[a.priority] - priorityOrder[b.priority]
+                    priorityOrder[a.priority] - priorityOrder[b.priority],
                 )
                 .map((employee) => (
                   <div
@@ -112,6 +112,34 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
                     </div>
                   </div>
                 ))}
+
+              {/* Resignations Section */}
+              {[...(dashboardData?.resignations || [])].map((res) => (
+                <div
+                  key={`res-${res.id}`}
+                  className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-800 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-200 dark:hover:border-violet-900/50 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 hover:shadow-sm"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold text-xs">
+                    {res.first_name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="m-0 text-[13px] font-semibold text-gray-900 dark:text-gray-100">
+                      {res.first_name} {res.last_name}
+                    </p>
+                    <p className="m-0 mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+                      Resignation: {res.resignation_type}
+                    </p>
+                    <p className="m-0 mt-0.5 text-[11px] text-gray-500 dark:text-gray-500">
+                      Reason: {res.reason}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-[10px] font-semibold text-yellow-800 dark:text-yellow-400 whitespace-nowrap">
+                      Pending HR
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -207,7 +235,7 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
                       </p>
                     </div>
                   </div>
-                )
+                ),
               )}
             </div>
           )}

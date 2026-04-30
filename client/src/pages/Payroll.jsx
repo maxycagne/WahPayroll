@@ -1416,7 +1416,7 @@ export default function Payroll({ shortcutMode = false }) {
                   </form>
                 </div>
 
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 text-xs text-gray-600 dark:text-gray-400">
                   Salary settings are Admin-only and apply per selected
                   employee.
                 </div>
@@ -1686,13 +1686,13 @@ export default function Payroll({ shortcutMode = false }) {
                               )
                             }
                             placeholder="0.00"
-                            className="w-full border border-gray-300 rounded-lg p-2 pl-6 outline-none focus:ring-2 focus:ring-purple-600"
+                            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 pl-6 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={removeDeductionType}
-                          className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
+                          className="w-10 rounded-lg border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-lg font-bold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/40"
                           title="Remove selected deduction type"
                         >
                           -
@@ -1715,7 +1715,7 @@ export default function Payroll({ shortcutMode = false }) {
                         <button
                           type="button"
                           onClick={addDeductionType}
-                          className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
+                          className="w-10 rounded-lg border border-green-300 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-lg font-bold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40"
                           title="Add deduction type"
                         >
                           +
@@ -1760,13 +1760,13 @@ export default function Payroll({ shortcutMode = false }) {
                               )
                             }
                             placeholder="0.00"
-                            className="w-full border border-gray-300 rounded-lg p-2 pl-6 outline-none focus:ring-2 focus:ring-purple-600"
+                            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 pl-6 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={removeIncentiveType}
-                          className="w-10 rounded-lg border border-red-300 bg-red-50 text-red-700 text-lg font-bold cursor-pointer hover:bg-red-100"
+                          className="w-10 rounded-lg border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-lg font-bold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/40"
                           title="Remove selected incentive type"
                         >
                           -
@@ -1789,7 +1789,7 @@ export default function Payroll({ shortcutMode = false }) {
                         <button
                           type="button"
                           onClick={addIncentiveType}
-                          className="w-10 rounded-lg border border-green-300 bg-green-50 text-green-700 text-lg font-bold cursor-pointer hover:bg-green-100"
+                          className="w-10 rounded-lg border border-green-300 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-lg font-bold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40"
                           title="Add incentive type"
                         >
                           +
@@ -1808,7 +1808,7 @@ export default function Payroll({ shortcutMode = false }) {
                       <button
                         type="button"
                         onClick={addCurrentAdjustmentLine}
-                        className="rounded-md border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-purple-700 hover:bg-purple-100"
+                        className="rounded-md border border-purple-300 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40"
                       >
                         Add Line
                       </button>
@@ -1841,7 +1841,7 @@ export default function Payroll({ shortcutMode = false }) {
                             <button
                               type="button"
                               onClick={() => removeAdjustmentLine(line.id)}
-                              className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 hover:bg-red-100"
+                              className="rounded-md border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
                             >
                               Remove
                             </button>

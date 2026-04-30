@@ -1046,7 +1046,7 @@ function EmployeeModal({
                 value={data.designation}
                 onChange={onChange}
                 required
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               >
                 <option value="">Select Designation</option>
                 {Object.keys(designationMap).map((d) => (
@@ -1066,7 +1066,7 @@ function EmployeeModal({
                 onChange={onChange}
                 required
                 disabled={!data.designation}
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50 dark:disabled:bg-gray-800"
               >
                 <option value="">Select Position</option>
                 {data.designation &&
@@ -1086,7 +1086,7 @@ function EmployeeModal({
                 name="status"
                 value={data.status}
                 onChange={onChange}
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               >
                 <option>Permanent</option>
                 <option>Job Order</option>
@@ -1104,7 +1104,7 @@ function EmployeeModal({
                 value={data.hired_date?.split("T")[0]}
                 onChange={onChange}
                 required
-                className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
 
@@ -1122,7 +1122,7 @@ function EmployeeModal({
                     value={data.philhealth_no || ""}
                     onChange={onChange}
                     maxLength={20}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1135,7 +1135,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     required
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1148,7 +1148,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     required
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1161,7 +1161,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     required
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1173,7 +1173,7 @@ function EmployeeModal({
                     value={data.gsis_no || ""}
                     onChange={onChange}
                     maxLength={20}
-                    className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
               </div>
@@ -1181,10 +1181,10 @@ function EmployeeModal({
           </div>
 
           {!isEdit && (
-            <div className="mt-3 rounded-lg border border-purple-100 bg-purple-50 p-2.5">
-              <p className="m-0 text-xs text-purple-700 font-semibold">
+            <div className="mt-3 rounded-lg border border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/20 p-2.5">
+              <p className="m-0 text-xs text-purple-700 dark:text-purple-400 font-semibold">
                 Auto-generated Password:{" "}
-                <span className="font-mono bg-white px-2 py-0.5 rounded border border-purple-200">
+                <span className="font-mono bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
                   {data.emp_id}
                   {data.first_name.replace(/\s+/g, "") || "[FirstName]"}
                 </span>

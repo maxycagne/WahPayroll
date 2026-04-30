@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Employee, FileDocument } from "../types";
 
-export const useEmployeeFiles = (employees: Employee[], files: FileDocument[]) => {
+export const useEmployeeFiles = (employees: Employee[], files: FileDocument[], showArchived: boolean = false) => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [modalSourceFilter, setModalSourceFilter] = useState("all");
 
@@ -11,8 +11,12 @@ export const useEmployeeFiles = (employees: Employee[], files: FileDocument[]) =
   );
 
   const selectedEmployeeFiles = useMemo(
-    () => files.filter((file) => file.emp_id === selectedEmployeeId),
-    [files, selectedEmployeeId],
+    () => files.filter((file) => {
+      const isMine = file.emp_id === selectedEmployeeId;
+      const matchesArchived = !!file.is_archived === showArchived;
+      return isMine && matchesArchived;
+    }),
+    [files, selectedEmployeeId, showArchived],
   );
 
   const modalSourceCounts = useMemo(() => {

@@ -7,11 +7,11 @@ export default function StatCard({ stats, onCardClick }) {
         <Card
           key={stat.label}
           onClick={() => onCardClick(stat.modalKey)}
-          className="cursor-pointer rounded-lg border border-slate-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+          className="cursor-pointer rounded-lg border border-slate-200 dark:border-gray-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
           style={{ boxShadow: `inset 0 3px 0 0 ${stat.borderColor}` }}
         >
           <div className="p-3.5 md:p-3">
-            <p className="mb-1 text-xs font-medium text-slate-600">
+            <p className="mb-1 text-xs font-medium text-slate-600 dark:text-gray-400">
               {stat.label}
             </p>
             <p
@@ -20,7 +20,7 @@ export default function StatCard({ stats, onCardClick }) {
             >
               {stat.value}
             </p>
-            <p className="mt-1.5 text-[11px] text-slate-400">
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-gray-500">
               Click to view details
             </p>
           </div>
