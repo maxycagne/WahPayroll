@@ -145,6 +145,10 @@ export default function Payroll({ shortcutMode = false }) {
   const [resetConfirmModal, setResetConfirmModal] = useState(false);
   const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
   const [isGeneratingPayrollPdf, setIsGeneratingPayrollPdf] = useState(false);
+  const [showManageDeductionTypesModal, setShowManageDeductionTypesModal] =
+    useState(false);
+  const [showManageIncentiveTypesModal, setShowManageIncentiveTypesModal] =
+    useState(false);
 
   const [adjustmentType, setAdjustmentType] = useState("Incentive");
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
@@ -194,7 +198,7 @@ export default function Payroll({ shortcutMode = false }) {
   const debouncedSearchTerm = useDebounce(search, 500);
   const [designationFilter, setDesignationFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 20;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -656,6 +660,8 @@ export default function Payroll({ shortcutMode = false }) {
     setAdjustmentType("Incentive");
     setEditingHistoryEntry(null);
     setSelectedEmployees(new Set());
+    setShowManageDeductionTypesModal(false);
+    setShowManageIncentiveTypesModal(false);
   };
 
   const startEditHistoryEntry = (entry) => {
@@ -898,18 +904,18 @@ export default function Payroll({ shortcutMode = false }) {
     <div>
       {!shortcutMode && (
         <>
-          <div className="flex items-center justify-between gap-4 mb-6 flex-nowrap">
-            <h1 className="m-0 text-[1.4rem] font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap flex-shrink-0">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-nowrap">
+            <h1 className="m-0 text-lg font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap flex-shrink-0">
               Payroll
             </h1>
-            <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
-              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mr-2">
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+              <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                 Period:
                 <input
                   type="month"
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </label>
 
@@ -917,9 +923,9 @@ export default function Payroll({ shortcutMode = false }) {
                 <>
                   <button
                     onClick={() => setSalarySettingsModal(true)}
-                    className="px-4 py-2 rounded-lg bg-blue-600 border border-blue-600 text-white text-sm font-semibold cursor-pointer hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 border border-blue-600 text-white text-xs font-semibold cursor-pointer hover:bg-blue-700 transition-colors"
                   >
-                    Salary Settings
+                    Settings
                   </button>
 
                   {/* NEW: Bulk Email Button */}
@@ -939,7 +945,7 @@ export default function Payroll({ shortcutMode = false }) {
                       sendBulkPayslipsMutation.isPending ||
                       payrollData.length === 0
                     }
-                    className="px-4 py-2 rounded-lg bg-indigo-600 border border-indigo-600 text-white text-sm font-semibold cursor-pointer hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 border border-indigo-600 text-white text-xs font-semibold cursor-pointer hover:bg-indigo-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <Mail className="w-4 h-4" />
                     {sendBulkPayslipsMutation.isPending
@@ -950,7 +956,7 @@ export default function Payroll({ shortcutMode = false }) {
                   <button
                     onClick={handleGeneratePayrollPdf}
                     disabled={isGeneratingPayrollPdf || !payrollSummary.count}
-                    className="px-4 py-2 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 border border-emerald-600 text-white text-xs font-semibold cursor-pointer hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <FileDown className="w-4 h-4" />
                     {isGeneratingPayrollPdf
@@ -963,14 +969,14 @@ export default function Payroll({ shortcutMode = false }) {
                       setBulkAdjustmentMode(!bulkAdjustmentMode);
                       setSelectedEmployees(new Set());
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-gray-900 text-white border-gray-900" : "bg-black text-white border-black hover:bg-gray-800"}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors border ${bulkAdjustmentMode ? "bg-gray-900 text-white border-gray-900" : "bg-black text-white border-black hover:bg-gray-800"}`}
                   >
                     {bulkAdjustmentMode ? "Cancel Bulk" : "Adjust Multiple"}
                   </button>
 
                   <button
                     onClick={() => setResetConfirmModal(true)}
-                    className="px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-300 dark:border-red-900/30 text-red-700 dark:text-red-400 text-sm font-semibold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                    className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-300 dark:border-red-900/30 text-red-700 dark:text-red-400 text-xs font-semibold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
                   >
                     Reset All Data
                   </button>
@@ -979,46 +985,46 @@ export default function Payroll({ shortcutMode = false }) {
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-2.5 shadow-sm">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Employees
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-gray-900 dark:text-gray-100">
+              <p className="m-0 mt-0.5 text-lg font-black text-gray-900 dark:text-gray-100">
                 {employeesData?.total || 0}
               </p>
             </div>
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-2.5 shadow-sm">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 Gross Total
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-gray-900 dark:text-gray-100">
+              <p className="m-0 mt-0.5 text-lg font-black text-gray-900 dark:text-gray-100">
                 {fmt(payrollSummary.gross)}
               </p>
             </div>
-            <div className="rounded-lg border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
+            <div className="rounded-lg border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 p-2.5 shadow-sm">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
                 Deductions
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-red-700 dark:text-red-300">
+              <p className="m-0 mt-0.5 text-lg font-black text-red-700 dark:text-red-300">
                 -{fmt(payrollSummary.deductions)}
               </p>
             </div>
-            <div className="rounded-lg border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 p-3 shadow-sm">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
+            <div className="rounded-lg border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 p-2.5 shadow-sm">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
                 Net Total
               </p>
-              <p className="m-0 mt-1 text-xl font-black text-green-700 dark:text-green-300">
+              <p className="m-0 mt-0.5 text-lg font-black text-green-700 dark:text-green-300">
                 {fmt(payrollSummary.net)}
               </p>
             </div>
           </div>
 
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-3 items-center">
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-2 items-center">
               <input
                 type="text"
-                className="w-full max-w-[300px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-xs outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 flex-1 min-w-[200px]"
                 placeholder="Search employee..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1029,7 +1035,7 @@ export default function Payroll({ shortcutMode = false }) {
                   setDesignationFilter(e.target.value);
                   setSelectedEmployees(new Set());
                 }}
-                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {designationOptions.map((option) => (
                   <option key={option} value={option}>
@@ -1061,13 +1067,13 @@ export default function Payroll({ shortcutMode = false }) {
             </div>
           )}
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden mb-8">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden mb-6">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
+              <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     {isAdmin && bulkAdjustmentMode && (
-                      <th className="px-6 py-3 text-center w-12">
+                      <th className="px-3 py-2 text-center w-10">
                         <input
                           type="checkbox"
                           onChange={() =>
@@ -1082,29 +1088,29 @@ export default function Payroll({ shortcutMode = false }) {
                         />
                       </th>
                     )}
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs">
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       ID
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs">
+                    <th className="px-6 py-4 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
                       Basic Pay
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
                       Incentives
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
-                      Total Salary (Gross)
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
+                      Gross
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
                       Deductions
                     </th>
-                    <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                    <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
                       Net Pay
                     </th>
                     {isAdmin && !bulkAdjustmentMode && (
-                      <th className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs text-right">
+                      <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">
                         Actions
                       </th>
                     )}
@@ -1115,34 +1121,34 @@ export default function Payroll({ shortcutMode = false }) {
                     Array.from({ length: itemsPerPage }).map((_, i) => (
                       <tr key={`skeleton-${i}`}>
                         {isAdmin && bulkAdjustmentMode && (
-                          <td className="px-6 py-4">
+                          <td className="px-3 py-3">
                             <div className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-800 animate-pulse mx-auto" />
                           </td>
                         )}
-                        <td className="px-6 py-4">
-                          <div className="h-4 w-16 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse" />
+                        <td className="px-3 py-3">
+                          <div className="h-3 w-12 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse" />
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="h-4 w-28 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse" />
+                        <td className="px-3 py-3">
+                          <div className="h-3 w-24 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse" />
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        <td className="px-3 py-3 text-right">
+                          <div className="h-3 w-16 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        <td className="px-3 py-3 text-right">
+                          <div className="h-3 w-16 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        <td className="px-3 py-3 text-right">
+                          <div className="h-3 w-16 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        <td className="px-3 py-3 text-right">
+                          <div className="h-3 w-16 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="h-4 w-20 rounded-md bg-gray-200 animate-pulse ml-auto" />
+                        <td className="px-3 py-3 text-right">
+                          <div className="h-3 w-16 rounded-md bg-gray-200 animate-pulse ml-auto" />
                         </td>
                         {isAdmin && !bulkAdjustmentMode && (
-                          <td className="px-6 py-4 text-right">
-                            <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse ml-auto" />
+                          <td className="px-3 py-3 text-right">
+                            <div className="h-3 w-20 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse ml-auto" />
                           </td>
                         )}
                       </tr>
@@ -1150,7 +1156,7 @@ export default function Payroll({ shortcutMode = false }) {
                   ) : payrollData.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={isAdmin ? 8 : 7}
+                        colSpan={isAdmin ? 7 : 6}
                         className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No payroll records found for {period}. kindly contact
@@ -1164,12 +1170,14 @@ export default function Payroll({ shortcutMode = false }) {
                         onClick={() => {
                           if (isAdmin && bulkAdjustmentMode) {
                             toggleEmployeeSelection(p.emp_id);
+                          } else if (!bulkAdjustmentMode) {
+                            setSalaryBreakdownModal(p);
                           }
                         }}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50 dark:bg-purple-900/20" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : ""}`}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedEmployees.has(p.emp_id) ? "bg-purple-50 dark:bg-purple-900/20" : ""} ${isAdmin && bulkAdjustmentMode ? "cursor-pointer" : !bulkAdjustmentMode ? "cursor-pointer" : ""}`}
                       >
                         {isAdmin && bulkAdjustmentMode && (
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-3 py-2.5">
                             <input
                               type="checkbox"
                               checked={selectedEmployees.has(p.emp_id)}
@@ -1179,49 +1187,43 @@ export default function Payroll({ shortcutMode = false }) {
                             />
                           </td>
                         )}
-                        <td className="px-6 py-4">{p.emp_id}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
+                        <td className="px-3 py-2.5 text-xs">{p.emp_id}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
                             <div>
-                              <div className="font-bold text-gray-900 dark:text-gray-100">
+                              <div className="font-bold text-gray-900 dark:text-gray-100 text-xs">
                                 {p.first_name} {p.last_name}
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">
+                              <div className="text-[10px] text-gray-500 dark:text-gray-400 font-normal mt-0.5">
                                 {p.position}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-2.5 text-right text-xs">
                           {fmt(p.basic_pay)}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-2.5 text-right">
                           <div
-                            className={`font-semibold ${Number(p.incentives || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`font-semibold text-xs ${Number(p.incentives || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                           >
                             {fmtSigned(p.incentives)}
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                            {p.incentive_reasons || "No incentive type"}
-                          </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">
+                        <td className="px-3 py-2.5 text-right font-semibold text-gray-900 dark:text-gray-100 text-xs">
                           {fmt(p.gross_pay)}
                         </td>
-                        <td className="px-6 py-4 text-right text-red-600 dark:text-red-400">
+                        <td className="px-3 py-2.5 text-right text-red-600 dark:text-red-400 text-xs">
                           <div className="font-semibold">
                             {fmt(p.absence_deductions)}
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                            {p.deduction_reasons || "No deduction type"}
-                          </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-purple-700 dark:text-purple-400">
+                        <td className="px-3 py-2.5 text-right font-bold text-purple-700 dark:text-purple-400 text-xs">
                           {fmt(p.net_pay)}
                         </td>
                         {isAdmin && !bulkAdjustmentMode && (
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="px-3 py-2.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1231,22 +1233,18 @@ export default function Payroll({ shortcutMode = false }) {
                                   sendPayslipMutation.isPending &&
                                   sendPayslipMutation.variables === p.emp_id
                                 }
-                                className="px-3 py-1.5 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-bold border-0 cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900/50 flex items-center gap-1.5"
+                                className="px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold border-0 cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900/50 flex items-center gap-1"
                                 title="Send Email"
                               >
                                 <Mail className="w-3 h-3" />
                                 Email
                               </button>
-
                               <button
-                                onClick={() => setSalaryBreakdownModal(p)}
-                                className="px-3 py-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold border-0 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={() => setAdjustmentModal(p)}
-                                className="px-3 py-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold border-0 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAdjustmentModal(p);
+                                }}
+                                className="px-2 py-1 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[10px] font-bold border-0 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50"
                               >
                                 Adjust
                               </button>
@@ -1261,8 +1259,8 @@ export default function Payroll({ shortcutMode = false }) {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between bg-white dark:bg-gray-900 px-4 py-3 border-t border-gray-200 dark:border-gray-800">
-                  <div className="text-sm text-gray-700 dark:text-gray-400">
+                <div className="flex items-center gap-2 bg-white dark:bg-gray-900 px-3 py-2 border-t border-gray-200 dark:border-gray-800">
+                  <div className="text-xs text-gray-700 dark:text-gray-400">
                     Showing{" "}
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {(currentPage - 1) * itemsPerPage + 1}
@@ -1274,26 +1272,25 @@ export default function Payroll({ shortcutMode = false }) {
                     of{" "}
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {totalRecords}
-                    </span>{" "}
-                    results
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 ml-auto">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
+                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
                     >
-                      Previous
+                      Prev
                     </button>
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
-                      Page {currentPage} of {totalPages}
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300 px-1.5">
+                      {currentPage} / {totalPages}
                     </div>
                     <button
                       onClick={() =>
                         setCurrentPage((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
+                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
                     >
                       Next
                     </button>
@@ -1321,18 +1318,18 @@ export default function Payroll({ shortcutMode = false }) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 gap-6">
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase mb-3 border-b border-gray-200 dark:border-gray-800 pb-2">
+                  <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase mb-2 border-b border-gray-200 dark:border-gray-800 pb-1.5">
                     Update Base Salary
                   </h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-5">
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400 mb-3">
                     Select a designation and position to enter the new monthly
                     base salary. This will immediately apply to all employees
                     currently holding this position.
                   </p>
-                  <form onSubmit={handleBaseSalaryUpdate} className="space-y-5">
+                  <form onSubmit={handleBaseSalaryUpdate} className="space-y-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                         Select Employee
@@ -1387,7 +1384,7 @@ export default function Payroll({ shortcutMode = false }) {
                         />
                       </div>
                     </div>
-                    <div className="pt-4 flex gap-3">
+                    <div className="pt-2 flex gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -1399,24 +1396,24 @@ export default function Payroll({ shortcutMode = false }) {
                             amount: "",
                           });
                         }}
-                        className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                        className="flex-1 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         Close
                       </button>
                       <button
                         type="submit"
                         disabled={updateBaseSalaryMutation.isPending}
-                        className="flex-1 py-2 bg-purple-600 text-white rounded-lg font-semibold cursor-pointer border-0 hover:bg-purple-700 disabled:opacity-50"
+                        className="flex-1 py-1.5 bg-purple-600 text-white rounded-lg font-semibold text-xs cursor-pointer border-0 hover:bg-purple-700 disabled:opacity-50"
                       >
                         {updateBaseSalaryMutation.isPending
                           ? "Updating..."
-                          : "Update Employee"}
+                          : "Update"}
                       </button>
                     </div>
                   </form>
                 </div>
 
-                <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-3 text-xs text-gray-600 dark:text-gray-400">
+                <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-2 text-[10px] text-gray-600 dark:text-gray-400">
                   Salary settings are Admin-only and apply per selected
                   employee.
                 </div>
@@ -1429,11 +1426,11 @@ export default function Payroll({ shortcutMode = false }) {
       {isAdmin && confirmSalarySettingsModal && (
         <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden border border-transparent dark:border-gray-800">
-            <div className="px-6 py-4 bg-gray-900 text-white">
-              <h3 className="m-0 text-base font-bold">Confirm Salary Update</h3>
+            <div className="px-4 py-3 bg-gray-900 text-white">
+              <h3 className="m-0 text-sm font-bold">Confirm Salary Update</h3>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="m-0 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            <div className="p-4 space-y-2.5">
+              <p className="m-0 text-xs text-gray-700 dark:text-gray-300">
                 Update monthly base salary for
                 <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
@@ -1448,15 +1445,15 @@ export default function Payroll({ shortcutMode = false }) {
                 </span>
                 ?
               </p>
-              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+              <p className="m-0 text-[10px] text-gray-500 dark:text-gray-400">
                 This will apply only to this employee.
               </p>
-              <div className="pt-2 flex gap-3">
+              <div className="pt-1.5 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setConfirmSalarySettingsModal(false)}
                   disabled={updateBaseSalaryMutation.isPending}
-                  className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1464,7 +1461,7 @@ export default function Payroll({ shortcutMode = false }) {
                   type="button"
                   onClick={confirmBaseSalaryUpdate}
                   disabled={updateBaseSalaryMutation.isPending}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-semibold cursor-pointer border-0 hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 py-1.5 bg-blue-600 text-white rounded-lg font-semibold text-xs cursor-pointer border-0 hover:bg-blue-700 disabled:opacity-50"
                 >
                   {updateBaseSalaryMutation.isPending
                     ? "Updating..."
@@ -1480,80 +1477,80 @@ export default function Payroll({ shortcutMode = false }) {
       {salaryBreakdownModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
-              <h2 className="text-lg font-semibold m-0">Salary Breakdown</h2>
+            <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
+              <h2 className="text-sm font-semibold m-0">Salary Breakdown</h2>
               <button
                 onClick={() => setSalaryBreakdownModal(null)}
-                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+                className="text-white text-xl bg-transparent border-0 cursor-pointer"
               >
                 &times;
               </button>
             </div>
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">
+            <div className="p-4 space-y-2.5 max-h-[70vh] overflow-y-auto">
+              <div className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
                 {salaryBreakdownModal.first_name}{" "}
                 {salaryBreakdownModal.last_name}
               </div>
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
-                  <span className="font-semibold text-gray-700 dark:text-gray-400">
+              <div className="space-y-2">
+                <div className="flex justify-between py-1.5 border-b border-gray-200 dark:border-gray-800">
+                  <span className="font-semibold text-gray-700 dark:text-gray-400 text-xs">
                     Basic Pay
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                  <span className="text-gray-900 dark:text-gray-100 font-bold text-xs">
                     {fmt(salaryBreakdownModal.basic_pay)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20">
-                  <span className="font-semibold text-red-700 dark:text-red-400">
+                <div className="flex justify-between py-1.5 border-b border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-2 rounded">
+                  <span className="font-semibold text-red-700 dark:text-red-400 text-xs">
                     Deductions
                   </span>
-                  <span className="text-red-700 dark:text-red-400 font-bold">
+                  <span className="text-red-700 dark:text-red-400 font-bold text-xs">
                     -{fmt(salaryBreakdownModal.absence_deductions)}
                   </span>
                 </div>
                 {salaryBreakdownModal.deduction_reasons && (
-                  <div className="py-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/30 p-3">
-                    <p className="text-xs font-bold text-red-800 dark:text-red-300 uppercase mb-2">
+                  <div className="py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/30 p-2">
+                    <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase mb-1">
                       Deduction Types:
                     </p>
-                    <p className="text-xs text-red-900 dark:text-red-200 leading-relaxed">
+                    <p className="text-[10px] text-red-900 dark:text-red-200 leading-relaxed">
                       {salaryBreakdownModal.deduction_reasons}
                     </p>
                   </div>
                 )}
-                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20">
-                  <span className="font-semibold text-green-700 dark:text-green-400">
+                <div className="flex justify-between py-1.5 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 px-2 rounded">
+                  <span className="font-semibold text-green-700 dark:text-green-400 text-xs">
                     Incentives
                   </span>
                   <span
-                    className={`font-bold ${Number(salaryBreakdownModal.incentives || 0) >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}
+                    className={`font-bold text-xs ${Number(salaryBreakdownModal.incentives || 0) >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}
                   >
                     {fmtSigned(salaryBreakdownModal.incentives)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20">
-                  <span className="font-semibold text-green-700 dark:text-green-400">
-                    Total Salary (Gross)
+                <div className="flex justify-between py-1.5 border-b border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 px-2 rounded">
+                  <span className="font-semibold text-green-700 dark:text-green-400 text-xs">
+                    Gross
                   </span>
-                  <span className="text-green-700 font-bold dark:text-green-400">
+                  <span className="text-green-700 font-bold dark:text-green-400 text-xs">
                     {fmt(salaryBreakdownModal.gross_pay)}
                   </span>
                 </div>
                 {salaryBreakdownModal.incentive_reasons && (
-                  <div className="py-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-900/30 p-3">
-                    <p className="text-xs font-bold text-yellow-800 dark:text-yellow-300 uppercase mb-2">
+                  <div className="py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-900/30 p-2">
+                    <p className="text-[10px] font-bold text-yellow-800 dark:text-yellow-300 uppercase mb-1">
                       Incentive Types:
                     </p>
-                    <p className="text-xs text-yellow-900 dark:text-yellow-200 leading-relaxed">
+                    <p className="text-[10px] text-yellow-900 dark:text-yellow-200 leading-relaxed">
                       {salaryBreakdownModal.incentive_reasons}
                     </p>
                   </div>
                 )}
-                <div className="flex justify-between py-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                  <span className="font-bold text-purple-900 dark:text-purple-300">
+                <div className="flex justify-between py-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2">
+                  <span className="font-bold text-purple-900 dark:text-purple-300 text-xs">
                     Net Pay
                   </span>
-                  <span className="text-purple-900 dark:text-purple-100 font-black text-lg">
+                  <span className="text-purple-900 dark:text-purple-100 font-black text-sm">
                     {fmt(salaryBreakdownModal.net_pay)}
                   </span>
                 </div>
@@ -1691,36 +1688,20 @@ export default function Payroll({ shortcutMode = false }) {
                         </div>
                         <button
                           type="button"
-                          onClick={removeDeductionType}
-                          className="w-10 rounded-lg border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-lg font-bold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/40"
-                          title="Remove selected deduction type"
-                        >
-                          -
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newDeductionType}
-                          onChange={(e) => setNewDeductionType(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              addDeductionType();
-                            }
-                          }}
-                          placeholder="Add deduction type"
-                          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={addDeductionType}
+                          onClick={addCurrentAdjustmentLine}
                           className="w-10 rounded-lg border border-green-300 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-lg font-bold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40"
-                          title="Add deduction type"
+                          title="Add this deduction to adjustment lines"
                         >
                           +
                         </button>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowManageDeductionTypesModal(true)}
+                        className="w-full rounded-lg border border-purple-300 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-3 py-2 text-sm font-bold text-purple-700 dark:text-purple-400 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                      >
+                        Manage Deduction Types
+                      </button>
                     </div>
                   ) : (
                     <div>
@@ -1765,36 +1746,20 @@ export default function Payroll({ shortcutMode = false }) {
                         </div>
                         <button
                           type="button"
-                          onClick={removeIncentiveType}
-                          className="w-10 rounded-lg border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-lg font-bold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/40"
-                          title="Remove selected incentive type"
-                        >
-                          -
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newIncentiveType}
-                          onChange={(e) => setNewIncentiveType(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              addIncentiveType();
-                            }
-                          }}
-                          placeholder="Add incentive type"
-                          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={addIncentiveType}
+                          onClick={addCurrentAdjustmentLine}
                           className="w-10 rounded-lg border border-green-300 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-lg font-bold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40"
-                          title="Add incentive type"
+                          title="Add this incentive to adjustment lines"
                         >
                           +
                         </button>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowManageIncentiveTypesModal(true)}
+                        className="w-full rounded-lg border border-purple-300 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-3 py-2 text-sm font-bold text-purple-700 dark:text-purple-400 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                      >
+                        Manage Incentive Types
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2052,6 +2017,194 @@ export default function Payroll({ shortcutMode = false }) {
               >
                 {resetPayrollMutation.isPending ? "Resetting..." : "Reset All"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Deduction Types Modal */}
+      {showManageDeductionTypesModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold m-0">
+                Manage Deduction Types
+              </h2>
+              <button
+                onClick={() => setShowManageDeductionTypesModal(false)}
+                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                  Current Deduction Types
+                </label>
+                {deductionTypes.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    No deduction types available.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {deductionTypes.map((type) => (
+                      <div
+                        key={type}
+                        className="flex items-center justify-between gap-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2"
+                      >
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          {type}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (deductionTypes.length <= 1) {
+                              showToast(
+                                "At least one deduction type must remain.",
+                                "error",
+                              );
+                              return;
+                            }
+                            const updated = deductionTypes.filter(
+                              (item) => item !== type,
+                            );
+                            setDeductionTypes(updated);
+                            if (selectedDeductionType === type) {
+                              setSelectedDeductionType(updated[0] || "");
+                            }
+                          }}
+                          className="px-2 py-1 rounded-md border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-xs font-bold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/40"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                  Add New Deduction Type
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newDeductionType}
+                    onChange={(e) => setNewDeductionType(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addDeductionType();
+                      }
+                    }}
+                    placeholder="Enter deduction type"
+                    className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-red-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={addDeductionType}
+                    className="px-3 rounded-lg border border-green-300 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Incentive Types Modal */}
+      {showManageIncentiveTypesModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold m-0">
+                Manage Incentive Types
+              </h2>
+              <button
+                onClick={() => setShowManageIncentiveTypesModal(false)}
+                className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                  Current Incentive Types
+                </label>
+                {incentiveTypes.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    No incentive types available.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {incentiveTypes.map((type) => (
+                      <div
+                        key={type}
+                        className="flex items-center justify-between gap-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2"
+                      >
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          {type}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (incentiveTypes.length <= 1) {
+                              showToast(
+                                "At least one incentive type must remain.",
+                                "error",
+                              );
+                              return;
+                            }
+                            const updated = incentiveTypes.filter(
+                              (item) => item !== type,
+                            );
+                            setIncentiveTypes(updated);
+                            if (selectedIncentiveType === type) {
+                              setSelectedIncentiveType(updated[0] || "");
+                            }
+                          }}
+                          className="px-2 py-1 rounded-md border border-red-300 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-xs font-bold cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/40"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                  Add New Incentive Type
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newIncentiveType}
+                    onChange={(e) => setNewIncentiveType(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addIncentiveType();
+                      }
+                    }}
+                    placeholder="Enter incentive type"
+                    className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={addIncentiveType}
+                    className="px-3 rounded-lg border border-green-300 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
