@@ -1,5 +1,5 @@
 import React from "react";
-import { Upload, Download, Trash2 } from "lucide-react";
+import { Upload, Download, Trash2, Archive } from "lucide-react";
 import { FileTemplate } from "../types";
 import { formatDate } from "../utils";
 
@@ -17,8 +17,10 @@ interface TemplateModalProps {
   uploadedTemplates: FileTemplate[];
   onDownload: (template: FileTemplate) => void;
   onReplace: (template: FileTemplate) => void;
-  onDelete: (template: FileTemplate) => void;
   isReplacingTemplate: boolean;
+  onDelete: (template: FileTemplate) => void;
+  onArchive: (template: FileTemplate) => void;
+  isArchivingTemplate: boolean;
 }
 
 export const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -37,6 +39,8 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
   onReplace,
   onDelete,
   isReplacingTemplate,
+  onArchive,
+  isArchivingTemplate,
 }) => {
   if (!isOpen) return null;
 
@@ -166,6 +170,21 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                         >
                           <Upload className="h-3.5 w-3.5" />
                           {isReplacingTemplate ? "Replacing..." : "Replace"}
+                        </button>
+                      )}
+                      {canManageTemplates && (
+                        <button
+                          type="button"
+                          disabled={isArchivingTemplate}
+                          onClick={() => onArchive(template)}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+                            (template as any).is_archived
+                              ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                              : "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                          }`}
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                          {(template as any).is_archived ? "Unarchive" : "Archive"}
                         </button>
                       )}
                       {canManageTemplates && (

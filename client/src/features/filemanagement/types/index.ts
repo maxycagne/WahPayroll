@@ -7,6 +7,7 @@ export interface Employee {
   position?: string;
   designation?: string;
   role: string;
+  is_archived?: boolean;
 }
 
 export interface FileDocument {
@@ -30,6 +31,7 @@ export interface FileDocument {
   download_url?: string;
   template_type?: string;
   document_data?: any;
+  is_archived?: boolean;
 }
 
 export interface FileTemplate {
@@ -38,6 +40,7 @@ export interface FileTemplate {
   category?: string;
   original_name?: string;
   created_at: string;
+  is_archived?: boolean;
 }
 
 export interface FileInventory {

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFileInventory } from "../api";
 import { normalizeString } from "../utils";
 import { Employee } from "../types";
@@ -27,6 +27,7 @@ export const useFileManagement = () => {
   const role = currentUser?.role || "RankAndFile";
   const isCardLayout = ["Admin", "HR", "Supervisor"].includes(role);
   const canManageTemplates = role === "Admin" || role === "HR";
+  const canArchive = ["Admin", "HR", "Supervisor"].includes(role);
   const isSupervisorRole = role === "Supervisor";
   const filterAttributeKey = isSupervisorRole ? "position" : ("designation" as keyof Employee);
   const filterAttributeLabel = isSupervisorRole ? "Position" : "Designation";
@@ -55,10 +56,20 @@ export const useFileManagement = () => {
     [inventory.employees]
   );
 
+  const counts = useMemo(() => {
+    const allFiles = inventory.files || [];
+    const nonProfile = allFiles.filter((f) => normalizeString(f.source) !== "profile");
+    return {
+      active: nonProfile.filter((f) => !f.is_archived).length,
+      archived: nonProfile.filter((f) => !!f.is_archived).length,
+    };
+  }, [inventory.files]);
+
+  const queryClient = useQueryClient();
   const fileFilters = useFileFilters(employees, files, filterAttributeKey, filterAttributeLabel);
-  const fileTemplates = useFileTemplates(role, showToast);
-  const employeeFiles = useEmployeeFiles(employees, files);
-  const fileOperations = useFileOperations(showToast, refetch);
+  const fileTemplates = useFileTemplates(role, showToast, fileFilters.showArchived);
+  const employeeFiles = useEmployeeFiles(employees, files, fileFilters.showArchived);
+  const fileOperations = useFileOperations(showToast, () => queryClient.invalidateQueries({ queryKey: ["file-management"] }));
 
   return {
     ...fileFilters,
@@ -70,8 +81,10 @@ export const useFileManagement = () => {
     role,
     isCardLayout,
     canManageTemplates,
+    canArchive,
     isLoading,
     isError,
     refetch,
+    counts,
   };
 };

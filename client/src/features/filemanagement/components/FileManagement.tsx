@@ -41,6 +41,7 @@ export const FileManagement: React.FC = () => {
     role,
     isCardLayout,
     canManageTemplates,
+    canArchive,
     isLoading,
     isError,
     refetch,
@@ -63,11 +64,19 @@ export const FileManagement: React.FC = () => {
     handleTemplateUpload,
     handleReplaceChange,
     handleRemove,
+    isArchiving,
+    handleArchive,
+    handlePermanentDelete,
+    isArchivingTemplate,
+    handleArchiveTemplate,
+    showArchived,
+    setShowArchived,
+    counts,
   } = useFileManagement();
 
   const stats = [
-    { label: "Visible employees", value: employeeCards.length },
-    { label: "Visible files", value: filteredFiles.length },
+    { label: "Active Files", value: counts.active },
+    { label: "Archived Files", value: counts.archived },
     { label: "Templates", value: uploadedTemplates.length },
   ];
 
@@ -92,6 +101,10 @@ export const FileManagement: React.FC = () => {
         designationOptions={designationOptions}
         onRefresh={() => refetch()}
         onOpenTemplates={() => setIsTemplatesOpen(true)}
+        showArchived={showArchived}
+        setShowArchived={setShowArchived}
+        counts={counts}
+        canArchive={canArchive}
       />
 
       {isCardLayout && employeeCards.length === 0 ? (
@@ -123,6 +136,11 @@ export const FileManagement: React.FC = () => {
           onDownload={handleDownload}
           onReplace={openReplacePicker}
           onRemove={handleRemove}
+          onArchive={handleArchive}
+          onDelete={handlePermanentDelete}
+          canArchive={canArchive}
+          showArchived={showArchived}
+          role={role}
         />
       )}
 
@@ -137,6 +155,10 @@ export const FileManagement: React.FC = () => {
         onDownload={handleDownload}
         onReplace={openReplacePicker}
         onRemove={handleRemove}
+        onArchive={handleArchive}
+        onDelete={handlePermanentDelete}
+        showArchived={showArchived}
+        canArchive={canArchive}
       />
 
       <TemplateModal
@@ -155,6 +177,8 @@ export const FileManagement: React.FC = () => {
         onReplace={openTemplateReplacePicker}
         onDelete={handleDeleteTemplate}
         isReplacingTemplate={isReplacingTemplate}
+        onArchive={handleArchiveTemplate}
+        isArchivingTemplate={isArchivingTemplate}
       />
 
       <input
@@ -181,10 +205,16 @@ export const FileManagement: React.FC = () => {
         onClose={() => setToast(null)}
       />
 
-      {(isReplacing || isRemoving) && (
+      {(isReplacing || isRemoving || isArchiving || isArchivingTemplate) && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
           <div className="rounded-2xl bg-white dark:bg-gray-800 px-5 py-4 text-sm font-semibold text-slate-700 dark:text-gray-200 shadow-lg border dark:border-gray-700">
-            {isReplacing ? "Replacing file..." : "Removing file..."}
+            {isReplacing
+              ? "Replacing file..."
+              : isRemoving
+              ? "Removing file..."
+              : isArchiving || isArchivingTemplate
+              ? "Archiving..."
+              : "Processing..."}
           </div>
         </div>
       )}

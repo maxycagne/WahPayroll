@@ -1,16 +1,17 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getFileTemplates, downloadTemplate, deleteTemplate, uploadTemplate } from "../api";
 import { buildDownloadBlobUrl } from "../utils";
 import { FileTemplate } from "../types";
 
-export const useFileTemplates = (role: string, showToast: (msg: string, type?: string) => void) => {
+export const useFileTemplates = (role: string, showToast: (msg: string, type?: string) => void, showArchived: boolean = false) => {
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [isReplacingTemplate, setIsReplacingTemplate] = useState(false);
   const [templateTitle, setTemplateTitle] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateReplaceTarget, setTemplateReplaceTarget] = useState<FileTemplate | null>(null);
+  const [isArchivingTemplate, setIsArchivingTemplate] = useState(false);
 
   const templateInputRef = useRef<HTMLInputElement>(null);
   const templateReplaceInputRef = useRef<HTMLInputElement>(null);
@@ -103,6 +104,11 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
     }
   };
 
+  const filteredTemplates = useMemo(
+    () => uploadedTemplates.filter(t => !!(t as any).is_archived === showArchived),
+    [uploadedTemplates, showArchived]
+  );
+
   return {
     isTemplatesOpen,
     setIsTemplatesOpen,
@@ -114,12 +120,34 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
     setTemplateCategory,
     templateInputRef,
     templateReplaceInputRef,
-    uploadedTemplates,
+    uploadedTemplates: filteredTemplates,
     isLoadingTemplates,
     downloadUploadedTemplate,
     handleDeleteTemplate,
     openTemplateReplacePicker,
     handleTemplateReplaceChange,
     handleTemplateUpload,
+    isArchivingTemplate,
+    handleArchiveTemplate: async (template: FileTemplate) => {
+      const currentStatus = (template as any).is_archived || false;
+      const newStatus = !currentStatus;
+
+      const shouldProceed = window.confirm(
+        `${newStatus ? "Archive" : "Unarchive"} this template?`,
+      );
+      if (!shouldProceed) return;
+
+      setIsArchivingTemplate(true);
+      try {
+        const { archiveFileTemplate } = await import("../api");
+        await archiveFileTemplate(template.id, newStatus);
+        showToast(`Template ${newStatus ? "archived" : "unarchived"} successfully.`);
+        await refetchTemplates();
+      } catch (error: any) {
+        showToast(error.message || "Failed to archive template", "error");
+      } finally {
+        setIsArchivingTemplate(false);
+      }
+    },
   };
 };

@@ -48,6 +48,9 @@ import {
   removeProfilePhoto,
   replaceResignationFile,
   removeResignationFile,
+  archiveFileRecord,
+  archiveFileTemplate,
+  permanentDeleteFileRecord,
 } from "../controllers/employeeController.js";
 import {
   updateMyProfile,
@@ -322,6 +325,24 @@ router.delete(
   "/file-templates/:id",
   authorizeRoles("Admin", "HR"),
   deleteFileTemplate,
+);
+
+router.put(
+  "/file-management/archive/:source/:id",
+  authorizeRoles("Admin", "HR", "Supervisor"),
+  archiveFileRecord,
+);
+
+router.delete(
+  "/file-management/record/:source/:id",
+  authorizeRoles("Admin", "HR"),
+  permanentDeleteFileRecord,
+);
+
+router.put(
+  "/file-templates/:id/archive",
+  authorizeRoles("Admin", "HR"),
+  archiveFileTemplate,
 );
 
 // ADD THESE ROUTES (Put them under your router.use(authenticateToken) line)
