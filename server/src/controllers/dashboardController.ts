@@ -206,7 +206,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           SELECT r.*, e.first_name, e.last_name
           FROM resignations r
           JOIN employees e ON r.emp_id = e.emp_id
-          WHERE r.status = 'Pending Approval'
+          WHERE r.status IN ('Pending Approval', 'Clearance Uploaded')
             AND e.emp_id <> ?
         `,
         [currentUser.emp_id],
@@ -218,7 +218,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           SELECT r.*, e.first_name, e.last_name
           FROM resignations r
           JOIN employees e ON r.emp_id = e.emp_id
-          WHERE r.status = 'Pending Approval'
+          WHERE r.status IN ('Pending Approval', 'Clearance Uploaded')
             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
             AND e.designation = ?
             AND e.emp_id <> ?
@@ -389,7 +389,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         `SELECT r.id, r.emp_id, r.resignation_type, r.created_at, e.first_name, e.last_name
          FROM resignations r
          JOIN employees e ON e.emp_id = r.emp_id
-         WHERE r.status = 'Pending Approval'
+         WHERE r.status IN ('Pending Approval', 'Clearance Uploaded')
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
            AND e.designation = ?
            AND e.emp_id <> ?

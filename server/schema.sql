@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS resignations (
   endorsement_file_key VARCHAR(512),
   clearance_file_key VARCHAR(512),
   current_step TINYINT DEFAULT 1,
-  status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
+  status ENUM('Pending Approval', 'Approved', 'Rejected', 'Awaiting Clearance', 'Clearance Uploaded', 'Officially Resigned') DEFAULT 'Pending Approval',
   reviewed_by VARCHAR(50),
   review_remarks TEXT,
   reviewed_at TIMESTAMP NULL,

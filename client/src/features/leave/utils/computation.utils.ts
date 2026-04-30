@@ -2,7 +2,11 @@ export const isPendingApprovalStatus = (status: string) => {
   const normalized = String(status || "")
     .trim()
     .toLowerCase();
-  return normalized === "pending" || normalized === "pending approval";
+  return (
+    normalized === "pending" ||
+    normalized === "pending approval" ||
+    normalized === "clearance uploaded"
+  );
 };
 export const isSupervisorTeamMember = (
   item: any,

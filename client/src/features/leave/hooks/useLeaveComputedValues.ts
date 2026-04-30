@@ -74,7 +74,11 @@ export const useComputedValues = ({
             unified_type: "Offset",
           })),
         ...myOwnResignations
-          .filter((r) => isPendingApprovalStatus(r.status))
+          .filter(
+            (r) =>
+              isPendingApprovalStatus(r.status) ||
+              String(r.status).toLowerCase() === "awaiting clearance"
+          )
           .map((r) => ({
             ...r,
             request_group: "resignation",

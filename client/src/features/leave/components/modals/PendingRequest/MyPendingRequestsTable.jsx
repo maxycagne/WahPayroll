@@ -7,6 +7,7 @@ export default function MyPendingRequestsTable({
   setCancelPendingConfirm,
   requestCancellationApprovalMutation,
   setCancelApprovalConfirm,
+  setUploadClearanceItem,
 }) {
   return (
     <table className="w-full text-sm text-left">
@@ -53,6 +54,7 @@ export default function MyPendingRequestsTable({
                 requestCancellationApprovalMutation
               }
               setCancelApprovalConfirm={setCancelApprovalConfirm}
+              setUploadClearanceItem={setUploadClearanceItem}
             />
           ))
         )}

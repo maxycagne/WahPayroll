@@ -78,6 +78,8 @@ export default function Leave() {
       setCancelPending: setCancelPendingConfirm,
       hrNote: hrNoteConfirm,
       setHrNote: setHrNoteConfirm,
+      uploadClearance: uploadClearanceItem,
+      setUploadClearance: setUploadClearanceItem,
     },
     toast: { instance: toast, show: showToast, clear: clearToast },
     computed: { dateDifference: difference },
@@ -667,6 +669,8 @@ export default function Leave() {
         showToast={showToast}
         submitCancellationRequest={submitCancellationRequest}
         workweekConfigs={workweekConfigs}
+        uploadClearanceItem={uploadClearanceItem}
+        setUploadClearanceItem={setUploadClearanceItem}
       />
 
       <Toast toast={toast} onClose={clearToast} />
