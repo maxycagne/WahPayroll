@@ -967,6 +967,7 @@ function EmployeeModal({
                 disabled={isEdit}
                 required
                 maxLength={20}
+                placeholder="EMP-001"
                 className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
                   isDuplicate
                     ? "border-red-500 ring-1 ring-red-500"
@@ -990,6 +991,7 @@ function EmployeeModal({
                 onChange={onChange}
                 required
                 maxLength={30}
+                placeholder="email@gmail.com"
                 className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
@@ -1006,6 +1008,7 @@ function EmployeeModal({
                     onChange={onChange}
                     required
                     maxLength={30}
+                    placeholder="JuWAHn"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1018,6 +1021,7 @@ function EmployeeModal({
                     value={data.middle_initial || ""}
                     onChange={onChange}
                     maxLength="1"
+                    placeholder="W"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1031,6 +1035,7 @@ function EmployeeModal({
                     onChange={onChange}
                     required
                     maxLength={30}
+                    placeholder="Dela Cruz"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1122,6 +1127,7 @@ function EmployeeModal({
                     value={data.philhealth_no || ""}
                     onChange={onChange}
                     maxLength={20}
+                    placeholder="XX-XXXXXXXXX-X"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1135,6 +1141,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     required
+                    placeholder="XXX-XXX-XXX-XXX"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1148,6 +1155,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     required
+                    placeholder="XX - XXXXXXX - X"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1161,6 +1169,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     required
+                    placeholder="XXXX-XXXX-XXXX"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
@@ -1173,6 +1182,7 @@ function EmployeeModal({
                     value={data.gsis_no || ""}
                     onChange={onChange}
                     maxLength={20}
+                    placeholder="XXXXXXXXXX"
                     className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
