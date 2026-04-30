@@ -1110,7 +1110,7 @@ function EmployeeModal({
 
             <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
               <label className="text-xs font-bold text-gray-500 uppercase">
-                Government Details (OPT)
+                Government Details
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="flex flex-col gap-0.5">
