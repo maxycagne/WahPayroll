@@ -60,6 +60,7 @@ export default function Reports() {
         "Failed to fetch reports",
       );
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const exportCSV = () => {
@@ -291,7 +292,7 @@ export default function Reports() {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse bg-white text-sm text-left">
+          <table className="w-full border-collapse bg-white dark:bg-gray-900 text-sm text-left">
             <thead>
               <tr>
                 <th className="px-5 py-3 font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">

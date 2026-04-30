@@ -38,21 +38,25 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: getDashboardSummary,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myAttendance = [], isLoading: attLoading } = useQuery({
     queryKey: ["my-attendance", currentUser?.emp_id],
     queryFn: getMyAttendance,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myLeaves = [] } = useQuery({
     queryKey: ["leaves"],
     queryFn: getMyLeaves,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: myOffsets = [] } = useQuery({
     queryKey: ["offset-applications"],
     queryFn: getMyOffsets,
+    staleTime: 5 * 60 * 1000,
   });
 
   const myBalanceRecord = useMemo(() => 
@@ -201,7 +205,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
           <div className="flex-1 p-5">
             {myAttendance.length === 0 ? (
-              <p className="py-4 text-center text-sm italic text-slate-500">
+              <p className="py-4 text-center text-sm italic text-slate-500 dark:text-gray-500">
                 No recent attendance records found.
               </p>
             ) : (

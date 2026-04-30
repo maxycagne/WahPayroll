@@ -299,7 +299,7 @@ export const fileLeave: RequestHandler = async (
     }
 
     // ============ INSERT LEAVE REQUEST ============
-    await connection.query(
+    const [result]: any = await connection.query(
       `
         INSERT INTO leave_requests (
           emp_id,
@@ -337,7 +337,7 @@ export const fileLeave: RequestHandler = async (
     await notifyApproversForRequest(connection, {
       requester,
       moduleType: "Leave",
-      requestId: requesterEmpId,
+      requestId: result.insertId,
     });
 
     await connection.commit();

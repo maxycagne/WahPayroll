@@ -35,6 +35,9 @@ export const useDailyAttendance = (selectedDate: string | null, canEdit: boolean
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-attendance-summary"] });
       showToast("Attendance saved successfully.");
       setIsOpen(false);
     },

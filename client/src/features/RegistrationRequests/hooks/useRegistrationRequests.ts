@@ -8,6 +8,7 @@ export const usePendingRequests = () => {
   return useQuery({
     queryKey: ["pending-registrations"],
     queryFn: getPendingRequests,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

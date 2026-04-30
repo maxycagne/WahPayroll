@@ -136,15 +136,18 @@ CREATE TABLE IF NOT EXISTS resignation_drafts (
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS stored_files (
-  storage_key VARCHAR(120) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS file_templates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  category VARCHAR(120) NULL,
+  storage_key VARCHAR(120) NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(120) NOT NULL,
   size_bytes INT NOT NULL,
-  content LONGBLOB NOT NULL,
-  created_by VARCHAR(50) NULL,
+  uploaded_by VARCHAR(50) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_stored_files_created_at (created_at)
+  INDEX idx_file_templates_created (created_at),
+  INDEX idx_file_templates_storage_key (storage_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notifications (

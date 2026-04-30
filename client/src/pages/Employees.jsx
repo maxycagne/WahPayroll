@@ -134,6 +134,7 @@ export default function Employees({ shortcutMode = false }) {
         "Failed to fetch employees",
       );
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const employees = responseData?.data || [];

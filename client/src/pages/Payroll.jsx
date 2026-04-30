@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { pdf } from "@react-pdf/renderer";
-import Toast from "../components/Toast";
+import Toast, { TOAST_DURATION_LONG } from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
@@ -336,9 +336,14 @@ export default function Payroll({ shortcutMode = false }) {
         "Failed to send payslip",
       );
     },
-    onSuccess: () => showToast("Payslip sent successfully!"),
+    onSuccess: () =>
+      showToast("Payslip sent successfully!", "success", TOAST_DURATION_LONG),
     onError: () =>
-      showToast("Failed to send payslip. Check server logs.", "error"),
+      showToast(
+        "Failed to send payslip. Check server logs.",
+        "error",
+        TOAST_DURATION_LONG,
+      ),
   });
 
   const sendBulkPayslipsMutation = useMutation({
@@ -355,6 +360,7 @@ export default function Payroll({ shortcutMode = false }) {
       showToast(
         `Success! All payslips for ${period} have been dispatched.`,
         "success",
+        TOAST_DURATION_LONG,
       );
     },
     onError: (error) => {
@@ -1147,8 +1153,8 @@ export default function Payroll({ shortcutMode = false }) {
                         colSpan={isAdmin ? 8 : 7}
                         className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
-                        No payroll records found for {period}. Click "Generate
-                        Payroll" to calculate.
+                        No payroll records found for {period}. kindly contact
+                        Gregg if you have any concerns.
                       </td>
                     </tr>
                   ) : (
@@ -1429,20 +1435,20 @@ export default function Payroll({ shortcutMode = false }) {
             <div className="p-6 space-y-4">
               <p className="m-0 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 Update monthly base salary for
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
                   {selectedSalaryEmployee
                     ? `${selectedSalaryEmployee.first_name} ${selectedSalaryEmployee.last_name}`
                     : "the selected employee"}
                 </span>
                 to
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-gray-100">
                   {" "}
                   {fmt(salaryForm.amount)}
                 </span>
                 ?
               </p>
-              <p className="m-0 text-xs text-gray-500">
+              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
                 This will apply only to this employee.
               </p>
               <div className="pt-2 flex gap-3">

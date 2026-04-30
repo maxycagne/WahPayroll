@@ -67,11 +67,13 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   const attendanceQuery = useQuery({
     queryKey: ["attendance", currentPage, itemsPerPage, search],
     queryFn: () => getAttendance(currentPage, itemsPerPage, search),
+    staleTime: 5 * 60 * 1000,
   });
 
   const calendarSummaryQuery = useQuery({
     queryKey: ["attendance-calendar", year, month],
     queryFn: () => getAttendanceCalendarSummary(year, month),
+    staleTime: 5 * 60 * 1000,
   });
 
   const overviewStats = useMemo(() => {

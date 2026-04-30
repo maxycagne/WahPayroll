@@ -8,7 +8,7 @@ export const DashboardLegend = () => (
     wrapperStyle={{
       fontSize: "11px",
       fontWeight: 600,
-      color: "#475569",
+      color: "var(--color-slate-500)",
       paddingTop: "8px",
     }}
   />
