@@ -37,6 +37,7 @@ import {
 } from "@/components/hrDashboard/StatsModal";
 import { HR_DASHBOARD_QUICK_ACCESS } from "@/assets/constantData";
 import { DailyAttendanceModal } from "@/features/attendance/components/DailyAttendanceModal";
+import { useDailyAttendance } from "@/features/attendance/hooks/useDailyAttendance";
 
 const fmtCompactCurrency = (value) => {
   const number = Number(value || 0);
@@ -109,7 +110,6 @@ export default function HRDashboard() {
   const queryClient = useQueryClient();
 
   const [showDocsModal, setShowDocsModal] = useState(false);
-  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [period] = useState(new Date().toISOString().slice(0, 7));
   const [year, month] = period.split("-").map(Number);
@@ -120,10 +120,15 @@ export default function HRDashboard() {
   // Form & Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [docForm, setDocForm] = useState({ emp_id: "", missing_docs: [] });
+
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Today's date for attendance
+  const todayDate = new Date().toISOString().split("T")[0];
+  const dailyAttendance = useDailyAttendance(todayDate, true, showToast);
   const { data: dashboardData, isLoading: isLoadingDashboard } =
     useQuery(dashboardSummary);
   const { data: rawEmployeesData, isLoading: isLoadingEmployees } =
@@ -327,7 +332,7 @@ export default function HRDashboard() {
         <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-gray-100">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <button
-            onClick={() => setShowAttendanceModal(true)}
+            onClick={() => dailyAttendance.setIsOpen(true)}
             className="group rounded-lg border border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-800 dark:text-blue-400 p-3.5 text-left shadow-sm transition-colors cursor-pointer md:p-3"
           >
             <p className="mb-1 text-xl md:text-lg"><Clock3 className="w-5 h-5" /></p>
@@ -489,9 +494,31 @@ export default function HRDashboard() {
         mutation={updateResignationMutation}
       />
 
-      <DailyAttendanceModal 
-        isOpen={showAttendanceModal}
-        onClose={() => setShowAttendanceModal(false)}
+      <DailyAttendanceModal
+        isOpen={dailyAttendance.isOpen}
+        onClose={() => dailyAttendance.setIsOpen(false)}
+        date={todayDate}
+        loading={dailyAttendance.loading}
+        filteredDaily={dailyAttendance.filteredDaily}
+        attendanceForm={dailyAttendance.attendanceForm}
+        setAttendanceForm={dailyAttendance.setAttendanceForm}
+        secondaryStatusForm={dailyAttendance.secondaryStatusForm}
+        setSecondaryStatusForm={dailyAttendance.setSecondaryStatusForm}
+        search={dailyAttendance.search}
+        setSearch={dailyAttendance.setSearch}
+        statusFilter={dailyAttendance.statusFilter}
+        setStatusFilter={dailyAttendance.setStatusFilter}
+        overview={dailyAttendance.overview}
+        selectedEmployees={dailyAttendance.selectedEmployees}
+        toggleEmployeeSelection={dailyAttendance.toggleEmployeeSelection}
+        toggleAllSelected={dailyAttendance.toggleAllSelected}
+        bulkStatus={dailyAttendance.bulkStatus}
+        setBulkStatus={dailyAttendance.setBulkStatus}
+        applyBulkStatus={dailyAttendance.applyBulkStatus}
+        markAllPresent={dailyAttendance.markAllPresent}
+        onSubmit={dailyAttendance.onSubmit}
+        isSaving={dailyAttendance.isSaving}
+        canEdit={true}
       />
     </div>
   );

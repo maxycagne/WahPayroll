@@ -98,28 +98,28 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
 
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
             <div className="shrink-0 rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-[11px] font-semibold text-slate-700 dark:text-gray-400">
-              Total: {overview.total}
+              Total: {overview?.total ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-400">
-              Assigned: {overview.assigned}
+              Assigned: {overview?.assigned ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-2 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-400">
-              Unassigned: {overview.unassigned}
+              Unassigned: {overview?.unassigned ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 px-2 py-1 text-[11px] font-semibold text-green-700 dark:text-green-400">
-              Present: {overview.present}
+              Present: {overview?.present ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-2 py-1 text-[11px] font-semibold text-red-700 dark:text-red-400">
-              Absent: {overview.absent}
+              Absent: {overview?.absent ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 text-[11px] font-semibold text-purple-700 dark:text-purple-400">
-              On Leave: {overview.onLeave}
+              On Leave: {overview?.onLeave ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-              Late: {overview.late}
+              Late: {overview?.late ?? 0}
             </div>
             <div className="shrink-0 rounded-md border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 text-[11px] font-semibold text-rose-700 dark:text-rose-400">
-              Under/Half: {overview.undertime + overview.halfDay}
+              Under/Half: {(overview?.undertime ?? 0) + (overview?.halfDay ?? 0)}
             </div>
           </div>
 
