@@ -5,11 +5,11 @@ export default function HrNoteConfirmModalFooter({
   showToast,
 }) {
   return (
-    <div className="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-4 py-3">
+    <div className="flex justify-end gap-2 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
       <button
         type="button"
         onClick={() => setHrNoteConfirm(null)}
-        className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
       >
         Close
       </button>

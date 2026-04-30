@@ -48,7 +48,7 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
             {activeModal === "pending"
               ? `Pending Leave Approvals`
               : activeModal === "leave"
-                ? `Employees On Leave`
+                ? `Employees on leave today`
                 : activeModal === "absent"
                   ? `Absent Employees`
                   : `Recent Activity`}

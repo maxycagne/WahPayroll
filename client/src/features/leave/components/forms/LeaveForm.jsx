@@ -338,7 +338,7 @@ export default function LeaveForm({
           <div className="flex flex-col">
             {isDeductible ? (
               <>
-                <p className="m-0 text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                <p className="m-0 text-[11px] font-semibold text-gray-400 dark:text-gray-400 uppercase tracking-wider">
                   Estimated Cost
                 </p>
                 <div className="flex items-baseline gap-2">
@@ -348,7 +348,7 @@ export default function LeaveForm({
                   <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
                     Credits Used
                   </span>
-                  <span className="text-[10px] font-bold text-gray-300 dark:text-gray-800">|</span>
+                  <span className="text-[10px] font-bold text-gray-300 dark:text-gray-700">|</span>
                   <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 italic">
                     ({difference} working days)
                   </span>

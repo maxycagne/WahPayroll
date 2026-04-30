@@ -63,7 +63,7 @@ export const useRequestMutation = ({
     },
     successMsg: "Leave application submitted successfully",
     showToast,
-    invalidateKeys: ["leaves"],
+    invalidateKeys: ["leaves", "dashboardSummary"],
     successExtra: () => {
       setApplicationModalOpen(false);
       resetLeaveForm();
@@ -84,7 +84,7 @@ export const useRequestMutation = ({
     },
     successMsg: "Offset application filed successfully",
     showToast,
-    invalidateKeys: ["offset-applications"],
+    invalidateKeys: ["offset-applications", "dashboardSummary"],
     successExtra: () => {
       setApplicationModalOpen(false);
       resetLeaveForm();
@@ -103,7 +103,7 @@ export const useRequestMutation = ({
       ),
     successMsg: "Resignation filed successfully",
     showToast,
-    invalidateKeys: ["resignations"],
+    invalidateKeys: ["resignations", "dashboardSummary"],
     successExtra: () => {
       useFieldStore.getState().resetForm();
       setApplicationModalOpen(false);

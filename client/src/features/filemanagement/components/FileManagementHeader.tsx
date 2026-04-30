@@ -27,7 +27,7 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
   onOpenTemplates,
 }) => {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white md:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

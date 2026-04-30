@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Readable } from "stream";
 import { s3BucketName, s3Client } from "../config/s3";
 import { GetObjectCommand, S3ServiceException } from "@aws-sdk/client-s3";
 
@@ -28,7 +29,7 @@ export const retrieveFile = async (req: Request, res: Response) => {
 
     // Stream the file to the response
     if (response.Body) {
-      response.Body.pipe(res);
+      (response.Body as Readable).pipe(res);
     } else {
       res.status(500).json({ message: "File body is empty" });
     }

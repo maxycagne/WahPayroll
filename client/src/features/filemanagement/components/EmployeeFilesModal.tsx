@@ -131,14 +131,11 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="rounded-full bg-slate-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-gray-400">
-                                {file.source}
-                              </span>
                               <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                                 {file.file_status ||
                                   (file.source === "generated"
-                                    ? "generated"
-                                    : "uploaded")}
+                                    ? "Generated"
+                                    : "Uploaded")}
                               </span>
                             </div>
                           </div>
@@ -148,7 +145,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onPreview(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 Preview
@@ -157,7 +154,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                             <button
                               type="button"
                               onClick={() => onDownload(file)}
-                              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700"
                             >
                               <ArrowDownToLine className="h-3.5 w-3.5" />
                               Download
@@ -166,7 +163,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onReplace(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
+                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
                               >
                                 <Upload className="h-3.5 w-3.5" />
                                 Replace
@@ -176,7 +173,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onRemove(file)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                                 Remove

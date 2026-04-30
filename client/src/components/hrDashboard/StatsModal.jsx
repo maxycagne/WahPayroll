@@ -24,19 +24,19 @@ function EmployeeCard({
   children,
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="flex items-start gap-3 rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-3 shadow-sm">
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarColor}`}
       >
         {employee.first_name.charAt(0)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-900">
+        <p className="text-sm font-bold text-slate-900 dark:text-gray-100">
           {employee.first_name} {employee.last_name}
         </p>
         {children}
       </div>
-      <Badge variant="outline" className={`text-[11px] ${badgeClass}`}>
+      <Badge variant="outline" className={`text-[11px] dark:bg-gray-900 ${badgeClass}`}>
         {badgeLabel}
       </Badge>
     </div>
@@ -85,7 +85,11 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
     const files = Object.entries(docs)
       .map(([key, value]) => {
         if (typeof value === "string" && value.trim().length > 0) {
-          return { key, url: value, label: key };
+          let fileUrl = value;
+          if (!fileUrl.startsWith('http') && !fileUrl.startsWith('/api/')) {
+            fileUrl = `/api/file/get?filename=${encodeURIComponent(value)}`;
+          }
+          return { key, url: fileUrl, label: key };
         }
 
         if (value && typeof value === "object") {
@@ -113,14 +117,22 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
       .filter(Boolean);
 
     if (employee?.ocp) {
-      files.push({ key: "ocp", url: employee.ocp, label: "ocp" });
+      let ocpUrl = employee.ocp;
+      if (!ocpUrl.startsWith('http') && !ocpUrl.startsWith('/api/')) {
+        ocpUrl = `/api/file/get?filename=${encodeURIComponent(ocpUrl)}`;
+      }
+      files.push({ key: "ocp", url: ocpUrl, label: "ocp" });
     }
 
     ["doctor_cert", "death_cert", "birth_cert", "marriage_cert"].forEach(
       (field) => {
         const value = employee?.[field];
         if (typeof value === "string" && value.trim().length > 0) {
-          files.push({ key: field, url: value, label: field });
+          let fileUrl = value;
+          if (!fileUrl.startsWith('http') && !fileUrl.startsWith('/api/')) {
+            fileUrl = `/api/file/get?filename=${encodeURIComponent(value)}`;
+          }
+          files.push({ key: field, url: fileUrl, label: field });
         }
       },
     );
@@ -201,6 +213,28 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
     setReviewConfirm(null);
   };
 
+  const handleFileDownloadClick = async (e, url, label) => {
+    if (url.includes("/api/file/get")) {
+      e.preventDefault();
+      try {
+        const blob = await mutationHandler(
+          axiosInterceptor.get(url, { responseType: "blob" }),
+          "Failed to download file.",
+        );
+        const objectUrl = window.URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = String(label).replace(/_/g, " ") || "download";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      } catch (err) {
+        window.open(url, "_blank");
+      }
+    }
+  };
+
   return (
     <>
       <Dialog
@@ -212,15 +246,15 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
           }
         }}
       >
-        <DialogContent className="flex max-h-[80vh] max-w-[560px] flex-col overflow-hidden p-0">
+        <DialogContent className="flex max-h-[80vh] max-w-[560px] flex-col overflow-hidden p-0 dark:border-gray-800">
           <DialogHeader className="shrink-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
             <DialogTitle className="text-base font-semibold text-white">
               Pending Leaves
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-3.5">
+          <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-gray-900 p-4 md:p-3.5">
             {!pendingLeaves?.length ? (
-              <p className="text-center text-sm font-medium text-slate-500">
+              <p className="text-center text-sm font-medium text-slate-500 dark:text-gray-400">
                 No pending requests.
               </p>
             ) : (
@@ -229,24 +263,24 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                   <EmployeeCard
                     key={idx}
                     employee={employee}
-                    avatarColor="bg-purple-100 text-purple-600"
-                    badgeClass="bg-yellow-100 text-yellow-800 border-yellow-200"
+                    avatarColor="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                    badgeClass="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800/50"
                     badgeLabel="Pending"
                   >
-                    <p className="mt-0.5 text-xs text-slate-600">
+                    <p className="mt-0.5 text-xs text-slate-600 dark:text-gray-400">
                       {employee.leave_type}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-gray-500">
                       {formatLongDate(employee.date_from)} -{" "}
                       {formatLongDate(employee.date_to)}
                     </p>
 
-                    <div className="mt-2 flex gap-1.5 border-t border-slate-200 pt-2">
+                    <div className="mt-2 flex gap-1.5 border-t border-slate-200 dark:border-gray-700 pt-2">
                       <button
                         type="button"
                         onClick={() => openLeaveDecisionConfirm(employee)}
                         disabled={mutation?.isPending}
-                        className="flex-1 rounded-md border-0 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-200 disabled:opacity-50"
+                        className="flex-1 rounded-md border-0 bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 disabled:opacity-50 transition-colors"
                       >
                         Review Application
                       </button>
@@ -265,9 +299,9 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
           if (!nextOpen) setReviewConfirm(null);
         }}
       >
-        <DialogContent className="max-h-[85vh] max-w-[560px] overflow-hidden p-0">
-          <DialogHeader className="border-b border-slate-200 bg-white px-4 py-3">
-            <DialogTitle className="text-base font-semibold text-slate-900">
+        <DialogContent className="max-h-[85vh] max-w-[560px] overflow-hidden p-0 dark:border-gray-800 dark:bg-gray-900">
+          <DialogHeader className="border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
+            <DialogTitle className="text-base font-semibold text-slate-900 dark:text-gray-100">
               {reviewConfirm?.status
                 ? reviewConfirm.status === "Denied"
                   ? "Confirm Denial"
@@ -276,11 +310,11 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-[60vh] space-y-3 overflow-y-auto bg-slate-50 p-4">
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto bg-slate-50 dark:bg-gray-900 p-4">
             {reviewConfirm && (
               <>
-                <p className="m-0 text-sm text-slate-700">
-                  <span className="font-semibold text-slate-900">
+                <p className="m-0 text-sm text-slate-700 dark:text-gray-300">
+                  <span className="font-semibold text-slate-900 dark:text-gray-100">
                     {reviewConfirm.employee.first_name}{" "}
                     {reviewConfirm.employee.last_name}
                   </span>{" "}
@@ -290,19 +324,19 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                 </p>
 
                 {getReviewReason(reviewConfirm.employee) && (
-                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                  <div className="rounded-md border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-3 py-2">
+                    <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-gray-400">
                       Stated Reason
                     </p>
-                    <p className="m-0 mt-1 text-sm text-slate-900">
+                    <p className="m-0 mt-1 text-sm text-slate-900 dark:text-gray-100">
                       {getReviewReason(reviewConfirm.employee)}
                     </p>
                   </div>
                 )}
 
                 {getReviewFiles(reviewConfirm.employee).length > 0 && (
-                  <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
-                    <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                  <div className="rounded-md border border-sky-200 dark:border-sky-900/30 bg-sky-50 dark:bg-sky-900/10 px-3 py-2">
+                    <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-400">
                       Uploaded Files
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -312,7 +346,8 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                           href={file.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-md border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-100"
+                          onClick={(e) => handleFileDownloadClick(e, file.url, file.label || file.key)}
+                          className="inline-flex items-center rounded-md border border-sky-200 dark:border-sky-900/50 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/30"
                         >
                           {String(file.label || file.key).replace(/_/g, " ")}
                         </a>
@@ -322,12 +357,12 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                 )}
 
                 {reviewConfirm.status ? (
-                  <p className="m-0 text-sm text-slate-700">
+                  <p className="m-0 text-sm text-slate-700 dark:text-gray-300">
                     Are you sure you want to{" "}
                     {reviewConfirm.status.toLowerCase()} this leave request?
                   </p>
                 ) : (
-                  <p className="m-0 text-sm text-slate-700">
+                  <p className="m-0 text-sm text-slate-700 dark:text-gray-300">
                     Review all details first, then choose Approve or Deny.
                   </p>
                 )}
@@ -343,17 +378,17 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                     const selectedDates = reviewConfirm.selectedDates || [];
 
                     return (
-                      <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
+                      <div className="rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-gray-900 p-4 shadow-sm">
                         <div className="mb-3 flex items-center justify-between gap-3">
                           <div>
-                            <p className="m-0 text-xs font-bold uppercase tracking-wider text-amber-800">
+                            <p className="m-0 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
                               Select specific days to approve
                             </p>
-                            <p className="m-0 mt-1 text-[11px] text-slate-600">
+                            <p className="m-0 mt-1 text-[11px] text-slate-600 dark:text-gray-400">
                               Approve only the working days you need.
                             </p>
                           </div>
-                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                          <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                             {selectedDates.length} selected
                           </span>
                         </div>
@@ -367,7 +402,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                                 selectedDates: [...availableDates],
                               })
                             }
-                            className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-50"
+                            className="rounded-md border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-400 transition hover:bg-amber-50 dark:hover:bg-amber-900/30"
                           >
                             Select All
                           </button>
@@ -379,7 +414,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                                 selectedDates: [],
                               })
                             }
-                            className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-gray-300 transition hover:bg-slate-50 dark:hover:bg-gray-700"
                           >
                             Clear
                           </button>
@@ -390,7 +425,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                             {selectedDates.map((date) => (
                               <span
                                 key={date}
-                                className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+                                className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300"
                               >
                                 {formatLongDate(date)}
                               </span>
@@ -402,21 +437,21 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                           {availableDates.map((date) => (
                             <label
                               key={date}
-                              className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/70"
+                              className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-white dark:bg-gray-800/50 px-3 py-2.5 text-[11px] text-slate-700 dark:text-gray-300 shadow-sm transition hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/70 dark:hover:bg-amber-900/20"
                             >
                               <input
                                 type="checkbox"
                                 checked={selectedDates.includes(date)}
                                 onChange={() => toggleApprovedDate(date)}
-                                className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                className="mt-0.5 h-4 w-4 rounded border-amber-300 dark:border-gray-700 text-amber-600 focus:ring-amber-500 dark:bg-gray-900"
                               />
-                              <span className="leading-5 text-slate-800">
+                              <span className="leading-5 text-slate-800 dark:text-gray-200">
                                 {formatLongDate(date)}
                               </span>
                             </label>
                           ))}
                         </div>
-                        <p className="m-0 mt-3 text-xs font-semibold text-amber-800">
+                        <p className="m-0 mt-3 text-[11px] font-semibold text-amber-800 dark:text-amber-400">
                           Selected: {selectedDates.length} day(s)
                         </p>
                       </div>
@@ -425,7 +460,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
 
                 {reviewConfirm.status === "Denied" && (
                   <div>
-                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                       Reason (required)
                     </label>
                     <textarea
@@ -437,7 +472,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                           remarks: e.target.value,
                         })
                       }
-                      className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full resize-none rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500"
                       placeholder="Enter reason for denial"
                     />
                   </div>
@@ -446,11 +481,11 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
             )}
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3">
+          <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 px-4 py-3">
             <button
               type="button"
               onClick={() => setReviewConfirm(null)}
-              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700"
             >
               Cancel
             </button>
@@ -465,7 +500,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                       remarks: "",
                     })
                   }
-                  className="rounded-md border border-red-200 bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-200"
+                  className="rounded-md border border-red-200 dark:border-red-900/30 bg-red-100 dark:bg-red-900/40 px-4 py-2 text-sm font-semibold text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60"
                 >
                   Deny
                 </button>
@@ -477,7 +512,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                       status: "Approved",
                     })
                   }
-                  className="rounded-md border border-green-200 bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200"
+                  className="rounded-md border border-green-200 dark:border-green-900/30 bg-green-100 dark:bg-green-900/40 px-4 py-2 text-sm font-semibold text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60"
                 >
                   Approve
                 </button>
@@ -493,7 +528,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                       remarks: "",
                     })
                   }
-                  className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700"
                 >
                   Back
                 </button>
@@ -501,7 +536,7 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
                   type="button"
                   onClick={submitLeaveDecision}
                   disabled={mutation?.isPending}
-                  className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${reviewConfirm?.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
+                  className={`rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors ${reviewConfirm?.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"} disabled:opacity-50`}
                 >
                   {reviewConfirm?.status === "Denied"
                     ? "Confirm Denial"
@@ -519,15 +554,15 @@ export function PendingLeaveModal({ open, onClose, pendingLeaves, mutation }) {
 export function OnLeaveModal({ open, onClose, onLeave }) {
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="flex max-h-[80vh] max-w-[500px] flex-col overflow-hidden p-0">
+      <DialogContent className="flex max-h-[80vh] max-w-[500px] flex-col overflow-hidden p-0 dark:border-gray-800">
         <DialogHeader className="shrink-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
           <DialogTitle className="text-base font-semibold text-white">
-            Employees Currently on Leave
+            Employees on leave today
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-3.5">
+        <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-gray-900 p-4 md:p-3.5">
           {!onLeave?.length ? (
-            <p className="text-center text-sm font-medium text-slate-500">
+            <p className="text-center text-sm font-medium text-slate-500 dark:text-gray-400">
               No employees on leave today.
             </p>
           ) : (
@@ -536,11 +571,11 @@ export function OnLeaveModal({ open, onClose, onLeave }) {
                 <EmployeeCard
                   key={idx}
                   employee={employee}
-                  avatarColor="bg-amber-100 text-amber-600"
-                  badgeClass="bg-amber-100 text-amber-800 border-amber-200"
+                  avatarColor="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                  badgeClass="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
                   badgeLabel="On Leave"
                 >
-                  <p className="mt-0.5 text-xs text-slate-600">
+                  <p className="mt-0.5 text-xs text-slate-600 dark:text-gray-400">
                     {employee.leave_type}
                   </p>
                 </EmployeeCard>
@@ -556,15 +591,15 @@ export function OnLeaveModal({ open, onClose, onLeave }) {
 export function AbsentModal({ open, onClose, absents }) {
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="flex max-h-[80vh] max-w-[500px] flex-col overflow-hidden p-0">
+      <DialogContent className="flex max-h-[80vh] max-w-[500px] flex-col overflow-hidden p-0 dark:border-gray-800">
         <DialogHeader className="shrink-0 bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
           <DialogTitle className="text-base font-semibold text-white">
             Absent Employees
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-3.5">
+        <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-gray-900 p-4 md:p-3.5">
           {!absents?.length ? (
-            <p className="text-center text-sm font-medium text-slate-500">
+            <p className="text-center text-sm font-medium text-slate-500 dark:text-gray-400">
               No absent employees today.
             </p>
           ) : (
@@ -573,11 +608,11 @@ export function AbsentModal({ open, onClose, absents }) {
                 <EmployeeCard
                   key={idx}
                   employee={employee}
-                  avatarColor="bg-red-100 text-red-600"
-                  badgeClass="bg-red-100 text-red-800 border-red-200"
+                  avatarColor="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                  badgeClass="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50"
                   badgeLabel="Absent"
                 >
-                  <p className="mt-0.5 text-xs text-slate-600">
+                  <p className="mt-0.5 text-xs text-slate-600 dark:text-gray-400">
                     Not marked present for today.
                   </p>
                 </EmployeeCard>
@@ -665,15 +700,15 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
           }
         }}
       >
-        <DialogContent className="max-w-[500px] overflow-hidden p-0">
+        <DialogContent className="max-w-[500px] overflow-hidden p-0 dark:border-gray-800">
           <DialogHeader className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 md:py-2.5">
             <DialogTitle className="text-base font-semibold text-white">
               Pending Resignations
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto p-4 md:p-3.5">
+          <div className="max-h-[60vh] overflow-y-auto bg-slate-50 dark:bg-gray-900 p-4 md:p-3.5">
             {!resignations?.length ? (
-              <p className="text-center text-sm font-medium text-slate-500">
+              <p className="text-center text-sm font-medium text-slate-500 dark:text-gray-400">
                 No pending resignations.
               </p>
             ) : (
@@ -681,31 +716,31 @@ export function ResignationModal({ open, onClose, resignations, mutation }) {
                 {resignations.map((r, idx) => (
                   <div
                     key={idx}
-                    className="flex flex-col gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3"
+                    className="flex flex-col gap-2.5 rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-3 shadow-sm"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">
+                        <p className="text-sm font-bold text-slate-900 dark:text-gray-100">
                           {r.first_name} {r.last_name}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">
+                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-gray-400">
                           {r.resignation_type}
                         </p>
                       </div>
                       <Badge
                         variant="outline"
-                        className="border-yellow-200 bg-yellow-100 text-[11px] text-yellow-800"
+                        className="border-yellow-200 bg-yellow-100 text-[11px] text-yellow-800 dark:border-yellow-800/50 dark:bg-yellow-900/30 dark:text-yellow-400"
                       >
                         {r.status}
                       </Badge>
                     </div>
 
-                    <div className="flex gap-1.5 border-t border-slate-200 pt-2.5">
+                    <div className="flex gap-1.5 border-t border-slate-200 dark:border-gray-700 pt-2.5">
                       <button
                         type="button"
                         onClick={() => openResignationReview(r)}
                         disabled={mutation?.isPending}
-                        className="flex-1 rounded-md border-0 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-200 disabled:opacity-50"
+                        className="flex-1 rounded-md border-0 bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 disabled:opacity-50 transition-colors"
                       >
                         Review Application
                       </button>

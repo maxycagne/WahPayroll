@@ -152,7 +152,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                       <button
                         type="button"
                         onClick={() => onDownload(template)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700"
                       >
                         <Download className="h-3.5 w-3.5" />
                         Download
@@ -162,7 +162,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                           type="button"
                           disabled={isReplacingTemplate}
                           onClick={() => onReplace(template)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <Upload className="h-3.5 w-3.5" />
                           {isReplacingTemplate ? "Replacing..." : "Replace"}
@@ -172,7 +172,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                         <button
                           type="button"
                           onClick={() => onDelete(template)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           Delete

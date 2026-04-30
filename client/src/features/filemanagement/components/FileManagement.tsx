@@ -183,7 +183,7 @@ export const FileManagement: React.FC = () => {
 
       {(isReplacing || isRemoving) && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
-          <div className="rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-lg">
+          <div className="rounded-2xl bg-white dark:bg-gray-800 px-5 py-4 text-sm font-semibold text-slate-700 dark:text-gray-200 shadow-lg border dark:border-gray-700">
             {isReplacing ? "Replacing file..." : "Removing file..."}
           </div>
         </div>

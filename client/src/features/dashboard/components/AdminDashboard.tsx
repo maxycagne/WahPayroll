@@ -207,7 +207,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         modalKey: "pending",
       },
       {
-        label: "On Leave",
+        label: "On leave today",
         value: onLeaveCount,
         borderColor: "#d4a017",
         icon: <Briefcase className="h-4 w-4" />,
@@ -417,8 +417,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   ? `${pendingLeaveCount} leaves + ${pendingResignationCount} resignations`
                   : c.label === "Absent"
                     ? `${attendanceTotals.absent} attendance absences in ${period}`
-                    : c.label === "On Leave"
-                      ? `${onLeaveCount} currently on leave`
+                    : c.label === "On leave today"
+                      ? `${onLeaveCount} currently on leave today`
                       : "Total active profiles"}
               </p>
               <p

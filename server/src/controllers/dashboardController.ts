@@ -62,7 +62,19 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     const isRankAndFile = currentUser.role === "RankAndFile";
 
     let pending = [];
-    if (isSupervisor) {
+    if (isAdmin || isHR) {
+      const [rows]: any = await pool.query(
+        `
+          SELECT l.*, e.first_name, e.last_name
+          FROM leave_requests l
+          JOIN employees e ON l.emp_id = e.emp_id
+          WHERE l.status = 'Pending'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
+      );
+      pending = rows;
+    } else if (isSupervisor) {
       const [rows]: any = await pool.query(
         `
           SELECT l.*, e.first_name, e.last_name
@@ -74,19 +86,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
             AND e.emp_id <> ?
         `,
         [currentUser.designation || "", currentUser.emp_id],
-      );
-      pending = rows;
-    } else if (isHR) {
-      const [rows]: any = await pool.query(
-        `
-          SELECT l.*, e.first_name, e.last_name
-          FROM leave_requests l
-          JOIN employees e ON l.emp_id = e.emp_id
-          WHERE l.status = 'Pending'
-            AND COALESCE(e.role, '') = 'Supervisor'
-            AND e.emp_id <> ?
-        `,
-        [currentUser.emp_id],
       );
       pending = rows;
     }
@@ -201,7 +200,19 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     }
 
     let resignations = [];
-    if (isSupervisor) {
+    if (isAdmin || isHR) {
+      const [rows]: any = await pool.query(
+        `
+          SELECT r.*, e.first_name, e.last_name
+          FROM resignations r
+          JOIN employees e ON r.emp_id = e.emp_id
+          WHERE r.status = 'Pending Approval'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
+      );
+      resignations = rows;
+    } else if (isSupervisor) {
       const [rows]: any = await pool.query(
         `
           SELECT r.*, e.first_name, e.last_name
@@ -213,19 +224,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
             AND e.emp_id <> ?
         `,
         [currentUser.designation || "", currentUser.emp_id],
-      );
-      resignations = rows;
-    } else if (isHR) {
-      const [rows]: any = await pool.query(
-        `
-          SELECT r.*, e.first_name, e.last_name
-          FROM resignations r
-          JOIN employees e ON r.emp_id = e.emp_id
-          WHERE r.status = 'Pending Approval'
-            AND COALESCE(e.role, '') = 'Supervisor'
-            AND e.emp_id <> ?
-        `,
-        [currentUser.emp_id],
       );
       resignations = rows;
     }

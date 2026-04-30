@@ -6,10 +6,10 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
   const [selectedEmp, setSelectedEmp] = useState(null);
 
   return (
-    <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-        <h2 className="text-lg font-bold text-slate-800">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-gray-100">
           Missing Requirements Tracker
         </h2>
         <button
@@ -23,7 +23,7 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           {/* Table Headers */}
-          <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <thead className="border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
             <tr>
               <th className="px-6 py-4">Employee Name</th>
               <th className="px-6 py-4">Designation</th>
@@ -32,12 +32,12 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
               <th className="px-6 py-4">Last Updated</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody className="divide-y divide-slate-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
             {!missingDocs || missingDocs.length === 0 ? (
               <tr>
                 <td
                   colSpan="5"
-                  className="px-6 py-8 text-center font-medium text-slate-500"
+                  className="px-6 py-8 text-center font-medium text-slate-500 dark:text-gray-400"
                 >
                   All employees have complete documents! 🎉
                 </td>
@@ -51,15 +51,15 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
                 return (
                   <tr
                     key={emp.emp_id}
-                    className="align-top transition-colors hover:bg-slate-50/50"
+                    className="align-top transition-colors hover:bg-slate-50/50 dark:hover:bg-gray-800/50"
                   >
-                    <td className="px-6 py-4 font-bold text-slate-900">
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-gray-100">
                       {emp.first_name} {emp.last_name}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">
+                    <td className="px-6 py-4 text-slate-600 dark:text-gray-400">
                       {emp.designation}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">
+                    <td className="px-6 py-4 text-slate-600 dark:text-gray-400">
                       {/* Robust Date Check for Date Hired */}
                       {emp.hired_date
                         ? new Date(emp.hired_date).toLocaleDateString()
@@ -80,7 +80,7 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
                         {docsList.length === 1 ? "Document" : "Documents"}
                       </button>
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
+                    <td className="px-6 py-4 text-xs text-slate-500 dark:text-gray-500">
                       {/* Check for the correct database column name: updated_at */}
                       {emp.updated_at
                         ? new Date(emp.updated_at).toLocaleString()
@@ -97,21 +97,21 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
       {/* NEW: MISSING DOCUMENTS MODAL */}
       {selectedEmp && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-md overflow-hidden rounded-xl bg-white dark:bg-gray-900 shadow-2xl border border-slate-200 dark:border-gray-800 animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-6 py-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-gray-100">
                   Missing Documents
                 </h3>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mt-0.5">
                   {selectedEmp.first_name} {selectedEmp.last_name} •{" "}
                   {selectedEmp.designation}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedEmp(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-gray-500 transition-colors hover:bg-slate-200 dark:hover:bg-gray-800 hover:text-slate-700 dark:hover:text-gray-200 cursor-pointer"
               >
                 ✕
               </button>
@@ -119,7 +119,7 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
 
             {/* Modal Body (The List) */}
             <div className="p-6">
-              <ul className="list-inside list-disc space-y-2 text-sm font-medium text-red-600 marker:text-red-400">
+              <ul className="list-inside list-disc space-y-2 text-sm font-medium text-red-600 dark:text-red-400 marker:text-red-400">
                 {selectedEmp.missing_docs ? (
                   selectedEmp.missing_docs.split(", ").map((doc, idx) => (
                     <li key={idx} className="pl-1">
@@ -127,16 +127,16 @@ export default function MissingDocsTracker({ missingDocs = [], onOpenModal }) {
                     </li>
                   ))
                 ) : (
-                  <li className="text-slate-500">No missing documents.</li>
+                  <li className="text-slate-500 dark:text-gray-400">No missing documents.</li>
                 )}
               </ul>
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <div className="flex justify-end gap-3 border-t border-slate-100 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-6 py-4">
               <button
                 onClick={() => setSelectedEmp(null)}
-                className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200 cursor-pointer"
+                className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 dark:text-gray-400 transition-colors hover:bg-slate-200 dark:hover:bg-gray-700 cursor-pointer"
               >
                 Close
               </button>

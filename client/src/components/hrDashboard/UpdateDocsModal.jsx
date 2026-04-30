@@ -30,13 +30,13 @@ export default function UpdateDocsModal({
 
         <form
           onSubmit={handleSubmitDocs}
-          className="space-y-3.5 p-4 md:space-y-3 md:p-3.5"
+          className="space-y-3.5 p-4 md:space-y-3 md:p-3.5 dark:bg-gray-900"
         >
           <div className="flex flex-col">
-            <label className="mb-1 flex justify-between text-sm font-semibold text-slate-700">
+            <label className="mb-1 flex justify-between text-sm font-semibold text-slate-700 dark:text-gray-300">
               <span>Select Employee *</span>
               {selectedEmployee && (
-                <span className="text-[11px] font-bold text-purple-600">
+                <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
                   Selected: {selectedEmployee.first_name}{" "}
                   {selectedEmployee.last_name}
                 </span>
@@ -47,11 +47,11 @@ export default function UpdateDocsModal({
               placeholder="🔍 Search by name or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-t-lg border border-slate-300 border-b-0 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-t-lg border border-slate-300 dark:border-gray-700 border-b-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
-            <div className="max-h-32 overflow-y-auto rounded-b-lg border border-slate-300 bg-slate-50 md:max-h-28">
+            <div className="max-h-32 overflow-y-auto rounded-b-lg border border-slate-300 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 md:max-h-28">
               {filteredEmployees.length === 0 ? (
-                <div className="p-2.5 text-center text-sm text-slate-500">
+                <div className="p-2.5 text-center text-sm text-slate-500 dark:text-gray-500">
                   No employees found.
                 </div>
               ) : (
@@ -61,13 +61,13 @@ export default function UpdateDocsModal({
                     onClick={() =>
                       setDocForm({ ...docForm, emp_id: emp.emp_id })
                     }
-                    className={`cursor-pointer border-b border-slate-100 px-3 py-2 text-sm transition-colors last:border-b-0 ${
+                    className={`cursor-pointer border-b border-slate-100 dark:border-gray-800 px-3 py-2 text-sm transition-colors last:border-b-0 ${
                       docForm.emp_id === emp.emp_id
-                        ? "bg-purple-100 text-purple-800 font-bold border-l-4 border-l-purple-600"
-                        : "border-l-4 border-l-transparent text-slate-700 hover:bg-slate-100"
+                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 font-bold border-l-4 border-l-purple-600"
+                        : "border-l-4 border-l-transparent text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800/50"
                     }`}
                   >
-                    <span className="mr-2 font-mono text-[11px] text-slate-500">
+                    <span className="mr-2 font-mono text-[11px] text-slate-500 dark:text-gray-500">
                       {emp.emp_id}
                     </span>
                     {emp.first_name} {emp.last_name}
@@ -79,46 +79,46 @@ export default function UpdateDocsModal({
 
           <div>
             <div className="mb-1.5 mt-1.5 flex items-end justify-between">
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">
                 Missing Documents
               </label>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-500 dark:text-gray-500">
                 Select all that apply
               </span>
             </div>
             <div
-              className={`grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 md:gap-1.5 md:p-2.5 ${!docForm.emp_id ? "border-slate-200 bg-slate-100 opacity-60" : "border-slate-300 bg-white"}`}
+              className={`grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 md:gap-1.5 md:p-2.5 ${!docForm.emp_id ? "border-slate-200 dark:border-gray-800 bg-slate-100 dark:bg-gray-800/30 opacity-60" : "border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800"}`}
             >
               {STANDARD_DOCUMENTS.map((docName) => {
                 const isChecked = docForm.missing_docs.includes(docName);
                 return (
                   <label
                     key={docName}
-                    className={`flex cursor-pointer select-none items-center gap-2 rounded p-0.5 text-xs transition-colors md:text-[11px] ${isChecked ? "font-semibold text-purple-700" : "text-slate-700 hover:bg-slate-50"}`}
+                    className={`flex cursor-pointer select-none items-center gap-2 rounded p-0.5 text-xs transition-colors md:text-[11px] ${isChecked ? "font-semibold text-purple-700 dark:text-purple-400" : "text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700"}`}
                   >
                     <input
                       type="checkbox"
                       disabled={!docForm.emp_id}
                       checked={isChecked}
                       onChange={() => handleCheckboxChange(docName)}
-                      className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-purple-600 focus:ring-purple-500 disabled:cursor-not-allowed"
+                      className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 dark:border-gray-700 text-purple-600 focus:ring-purple-500 disabled:cursor-not-allowed"
                     />
                     {docName}
                   </label>
                 );
               })}
             </div>
-            <p className="mt-1.5 text-center text-[11px] text-slate-500">
+            <p className="mt-1.5 text-center text-[11px] text-slate-500 dark:text-gray-500">
               Uncheck all boxes to clear the employee from the missing documents
               tracker.
             </p>
           </div>
 
-          <div className="flex gap-2.5 border-t border-slate-200 pt-3 md:gap-2 md:pt-2.5">
+          <div className="flex gap-2.5 border-t border-slate-200 dark:border-gray-800 pt-3 md:gap-2 md:pt-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-md border-0 bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 md:px-2.5 md:py-1 md:text-xs"
+              className="flex-1 rounded-md border-0 bg-slate-100 dark:bg-gray-800 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-gray-300 transition-colors hover:bg-slate-200 dark:hover:bg-gray-700 md:px-2.5 md:py-1 md:text-xs"
             >
               Cancel
             </button>
