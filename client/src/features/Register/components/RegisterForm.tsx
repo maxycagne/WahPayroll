@@ -83,7 +83,7 @@ export const RegisterForm = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden mx-auto border border-gray-100">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden mx-auto border border-gray-100 dark:border-gray-800">
       <div className="px-6 py-4 bg-purple-600 flex justify-between items-center text-white">
         <h2 className="text-xl font-bold m-0">Create Account</h2>
       </div>
@@ -107,7 +107,7 @@ export const RegisterForm = () => {
               required
               maxLength={20}
               placeholder="EMP-001"
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+              className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
@@ -123,7 +123,7 @@ export const RegisterForm = () => {
               required
               maxLength={50}
               placeholder="email@gmail.com"
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+              className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
@@ -140,7 +140,7 @@ export const RegisterForm = () => {
                 required
                 minLength={6}
                 placeholder="*******"
-                className="w-full border border-gray-300 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
               />
               <button
                 type="button"
@@ -169,7 +169,7 @@ export const RegisterForm = () => {
                 required
                 minLength={6}
                 placeholder="*******"
-                className="w-full border border-gray-300 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
               />
               <button
                 type="button"
@@ -197,7 +197,7 @@ export const RegisterForm = () => {
                 required
                 maxLength={30}
                 placeholder="JuWAHn"
-                className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -210,7 +210,7 @@ export const RegisterForm = () => {
                 onChange={handleInputChange}
                 maxLength={1}
                 placeholder="W"
-                className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -224,7 +224,7 @@ export const RegisterForm = () => {
                 required
                 maxLength={30}
                 placeholder="Dela Cruz"
-                className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
           </div>
@@ -238,7 +238,7 @@ export const RegisterForm = () => {
               value={state.designation}
               onChange={handleInputChange}
               required
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+              className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="">Select Designation</option>
               {Object.keys(designations).map((d) => (
@@ -258,7 +258,7 @@ export const RegisterForm = () => {
               onChange={handleInputChange}
               required
               disabled={!state.designation}
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50 bg-white text-gray-900"
+              className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50 dark:disabled:bg-gray-800 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="">Select Position</option>
               {state.designation &&
@@ -280,7 +280,7 @@ export const RegisterForm = () => {
               name="status"
               value={state.status}
               onChange={handleInputChange}
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+              className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="Permanent">Permanent</option>
               <option value="Job Order">Job Order</option>
@@ -299,7 +299,7 @@ export const RegisterForm = () => {
               value={state.hired_date}
               onChange={handleInputChange}
               required
-              className="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white text-gray-900"
+              className="border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
@@ -317,7 +317,7 @@ export const RegisterForm = () => {
                   value={state.philhealth_no}
                   onChange={handleInputChange}
                   placeholder="XX-XXXXXXXXX-X"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -330,7 +330,7 @@ export const RegisterForm = () => {
                   onChange={handleInputChange}
                   placeholder="XXX-XXX-XXX-XXX"
                   required
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -343,7 +343,7 @@ export const RegisterForm = () => {
                   onChange={handleInputChange}
                   required
                   placeholder="XX - XXXXXXX - X"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -356,7 +356,7 @@ export const RegisterForm = () => {
                   onChange={handleInputChange}
                   required
                   placeholder="XXXX-XXXX-XXXX"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -368,7 +368,7 @@ export const RegisterForm = () => {
                   value={state.gsis_no}
                   onChange={handleInputChange}
                   placeholder="XXXXXXXXXX"
-                  className="border border-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none bg-white text-gray-900"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
             </div>
