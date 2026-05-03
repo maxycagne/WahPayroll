@@ -83,10 +83,16 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   cancellation_requested_at TIMESTAMP NULL,
   cancellation_reason TEXT,
   reason TEXT,
+  is_mandated_leave BOOLEAN DEFAULT FALSE COMMENT 'Flag for legally mandated leaves',
+  mandated_leave_type VARCHAR(100) COMMENT 'Type of mandated leave (e.g., Maternity, Paternity, etc.)',
+  effective_days_excluding_weekends DECIMAL(5,2) COMMENT 'Auto-calculated days excluding weekends (Sat/Sun)',
+  eligibility_status ENUM('Eligible', 'Ineligible', 'Pending Review') COMMENT 'Eligibility status for mandated leave',
+  eligibility_remarks TEXT COMMENT 'Reason for ineligibility or additional remarks',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_emp_status (emp_id, status),
   INDEX idx_date_range (date_from, date_to),
+  INDEX idx_mandated_leaves (emp_id, is_mandated_leave),
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -130,15 +136,18 @@ CREATE TABLE IF NOT EXISTS resignation_drafts (
   FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS stored_files (
-  storage_key VARCHAR(120) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS file_templates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  category VARCHAR(120) NULL,
+  storage_key VARCHAR(120) NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(120) NOT NULL,
   size_bytes INT NOT NULL,
-  content LONGBLOB NOT NULL,
-  created_by VARCHAR(50) NULL,
+  uploaded_by VARCHAR(50) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_stored_files_created_at (created_at)
+  INDEX idx_file_templates_created (created_at),
+  INDEX idx_file_templates_storage_key (storage_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notifications (

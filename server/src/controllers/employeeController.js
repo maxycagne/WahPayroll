@@ -3,13 +3,9 @@ import path from "path";
 import pool from "../config/db.js";
 import { hashPassword } from "../helper/hashPass.js";
 import bcrypt from "bcrypt";
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { s3BucketName, s3Client } from "../config/s3";
-import {
-  deleteDbStoredFileByKey,
-  getDbStoredFileByKey,
-  saveDbStoredFile,
-} from "../functions/dbFileStorage.ts";
+import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { s3BucketName, s3Client } from "../config/s3.ts";
 import { isDeductibleLeave } from "../constants/leavePolicy.ts";
 
 // payrollModel.js
@@ -401,6 +397,40 @@ export const ensureLeaveApprovalColumns = async (connection = pool) => {
       "ALTER TABLE leave_requests ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
     );
   }
+
+  const [leaveUpdatedAtColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'updated_at'
+      LIMIT 1
+    `,
+  );
+
+  if (leaveUpdatedAtColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+    );
+  }
+
+  const [isArchivedColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'leave_requests'
+        AND COLUMN_NAME = 'is_archived'
+      LIMIT 1
+    `,
+  );
+
+  if (isArchivedColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE leave_requests ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER status",
+    );
+  }
 };
 
 export const ensureResignationsTable = async (connection = pool) => {
@@ -546,6 +576,11 @@ export const ensureResignationsTable = async (connection = pool) => {
       alter:
         "ALTER TABLE resignations ADD COLUMN current_step TINYINT DEFAULT 1 AFTER clearance_file_key",
     },
+    {
+      name: "updated_at",
+      alter:
+        "ALTER TABLE resignations ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+    },
   ];
 
   for (const column of optionalColumns) {
@@ -564,6 +599,23 @@ export const ensureResignationsTable = async (connection = pool) => {
     if (columnRows.length === 0) {
       await connection.query(column.alter);
     }
+  }
+
+  const [isArchivedColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'resignations'
+        AND COLUMN_NAME = 'is_archived'
+      LIMIT 1
+    `,
+  );
+
+  if (isArchivedColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE resignations ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER status",
+    );
   }
 };
 
@@ -634,6 +686,23 @@ export const ensureFileTemplatesTable = async (connection = pool) => {
       INDEX idx_file_templates_storage_key (storage_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  const [isArchivedColumn] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'file_templates'
+        AND COLUMN_NAME = 'is_archived'
+      LIMIT 1
+    `,
+  );
+
+  if (isArchivedColumn.length === 0) {
+    await connection.query(
+      "ALTER TABLE file_templates ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER size_bytes",
+    );
+  }
 };
 
 export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
@@ -917,6 +986,20 @@ const parseJsonArraySafe = (value) => {
   }
 };
 
+const parseJsonObjectSafe = (value) => {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value !== "string") return {};
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+};
+
 const deleteS3ObjectQuietly = async (fileKey) => {
   const normalized = String(fileKey || "").trim();
   if (!normalized) return;
@@ -990,6 +1073,8 @@ const getAccessibleEmployeesForFileManagement = async (connection, viewer) => {
        position,
        COALESCE(role, 'RankAndFile') AS role,
        profile_photo,
+       is_nda_archived,
+       is_profile_photo_archived,
        ${createdAtSelect},
        ${updatedAtSelect}
      FROM employees
@@ -1006,9 +1091,35 @@ const getAccessibleEmployeesForFileManagement = async (connection, viewer) => {
   }));
 };
 
+const ensureEmployeeArchiveColumns = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [ndaCol] = await connection.query(
+      "SHOW COLUMNS FROM employees LIKE 'is_nda_archived'",
+    );
+    if (ndaCol.length === 0) {
+      await connection.query(
+        "ALTER TABLE employees ADD COLUMN is_nda_archived TINYINT(1) DEFAULT 0",
+      );
+    }
+    const [photoCol] = await connection.query(
+      "SHOW COLUMNS FROM employees LIKE 'is_profile_photo_archived'",
+    );
+    if (photoCol.length === 0) {
+      await connection.query(
+        "ALTER TABLE employees ADD COLUMN is_profile_photo_archived TINYINT(1) DEFAULT 0",
+      );
+    }
+  } finally {
+    connection.release();
+  }
+};
+
 export const getFileManagementInventory = async (req, res) => {
   try {
     await ensureResignationsTable();
+    await ensureLeaveApprovalColumns();
+    await ensureEmployeeArchiveColumns();
 
     const viewer = await getEmployeeProfile(pool, req.user?.emp_id);
     if (!viewer) {
@@ -1041,7 +1152,7 @@ export const getFileManagementInventory = async (req, res) => {
            r.exit_interview_answers_json,
            r.created_at,
            r.updated_at,
-           r.endorsement_file_key,
+           r.endorsement_file_key, r.is_archived,
            r.clearance_file_key,
            e.first_name,
            e.last_name,
@@ -1059,6 +1170,36 @@ export const getFileManagementInventory = async (req, res) => {
       resignationRows = rows;
     }
 
+    let leaveRows = [];
+    if (accessibleEmpIds.length > 0) {
+      const placeholders = accessibleEmpIds.map(() => "?").join(",");
+      const [rows] = await pool.query(
+        `SELECT
+           l.id,
+           l.emp_id,
+           l.leave_type,
+           l.status,
+           l.date_from,
+           l.date_to,
+           l.documents,
+           l.created_at,
+           l.updated_at, l.is_archived,
+           e.first_name,
+           e.last_name,
+           e.designation,
+           e.position,
+           COALESCE(e.role, 'RankAndFile') AS role
+         FROM leave_requests l
+         JOIN employees e ON e.emp_id = l.emp_id
+         WHERE l.emp_id IN (${placeholders})
+           AND l.documents IS NOT NULL
+           AND l.status IN ('Approved', 'Partially Approved')
+         ORDER BY l.updated_at DESC, l.created_at DESC, l.id DESC`,
+        accessibleEmpIds,
+      );
+      leaveRows = rows;
+    }
+
     const files = [];
 
     employees.forEach((employee) => {
@@ -1071,7 +1212,7 @@ export const getFileManagementInventory = async (req, res) => {
         position: employee.position || "-",
         designation: employee.designation || "-",
         role: employee.role || "RankAndFile",
-        source: "generated",
+        source: "employee",
         file_status: "generated",
         record_id: employee.emp_id,
         application_id: null,
@@ -1082,6 +1223,7 @@ export const getFileManagementInventory = async (req, res) => {
         file_key: null,
         file_name: `nda-${employee.emp_id}.pdf`,
         uploaded_at: employee.updated_at || employee.created_at || null,
+        is_archived: Boolean(employee.is_nda_archived),
         download_url: null,
         replaceable: false,
         request_status: null,
@@ -1117,6 +1259,7 @@ export const getFileManagementInventory = async (req, res) => {
         uploaded_at: employee.updated_at || employee.created_at || null,
         download_url: `/${String(employee.profile_photo).replace(/^\/+/, "")}`,
         replaceable: true,
+        is_archived: Boolean(employee.is_profile_photo_archived),
       });
     });
 
@@ -1182,6 +1325,7 @@ export const getFileManagementInventory = async (req, res) => {
           request_status: row.status || null,
           request_type: row.resignation_type || "Resignation",
           document_data: baseDocumentData,
+          is_archived: Boolean(row.is_archived),
         });
       };
 
@@ -1211,6 +1355,7 @@ export const getFileManagementInventory = async (req, res) => {
           file_key: row.endorsement_file_key,
           file_name: safeFileName(row.endorsement_file_key),
           uploaded_at: uploadedAt,
+          is_archived: Boolean(row.is_archived),
           download_url: `/api/file/get?filename=${encodeURIComponent(row.endorsement_file_key)}`,
           replaceable: true,
           request_status: row.status || null,
@@ -1236,6 +1381,7 @@ export const getFileManagementInventory = async (req, res) => {
           file_key: row.clearance_file_key,
           file_name: safeFileName(row.clearance_file_key),
           uploaded_at: uploadedAt,
+          is_archived: Boolean(row.is_archived),
           download_url: `/api/file/get?filename=${encodeURIComponent(row.clearance_file_key)}`,
           replaceable: true,
           request_status: row.status || null,
@@ -1244,17 +1390,57 @@ export const getFileManagementInventory = async (req, res) => {
       }
     });
 
-    files.sort(
-      (a, b) =>
-        new Date(b.uploaded_at || 0).getTime() -
-        new Date(a.uploaded_at || 0).getTime(),
-    );
+    leaveRows.forEach((row) => {
+      const employeeName = safeEmployeeDisplayName(row);
+      const uploadedAt = row.updated_at || row.created_at || null;
+      const documents = parseJsonObjectSafe(row.documents);
+
+      Object.entries(documents).forEach(([field, doc]) => {
+        if (doc && doc.key) {
+          files.push({
+            id: `leave-${row.id}-${field}`,
+            emp_id: row.emp_id,
+            employee_name: employeeName,
+            position: row.position || "-",
+            designation: row.designation || "-",
+            role: normalizeRole(row.role),
+            source: "leave",
+            file_status: "uploaded",
+            record_id: row.id,
+            application_id: row.id,
+            file_group: `leave-${row.id}`,
+            file_field: field,
+            file_type: String(field)
+              .split("_")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" "),
+            file_key: doc.key,
+            file_name: doc.filename || safeFileName(doc.key),
+            uploaded_at: doc.uploadedAt || uploadedAt,
+            is_archived: Boolean(row.is_archived),
+            download_url: `/api/file/get?filename=${encodeURIComponent(doc.key)}`,
+            replaceable: false, // Leave documents are generally not replaceable once approved
+            request_status: row.status || null,
+            request_type: row.leave_type || "Leave",
+          });
+        }
+      });
+    });
+
+    files.sort((a, b) => {
+      const dateA = new Date(a.uploaded_at || 0).getTime();
+      const dateB = new Date(b.uploaded_at || 0).getTime();
+      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+    });
 
     const filesByEmployee = employees.map((employee) => ({
       ...employee,
       display_name: safeEmployeeDisplayName(employee),
       files: files.filter((file) => file.emp_id === employee.emp_id),
     }));
+
+    const archivedCount = files.filter(f => f.is_archived).length;
+    console.log(`[FileManagement] Inventory requested by ${viewer.role}. Total files: ${files.length}, Archived: ${archivedCount}`);
 
     return res.json({
       viewerRole: viewer.role,
@@ -1280,6 +1466,7 @@ export const getFileTemplates = async (req, res) => {
          mime_type,
          size_bytes,
          uploaded_by,
+         is_archived,
          created_at
        FROM file_templates
        ORDER BY created_at DESC, id DESC`,
@@ -1296,22 +1483,14 @@ export const uploadFileTemplate = async (req, res) => {
   try {
     await ensureFileTemplatesTable();
 
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file || !req.file.key) {
+      return res.status(400).json({ message: "No file uploaded to S3" });
     }
 
     const title = String(req.body?.title || "").trim();
     const category = String(req.body?.category || "").trim();
     const originalName = String(req.file.originalname || "template").trim();
     const finalTitle = title || originalName;
-
-    const storageKey = await saveDbStoredFile({
-      originalName,
-      mimeType: String(req.file.mimetype || "application/octet-stream"),
-      sizeBytes: Number(req.file.size || 0),
-      content: req.file.buffer,
-      createdBy: req.user?.emp_id || null,
-    });
 
     const [result] = await pool.query(
       `INSERT INTO file_templates (
@@ -1326,7 +1505,7 @@ export const uploadFileTemplate = async (req, res) => {
       [
         finalTitle,
         category || null,
-        storageKey,
+        req.file.key,
         originalName,
         req.file.mimetype || "application/octet-stream",
         Number(req.file.size || 0),
@@ -1343,10 +1522,10 @@ export const uploadFileTemplate = async (req, res) => {
       size_bytes: Number(req.file.size || 0),
       uploaded_by: req.user?.emp_id || null,
       created_at: new Date().toISOString(),
-      message: "Template uploaded successfully",
+      message: "Template uploaded to S3 successfully",
     });
   } catch (error) {
-    console.error("DB Error in uploadFileTemplate:", error);
+    console.error("S3 Error in uploadFileTemplate:", error);
     return res.status(500).json({ message: "Error uploading template" });
   }
 };
@@ -1360,7 +1539,7 @@ export const replaceFileTemplate = async (req, res) => {
       return res.status(400).json({ message: "Invalid template id" });
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.key) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
@@ -1380,20 +1559,13 @@ export const replaceFileTemplate = async (req, res) => {
     const nextOriginalName = String(
       req.file.originalname || existing.original_name || "template",
     ).trim();
-    const nextStorageKey = await saveDbStoredFile({
-      originalName: nextOriginalName,
-      mimeType: String(req.file.mimetype || "application/octet-stream"),
-      sizeBytes: Number(req.file.size || 0),
-      content: req.file.buffer,
-      createdBy: req.user?.emp_id || null,
-    });
 
     await pool.query(
       `UPDATE file_templates
        SET storage_key = ?, original_name = ?, mime_type = ?, size_bytes = ?
        WHERE id = ?`,
       [
-        nextStorageKey,
+        req.file.key,
         nextOriginalName,
         req.file.mimetype || "application/octet-stream",
         Number(req.file.size || 0),
@@ -1401,7 +1573,7 @@ export const replaceFileTemplate = async (req, res) => {
       ],
     );
 
-    await deleteDbStoredFileByKey(existing.storage_key);
+    await deleteS3ObjectQuietly(existing.storage_key);
 
     return res.json({
       id: templateId,
@@ -1410,10 +1582,10 @@ export const replaceFileTemplate = async (req, res) => {
       original_name: nextOriginalName,
       mime_type: req.file.mimetype || "application/octet-stream",
       size_bytes: Number(req.file.size || 0),
-      message: "Template replaced successfully",
+      message: "Template replaced in S3 successfully",
     });
   } catch (error) {
-    console.error("DB Error in replaceFileTemplate:", error);
+    console.error("S3 Error in replaceFileTemplate:", error);
     return res.status(500).json({ message: "Error replacing template" });
   }
 };
@@ -1440,20 +1612,16 @@ export const downloadFileTemplate = async (req, res) => {
     }
 
     const template = rows[0];
-    const storedFile = await getDbStoredFileByKey(template.storage_key);
-    if (!storedFile) {
-      return res.status(404).json({ message: "Template file not found" });
-    }
 
-    res.setHeader("Content-Type", template.mime_type || storedFile.mimeType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${template.original_name || storedFile.originalName}"`,
-    );
-    res.setHeader("Content-Length", String(storedFile.sizeBytes || 0));
-    return res.send(storedFile.content);
+    const command = new GetObjectCommand({
+      Bucket: s3BucketName,
+      Key: template.storage_key,
+    });
+
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return res.json({ download_url: signedUrl });
   } catch (error) {
-    console.error("DB Error in downloadFileTemplate:", error);
+    console.error("S3 Error in downloadFileTemplate:", error);
     return res.status(500).json({ message: "Error downloading template" });
   }
 };
@@ -1478,11 +1646,11 @@ export const deleteFileTemplate = async (req, res) => {
 
     const template = rows[0];
     await pool.query(`DELETE FROM file_templates WHERE id = ?`, [templateId]);
-    await deleteDbStoredFileByKey(template.storage_key);
+    await deleteS3ObjectQuietly(template.storage_key);
 
-    return res.json({ message: "Template deleted successfully" });
+    return res.json({ message: "Template deleted successfully from S3" });
   } catch (error) {
-    console.error("DB Error in deleteFileTemplate:", error);
+    console.error("S3 Error in deleteFileTemplate:", error);
     return res.status(500).json({ message: "Error deleting template" });
   }
 };
@@ -2490,6 +2658,7 @@ export const fileResignation = async (req, res) => {
     recipient_emp_id,
     resignation_date,
     last_working_day,
+    immediate_resignation,
     leaving_reasons,
     leaving_reason_other,
     exit_interview_answers,
@@ -2575,37 +2744,54 @@ export const fileResignation = async (req, res) => {
         return res.status(404).json({ message: "Requester not found" });
       }
 
-      const computedResignationDate = computeOneMonthAheadDateString(
-        new Date(),
-      );
+      const isImmediateResignation = Boolean(immediate_resignation);
+      const resolvedResignationDate = isImmediateResignation
+        ? String(resignation_date || "").trim()
+        : computeOneMonthAheadDateString(new Date());
 
-      const parsedResignationDate = new Date(computedResignationDate);
-      const parsedLastWorkingDay = new Date(last_working_day);
+      if (isImmediateResignation && !resolvedResignationDate) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "Resignation date is required for immediate resignation",
+        });
+      }
+
+      const parsedResignationDate = new Date(resolvedResignationDate);
       const parsedEffectiveDate = new Date(effective_date);
 
       if (
         Number.isNaN(parsedResignationDate.getTime()) ||
-        Number.isNaN(parsedLastWorkingDay.getTime()) ||
         Number.isNaN(parsedEffectiveDate.getTime())
       ) {
         await connection.rollback();
         return res.status(400).json({
-          message: "Resignation date and last working day must be valid dates",
+          message: "Resignation date and effective date must be valid dates",
         });
       }
 
-      if (parsedResignationDate > parsedLastWorkingDay) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Last working day must be on or after resignation date",
-        });
-      }
+      if (!isImmediateResignation) {
+        const parsedLastWorkingDay = new Date(last_working_day);
 
-      if (String(effective_date) !== String(last_working_day)) {
-        await connection.rollback();
-        return res.status(400).json({
-          message: "Effective date must match last working day",
-        });
+        if (Number.isNaN(parsedLastWorkingDay.getTime())) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Last working day must be a valid date",
+          });
+        }
+
+        if (parsedResignationDate > parsedLastWorkingDay) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Last working day must be on or after resignation date",
+          });
+        }
+
+        if (String(effective_date) !== String(last_working_day)) {
+          await connection.rollback();
+          return res.status(400).json({
+            message: "Effective date must match last working day",
+          });
+        }
       }
 
       if (requester?.hired_date) {
@@ -2647,8 +2833,8 @@ export const fileResignation = async (req, res) => {
           trimmedLetter,
           recipient_name || null,
           recipient_emp_id || null,
-          computedResignationDate,
-          last_working_day || null,
+          resolvedResignationDate,
+          isImmediateResignation ? null : last_working_day || null,
           JSON.stringify(parsedReasons),
           String(leaving_reason_other || "").trim() || null,
           JSON.stringify(parsedInterviewAnswers),
@@ -2661,6 +2847,45 @@ export const fileResignation = async (req, res) => {
         moduleType: "Resignation",
         requestId: result.insertId,
       });
+
+      // Send immediate resignation notification to supervisors and HR
+      if (immediate_resignation) {
+        const [hrEmployees] = await connection.query(
+          `SELECT emp_id, first_name, last_name, email FROM employees WHERE LOWER(COALESCE(role, '')) = 'hr'`,
+        );
+
+        const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
+        const highPriorityTitle = `IMMEDIATE RESIGNATION - HIGH PRIORITY: ${requesterName}`;
+        const highPriorityMessage = `${requesterName} (${requester.position || "N/A"}) has submitted an IMMEDIATE RESIGNATION effective ${effective_date}. This is a high-priority request requiring urgent attention.`;
+
+        // Notify all HR personnel
+        for (const hrEmployee of hrEmployees) {
+          await createNotification(connection, {
+            empId: hrEmployee.emp_id,
+            notificationType: "RESIGNATION_IMMEDIATE",
+            title: highPriorityTitle,
+            message: highPriorityMessage,
+            referenceType: "Resignation",
+            referenceId: result.insertId,
+          });
+        }
+
+        // Also notify supervisor (if applicable)
+        const supervisors = await getSupervisorApproversForRequester(
+          connection,
+          requester,
+        );
+        for (const supervisor of supervisors) {
+          await createNotification(connection, {
+            empId: supervisor.emp_id,
+            notificationType: "RESIGNATION_IMMEDIATE",
+            title: highPriorityTitle,
+            message: highPriorityMessage,
+            referenceType: "Resignation",
+            referenceId: result.insertId,
+          });
+        }
+      }
 
       await connection.query(
         "DELETE FROM resignation_drafts WHERE emp_id = ?",
@@ -4606,5 +4831,94 @@ export const removeResignationFile = async (req, res) => {
   } catch (error) {
     console.error("DB Error in removeResignationFile:", error);
     return res.status(500).json({ message: "Error removing resignation file" });
+  }
+};
+
+export const archiveFileRecord = async (req, res) => {
+  const { source, id } = req.params;
+  const { is_archived } = req.body;
+  try {
+    let table = "";
+    let idColumn = "id";
+    let statusColumn = "is_archived";
+
+    if (source === "resignation" || source === "generated") {
+      table = "resignations";
+      await ensureResignationsTable();
+    } else if (source === "leave") {
+      table = "leave_requests";
+      await ensureLeaveApprovalColumns();
+    } else if (source === "employee") {
+      table = "employees";
+      idColumn = "emp_id";
+      statusColumn = "is_nda_archived";
+    } else if (source === "profile") {
+      table = "employees";
+      idColumn = "emp_id";
+      statusColumn = "is_profile_photo_archived";
+    } else {
+      return res.status(400).json({ message: "Invalid archive source" });
+    }
+
+    const [result] = await pool.query(`UPDATE ${table} SET ${statusColumn} = ? WHERE ${idColumn} = ?`, [
+      is_archived ? 1 : 0,
+      id,
+    ]);
+
+    console.log(`[Archive] Table: ${table}, ID: ${id}, New Status: ${is_archived}, Affected Rows: ${result.affectedRows}`);
+
+    if (result.affectedRows === 0) {
+      console.warn(`[Archive] Warning: No rows were updated for ID ${id} in table ${table}`);
+    }
+    res.json({ message: `Record ${is_archived ? "archived" : "unarchived"} successfully` });
+  } catch (error) {
+    console.error("DB Error in archiveFileRecord:", error);
+    res.status(500).json({ message: "Error archiving record" });
+  }
+};
+
+export const permanentDeleteFileRecord = async (req, res) => {
+  const { source, id } = req.params;
+  try {
+    let table = "";
+    let idColumn = "id";
+
+    if (source === "resignation" || source === "generated") {
+      table = "resignations";
+    } else if (source === "leave") {
+      table = "leave_requests";
+    } else if (source === "employee" || source === "profile") {
+      // For employee-level files, "deleting" means resetting their archive status and possibly clearing fields
+      const field = source === "employee" ? "is_nda_archived" : "profile_photo";
+      await pool.query(`UPDATE employees SET ${field} = ${source === "employee" ? "0" : "NULL"} WHERE emp_id = ?`, [id]);
+      return res.json({ message: "Record cleared successfully" });
+    } else {
+      return res.status(400).json({ message: "Invalid delete source" });
+    }
+
+    const [result] = await pool.query(`DELETE FROM ${table} WHERE ${idColumn} = ?`, [id]);
+    
+    console.log(`[Delete] Table: ${table}, ID: ${id}, Deleted Rows: ${result.affectedRows}`);
+    
+    res.json({ message: "Record permanently deleted" });
+  } catch (error) {
+    console.error("DB Error in permanentDeleteFileRecord:", error);
+    res.status(500).json({ message: "Error deleting record" });
+  }
+};
+
+export const archiveFileTemplate = async (req, res) => {
+  const { id } = req.params;
+  const { is_archived } = req.body;
+  try {
+    await ensureFileTemplatesTable();
+    await pool.query("UPDATE file_templates SET is_archived = ? WHERE id = ?", [
+      is_archived ? 1 : 0,
+      id,
+    ]);
+    res.json({ message: `Template ${is_archived ? "archived" : "unarchived"} successfully` });
+  } catch (error) {
+    console.error("DB Error in archiveFileTemplate:", error);
+    res.status(500).json({ message: "Error archiving template" });
   }
 };

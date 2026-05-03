@@ -48,6 +48,9 @@ import {
   removeProfilePhoto,
   replaceResignationFile,
   removeResignationFile,
+  archiveFileRecord,
+  archiveFileTemplate,
+  permanentDeleteFileRecord,
 } from "../controllers/employeeController.js";
 import {
   updateMyProfile,
@@ -61,6 +64,7 @@ import {
   sendPayslip,
   sendBulkPayslips,
 } from "../controllers/payrollController.js";
+import { upload } from "../middleware/upload.ts";
 import multer from "multer"; // <-- THIS IS THE MISSING LINE
 import path from "path"; // <-- Make sure you have this too
 import fs from "fs";
@@ -71,7 +75,7 @@ router.use(authenticateToken);
 
 router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
-router.get("/all-resignations", getAllResignations);
+router.get("/all-resignations", authorizeRoles("Admin", "HR"), getAllResignations);
 router.get(
   "/my-resignations",
   authorizeRoles("Admin", "Supervisor", "HR", "RankAndFile"),
@@ -99,7 +103,7 @@ router.put(
 );
 router.put(
   "/resignations/:id",
-  authorizeRoles("Admin", "Supervisor"),
+  authorizeRoles("Admin", "Supervisor", "HR"),
   updateResignationStatus,
 );
 
@@ -298,19 +302,47 @@ router.get(
 router.post(
   "/file-templates",
   authorizeRoles("Admin", "HR"),
-  uploadTemplate.single("template_file"),
+  (req, res, next) => {
+    req.body.folder = "templates";
+    req.body.user = "admin";
+    next();
+  },
+  upload.single("template_file"),
   uploadFileTemplate,
 );
 router.put(
   "/file-templates/:id",
   authorizeRoles("Admin", "HR"),
-  uploadTemplate.single("template_file"),
+  (req, res, next) => {
+    req.body.folder = "templates";
+    req.body.user = "admin";
+    next();
+  },
+  upload.single("template_file"),
   replaceFileTemplate,
 );
 router.delete(
   "/file-templates/:id",
   authorizeRoles("Admin", "HR"),
   deleteFileTemplate,
+);
+
+router.put(
+  "/file-management/archive/:source/:id",
+  authorizeRoles("Admin", "HR", "Supervisor"),
+  archiveFileRecord,
+);
+
+router.delete(
+  "/file-management/record/:source/:id",
+  authorizeRoles("Admin", "HR"),
+  permanentDeleteFileRecord,
+);
+
+router.put(
+  "/file-templates/:id/archive",
+  authorizeRoles("Admin", "HR"),
+  archiveFileTemplate,
 );
 
 // ADD THESE ROUTES (Put them under your router.use(authenticateToken) line)

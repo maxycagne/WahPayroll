@@ -15,6 +15,9 @@ export default function PendingApprovalTableRow({
   const isCancellationRequest =
     Boolean(item.cancellation_requested_at) &&
     !isPendingApprovalStatus(item.status);
+  const isImmediateResignation =
+    item.request_group === "resignation" &&
+    (Boolean(item.immediate_resignation) || !item.last_working_day);
   const canDirectDecision = !isHRRole || canHrDirectDecision(item);
 
   return (
@@ -23,9 +26,18 @@ export default function PendingApprovalTableRow({
         {item.first_name} {item.last_name}
       </td>
       <td className="px-4 py-2.5 text-sm font-bold text-indigo-700 dark:text-indigo-400">
-        {item.request_group === "resignation"
-          ? `${isCancellationRequest ? "Cancellation • " : "Resignation • "}${item.unified_type}`
-          : `${isCancellationRequest ? "Cancellation • " : ""}${item.unified_type}${item.isOffset && Number(item.days_applied || 0) > 0 ? ` (${Number(item.days_applied || 0).toFixed(2)} days)` : ""}`}
+        <div className="flex flex-wrap items-center gap-2">
+          <span>
+            {item.request_group === "resignation"
+              ? `${isCancellationRequest ? "Cancellation • " : "Resignation • "}${item.unified_type}`
+              : `${isCancellationRequest ? "Cancellation • " : ""}${item.unified_type}${item.isOffset && Number(item.days_applied || 0) > 0 ? ` (${Number(item.days_applied || 0).toFixed(2)} days)` : ""}`}
+          </span>
+          {isImmediateResignation && (
+            <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-800 dark:bg-rose-900/30 dark:text-rose-400">
+              Immediate
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">
         {item.request_group === "resignation"
@@ -108,7 +120,7 @@ export default function PendingApprovalTableRow({
                       : "leave",
               })
             }
-            className="rounded-md border border-indigo-200 bg-indigo-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 hover:bg-indigo-200"
+            className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
           >
             Add HR Note
           </button>

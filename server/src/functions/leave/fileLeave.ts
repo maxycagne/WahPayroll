@@ -10,7 +10,14 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import {
   getLeavePolicy,
   getRequiredDocuments,
+  isMandatedLeave,
 } from "../../constants/leavePolicy";
+import {
+  calculateMandatedLeaveEndDate,
+  countMandatedLeaveDays,
+  countWorkingDaysExcludingWeekends,
+  validateMandatedLeaveEligibility,
+} from "./mandatedLeaveUtils";
 
 type WithUser = Request & {
   user: {
@@ -35,7 +42,7 @@ export const fileLeave: RequestHandler = async (
   } = req.body;
 
   console.log(req.body);
-  const resolvedDateTo = date_to || date_from;
+  let resolvedDateTo = date_to || date_from;
   const trimmedReason = String(supervisor_remarks || "").trim();
 
   const requesterEmpId =
@@ -64,6 +71,34 @@ export const fileLeave: RequestHandler = async (
     });
   }
 
+  // ============ MANDATED LEAVE AUTO-COMPUTATION ============
+  const isMandated = isMandatedLeave(leave_type);
+  let effectiveDaysExcludingWeekends = 0;
+
+  if (isMandated) {
+    // For mandated leaves, if date_to is not provided or same as date_from,
+    // auto-compute end date based on entitlement and weekend handling rule
+    if (!date_to || date_to === date_from) {
+      const maxDaysEntitlement = policy.maxDays;
+      // Get the excludeWeekendsInDuration flag from policy (default to true for backward compatibility)
+      const excludeWeekends = policy.excludeWeekendsInDuration !== false;
+      
+      resolvedDateTo = calculateMandatedLeaveEndDate(
+        date_from,
+        maxDaysEntitlement,
+        excludeWeekends
+      );
+    }
+
+    // Calculate effective days (working days or calendar days based on the flag)
+    const excludeWeekends = policy.excludeWeekendsInDuration !== false;
+    effectiveDaysExcludingWeekends = countMandatedLeaveDays(
+      date_from,
+      resolvedDateTo,
+      excludeWeekends
+    );
+  }
+
   const normalizeDocumentKey = (fieldName: string) => {
     const normalized = String(fieldName || "").trim();
 
@@ -71,6 +106,11 @@ export const fileLeave: RequestHandler = async (
     if (normalized === "doctorCert") return "doctor_cert";
     if (normalized === "deathCert") return "death_cert";
     if (normalized === "lwopApproval") return "lwop_approval";
+    if (normalized === "maternityCert") return "maternity_cert";
+    if (normalized === "medicalCert") return "medical_cert";
+    if (normalized === "birthCert") return "birth_cert";
+    if (normalized === "soloParentCert") return "solo_parent_cert";
+    if (normalized === "vawcCert") return "vawc_cert";
 
     return normalized;
   };
@@ -92,6 +132,23 @@ export const fileLeave: RequestHandler = async (
     const normalizedLeaveType = String(leave_type || "")
       .trim()
       .toLowerCase();
+
+    // ============ MANDATED LEAVE ELIGIBILITY CHECK ============
+    let mandatedEligibilityStatus = "Eligible";
+    let eligibilityRemarks = "";
+
+    if (isMandated) {
+      const eligibility = validateMandatedLeaveEligibility(leave_type, requester);
+      if (!eligibility.isEligible) {
+        mandatedEligibilityStatus = "Ineligible";
+        eligibilityRemarks = eligibility.remarks;
+        // For ineligible leaves, we can still accept the filing but mark it accordingly
+        // HR/ED can review and make the final decision
+      } else {
+        mandatedEligibilityStatus = "Eligible";
+        eligibilityRemarks = eligibility.remarks;
+      }
+    }
 
     // ============ STATUS-SPECIFIC RESTRICTIONS ============
     if (
@@ -136,10 +193,12 @@ export const fileLeave: RequestHandler = async (
     }
 
     // Validate days against policy max
-    if (daysDifference > policy.maxDays) {
+    // For mandated leaves, use effective days (excluding weekends)
+    const daysToValidate = isMandated ? effectiveDaysExcludingWeekends : daysDifference;
+    if (daysToValidate > policy.maxDays) {
       await connection.rollback();
       return res.status(400).json({
-        message: `${leave_type} cannot exceed ${policy.maxDays} days (requested: ${daysDifference})`,
+        message: `${leave_type} cannot exceed ${policy.maxDays} days (requested: ${daysToValidate})`,
       });
     }
 
@@ -240,7 +299,7 @@ export const fileLeave: RequestHandler = async (
     }
 
     // ============ INSERT LEAVE REQUEST ============
-    await connection.query(
+    const [result]: any = await connection.query(
       `
         INSERT INTO leave_requests (
           emp_id,
@@ -250,8 +309,13 @@ export const fileLeave: RequestHandler = async (
           priority,
           status,
           reason,
-          documents
-        ) VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?)
+          documents,
+          is_mandated_leave,
+          mandated_leave_type,
+          effective_days_excluding_weekends,
+          eligibility_status,
+          eligibility_remarks
+        ) VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         requesterEmpId,
@@ -261,6 +325,11 @@ export const fileLeave: RequestHandler = async (
         priority || "Medium",
         trimmedReason,
         Object.keys(documents).length > 0 ? JSON.stringify(documents) : null,
+        isMandated ? 1 : 0,
+        isMandated ? leave_type : null,
+        isMandated ? effectiveDaysExcludingWeekends : null,
+        isMandated ? mandatedEligibilityStatus : null,
+        isMandated ? eligibilityRemarks : null,
       ],
     );
 
@@ -268,14 +337,18 @@ export const fileLeave: RequestHandler = async (
     await notifyApproversForRequest(connection, {
       requester,
       moduleType: "Leave",
-      requestId: requesterEmpId,
+      requestId: result.insertId,
     });
 
     await connection.commit();
 
-    res
-      .status(201)
-      .json({ message: "Leave application submitted successfully" });
+    res.status(201).json({
+      message: "Leave application submitted successfully",
+      isMandatedLeave: isMandated,
+      effectiveDaysExcludingWeekends: isMandated ? effectiveDaysExcludingWeekends : null,
+      computedEndDate: isMandated && !date_to ? resolvedDateTo : null,
+      eligibilityStatus: isMandated ? mandatedEligibilityStatus : null,
+    });
   } catch (error) {
     await connection.rollback();
     console.error("DB Error in fileLeave:", error);

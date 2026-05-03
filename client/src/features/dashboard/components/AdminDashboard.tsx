@@ -21,6 +21,7 @@ import {
   Tooltip as RechartsTooltip,
 } from "recharts";
 
+import { useNavigate } from "react-router-dom";
 import Employees from "@/pages/Employees";
 import Attendance from "@/pages/Attendance";
 import Payroll from "@/pages/Payroll";
@@ -50,6 +51,7 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   currentUser,
 }) => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isConnected = useConnectionStore((state) => state.isConnected);
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -64,11 +66,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const dashboardQuery = useQuery({
     queryKey: ["dashboardSummary"],
     queryFn: getDashboardSummary,
+    staleTime: 5 * 60 * 1000,
   });
 
   const employeesQuery = useQuery({
     queryKey: ["dashboard-employees"],
     queryFn: getAllEmployees,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: workweekConfigs = [] } = useQuery(workweekConfigQueryOptions);
@@ -76,11 +80,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const payrollQuery = useQuery({
     queryKey: ["dashboard-payroll", period],
     queryFn: () => getPayroll(period),
+    staleTime: 5 * 60 * 1000,
   });
 
   const attendanceSummaryQuery = useQuery({
     queryKey: ["dashboard-attendance-summary", year, month],
     queryFn: () => getAttendanceSummary(year, month),
+    staleTime: 5 * 60 * 1000,
   });
 
   const employeesData = employeesQuery.data?.data || employeesQuery.data || [];
@@ -191,8 +197,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         value: activeEmployeeCount,
         borderColor: "#0f766e",
         icon: <Users className="h-4 w-4" />,
-        clickable: false,
-        modalKey: "",
+        clickable: true,
+        onClick: () => navigate("/employees"),
       },
       {
         label: "Pending Approvals",
@@ -203,7 +209,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         modalKey: "pending",
       },
       {
-        label: "On Leave",
+        label: "On leave today",
         value: onLeaveCount,
         borderColor: "#d4a017",
         icon: <Briefcase className="h-4 w-4" />,
@@ -211,7 +217,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         modalKey: "leave",
       },
       {
-        label: "Absent",
+        label: "Absent Today",
         value: absentsCount,
         borderColor: "#c0392b",
         icon: <UserMinus className="h-4 w-4" />,
@@ -225,6 +231,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       pendingResignationCount,
       onLeaveCount,
       absentsCount,
+      navigate,
     ],
   );
 
@@ -390,11 +397,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {cards.map((c) => (
+        {cards.map((c: any) => (
           <button
             key={c.label}
             type="button"
-            onClick={() => c.clickable && setActiveModal(c.modalKey)}
+            onClick={() => {
+              if (c.onClick) {
+                c.onClick();
+              } else if (c.clickable) {
+                setActiveModal(c.modalKey);
+              }
+            }}
             disabled={!c.clickable}
             className={`group relative rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-all duration-200 ${
               c.clickable
@@ -411,11 +424,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <p className="m-0 mb-1 text-[11px] font-medium text-slate-600 dark:text-gray-300">
                 {c.label === "Pending Approvals"
                   ? `${pendingLeaveCount} leaves + ${pendingResignationCount} resignations`
-                  : c.label === "Absent"
-                    ? `${attendanceTotals.absent} attendance absences in ${period}`
-                    : c.label === "On Leave"
-                      ? `${onLeaveCount} currently on leave`
-                      : "Total active profiles"}
+                  : c.label === "Absent Today"
+                    ? `Personnel with no time-in recorded today`
+                    : c.label === "On leave today"
+                      ? `${onLeaveCount} currently on leave today`
+                      : "Total active company profiles"}
               </p>
               <p
                 className="m-0 text-2xl font-black"

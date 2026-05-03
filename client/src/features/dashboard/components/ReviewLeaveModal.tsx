@@ -1,4 +1,6 @@
 import React from "react";
+import axiosInterceptor from "@/hooks/interceptor";
+import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import { formatLongDate, getWorkingDateRangeInclusive } from "@/features/leave/utils/date.utils";
 import { LeaveRequest } from "../types";
 
@@ -37,7 +39,11 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
     const files = Object.entries(docs)
       .map(([key, value]: [string, any]) => {
         if (typeof value === "string" && value.trim().length > 0) {
-          return { key, url: value, label: key };
+          let fileUrl = value;
+          if (!fileUrl.startsWith('http') && !fileUrl.startsWith('/api/')) {
+            fileUrl = `/api/file/get?filename=${encodeURIComponent(value)}`;
+          }
+          return { key, url: fileUrl, label: key };
         }
 
         if (value && typeof value === "object") {
@@ -65,14 +71,22 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
       .filter(Boolean) as any[];
 
     if (employee?.ocp) {
-      files.push({ key: "ocp", url: employee.ocp, label: "ocp" });
+      let ocpUrl = employee.ocp;
+      if (!ocpUrl.startsWith('http') && !ocpUrl.startsWith('/api/')) {
+        ocpUrl = `/api/file/get?filename=${encodeURIComponent(ocpUrl)}`;
+      }
+      files.push({ key: "ocp", url: ocpUrl, label: "ocp" });
     }
 
     ["doctor_cert", "death_cert", "birth_cert", "marriage_cert"].forEach(
       (field) => {
         const value = (employee as any)?.[field];
         if (typeof value === "string" && value.trim().length > 0) {
-          files.push({ key: field, url: value, label: field });
+          let fileUrl = value;
+          if (!fileUrl.startsWith('http') && !fileUrl.startsWith('/api/')) {
+            fileUrl = `/api/file/get?filename=${encodeURIComponent(value)}`;
+          }
+          files.push({ key: field, url: fileUrl, label: field });
         }
       }
     );
@@ -84,6 +98,29 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
     });
 
     return Array.from(uniqueMap.values());
+  };
+
+  const handleFileDownloadClick = async (e: React.MouseEvent<HTMLAnchorElement>, url: string, label: string) => {
+    if (url.startsWith("/api/file/get")) {
+      e.preventDefault();
+      try {
+        const blob = await mutationHandler(
+          axiosInterceptor.get(url, { responseType: "blob" }),
+          "Failed to download file.",
+        );
+        const objectUrl = window.URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = String(label).replace(/_/g, " ") || "download";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      } catch (err) {
+        console.error(err);
+        window.open(url, "_blank");
+      }
+    }
   };
 
   return (
@@ -146,6 +183,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
                     href={file.url}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={(e) => handleFileDownloadClick(e, file.url, file.label || file.key)}
                     className="inline-flex items-center rounded-md border border-sky-200 dark:border-sky-900/50 bg-white dark:bg-gray-800 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/30"
                   >
                     {String(file.label || file.key).replace(/_/g, " ")}

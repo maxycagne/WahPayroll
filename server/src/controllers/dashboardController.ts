@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
+import { s3Client, s3BucketName } from "../config/s3";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import {
   ensureResignationsTable,
   ensureEmployeeMissingDocsTable,
@@ -14,6 +16,32 @@ import {
   notifyRequesterForDecision,
   ensureLeaveApprovalColumns,
 } from "./employeeController";
+
+// Helper to delete leave documents from S3
+const deleteLeaveDocuments = async (documentsJson: any) => {
+  if (!documentsJson) return;
+  try {
+    const docs = typeof documentsJson === "string" ? JSON.parse(documentsJson) : documentsJson;
+    const deletePromises = Object.values(docs).map((doc: any) => {
+      if (doc && doc.key) {
+        return s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: s3BucketName,
+            Key: doc.key,
+          })
+        ).catch(err => {
+          if (err?.name !== "NoSuchKey") {
+            console.error(`Error deleting file ${doc.key}:`, err);
+          }
+        });
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error("Error parsing/deleting documents:", error);
+  }
+};
 
 // --- DASHBOARD ---
 export const getDashboardSummary = async (req: Request, res: Response) => {
@@ -34,7 +62,19 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     const isRankAndFile = currentUser.role === "RankAndFile";
 
     let pending = [];
-    if (isSupervisor) {
+    if (isAdmin || isHR) {
+      const [rows]: any = await pool.query(
+        `
+          SELECT l.*, e.first_name, e.last_name
+          FROM leave_requests l
+          JOIN employees e ON l.emp_id = e.emp_id
+          WHERE l.status = 'Pending'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
+      );
+      pending = rows;
+    } else if (isSupervisor) {
       const [rows]: any = await pool.query(
         `
           SELECT l.*, e.first_name, e.last_name
@@ -46,19 +86,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
             AND e.emp_id <> ?
         `,
         [currentUser.designation || "", currentUser.emp_id],
-      );
-      pending = rows;
-    } else if (isHR) {
-      const [rows]: any = await pool.query(
-        `
-          SELECT l.*, e.first_name, e.last_name
-          FROM leave_requests l
-          JOIN employees e ON l.emp_id = e.emp_id
-          WHERE l.status = 'Pending'
-            AND COALESCE(e.role, '') = 'Supervisor'
-            AND e.emp_id <> ?
-        `,
-        [currentUser.emp_id],
       );
       pending = rows;
     }
@@ -104,20 +131,34 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
          FROM employees e
+         LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.status != 'Inactive'
            AND COALESCE(e.role, '') <> 'Admin'
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+           AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
+           AND e.emp_id NOT IN (
+             SELECT l.emp_id 
+             FROM leave_requests l 
+             WHERE CURDATE() BETWEEN l.date_from AND l.date_to 
+               AND l.status = 'Approved'
+           )`,
       );
       absents = rows;
     } else if (isSupervisor) {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
          FROM employees e
+         LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.status != 'Inactive'
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
            AND e.designation = ?
            AND e.emp_id <> ?
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+           AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
+           AND e.emp_id NOT IN (
+             SELECT l.emp_id 
+             FROM leave_requests l 
+             WHERE CURDATE() BETWEEN l.date_from AND l.date_to 
+               AND l.status = 'Approved'
+           )`,
         [currentUser.designation || "", currentUser.emp_id],
       );
       absents = rows;
@@ -125,8 +166,15 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
          FROM employees e
+         LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.emp_id = ?
-           AND e.emp_id NOT IN (SELECT a.emp_id FROM attendance a WHERE a.date = CURDATE())`,
+           AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
+           AND e.emp_id NOT IN (
+             SELECT l.emp_id 
+             FROM leave_requests l 
+             WHERE CURDATE() BETWEEN l.date_from AND l.date_to 
+               AND l.status = 'Approved'
+           )`,
         [currentUser.emp_id],
       );
       absents = rows;
@@ -152,7 +200,19 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     }
 
     let resignations = [];
-    if (isSupervisor) {
+    if (isAdmin || isHR) {
+      const [rows]: any = await pool.query(
+        `
+          SELECT r.*, e.first_name, e.last_name
+          FROM resignations r
+          JOIN employees e ON r.emp_id = e.emp_id
+          WHERE r.status = 'Pending Approval'
+            AND e.emp_id <> ?
+        `,
+        [currentUser.emp_id],
+      );
+      resignations = rows;
+    } else if (isSupervisor) {
       const [rows]: any = await pool.query(
         `
           SELECT r.*, e.first_name, e.last_name
@@ -164,19 +224,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
             AND e.emp_id <> ?
         `,
         [currentUser.designation || "", currentUser.emp_id],
-      );
-      resignations = rows;
-    } else if (isHR) {
-      const [rows]: any = await pool.query(
-        `
-          SELECT r.*, e.first_name, e.last_name
-          FROM resignations r
-          JOIN employees e ON r.emp_id = e.emp_id
-          WHERE r.status = 'Pending Approval'
-            AND COALESCE(e.role, '') = 'Supervisor'
-            AND e.emp_id <> ?
-        `,
-        [currentUser.emp_id],
       );
       resignations = rows;
     }
@@ -668,7 +715,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     }
 
     const [rows]: any = await connection.query(
-      "SELECT id, emp_id, date_from, date_to, status, approved_days, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
+      "SELECT id, emp_id, date_from, date_to, status, approved_days, documents, cancellation_requested_at FROM leave_requests WHERE id = ? LIMIT 1",
       [id],
     );
 
@@ -754,6 +801,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       }
 
       if (status === "Approved") {
+        await deleteLeaveDocuments(leaveRequest.documents);
         await connection.query("DELETE FROM leave_requests WHERE id = ?", [id]);
       } else {
         await connection.query(
@@ -813,11 +861,8 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       }
     }
 
-    if (status === "Denied" && !trimmedRemarks) {
-      await connection.rollback();
-      return res.status(400).json({
-        message: "Reason is required for denial",
-      });
+    if (status === "Denied") {
+      await deleteLeaveDocuments(leaveRequest.documents);
     }
 
     const remarksValue = status === "Denied" ? trimmedRemarks : null;
@@ -879,10 +924,11 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         SET status = ?,
             approved_days = ?,
             approved_dates = ?,
-            supervisor_remarks = ?
+            supervisor_remarks = ?,
+            documents = CASE WHEN ? = 'Denied' THEN NULL ELSE documents END
         WHERE id = ?
       `,
-      [status, finalApprovedDays, finalApprovedDates, remarksValue, id],
+      [status, finalApprovedDays, finalApprovedDates, remarksValue, status, id],
     );
 
     if (leaveBalanceDelta !== 0) {

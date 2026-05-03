@@ -60,6 +60,7 @@ export default function Reports() {
         "Failed to fetch reports",
       );
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const exportCSV = () => {

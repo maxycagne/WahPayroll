@@ -87,6 +87,7 @@ export const EmptyResigationField = {
   hired_date: "",
   resignation_date: "",
   last_working_day: "",
+  immediate_resignation: false,
   leaving_reasons: [],
   leaving_reason_other: "",
   interview_answers: Array(16).fill(""),

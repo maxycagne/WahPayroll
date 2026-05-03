@@ -13,17 +13,17 @@ const PublicProfile = ({
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   return (
     <div>
-      <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-100 pb-3">
+      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
         Public Profile
       </h3>
 
       <form onSubmit={updateProfile} className="space-y-4">
         <div className="flex items-center gap-5 mb-8">
-          <div className="relative h-20 w-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+          <div className="relative h-20 w-20 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center flex-shrink-0">
             {profileForm.profile_photo ? (
               <img alt="Profile" className="h-full w-full object-cover" />
             ) : (
-              <User className="h-8 w-8 text-gray-400" />
+              <User className="h-8 w-8 text-gray-400 dark:text-gray-500" />
             )}
           </div>
           <div>
@@ -47,43 +47,43 @@ const PublicProfile = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
             >
               Update Profile
               <Camera className="w-4 h-4" />
             </button>
-            <p className="text-[11px] text-gray-500 mt-2">
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
               JPG, PNG or WEBP. Max size 2MB.
             </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               First Name
             </label>
             <input
               type="text"
               disabled
               value={displayFirstName || ""}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Last Name
             </label>
             <input
               type="text"
               disabled
               value={displayLastName || ""}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Email Address
           </label>
           <input
@@ -95,7 +95,7 @@ const PublicProfile = ({
                 email: e.target.value,
               })
             }
-            className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 

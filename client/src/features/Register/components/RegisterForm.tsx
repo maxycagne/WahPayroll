@@ -89,7 +89,7 @@ export const RegisterForm = () => {
       </div>
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         {registerMutation.isSuccess && (
-          <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-400">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             Account created successfully. Your registration request is pending
             approval by Admin/HR before you can log in.
           </div>
@@ -97,7 +97,7 @@ export const RegisterForm = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Employee ID <span className="text-red-500">*</span>
             </label>
             <input
@@ -112,7 +112,7 @@ export const RegisterForm = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Email Address <span className="text-red-500">*</span>
             </label>
             <input
@@ -128,7 +128,7 @@ export const RegisterForm = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -157,7 +157,7 @@ export const RegisterForm = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Confirm Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -187,7 +187,7 @@ export const RegisterForm = () => {
 
           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+              <label className="text-xs font-bold text-gray-500 uppercase">
                 First Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -201,7 +201,7 @@ export const RegisterForm = () => {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+              <label className="text-xs font-bold text-gray-500 uppercase">
                 M.I.
               </label>
               <input
@@ -214,7 +214,7 @@ export const RegisterForm = () => {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+              <label className="text-xs font-bold text-gray-500 uppercase">
                 Last Name<span className="text-red-500">*</span>
               </label>
               <input
@@ -230,7 +230,7 @@ export const RegisterForm = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Designation<span className="text-red-500">*</span>
             </label>
             <select
@@ -249,7 +249,7 @@ export const RegisterForm = () => {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Position<span className="text-red-500">*</span>
             </label>
             <select
@@ -273,7 +273,7 @@ export const RegisterForm = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Employment Status<span className="text-red-500">*</span>
             </label>
             <select
@@ -290,7 +290,7 @@ export const RegisterForm = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+            <label className="text-xs font-bold text-gray-500 uppercase">
               Hired Date<span className="text-red-500">*</span>
             </label>
             <input
@@ -303,13 +303,13 @@ export const RegisterForm = () => {
             />
           </div>
 
-          <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4">
-            <label className="text-sm font-bold text-purple-600 dark:text-purple-400 uppercase mb-3 block">
+          <div className="md:col-span-2 border-t border-gray-100 pt-4">
+            <label className="text-sm font-bold text-purple-600 uppercase mb-3 block">
               Government IDs
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">
                   PHILHEALTH No.
                 </label>
                 <input
@@ -321,7 +321,7 @@ export const RegisterForm = () => {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">
                   TIN <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -334,7 +334,7 @@ export const RegisterForm = () => {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">
                   SSS No. <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -347,7 +347,7 @@ export const RegisterForm = () => {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">
                   PAG-IBIG MID <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -360,7 +360,7 @@ export const RegisterForm = () => {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">
                   GSIS No.
                 </label>
                 <input

@@ -64,7 +64,7 @@ export const AttendanceStats: React.FC<AttendanceStatsProps> = ({
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {mode === "month" && (
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Select Month</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">Select Month</span>
             <input
               type="month"
               value={month}
@@ -77,7 +77,7 @@ export const AttendanceStats: React.FC<AttendanceStatsProps> = ({
         {mode === "range" && (
           <>
             <label className="block">
-              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Start Month</span>
+              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">Start Month</span>
               <input
                 type="month"
                 value={rangeStart}
@@ -86,7 +86,7 @@ export const AttendanceStats: React.FC<AttendanceStatsProps> = ({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">End Month</span>
+              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">End Month</span>
               <input
                 type="month"
                 value={rangeEnd}
@@ -99,7 +99,7 @@ export const AttendanceStats: React.FC<AttendanceStatsProps> = ({
 
         {mode === "year" && (
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Select Year</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">Select Year</span>
             <input
               type="number"
               min="2000"

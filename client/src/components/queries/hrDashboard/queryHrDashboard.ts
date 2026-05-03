@@ -22,7 +22,7 @@ export const dashboardSummary = queryOptions({
         modalKey: "pending-resignation-approval",
       },
       {
-        label: "On Leave",
+        label: "On Leave Today",
         value: information?.onLeave?.length || 0,
         borderColor: "#d4a017",
         modalKey: "on-leave",

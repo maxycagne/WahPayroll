@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export function useToast(defaultDuration = 2800) {
+export function useToast(defaultDuration = 5000) {
   const [toast, setToast] = useState(null);
   const timerRef = useRef(null);
 
@@ -22,7 +22,12 @@ export function useToast(defaultDuration = 2800) {
       const resolvedDuration =
         typeof duration === "number" ? duration : defaultDuration;
 
-      setToast({ message, type, duration: resolvedDuration, createdAt: Date.now() });
+      setToast({
+        message,
+        type,
+        duration: resolvedDuration,
+        createdAt: Date.now(),
+      });
 
       if (resolvedDuration > 0) {
         timerRef.current = setTimeout(() => {
