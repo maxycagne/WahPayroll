@@ -353,7 +353,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 
         return {
           ...member,
-          status: attendanceByEmp[member.emp_id] || "Absent",
+          status: attendanceByEmp[member.emp_id] || "No status / No time-in recorded",
         };
       });
 
