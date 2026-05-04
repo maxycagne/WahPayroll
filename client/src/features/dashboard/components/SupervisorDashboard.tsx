@@ -146,9 +146,16 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
           Personal insights and team overview for your assigned designation.
         </p>
-        <p className="m-0 mt-2 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
-          Employment Status: {employeeStatus}
-        </p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <p className="m-0 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
+            Employment Status: {employeeStatus}
+          </p>
+          {(currentUser?.position || currentUser?.designation) && (
+            <p className="m-0 inline-flex items-center rounded-full border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+              Position: {currentUser?.position || currentUser?.designation}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">

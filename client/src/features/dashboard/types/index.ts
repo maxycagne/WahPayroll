@@ -7,6 +7,8 @@ export interface User {
   name?: string;
   role: Role;
   status: string;
+  position?: string;
+  designation?: string;
 }
 
 export interface DashboardSummary {

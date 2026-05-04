@@ -128,9 +128,16 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         <p className="m-0 mt-1 text-sm text-slate-500 dark:text-gray-400">
           Here is what is happening with your account today.
         </p>
-        <p className="m-0 mt-2 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
-          Employment Status: {employeeStatus}
-        </p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <p className="m-0 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
+            Employment Status: {employeeStatus}
+          </p>
+          {(currentUser?.position || currentUser?.designation) && (
+            <p className="m-0 inline-flex items-center rounded-full border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+              Position: {currentUser?.position || currentUser?.designation}
+            </p>
+          )}
+        </div>
       </div>
 
       {myMissingDocsRecord && (

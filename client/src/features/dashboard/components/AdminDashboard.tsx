@@ -379,10 +379,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
-              Central overview for people, attendance, leave, payroll, and
-              approvals.
-            </p>
+            <h1 className="m-0 text-[1.4rem] font-bold text-slate-900 dark:text-gray-100">
+              Welcome back, {currentUser?.first_name || currentUser?.name || "Admin"}!
+            </h1>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <p className="m-0 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
+                System Role: {currentUser?.role}
+              </p>
+              {(currentUser?.position || currentUser?.designation) && (
+                <p className="m-0 inline-flex items-center rounded-full border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                  Position: {currentUser?.position || currentUser?.designation}
+                </p>
+              )}
+            </div>
           </div>
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300 transition-all duration-200 hover:border-violet-300 dark:hover:border-violet-900/50 hover:bg-violet-50 dark:hover:bg-violet-900/20">
             Payroll Period
