@@ -78,7 +78,8 @@ export default function ResignationForm({
   fileResignationMutation,
   currentUser: currentUserProp,
 }: ResignationFormProps) {
-  const { sendResignationStatusEmail, sendImmediateResignationEmail } = useEmail();
+  const { sendResignationStatusEmail, sendImmediateResignationEmail } =
+    useEmail();
   const { toast, showToast, clearToast } = useToast();
   const currentUser = useMemo<CurrentUserLike>(() => {
     if (currentUserProp) return currentUserProp;
@@ -207,6 +208,43 @@ export default function ResignationForm({
       enabled: Boolean(currentUser?.emp_id),
       refetchOnWindowFocus: false,
     });
+
+  const { data: myResignations = [], isLoading: isLoadingMyResignations } =
+    useQuery<any[]>({
+      queryKey: ["my-resignations", currentUser?.emp_id],
+      queryFn: async () => {
+        const result = await mutationHandler(
+          axiosInterceptor.get("/api/employees/my-resignations"),
+          "Failed to load resignation requests",
+        );
+        return Array.isArray(result) ? result : [];
+      },
+      enabled: Boolean(currentUser?.emp_id),
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    });
+
+  const hasExistingResignation = useMemo(() => {
+    return (
+      Array.isArray(myResignations) &&
+      myResignations.some((item) => {
+        const status = String(item?.status || item?.resignation_status || "")
+          .trim()
+          .toLowerCase();
+        return status && status !== "rejected";
+      })
+    );
+  }, [myResignations]);
+
+  const existingResignation = useMemo(() => {
+    if (!Array.isArray(myResignations)) return null;
+    return myResignations.find((item) => {
+      const status = String(item?.status || item?.resignation_status || "")
+        .trim()
+        .toLowerCase();
+      return status && status !== "rejected";
+    });
+  }, [myResignations]);
 
   const saveResignationDraftMutation = useMutation<
     unknown,
@@ -418,7 +456,10 @@ export default function ResignationForm({
     if (step === 2) {
       if (resignationForm.immediate_resignation) {
         if (!resignationForm.resignation_date) {
-          showToast("Resignation date is required for immediate resignation.", "error");
+          showToast(
+            "Resignation date is required for immediate resignation.",
+            "error",
+          );
           return false;
         }
       } else {
@@ -573,8 +614,12 @@ export default function ResignationForm({
           )}; Others: ${String(resignationForm.leaving_reason_other || "").trim()}`
       : reasons.join(", ");
 
-    const resignationDateToUse = resignationForm.resignation_date || computeOneMonthAheadDate(resignationForm.request_date);
-    const effectiveDateToUse = resignationForm.immediate_resignation ? resignationDateToUse : resignationForm.last_working_day;
+    const resignationDateToUse =
+      resignationForm.resignation_date ||
+      computeOneMonthAheadDate(resignationForm.request_date);
+    const effectiveDateToUse = resignationForm.immediate_resignation
+      ? resignationDateToUse
+      : resignationForm.last_working_day;
 
     const payload: SubmitResignationPayload = {
       emp_id: currentUser?.emp_id,
@@ -586,7 +631,9 @@ export default function ResignationForm({
       recipient_emp_id: resignationForm.recipient_emp_id || null,
       resignation_date: resignationDateToUse,
       immediate_resignation: Boolean(resignationForm.immediate_resignation),
-      last_working_day: resignationForm.immediate_resignation ? null : resignationForm.last_working_day,
+      last_working_day: resignationForm.immediate_resignation
+        ? null
+        : resignationForm.last_working_day,
       leaving_reasons: resignationForm.leaving_reasons,
       leaving_reason_other: resignationForm.leaving_reason_other,
       exit_interview_answers: resignationForm.interview_answers,
@@ -659,6 +706,61 @@ export default function ResignationForm({
       );
     }
   };
+
+  if (isLoadingMyResignations) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-100">
+            Checking your resignation request status...
+          </p>
+        </div>
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setApplicationModalOpen(false)}
+            className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-5 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+        <Toast toast={toast} onClose={clearToast} />
+      </div>
+    );
+  }
+
+  if (hasExistingResignation) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 shadow-sm dark:border-yellow-700 dark:bg-yellow-900/20">
+          <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+            Resignation request already under review
+          </p>
+          <p className="mt-2 text-sm text-yellow-800 dark:text-yellow-200">
+            You have already submitted a resignation request.
+            {existingResignation?.status
+              ? ` Current status: ${existingResignation.status}.`
+              : ""}
+            Please wait until this request is resolved before filing a new
+            resignation.
+          </p>
+        </div>
+
+        <div className="mt-2 flex justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setApplicationModalOpen(false)}
+            className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-5 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+
+        <Toast toast={toast} onClose={clearToast} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
@@ -818,10 +920,16 @@ export default function ResignationForm({
               onChange={(e) => setField("resignation_date", e.target.value)}
               readOnly={!resignationForm.immediate_resignation}
               disabled={!resignationForm.immediate_resignation}
-              className={resignationForm.immediate_resignation ? "rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500" : "cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"}
+              className={
+                resignationForm.immediate_resignation
+                  ? "rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500"
+                  : "cursor-not-allowed rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+              }
             />
             <p className="m-0 text-[11px] text-gray-500 dark:text-gray-400">
-              {resignationForm.immediate_resignation ? "Select your intended resignation date." : "Auto-calculated as one month from application date."}
+              {resignationForm.immediate_resignation
+                ? "Select your intended resignation date."
+                : "Auto-calculated as one month from application date."}
             </p>
           </div>
 
@@ -884,7 +992,9 @@ export default function ResignationForm({
       {resignationStep === 3 && (
         <div className="space-y-3">
           <div className="rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-400">
-            <p className="m-0 font-semibold text-gray-900 dark:text-gray-100">Instructions:</p>
+            <p className="m-0 font-semibold text-gray-900 dark:text-gray-100">
+              Instructions:
+            </p>
             <p className="m-0 mt-1">
               Please answer each question honestly. Your responses will help
               Human Resources improve services and employee experience.
@@ -1078,7 +1188,9 @@ export default function ResignationForm({
           </div>
           <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 text-sm text-gray-900 dark:text-gray-100">
             <p className="m-0">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">Recipient:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                Recipient:
+              </span>{" "}
               {resignationForm.recipient_name}
             </p>
             {resignationForm.immediate_resignation && (
@@ -1089,21 +1201,29 @@ export default function ResignationForm({
               </p>
             )}
             <p className="m-0 mt-1">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">Resignation Date:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                Resignation Date:
+              </span>{" "}
               {resignationForm.resignation_date || "-"}
             </p>
             {!resignationForm.immediate_resignation && (
               <p className="m-0 mt-1">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Last Working Day:</span>{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  Last Working Day:
+                </span>{" "}
                 {resignationForm.last_working_day || "-"}
               </p>
             )}
             <p className="m-0 mt-1">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">Reasons Selected:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                Reasons Selected:
+              </span>{" "}
               {(resignationForm.leaving_reasons || []).join(", ") || "-"}
             </p>
             <p className="m-0 mt-1">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">Endorsement:</span>{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                Endorsement:
+              </span>{" "}
               {resignationForm.endorsement_file_name || "Not uploaded"}
             </p>
           </div>
