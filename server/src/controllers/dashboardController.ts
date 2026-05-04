@@ -61,6 +61,8 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     const isSupervisor = currentUser.role === "Supervisor";
     const isRankAndFile = currentUser.role === "RankAndFile";
 
+    const pendingLeaveStatuses = ["Pending", "Pending Approval", "Pending Review"];
+
     let pending = [];
     if (isAdmin || isHR) {
       const [rows]: any = await pool.query(
@@ -68,10 +70,10 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           SELECT l.*, e.first_name, e.last_name
           FROM leave_requests l
           JOIN employees e ON l.emp_id = e.emp_id
-          WHERE l.status = 'Pending'
+          WHERE l.status IN (?, ?, ?)
             AND e.emp_id <> ?
         `,
-        [currentUser.emp_id],
+        [...pendingLeaveStatuses, currentUser.emp_id],
       );
       pending = rows;
     } else if (isSupervisor) {
@@ -80,12 +82,12 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           SELECT l.*, e.first_name, e.last_name
           FROM leave_requests l
           JOIN employees e ON l.emp_id = e.emp_id
-          WHERE l.status = 'Pending'
+          WHERE l.status IN (?, ?, ?)
             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
             AND e.designation = ?
             AND e.emp_id <> ?
         `,
-        [currentUser.designation || "", currentUser.emp_id],
+        [...pendingLeaveStatuses, currentUser.designation || "", currentUser.emp_id],
       );
       pending = rows;
     }
@@ -271,8 +273,8 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       `SELECT COUNT(*) as total
        FROM leave_requests
        WHERE emp_id = ?
-         AND status = 'Pending'`,
-      [currentUser.emp_id],
+         AND status IN (?, ?, ?)`,
+      [currentUser.emp_id, ...pendingLeaveStatuses],
     );
 
     const [myPendingOffsets]: any = await pool.query(

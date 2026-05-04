@@ -1,4 +1,5 @@
 import React from "react";
+import { formatLongDate } from "@/features/leave/utils/date.utils";
 import { WorkweekConfig } from "../types";
 
 interface WorkweekConfigModalProps {
@@ -84,8 +85,8 @@ export const WorkweekConfigModal: React.FC<WorkweekConfigModalProps> = ({
                   configs.map((cfg) => (
                     <tr key={cfg.id} className="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-3 py-2 font-semibold text-gray-800 dark:text-gray-100 text-xs">{cfg.workweek_type}</td>
-                      <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">{String(cfg.effective_from).slice(0, 10)}</td>
-                      <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">{cfg.effective_to ? String(cfg.effective_to).slice(0, 10) : "Open"}</td>
+                      <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">{formatLongDate(cfg.effective_from)}</td>
+                      <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">{cfg.effective_to ? formatLongDate(cfg.effective_to) : "Open"}</td>
                       <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">{Number(cfg.hours_per_day).toFixed(2)}</td>
                       <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">{Number(cfg.absence_unit).toFixed(2)}</td>
                       <td className="px-3 py-2 text-right">
