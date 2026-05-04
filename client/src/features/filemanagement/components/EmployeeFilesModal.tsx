@@ -30,7 +30,6 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
   onPreview,
   onDownload,
   onReplace,
-  onRemove,
   onArchive,
   onDelete,
   showArchived,
@@ -48,9 +47,11 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
             </p>
             <h2 className="m-0 flex items-center gap-3 text-lg font-bold text-gray-900 dark:text-white">
               Documents for {employee.display_name || getDisplayName(employee)}
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white ${
-                showArchived ? "bg-amber-500" : "bg-sky-500"
-              }`}>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white ${
+                  showArchived ? "bg-amber-500" : "bg-sky-500"
+                }`}
+              >
                 {showArchived ? "Archive" : "Active"}
               </span>
             </h2>
@@ -206,17 +207,7 @@ export const EmployeeFilesModal: React.FC<EmployeeFilesModalProps> = ({
                                 Delete
                               </button>
                             )}
-                              {file.replaceable && (
-                                <button
-                                  type="button"
-                                  onClick={() => onRemove(file)}
-                                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-900/30 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Remove
-                                </button>
-                              )}
-                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
