@@ -454,7 +454,7 @@ export const ensureResignationsTable = async (connection = pool) => {
       endorsement_file_key VARCHAR(512) NULL,
       clearance_file_key VARCHAR(512) NULL,
       current_step TINYINT DEFAULT 1,
-      status ENUM('Pending Approval', 'Approved', 'Rejected') DEFAULT 'Pending Approval',
+      status ENUM('Pending Approval', 'Approved', 'Rejected', 'Awaiting Clearance', 'Clearance Uploaded', 'Officially Resigned') DEFAULT 'Pending Approval',
       reviewed_by ${empIdColumn} NULL,
       review_remarks TEXT,
       reviewed_at TIMESTAMP NULL,
@@ -467,6 +467,12 @@ export const ensureResignationsTable = async (connection = pool) => {
       FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE,
       FOREIGN KEY (reviewed_by) REFERENCES employees(emp_id) ON DELETE SET NULL
     )
+  `);
+
+  // Align status options for existing databases.
+  await connection.query(`
+    ALTER TABLE resignations
+    MODIFY COLUMN status ENUM('Pending Approval', 'Approved', 'Rejected', 'Awaiting Clearance', 'Clearance Uploaded', 'Officially Resigned') DEFAULT 'Pending Approval'
   `);
 
   const [resignationCancelRequestedColumn] = await connection.query(
@@ -2308,7 +2314,7 @@ export const updateResignationStatus = async (req, res) => {
       });
     }
 
-    if (!["Approved", "Rejected"].includes(String(status || ""))) {
+    if (!["Approved", "Rejected", "Awaiting Clearance", "Officially Resigned"].includes(String(status || ""))) {
       return res.status(400).json({ message: "Invalid resignation status" });
     }
 
@@ -2318,17 +2324,76 @@ export const updateResignationStatus = async (req, res) => {
       });
     }
 
-    const reviewRemarksValue =
-      status === "Rejected" ? trimmedReviewRemarks : null;
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    await pool.query(
-      `UPDATE resignations
-       SET status = ?,
-           review_remarks = ?
-       WHERE id = ?`,
-      [status, reviewRemarksValue, id],
-    );
-    res.json({ message: "Resignation updated successfully" });
+      const [resignationRows] = await connection.query(
+        "SELECT id, emp_id, status FROM resignations WHERE id = ? LIMIT 1",
+        [id]
+      );
+
+      if (!resignationRows.length) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Resignation not found" });
+      }
+
+      const resignation = resignationRows[0];
+      let finalStatus = status;
+
+      // Logic for multi-step approval
+      if (status === "Approved") {
+        if (resignation.status === "Pending Approval") {
+          finalStatus = "Awaiting Clearance";
+        } else if (resignation.status === "Clearance Uploaded") {
+          finalStatus = "Officially Resigned";
+        }
+      }
+
+      const reviewRemarksValue =
+        status === "Rejected" ? trimmedReviewRemarks : trimmedReviewRemarks || null;
+
+      await connection.query(
+        `UPDATE resignations
+         SET status = ?,
+             review_remarks = ?,
+             reviewed_by = ?,
+             reviewed_at = NOW()
+         WHERE id = ?`,
+        [finalStatus, reviewRemarksValue, req.user?.emp_id, id]
+      );
+
+      const approver = await getEmployeeProfile(connection, req.user?.emp_id);
+      const approverName = approver
+        ? `${approver.first_name} ${approver.last_name}`.trim()
+        : "the approver";
+
+      await notifyRequesterForDecision(connection, {
+        requesterEmpId: resignation.emp_id,
+        moduleType: "Resignation",
+        status: finalStatus,
+        approverName,
+      });
+
+      // If officially resigned, mark employee as inactive
+      if (finalStatus === "Officially Resigned") {
+        await connection.query(
+          "UPDATE employees SET status = 'Inactive' WHERE emp_id = ?",
+          [resignation.emp_id]
+        );
+      }
+
+      await connection.commit();
+      res.json({
+        message: `Resignation updated to ${finalStatus} successfully`,
+        status: finalStatus,
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     console.error("DB Error in updateResignationStatus:", error);
     res.status(500).json({ message: "Error updating resignation" });
@@ -2939,18 +3004,56 @@ export const uploadResignationClearance = async (req, res) => {
       });
     }
 
-    if (String(resignation.status || "") !== "Approved") {
+    if (
+      !["Approved", "Awaiting Clearance"].includes(
+        String(resignation.status || ""),
+      )
+    ) {
       return res.status(400).json({
         message: "Clearance upload is only allowed for approved resignations",
       });
     }
 
-    await pool.query(
-      "UPDATE resignations SET clearance_file_key = ? WHERE id = ?",
-      [clearanceFileKey, id],
-    );
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    return res.json({ message: "Clearance file uploaded successfully" });
+      await connection.query(
+        "UPDATE resignations SET clearance_file_key = ?, status = 'Clearance Uploaded' WHERE id = ?",
+        [clearanceFileKey, id],
+      );
+
+      const requester = await getEmployeeProfile(connection, requesterEmpId);
+      if (requester) {
+        const approvers = await getSupervisorApproversForRequester(
+          connection,
+          requester,
+        );
+        const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
+
+        for (const approver of approvers) {
+          await createNotification(connection, {
+            empId: approver.emp_id,
+            notificationType: "RESIGNATION_CLEARANCE_UPLOADED",
+            title: "Exit Clearance Uploaded",
+            message: `${requesterName} has uploaded their exit clearance form for your review.`,
+            referenceType: "Resignation",
+            referenceId: resignation.id,
+          });
+        }
+      }
+
+      await connection.commit();
+      return res.json({
+        message: "Clearance file uploaded successfully",
+        status: "Clearance Uploaded",
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     console.error("DB Error in uploadResignationClearance:", error);
     return res.status(500).json({ message: "Error uploading clearance file" });

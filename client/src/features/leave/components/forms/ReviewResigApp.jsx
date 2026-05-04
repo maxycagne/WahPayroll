@@ -27,6 +27,12 @@ const reviewBadgeClass = {
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   "Pending Approval":
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  "Awaiting Clearance":
+    "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  "Clearance Uploaded":
+    "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  "Officially Resigned":
+    "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
   "Cancellation Requested":
     "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   Rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -35,11 +41,16 @@ const reviewBadgeClass = {
 };
 
 function getResignationProgressPercent(item) {
-  const totalSteps = 5;
-  const step = Math.max(
-    1,
-    Math.min(Number(item?.current_step || totalSteps), totalSteps),
-  );
+  const totalSteps = 6;
+  let step = 1;
+  const status = String(item?.status || "").trim();
+
+  if (status === "Pending Approval") step = 4;
+  else if (status === "Awaiting Clearance") step = 5;
+  else if (status === "Clearance Uploaded") step = 5;
+  else if (status === "Officially Resigned") step = 6;
+  else step = Math.max(1, Math.min(Number(item?.current_step || 1), 5));
+
   return {
     step,
     percent: Math.round((step / totalSteps) * 100),
@@ -62,13 +73,15 @@ export default function ReviewResigApp({
     Boolean(reviewData.item?.immediate_resignation) ||
     !reviewData.item?.last_working_day;
 
+  const isFinalStep = reviewData.item?.status === "Clearance Uploaded";
+
   return (
     <div className="fixed inset-0 z-[72] flex items-center justify-center bg-black/55 p-4">
       <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-5 py-3">
           <div>
             <h3 className="m-0 text-base font-bold text-gray-900 dark:text-gray-100">
-              Resignation Supervisor Review
+              {isFinalStep ? "Final Exit Clearance Review" : "Resignation Supervisor Review"}
             </h3>
             <p className="m-0 mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
               {reviewData.item.first_name} {reviewData.item.last_name} •{" "}
@@ -96,7 +109,7 @@ export default function ReviewResigApp({
                 Current Progress: Step {progress.step} of {progress.totalSteps}
               </p>
               <span
-                className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${reviewBadgeClass[reviewData.item.status] || "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}
+                className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${reviewBadgeClass[reviewData.item.status] || "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}
               >
                 {reviewData.item.status || "Pending Approval"}
               </span>
@@ -215,27 +228,52 @@ export default function ReviewResigApp({
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-4 shadow-sm">
-            <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Step 4 • Endorsement Form Submission
-            </p>
-            <p className="m-0 mt-2 text-sm text-gray-800 dark:text-gray-200">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">
-                File Key:
-              </span>{" "}
-              {reviewData.item.endorsement_file_key || "Not uploaded"}
-            </p>
-            {reviewData.item.endorsement_file_key && (
-              <button
-                type="button"
-                onClick={() =>
-                  onPreviewEndorsement(reviewData.item.endorsement_file_key)
-                }
-                className="mt-2 rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
-              >
-                Download Endorsement File
-              </button>
-            )}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-4 shadow-sm">
+              <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Step 4 • Endorsement Form
+              </p>
+              <p className="m-0 mt-2 text-sm text-gray-800 dark:text-gray-200">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  File Status:
+                </span>{" "}
+                {reviewData.item.endorsement_file_key ? "Uploaded" : "Not uploaded"}
+              </p>
+              {reviewData.item.endorsement_file_key && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onPreviewEndorsement(reviewData.item.endorsement_file_key)
+                  }
+                  className="mt-2 rounded-md border border-indigo-200 dark:border-indigo-900/30 bg-indigo-100 dark:bg-indigo-900/40 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
+                >
+                  Download Endorsement File
+                </button>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-4 shadow-sm">
+              <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Step 5 • Exit Clearance Form
+              </p>
+              <p className="m-0 mt-2 text-sm text-gray-800 dark:text-gray-200">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  File Status:
+                </span>{" "}
+                {reviewData.item.clearance_file_key ? "Uploaded" : "Pending User Submission"}
+              </p>
+              {reviewData.item.clearance_file_key && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onPreviewEndorsement(reviewData.item.clearance_file_key)
+                  }
+                  className="mt-2 rounded-md border border-purple-200 dark:border-purple-900/30 bg-purple-100 dark:bg-purple-900/40 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60"
+                >
+                  Download Clearance File
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -253,7 +291,7 @@ export default function ReviewResigApp({
             onClick={onFinalApprove}
             className="rounded-md border border-emerald-700 dark:border-emerald-800 bg-emerald-600 dark:bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
           >
-            Final Approve
+            {isFinalStep ? "Final Approve & Resign" : "Approve & Await Clearance"}
           </button>
         </div>
       </div>

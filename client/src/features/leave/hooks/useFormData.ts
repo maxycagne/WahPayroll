@@ -17,6 +17,7 @@ export const useFormData = () => {
   const [cancelApprovalConfirm, setCancelApprovalConfirm] = useState(null);
   const [cancelPendingConfirm, setCancelPendingConfirm] = useState(null);
   const [hrNoteConfirm, setHrNoteConfirm] = useState(null);
+  const [uploadClearanceItem, setUploadClearanceItem] = useState(null);
   const [formData, setFormData] = useState({
     emp_id: currentUser?.emp_id || "",
     leaveType: "Birthday Leave",
@@ -76,6 +77,8 @@ export const useFormData = () => {
       setCancelPending: setCancelPendingConfirm,
       hrNote: hrNoteConfirm,
       setHrNote: setHrNoteConfirm,
+      uploadClearance: uploadClearanceItem,
+      setUploadClearance: setUploadClearanceItem,
     },
     toast: {
       instance: toast,

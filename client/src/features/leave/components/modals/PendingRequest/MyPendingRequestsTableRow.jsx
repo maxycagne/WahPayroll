@@ -9,6 +9,7 @@ export default function MyPendingRequestsTableRow({
   setCancelPendingConfirm,
   requestCancellationApprovalMutation,
   setCancelApprovalConfirm,
+  setUploadClearanceItem,
 }) {
   console.log(item);
   return (
@@ -55,6 +56,16 @@ export default function MyPendingRequestsTableRow({
         )}
       </td>
       <td className="px-4 py-2.5 text-right">
+        {item.request_group === "resignation" &&
+          item.row_status === "Awaiting Clearance" && (
+            <button
+              type="button"
+              onClick={() => setUploadClearanceItem(item)}
+              className="mr-2 rounded-md border border-purple-200 dark:border-purple-900/30 bg-purple-100 dark:bg-purple-900/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60"
+            >
+              Upload Clearance
+            </button>
+          )}
         {item.row_action === "cancel_pending" && (
           <button
             type="button"

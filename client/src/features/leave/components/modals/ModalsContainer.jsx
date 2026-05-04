@@ -6,6 +6,7 @@ import LeaveConfirmationModal from "./LeaveConfirmation/LeaveConfirmationModal";
 import PendingApprovalModal from "./PendingApproval/PendingApprovalModal";
 import MyPendingRequestsModal from "./PendingRequest/MyPendingRequestModal";
 import ReviewConfirmationModal from "./ReviewConfirmation/ReviewConfirmationModal";
+import ClearanceUploadModal from "./ClearanceUpload/ClearanceUploadModal";
 
 export default function ModalsContainer({
   applicationModalOpen,
@@ -69,6 +70,8 @@ export default function ModalsContainer({
   submitCancellationRequest,
   totalCredits,
   workweekConfigs,
+  uploadClearanceItem,
+  setUploadClearanceItem,
 }) {
   return (
     <>
@@ -123,6 +126,7 @@ export default function ModalsContainer({
           requestCancellationApprovalMutation
         }
         setCancelApprovalConfirm={setCancelApprovalConfirm}
+        setUploadClearanceItem={setUploadClearanceItem}
       />
       <LeaveConfirmationModal
         confirmAction={confirmAction}
@@ -160,6 +164,12 @@ export default function ModalsContainer({
         addHrNoteMutation={addHrNoteMutation}
         showToast={showToast}
       />
+      {uploadClearanceItem && (
+        <ClearanceUploadModal
+          item={uploadClearanceItem}
+          onClose={() => setUploadClearanceItem(null)}
+        />
+      )}
     </>
   );
 }
