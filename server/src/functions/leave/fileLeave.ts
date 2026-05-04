@@ -251,18 +251,22 @@ export const fileLeave: RequestHandler = async (
 
     // ============ REQUIRE DOCUMENTS VALIDATION ============
     const requiredDocs = getRequiredDocuments(leave_type);
+
+    if (
+      leave_type === "Unscheduled - Sick Leave" &&
+      daysDifference >= 3 &&
+      !documents.doctor_cert
+    ) {
+      await connection.rollback();
+      return res.status(400).json({
+        message:
+          "Medical Certificate is required for sick leave of 3 or more days.",
+      });
+    }
+
     for (const docType of requiredDocs) {
       // Special handling for OCP (only required for 5+ days)
       if (docType === "ocp" && daysDifference < 5) {
-        continue;
-      }
-
-      // Special handling for doctor cert (only required for sick leave 3+ days)
-      if (
-        docType === "doctor_cert" &&
-        leave_type === "Unscheduled - Sick Leave" &&
-        daysDifference < 3
-      ) {
         continue;
       }
 

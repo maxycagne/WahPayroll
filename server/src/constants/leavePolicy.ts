@@ -66,7 +66,7 @@ export const leavePolicy: Record<string, any> = {
     maxDays: 7,
     annualEntitlement: 10,
     deductsFromBalance: true,
-    requiresDocument: ["doctor_cert"], // Medical cert for 3+ days
+    requiresDocument: [],
     minNoticeHours: 0,
     requiredApprovals: ["supervisor"],
   },

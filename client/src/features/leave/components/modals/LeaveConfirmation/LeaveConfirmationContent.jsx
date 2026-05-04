@@ -5,7 +5,7 @@ import {
   getRequiredApprovals,
   getRequiredDocuments,
 } from "../../../leaveConstants";
-import { formatLongDate } from "@/features/leave/utils/date.utils";
+import { formatLongDate, getDateDiffInclusive } from "@/features/leave/utils/date.utils";
 
 export default function LeaveConfirmationModalContent({ confirmAction }) {
   const policy = getLeavePolicy(confirmAction.leaveType);
@@ -13,6 +13,9 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
   const isDeductible = isDeductibleLeave(confirmAction.leaveType);
   const approvals = getRequiredApprovals(confirmAction.leaveType);
   const requiredDocs = getRequiredDocuments(confirmAction.leaveType);
+  const sickLeaveDoctorCertRequired =
+    confirmAction.leaveType === "Unscheduled - Sick Leave" &&
+    getDateDiffInclusive(confirmAction.fromDate, confirmAction.toDate) >= 3;
 
   return (
     <div className="mb-6 space-y-4 text-sm">
@@ -99,7 +102,7 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
       )}
 
       {/* Required Documents */}
-      {requiredDocs.length > 0 && (
+      {(requiredDocs.length > 0 || sickLeaveDoctorCertRequired) && (
         <div>
           <p className="m-0 text-gray-600 dark:text-gray-400 font-medium mb-2">
             Required Documents:
@@ -113,6 +116,11 @@ export default function LeaveConfirmationModalContent({ confirmAction }) {
                   .replace(/\b\w/g, (l) => l.toUpperCase())}
               </li>
             ))}
+            {sickLeaveDoctorCertRequired && (
+              <li className="text-xs text-gray-700 dark:text-gray-400">
+                • Medical Certificate
+              </li>
+            )}
           </ul>
         </div>
       )}

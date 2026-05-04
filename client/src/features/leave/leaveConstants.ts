@@ -98,7 +98,7 @@ export const leavePolicy = {
     excludeWeekends: true,
     annualEntitlement: 10, // Total days per year
     deductsFromBalance: true,
-    requiresDocument: ["doctor_cert"], // Medical certificate for 3+ days
+    requiresDocument: [],
     minNoticeHours: 0, // Can file upon return or same-day if notified by 9 AM
     requiredApprovals: ["supervisor"],
     helperText:
