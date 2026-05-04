@@ -209,6 +209,43 @@ export default function ResignationForm({
       refetchOnWindowFocus: false,
     });
 
+  const { data: myResignations = [], isLoading: isLoadingMyResignations } =
+    useQuery<any[]>({
+      queryKey: ["my-resignations", currentUser?.emp_id],
+      queryFn: async () => {
+        const result = await mutationHandler(
+          axiosInterceptor.get("/api/employees/my-resignations"),
+          "Failed to load resignation requests",
+        );
+        return Array.isArray(result) ? result : [];
+      },
+      enabled: Boolean(currentUser?.emp_id),
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    });
+
+  const hasExistingResignation = useMemo(() => {
+    return (
+      Array.isArray(myResignations) &&
+      myResignations.some((item) => {
+        const status = String(item?.status || item?.resignation_status || "")
+          .trim()
+          .toLowerCase();
+        return status && status !== "rejected";
+      })
+    );
+  }, [myResignations]);
+
+  const existingResignation = useMemo(() => {
+    if (!Array.isArray(myResignations)) return null;
+    return myResignations.find((item) => {
+      const status = String(item?.status || item?.resignation_status || "")
+        .trim()
+        .toLowerCase();
+      return status && status !== "rejected";
+    });
+  }, [myResignations]);
+
   const saveResignationDraftMutation = useMutation<
     unknown,
     Error,
@@ -669,6 +706,61 @@ export default function ResignationForm({
       );
     }
   };
+
+  if (isLoadingMyResignations) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-100">
+            Checking your resignation request status...
+          </p>
+        </div>
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setApplicationModalOpen(false)}
+            className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-5 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+        <Toast toast={toast} onClose={clearToast} />
+      </div>
+    );
+  }
+
+  if (hasExistingResignation) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 shadow-sm dark:border-yellow-700 dark:bg-yellow-900/20">
+          <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+            Resignation request already under review
+          </p>
+          <p className="mt-2 text-sm text-yellow-800 dark:text-yellow-200">
+            You have already submitted a resignation request.
+            {existingResignation?.status
+              ? ` Current status: ${existingResignation.status}.`
+              : ""}
+            Please wait until this request is resolved before filing a new
+            resignation.
+          </p>
+        </div>
+
+        <div className="mt-2 flex justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setApplicationModalOpen(false)}
+            className="cursor-pointer rounded-lg bg-gray-200 dark:bg-gray-800 px-5 py-2 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+
+        <Toast toast={toast} onClose={clearToast} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
