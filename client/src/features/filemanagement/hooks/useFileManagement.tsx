@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getFileInventory } from "../api";
+import { getFileInventory, getFileActivityLog } from "../api";
 import { normalizeString } from "../utils";
 import { Employee } from "../types";
 
@@ -42,6 +42,14 @@ export const useFileManagement = () => {
     queryFn: getFileInventory,
   });
 
+  const {
+    data: fileActivityLog = [],
+    refetch: refetchFileActivityLog,
+  } = useQuery({
+    queryKey: ["file-activity-log"],
+    queryFn: getFileActivityLog,
+  });
+
   const files = useMemo(
     () => (inventory.files || []).filter((file) => normalizeString(file.source) !== "profile"),
     [inventory.files]
@@ -69,7 +77,10 @@ export const useFileManagement = () => {
   const fileFilters = useFileFilters(employees, files, filterAttributeKey, filterAttributeLabel);
   const fileTemplates = useFileTemplates(role, showToast, fileFilters.showArchived);
   const employeeFiles = useEmployeeFiles(employees, files, fileFilters.showArchived);
-  const fileOperations = useFileOperations(showToast, () => queryClient.invalidateQueries({ queryKey: ["file-management"] }));
+  const fileOperations = useFileOperations(showToast, () => {
+    queryClient.invalidateQueries({ queryKey: ["file-management"] });
+    refetchFileActivityLog();
+  });
 
   return {
     ...fileFilters,
@@ -86,5 +97,7 @@ export const useFileManagement = () => {
     isError,
     refetch,
     counts,
+    fileActivityLog,
+    refetchFileActivityLog,
   };
 };

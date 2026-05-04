@@ -5,7 +5,9 @@ import { normalizeString, getDisplayName } from "../utils";
 export const useFileFilters = (employees: Employee[], files: FileDocument[], filterAttributeKey: keyof Employee, filterAttributeLabel: string) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [designationFilter, setDesignationFilter] = useState("all");
-  const [showArchived, setShowArchived] = useState(false);
+  const [viewMode, setViewMode] = useState<"active" | "archive" | "history">("active");
+
+  const showArchived = viewMode === "archive";
 
   const designationOptions = useMemo(() => {
     const optionsMap = new Map();
@@ -29,6 +31,8 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
   }, [employees, filterAttributeKey, filterAttributeLabel]);
 
   const filteredEmployees = useMemo(() => {
+    if (viewMode === "history") return [];
+
     const search = normalizeString(searchTerm);
 
     return employees.filter((employee) => {
@@ -60,9 +64,11 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
 
       return matchesSearch && matchesDesignation && matchesArchived;
     });
-  }, [designationFilter, employees, files, filterAttributeKey, searchTerm, showArchived]);
+  }, [designationFilter, employees, files, filterAttributeKey, searchTerm, showArchived, viewMode]);
 
   const filteredFiles = useMemo(() => {
+    if (viewMode === "history") return [];
+
     const archivedInFiles = files.filter(f => f.is_archived).length;
     console.log(`[FileFilters] Current view: ${showArchived ? 'Archive' : 'Active'}. Total files in memory: ${files.length}, Archived in memory: ${archivedInFiles}`);
     
@@ -94,7 +100,7 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
 
       return matchesSearch && matchesDesignation && matchesArchived;
     });
-  }, [designationFilter, files, filterAttributeKey, searchTerm, showArchived]);
+  }, [designationFilter, files, filterAttributeKey, searchTerm, showArchived, viewMode]);
 
   const employeeCards = useMemo(() => {
     return filteredEmployees.map((employee) => ({
@@ -113,6 +119,7 @@ export const useFileFilters = (employees: Employee[], files: FileDocument[], fil
     filteredFiles,
     employeeCards,
     showArchived,
-    setShowArchived,
+    viewMode,
+    setViewMode,
   };
 };

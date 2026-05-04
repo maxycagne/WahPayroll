@@ -11,6 +11,19 @@ export function formatDate(value: string | number | Date | null | undefined): st
   });
 }
 
+export function formatDateTime(value: string | number | Date | null | undefined): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("default", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function getDisplayName(employee: Partial<Employee>): string {
   const firstName = String(employee?.first_name || "").trim();
   const lastName = String(employee?.last_name || "").trim();

@@ -623,6 +623,32 @@ export const ensureResignationsTable = async (connection = pool) => {
       "ALTER TABLE resignations ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER status",
     );
   }
+
+  // Per-file archive columns for individual document archiving
+  const perFileArchiveColumns = [
+    "is_resignation_letter_archived",
+    "is_resignation_form_archived",
+    "is_exit_interview_archived",
+    "is_exit_clearance_archived",
+    "is_endorsement_archived",
+    "is_clearance_file_archived",
+  ];
+
+  for (const colName of perFileArchiveColumns) {
+    const [colExists] = await connection.query(
+      `SELECT 1 FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'resignations'
+         AND COLUMN_NAME = ?
+       LIMIT 1`,
+      [colName],
+    );
+    if (colExists.length === 0) {
+      await connection.query(
+        `ALTER TABLE resignations ADD COLUMN ${colName} BOOLEAN NOT NULL DEFAULT FALSE`,
+      );
+    }
+  }
 };
 
 export const ensureResignationDraftsTable = async (connection = pool) => {
@@ -708,6 +734,105 @@ export const ensureFileTemplatesTable = async (connection = pool) => {
     await connection.query(
       "ALTER TABLE file_templates ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER size_bytes",
     );
+  }
+};
+
+const ensureTemplateActivityLogTable = async (connection = pool) => {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS template_activity_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      template_id INT NULL,
+      template_title VARCHAR(255) NULL,
+      action VARCHAR(50) NOT NULL,
+      performed_by VARCHAR(50) NULL,
+      performed_by_name VARCHAR(255) NULL,
+      details TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_template_log_created (created_at),
+      INDEX idx_template_log_template (template_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+};
+
+const logTemplateActivity = async (connection, { templateId, templateTitle, action, performedBy, details }) => {
+  try {
+    await ensureTemplateActivityLogTable(connection);
+
+    let performerName = "";
+    if (performedBy) {
+      const [empRows] = await connection.query(
+        "SELECT first_name, last_name FROM employees WHERE emp_id = ? LIMIT 1",
+        [performedBy],
+      );
+      if (empRows.length > 0) {
+        performerName = `${empRows[0].first_name || ""} ${empRows[0].last_name || ""}`.trim();
+      }
+    }
+
+    await connection.query(
+      `INSERT INTO template_activity_log (template_id, template_title, action, performed_by, performed_by_name, details)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [templateId || null, templateTitle || null, action, performedBy || null, performerName || null, details || null],
+    );
+  } catch (err) {
+    console.error("[TemplateLog] Failed to log activity:", err.message);
+  }
+};
+
+const ensureFileActivityLogTable = async (connection = pool) => {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS file_activity_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      record_id VARCHAR(50) NULL,
+      source VARCHAR(50) NULL,
+      file_type VARCHAR(100) NULL,
+      action VARCHAR(50) NOT NULL,
+      performed_by VARCHAR(50) NULL,
+      performed_by_name VARCHAR(255) NULL,
+      details TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_file_log_created (created_at),
+      INDEX idx_file_log_record (record_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  const [targetEmpCol] = await connection.query(`
+    SELECT COLUMN_NAME
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'file_activity_log'
+      AND column_name = 'target_employee_name'
+  `);
+
+  if (targetEmpCol.length === 0) {
+    await connection.query(
+      "ALTER TABLE file_activity_log ADD COLUMN target_employee_name VARCHAR(255) NULL AFTER file_type, ADD COLUMN file_name VARCHAR(255) NULL AFTER target_employee_name",
+    );
+  }
+};
+
+const logFileActivity = async (connection, { recordId, source, fileType, action, performedBy, details, targetEmployeeName, fileName }) => {
+  try {
+    await ensureFileActivityLogTable(connection);
+
+    let performerName = "";
+    if (performedBy) {
+      const [empRows] = await connection.query(
+        "SELECT first_name, last_name FROM employees WHERE emp_id = ? LIMIT 1",
+        [performedBy],
+      );
+      if (empRows.length > 0) {
+        performerName = `${empRows[0].first_name || ""} ${empRows[0].last_name || ""}`.trim();
+      }
+    }
+
+    await connection.query(
+      `INSERT INTO file_activity_log (record_id, source, file_type, target_employee_name, file_name, action, performed_by, performed_by_name, details)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [recordId || null, source || null, fileType || null, targetEmployeeName || null, fileName || null, action, performedBy || null, performerName || null, details || null],
+    );
+  } catch (err) {
+    console.error("[FileLog] Failed to log activity:", err.message);
   }
 };
 
@@ -1160,6 +1285,12 @@ export const getFileManagementInventory = async (req, res) => {
            r.updated_at,
            r.endorsement_file_key, r.is_archived,
            r.clearance_file_key,
+           r.is_resignation_letter_archived,
+           r.is_resignation_form_archived,
+           r.is_exit_interview_archived,
+           r.is_exit_clearance_archived,
+           r.is_endorsement_archived,
+           r.is_clearance_file_archived,
            e.first_name,
            e.last_name,
            e.designation,
@@ -1169,7 +1300,6 @@ export const getFileManagementInventory = async (req, res) => {
          FROM resignations r
          JOIN employees e ON e.emp_id = r.emp_id
          WHERE r.emp_id IN (${placeholders})
-           AND (r.endorsement_file_key IS NOT NULL OR r.clearance_file_key IS NOT NULL)
          ORDER BY r.updated_at DESC, r.created_at DESC, r.id DESC`,
         accessibleEmpIds,
       );
@@ -1307,7 +1437,7 @@ export const getFileManagementInventory = async (req, res) => {
         generated_at: uploadedAt,
       };
 
-      const addGeneratedDocument = (templateType, fileType) => {
+      const addGeneratedDocument = (templateType, fileType, archiveColumn) => {
         files.push({
           id: `resignation-${row.id}-${templateType}-generated`,
           emp_id: row.emp_id,
@@ -1331,16 +1461,16 @@ export const getFileManagementInventory = async (req, res) => {
           request_status: row.status || null,
           request_type: row.resignation_type || "Resignation",
           document_data: baseDocumentData,
-          is_archived: Boolean(row.is_archived),
+          is_archived: Boolean(row[archiveColumn]),
         });
       };
 
-      addGeneratedDocument("resignation_letter", "Resignation Letter");
-      addGeneratedDocument("resignation_form", "Employee Resignation Form");
-      addGeneratedDocument("exit_interview", "Exit Interview Form");
+      addGeneratedDocument("resignation_letter", "Resignation Letter", "is_resignation_letter_archived");
+      addGeneratedDocument("resignation_form", "Employee Resignation Form", "is_resignation_form_archived");
+      addGeneratedDocument("exit_interview", "Exit Interview Form", "is_exit_interview_archived");
 
       if (isApproved) {
-        addGeneratedDocument("exit_clearance", "Exit Clearance Form");
+        addGeneratedDocument("exit_clearance", "Exit Clearance Form", "is_exit_clearance_archived");
       }
 
       if (String(row.endorsement_file_key || "").trim()) {
@@ -1361,7 +1491,7 @@ export const getFileManagementInventory = async (req, res) => {
           file_key: row.endorsement_file_key,
           file_name: safeFileName(row.endorsement_file_key),
           uploaded_at: uploadedAt,
-          is_archived: Boolean(row.is_archived),
+          is_archived: Boolean(row.is_endorsement_archived),
           download_url: `/api/file/get?filename=${encodeURIComponent(row.endorsement_file_key)}`,
           replaceable: true,
           request_status: row.status || null,
@@ -1387,7 +1517,7 @@ export const getFileManagementInventory = async (req, res) => {
           file_key: row.clearance_file_key,
           file_name: safeFileName(row.clearance_file_key),
           uploaded_at: uploadedAt,
-          is_archived: Boolean(row.is_archived),
+          is_archived: Boolean(row.is_clearance_file_archived),
           download_url: `/api/file/get?filename=${encodeURIComponent(row.clearance_file_key)}`,
           replaceable: true,
           request_status: row.status || null,
@@ -1519,6 +1649,14 @@ export const uploadFileTemplate = async (req, res) => {
       ],
     );
 
+    await logTemplateActivity(pool, {
+      templateId: result.insertId,
+      templateTitle: finalTitle,
+      action: "uploaded",
+      performedBy: req.user?.emp_id,
+      details: `Uploaded template "${finalTitle}" (${originalName})`,
+    });
+
     return res.status(201).json({
       id: result.insertId,
       title: finalTitle,
@@ -1581,6 +1719,14 @@ export const replaceFileTemplate = async (req, res) => {
 
     await deleteS3ObjectQuietly(existing.storage_key);
 
+    await logTemplateActivity(pool, {
+      templateId,
+      templateTitle: existing.title,
+      action: "replaced",
+      performedBy: req.user?.emp_id,
+      details: `Replaced file for template "${existing.title}" with "${nextOriginalName}"`,
+    });
+
     return res.json({
       id: templateId,
       title: existing.title,
@@ -1642,7 +1788,7 @@ export const deleteFileTemplate = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      `SELECT id, storage_key FROM file_templates WHERE id = ? LIMIT 1`,
+      `SELECT id, title, storage_key FROM file_templates WHERE id = ? LIMIT 1`,
       [templateId],
     );
 
@@ -1653,6 +1799,14 @@ export const deleteFileTemplate = async (req, res) => {
     const template = rows[0];
     await pool.query(`DELETE FROM file_templates WHERE id = ?`, [templateId]);
     await deleteS3ObjectQuietly(template.storage_key);
+
+    await logTemplateActivity(pool, {
+      templateId,
+      templateTitle: template.title,
+      action: "deleted",
+      performedBy: req.user?.emp_id,
+      details: `Permanently deleted template "${template.title}"`,
+    });
 
     return res.json({ message: "Template deleted successfully from S3" });
   } catch (error) {
@@ -4937,9 +5091,68 @@ export const removeResignationFile = async (req, res) => {
   }
 };
 
+const getTargetDetails = async (connection, table, id, source, fileType) => {
+  let targetEmployeeName = "Unknown Employee";
+  let fileName = fileType || "Unknown File";
+  
+  try {
+    if (table === "resignations") {
+      const [rows] = await connection.query(`
+        SELECT r.id, e.first_name, e.last_name 
+        FROM resignations r 
+        JOIN employees e ON r.emp_id = e.emp_id 
+        WHERE r.id = ?
+      `, [id]);
+      if (rows.length > 0) {
+        targetEmployeeName = `${rows[0].first_name || ""} ${rows[0].last_name || ""}`.trim();
+        if (fileType) {
+          fileName = fileType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        } else {
+          fileName = "Resignation Record";
+        }
+      }
+    } else if (table === "leave_requests") {
+      const [rows] = await connection.query(`
+        SELECT l.id, l.leave_type, e.first_name, e.last_name 
+        FROM leave_requests l 
+        JOIN employees e ON l.emp_id = e.emp_id 
+        WHERE l.id = ?
+      `, [id]);
+      if (rows.length > 0) {
+        targetEmployeeName = `${rows[0].first_name || ""} ${rows[0].last_name || ""}`.trim();
+        fileName = `${rows[0].leave_type || "Leave"} Request Document`;
+      }
+    } else if (table === "employees") {
+      const [rows] = await connection.query(`
+        SELECT emp_id, first_name, last_name 
+        FROM employees 
+        WHERE emp_id = ?
+      `, [id]);
+      if (rows.length > 0) {
+        targetEmployeeName = `${rows[0].first_name || ""} ${rows[0].last_name || ""}`.trim();
+        fileName = source === "profile" ? "Profile Photo" : "NDA Document";
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching target details", e);
+  }
+  return { targetEmployeeName, fileName };
+};
+
 export const archiveFileRecord = async (req, res) => {
   const { source, id } = req.params;
-  const { is_archived } = req.body;
+  const { is_archived, file_type } = req.body;
+
+  // Map template_type / file_field → per-file archive column
+  const RESIGNATION_ARCHIVE_COLUMNS = {
+    resignation_letter: "is_resignation_letter_archived",
+    resignation_form: "is_resignation_form_archived",
+    exit_interview: "is_exit_interview_archived",
+    exit_clearance: "is_exit_clearance_archived",
+    endorsement_file_key: "is_endorsement_archived",
+    clearance_file_key: "is_clearance_file_archived",
+  };
+
   try {
     let table = "";
     let idColumn = "id";
@@ -4948,6 +5161,11 @@ export const archiveFileRecord = async (req, res) => {
     if (source === "resignation" || source === "generated") {
       table = "resignations";
       await ensureResignationsTable();
+
+      // If a specific file_type is provided, use the per-file archive column
+      if (file_type && RESIGNATION_ARCHIVE_COLUMNS[file_type]) {
+        statusColumn = RESIGNATION_ARCHIVE_COLUMNS[file_type];
+      }
     } else if (source === "leave") {
       table = "leave_requests";
       await ensureLeaveApprovalColumns();
@@ -4968,11 +5186,25 @@ export const archiveFileRecord = async (req, res) => {
       id,
     ]);
 
-    console.log(`[Archive] Table: ${table}, ID: ${id}, New Status: ${is_archived}, Affected Rows: ${result.affectedRows}`);
+    console.log(`[Archive] Table: ${table}, Column: ${statusColumn}, ID: ${id}, New Status: ${is_archived}, Affected Rows: ${result.affectedRows}`);
 
     if (result.affectedRows === 0) {
       console.warn(`[Archive] Warning: No rows were updated for ID ${id} in table ${table}`);
     }
+
+    const { targetEmployeeName, fileName } = await getTargetDetails(pool, table, id, source, file_type);
+
+    await logFileActivity(pool, {
+      recordId: id,
+      source,
+      fileType: file_type || "all",
+      targetEmployeeName,
+      fileName,
+      action: is_archived ? "archived" : "unarchived",
+      performedBy: req.user?.emp_id,
+      details: `${is_archived ? "Archived" : "Unarchived"} file record in ${table}`,
+    });
+
     res.json({ message: `Record ${is_archived ? "archived" : "unarchived"} successfully` });
   } catch (error) {
     console.error("DB Error in archiveFileRecord:", error);
@@ -4999,9 +5231,21 @@ export const permanentDeleteFileRecord = async (req, res) => {
       return res.status(400).json({ message: "Invalid delete source" });
     }
 
+    const { targetEmployeeName, fileName } = await getTargetDetails(pool, table, id, source, "all");
     const [result] = await pool.query(`DELETE FROM ${table} WHERE ${idColumn} = ?`, [id]);
     
     console.log(`[Delete] Table: ${table}, ID: ${id}, Deleted Rows: ${result.affectedRows}`);
+
+    await logFileActivity(pool, {
+      recordId: id,
+      source,
+      fileType: "all",
+      targetEmployeeName,
+      fileName,
+      action: "deleted",
+      performedBy: req.user?.emp_id,
+      details: `Permanently deleted file record from ${table}`,
+    });
     
     res.json({ message: "Record permanently deleted" });
   } catch (error) {
@@ -5015,13 +5259,66 @@ export const archiveFileTemplate = async (req, res) => {
   const { is_archived } = req.body;
   try {
     await ensureFileTemplatesTable();
+
+    const [templateRows] = await pool.query(
+      "SELECT title FROM file_templates WHERE id = ? LIMIT 1",
+      [id],
+    );
+    const templateTitle = templateRows.length > 0 ? templateRows[0].title : "Unknown";
+
     await pool.query("UPDATE file_templates SET is_archived = ? WHERE id = ?", [
       is_archived ? 1 : 0,
       id,
     ]);
+
+    await logTemplateActivity(pool, {
+      templateId: id,
+      templateTitle,
+      action: is_archived ? "archived" : "unarchived",
+      performedBy: req.user?.emp_id,
+      details: `${is_archived ? "Archived" : "Unarchived"} template "${templateTitle}"`,
+    });
+
     res.json({ message: `Template ${is_archived ? "archived" : "unarchived"} successfully` });
   } catch (error) {
     console.error("DB Error in archiveFileTemplate:", error);
     res.status(500).json({ message: "Error archiving template" });
   }
 };
+
+export const getTemplateActivityLog = async (req, res) => {
+  try {
+    await ensureTemplateActivityLogTable();
+
+    const [rows] = await pool.query(
+      `SELECT id, template_id, template_title, action, performed_by, performed_by_name, details, created_at
+       FROM template_activity_log
+       ORDER BY created_at DESC
+       LIMIT 50`,
+    );
+
+    return res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getTemplateActivityLog:", error);
+    return res.status(500).json({ message: "Error fetching template activity log" });
+  }
+};
+
+export const getFileActivityLog = async (req, res) => {
+  try {
+    await ensureFileActivityLogTable();
+
+    const [rows] = await pool.query(
+      `SELECT id, record_id, source, file_type, target_employee_name, file_name, action, performed_by, performed_by_name, details, created_at
+       FROM file_activity_log
+       ORDER BY created_at DESC
+       LIMIT 50`,
+    );
+
+    return res.json(rows);
+  } catch (error) {
+    console.error("DB Error in getFileActivityLog:", error);
+    return res.status(500).json({ message: "Error fetching file activity log" });
+  }
+};
+

@@ -90,13 +90,15 @@ export const downloadFile = async (url: string): Promise<Blob> => {
   );
 };
 export const archiveFileRecord = async (
-  source: "resignation" | "leave",
+  source: string,
   recordId: string | number,
   isArchived: boolean,
+  fileType?: string,
 ): Promise<void> => {
   return mutationHandler(
     axiosInterceptor.put(`/api/employees/file-management/archive/${source}/${recordId}`, {
       is_archived: isArchived,
+      file_type: fileType,
     }),
     `Failed to ${isArchived ? "archive" : "unarchive"} file`,
   );
@@ -121,4 +123,45 @@ export const deleteFileRecord = async (
     axiosInterceptor.delete(`/api/employees/file-management/record/${source}/${recordId}`),
     "Failed to delete record permanently",
   );
+};
+
+export interface TemplateActivityEntry {
+  id: number;
+  template_id: number | null;
+  template_title: string | null;
+  action: string;
+  performed_by: string | null;
+  performed_by_name: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export const getTemplateActivityLog = async (): Promise<TemplateActivityEntry[]> => {
+  const payload = await mutationHandler(
+    axiosInterceptor.get("/api/employees/file-templates/activity-log"),
+    "Failed to load template activity log",
+  );
+  return Array.isArray(payload) ? payload : [];
+};
+
+export interface FileActivityEntry {
+  id: number;
+  record_id: string | null;
+  source: string | null;
+  file_type: string | null;
+  target_employee_name: string | null;
+  file_name: string | null;
+  action: string;
+  performed_by: string | null;
+  performed_by_name: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export const getFileActivityLog = async (): Promise<FileActivityEntry[]> => {
+  const payload = await mutationHandler(
+    axiosInterceptor.get("/api/employees/file-management/activity-log"),
+    "Failed to load file activity log",
+  );
+  return Array.isArray(payload) ? payload : [];
 };

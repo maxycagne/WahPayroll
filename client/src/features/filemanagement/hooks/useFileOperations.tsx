@@ -235,8 +235,17 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
       }
 
       let source = file.source;
+      let fileType: string | undefined;
+
       if (source === "generated") {
         source = file.template_type === "nda" ? "employee" : "resignation";
+        // Pass the template_type so the backend archives just this specific file
+        if (file.template_type && file.template_type !== "nda") {
+          fileType = file.template_type;
+        }
+      } else if (source === "resignation" && file.file_field) {
+        // Uploaded resignation files (endorsement/clearance)
+        fileType = file.file_field;
       }
 
       if (!["resignation", "leave", "employee", "profile"].includes(source)) {
@@ -245,15 +254,15 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
       }
 
       const shouldProceed = window.confirm(
-        `${newStatus ? "Archive" : "Unarchive"} this file and its associated record?`,
+        `${newStatus ? "Archive" : "Unarchive"} this file?`,
       );
       if (!shouldProceed) return;
 
       setIsArchiving(true);
       try {
         const { archiveFileRecord } = await import("../api");
-        console.log(`[FileOperations] Archiving record. Source: ${source}, ID: ${file.record_id}, New Status: ${newStatus}`);
-        await archiveFileRecord(source, file.record_id!, newStatus);
+        console.log(`[FileOperations] Archiving record. Source: ${source}, ID: ${file.record_id}, FileType: ${fileType || "all"}, New Status: ${newStatus}`);
+        await archiveFileRecord(source, file.record_id!, newStatus, fileType);
         showToast(`File ${newStatus ? "archived" : "unarchived"} successfully.`);
         await refetch();
       } catch (error: any) {
@@ -264,13 +273,56 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
     },
     isDeleting: isRemoving, // Reuse the loading state or add a new one
     handlePermanentDelete: async (file: FileDocument) => {
-      let source = file.source;
-      if (source === "generated") {
-        source = file.template_type === "nda" ? "employee" : "resignation";
+      // Generated docs (resignation_letter, resignation_form, exit_interview, exit_clearance)
+      // all derive from the same resignation row — deleting any one of them would destroy ALL of them.
+      if (file.source === "generated") {
+        const shouldProceed = window.confirm(
+          "PERMANENTLY DELETE this entire resignation record and ALL its associated documents? This action is IRREVERSIBLE.",
+        );
+        if (!shouldProceed) return;
+
+        setIsRemoving(true);
+        try {
+          const { deleteFileRecord } = await import("../api");
+          await deleteFileRecord("resignation", file.record_id!);
+          showToast("Resignation record and all associated documents permanently deleted.");
+          await refetch();
+        } catch (error: any) {
+          showToast(error.message || "Failed to delete record", "error");
+        } finally {
+          setIsRemoving(false);
+        }
+        return;
       }
 
+      // Uploaded resignation files (endorsement/clearance) — clear just the file field, don't delete the record
+      if (file.source === "resignation" && file.file_field) {
+        const shouldProceed = window.confirm(
+          `PERMANENTLY DELETE the ${file.file_type || "file"}? This action is IRREVERSIBLE.`,
+        );
+        if (!shouldProceed) return;
+
+        setIsRemoving(true);
+        try {
+          const { removeFile } = await import("../api");
+          await removeFile(file.record_id!, {
+            file_field: file.file_field,
+            old_file_key: file.file_key,
+          });
+          showToast("File permanently deleted.");
+          await refetch();
+        } catch (error: any) {
+          showToast(error.message || "Failed to delete file", "error");
+        } finally {
+          setIsRemoving(false);
+        }
+        return;
+      }
+
+      // Leave docs and employee-level files — safe to delete the record
+      let source = file.source;
       const shouldProceed = window.confirm(
-        "PERMANENTLY DELETE this entire record? This action is IRREVERSIBLE and will remove the data from the database.",
+        "PERMANENTLY DELETE this record? This action is IRREVERSIBLE and will remove the data from the database.",
       );
       if (!shouldProceed) return;
 

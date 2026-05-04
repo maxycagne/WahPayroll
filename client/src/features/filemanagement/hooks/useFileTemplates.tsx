@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getFileTemplates, downloadTemplate, deleteTemplate, uploadTemplate } from "../api";
+import { getFileTemplates, downloadTemplate, deleteTemplate, uploadTemplate, getTemplateActivityLog } from "../api";
+import type { TemplateActivityEntry } from "../api";
 import { buildDownloadBlobUrl } from "../utils";
 import { FileTemplate } from "../types";
 
@@ -25,6 +26,14 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
     queryFn: getFileTemplates,
   });
 
+  const {
+    data: activityLog = [],
+    refetch: refetchActivityLog,
+  } = useQuery({
+    queryKey: ["template-activity-log"],
+    queryFn: getTemplateActivityLog,
+  });
+
   const downloadUploadedTemplate = async (template: FileTemplate) => {
     try {
       const downloadUrl = await downloadTemplate(template.id);
@@ -41,6 +50,7 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
       await deleteTemplate(template.id);
       showToast("Template deleted successfully.");
       await refetchTemplates();
+      await refetchActivityLog();
     } catch (error: any) {
       showToast(error.message || "Failed to delete template", "error");
     }
@@ -70,6 +80,7 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
 
       showToast("Template replaced successfully.");
       await refetchTemplates();
+      await refetchActivityLog();
     } catch (error: any) {
       showToast(error.message || "Failed to replace template", "error");
     } finally {
@@ -96,6 +107,7 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
       setTemplateCategory("");
       showToast("Template uploaded successfully.");
       await refetchTemplates();
+      await refetchActivityLog();
     } catch (error: any) {
       showToast(error.message || "Failed to upload template", "error");
     } finally {
@@ -143,11 +155,13 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
         await archiveFileTemplate(template.id, newStatus);
         showToast(`Template ${newStatus ? "archived" : "unarchived"} successfully.`);
         await refetchTemplates();
+        await refetchActivityLog();
       } catch (error: any) {
         showToast(error.message || "Failed to archive template", "error");
       } finally {
         setIsArchivingTemplate(false);
       }
     },
+    activityLog: activityLog as TemplateActivityEntry[],
   };
 };

@@ -12,8 +12,8 @@ interface FileManagementHeaderProps {
   designationOptions: { value: string; label: string }[];
   onRefresh: () => void;
   onOpenTemplates: () => void;
-  showArchived: boolean;
-  setShowArchived: (value: boolean) => void;
+  viewMode: "active" | "archive" | "history";
+  setViewMode: (value: "active" | "archive" | "history") => void;
   counts: { active: number; archived: number };
   canArchive: boolean;
 }
@@ -29,8 +29,8 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
   designationOptions,
   onRefresh,
   onOpenTemplates,
-  showArchived,
-  setShowArchived,
+  viewMode,
+  setViewMode,
   counts,
   canArchive,
 }) => {
@@ -40,17 +40,19 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
     <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       <>
         <div className={`transition-colors duration-500 ${
-          showArchived 
+          viewMode === "archive"
             ? "bg-gradient-to-r from-amber-950 via-amber-900 to-amber-800" 
+            : viewMode === "history"
+            ? "bg-gradient-to-r from-indigo-950 via-indigo-900 to-indigo-800"
             : "bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800"
         } px-4 py-4 text-white md:px-5`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="m-0 text-[11px] font-bold uppercase tracking-[0.28em] text-white/55">
-                {showArchived ? "Archive Page" : "File Management"}
+                {viewMode === "history" ? "Activity Log" : viewMode === "archive" ? "Archive Page" : "File Management"}
               </p>
               <h1 className="m-0 mt-1 text-xl font-bold tracking-tight md:text-2xl">
-                {showArchived ? "Archived Documents" : (roleLabels[role] || "File Portal")}
+                {viewMode === "history" ? "Activity History" : viewMode === "archive" ? "Archived Documents" : (roleLabels[role] || "File Portal")}
               </h1>
               <p className="m-0 mt-1 max-w-xl text-xs text-white/70 md:text-sm">
                 Manage resignation document groups per application, including
@@ -78,34 +80,37 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
 
           <div className="mt-6 flex border-b border-white/10">
             {[
-              { label: "Active Files", value: false, count: counts.active },
-              { label: "Archive", value: true, count: counts.archived },
-            ].filter(tab => canArchive || !tab.value).map((tab) => (
+              { label: "Active Files", value: "active", count: counts.active },
+              { label: "Archive", value: "archive", count: counts.archived },
+              { label: "History", value: "history", count: null },
+            ].filter(tab => canArchive || tab.value === "active").map((tab) => (
               <button
                 key={tab.label}
-                onClick={() => setShowArchived(tab.value)}
+                onClick={() => setViewMode(tab.value as any)}
                 className={`relative flex items-center gap-2 px-6 py-3 text-sm font-bold uppercase tracking-widest transition-colors ${
-                  showArchived === tab.value
+                  viewMode === tab.value
                     ? "text-white"
                     : "text-white/40 hover:text-white/60"
                 } ${
-                  showArchived === tab.value
-                    ? (tab.value ? "bg-amber-500/10" : "bg-sky-500/10")
+                  viewMode === tab.value
+                    ? (tab.value === "archive" ? "bg-amber-500/10" : tab.value === "history" ? "bg-indigo-500/10" : "bg-sky-500/10")
                     : ""
                 } rounded-t-xl`}
               >
                 {tab.label}
-                <span
-                  className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none text-white ${
-                    tab.value ? "bg-amber-500" : "bg-sky-500"
-                  }`}
-                >
-                  {tab.count}
-                </span>
-                {showArchived === tab.value && (
+                {tab.count !== null && (
+                  <span
+                    className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none text-white ${
+                      tab.value === "archive" ? "bg-amber-500" : "bg-sky-500"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+                {viewMode === tab.value && (
                   <div
                     className={`absolute bottom-0 left-0 h-1 w-full rounded-t-full ${
-                      tab.value ? "bg-amber-400" : "bg-sky-400"
+                      tab.value === "archive" ? "bg-amber-400" : tab.value === "history" ? "bg-indigo-400" : "bg-sky-400"
                     }`}
                   />
                 )}

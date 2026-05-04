@@ -1,7 +1,8 @@
-import React from "react";
-import { Upload, Download, Trash2, Archive } from "lucide-react";
+import React, { useState } from "react";
+import { Upload, Download, Trash2, Archive, History, ChevronDown, ChevronUp } from "lucide-react";
 import { FileTemplate } from "../types";
-import { formatDate } from "../utils";
+import type { TemplateActivityEntry } from "../api";
+import { formatDate, formatDateTime } from "../utils";
 
 interface TemplateModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface TemplateModalProps {
   onDelete: (template: FileTemplate) => void;
   onArchive: (template: FileTemplate) => void;
   isArchivingTemplate: boolean;
+  activityLog?: TemplateActivityEntry[];
 }
 
 export const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -41,7 +43,9 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
   isReplacingTemplate,
   onArchive,
   isArchivingTemplate,
+  activityLog = [],
 }) => {
+  const [showHistory, setShowHistory] = useState(false);
   if (!isOpen) return null;
 
   return (
@@ -200,6 +204,78 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Activity History */}
+          <div className="mt-6 rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <button
+              type="button"
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex w-full items-center justify-between border-0 bg-transparent p-0 cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-slate-500 dark:text-gray-400" />
+                <p className="m-0 text-sm font-bold text-slate-900 dark:text-gray-100">
+                  Activity History
+                </p>
+                <span className="rounded-full bg-slate-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-gray-400">
+                  {activityLog.length}
+                </span>
+              </div>
+              {showHistory ? (
+                <ChevronUp className="h-4 w-4 text-slate-500 dark:text-gray-400" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-slate-500 dark:text-gray-400" />
+              )}
+            </button>
+
+            {showHistory && (
+              <div className="mt-3 max-h-[200px] overflow-auto space-y-1.5">
+                {activityLog.length === 0 ? (
+                  <p className="m-0 text-sm text-slate-500 dark:text-gray-500">
+                    No activity recorded yet.
+                  </p>
+                ) : (
+                  activityLog.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-start gap-3 rounded-lg border border-slate-100 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/40 px-3 py-2"
+                    >
+                      <span
+                        className={`mt-0.5 inline-block h-2 w-2 flex-shrink-0 rounded-full ${
+                          entry.action === "uploaded"
+                            ? "bg-emerald-500"
+                            : entry.action === "replaced"
+                            ? "bg-indigo-500"
+                            : entry.action === "deleted"
+                            ? "bg-rose-500"
+                            : entry.action === "archived"
+                            ? "bg-amber-500"
+                            : "bg-sky-500"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="m-0 text-xs text-slate-800 dark:text-gray-200">
+                          <span className="font-bold">{entry.performed_by_name || entry.performed_by || "System"}</span>
+                          {" "}
+                          <span className="text-slate-500 dark:text-gray-400">{entry.action}</span>
+                          {" "}
+                          <span className="font-semibold">{entry.template_title || "a template"}</span>
+                        </p>
+                        {entry.details && (
+                          <p className="m-0 mt-0.5 text-[11px] text-slate-500 dark:text-gray-500 truncate">
+                            {entry.details}
+                          </p>
+                        )}
+                        <p className="m-0 mt-0.5 text-[10px] text-slate-400 dark:text-gray-600">
+                          {formatDateTime(entry.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>

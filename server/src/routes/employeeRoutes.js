@@ -51,6 +51,8 @@ import {
   archiveFileRecord,
   archiveFileTemplate,
   permanentDeleteFileRecord,
+  getTemplateActivityLog,
+  getFileActivityLog,
 } from "../controllers/employeeController.js";
 import {
   updateMyProfile,
@@ -335,14 +337,26 @@ router.put(
 
 router.delete(
   "/file-management/record/:source/:id",
-  authorizeRoles("Admin", "HR"),
+  authorizeRoles("Admin", "HR", "Supervisor"),
   permanentDeleteFileRecord,
+);
+
+router.get(
+  "/file-management/activity-log",
+  authorizeRoles("Admin", "HR", "Supervisor"),
+  getFileActivityLog,
 );
 
 router.put(
   "/file-templates/:id/archive",
   authorizeRoles("Admin", "HR"),
   archiveFileTemplate,
+);
+
+router.get(
+  "/file-templates/activity-log",
+  authorizeRoles("Admin", "HR", "Supervisor"),
+  getTemplateActivityLog,
 );
 
 // ADD THESE ROUTES (Put them under your router.use(authenticateToken) line)
