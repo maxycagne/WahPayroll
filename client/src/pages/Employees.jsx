@@ -270,17 +270,22 @@ export default function Employees({ shortcutMode = false }) {
     });
 
   return (
-    <div className="max-w-full">
+    <div className="max-w-full px-2 py-3 sm:px-4 sm:py-4">
       {!shortcutMode && (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Employee Management
-            </h1>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-2xl">
+                Employee Management
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Search, filter, and manage employee records from one compact view.
+              </p>
+            </div>
             {canAddEmployee && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                className="inline-flex items-center justify-center rounded-lg bg-purple-600 px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
               >
                 + Add Employee
               </button>
@@ -288,16 +293,17 @@ export default function Employees({ shortcutMode = false }) {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-4 mb-6 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[minmax(0,1.6fr)_repeat(2,minmax(0,0.9fr))]">
             <input
               type="text"
               placeholder="Search ID or Name..."
-              className="flex-1 min-w-[200px] border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <select
-              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               value={filterDesignation}
               onChange={(e) => setFilterDesignation(e.target.value)}
             >
@@ -309,7 +315,7 @@ export default function Employees({ shortcutMode = false }) {
               ))}
             </select>
             <select
-              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -319,45 +325,47 @@ export default function Employees({ shortcutMode = false }) {
               <option value="Casual">Casual</option>
               <option value="PGT Employee">PGT Employee</option>
             </select>
+            </div>
           </div>
 
           {/* Table */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-visible">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             {isLoading || isFetching ? (
-              <div className="p-12 text-center">
+              <div className="p-8 text-center">
                 <div
-                  className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
+                  className="inline-block h-7 w-7 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
                   role="status"
                 >
                   <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">
                     Loading...
                   </span>
                 </div>
-                <p className="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Loading employees...
                 </p>
               </div>
             ) : (
-              <table className="w-full text-left text-sm border-collapse">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-left text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800">
                   <tr>
-                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                    <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       ID
                     </th>
-                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                    <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Full Name
                     </th>
-                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                    <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Designation / Position
                     </th>
-                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                    <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Email Address
                     </th>
-                    <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300">
+                    <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Status
                     </th>
                     {canAddEmployee && (
-                      <th className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300 text-center w-20">
+                      <th className="w-16 px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                         Actions
                       </th>
                     )}
@@ -368,7 +376,7 @@ export default function Employees({ shortcutMode = false }) {
                     <tr>
                       <td
                         colSpan={canAddEmployee ? 6 : 5}
-                        className="px-6 py-12 text-center"
+                        className="px-4 py-10 text-center"
                       >
                         <p className="m-0 text-sm font-semibold text-gray-500">
                           No employees found
@@ -383,13 +391,12 @@ export default function Employees({ shortcutMode = false }) {
                       <tr
                         key={emp.emp_id}
                         onClick={() => setSelectedEmployeeDetails(emp)}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                        className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
                       >
-                        <td className="px-6 py-4 font-medium">{emp.emp_id}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            {/* The Name */}
-                            <div className="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{emp.emp_id}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="font-semibold text-gray-800 transition-colors group-hover:text-purple-600 dark:text-gray-200 dark:group-hover:text-purple-400">
                               {emp.last_name}, {emp.first_name}{" "}
                               {emp.middle_initial
                                 ? `${emp.middle_initial}.`
@@ -397,7 +404,7 @@ export default function Employees({ shortcutMode = false }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                           <div className="font-medium text-gray-900 dark:text-gray-100">
                             {emp.designation}
                           </div>
@@ -405,16 +412,16 @@ export default function Employees({ shortcutMode = false }) {
                             {emp.position}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                           {emp.email}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-2">
-                            <span className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-bold border border-blue-100 dark:border-blue-900/30 inline-block w-fit">
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            <span className="inline-block w-fit rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400">
                               {emp.status}
                             </span>
                             <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-bold border inline-block w-fit ${
+                              className={`inline-block w-fit rounded-full border px-2 py-0.5 text-xs font-bold ${
                                 emp.is_active
                                   ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/30"
                                   : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
@@ -426,7 +433,7 @@ export default function Employees({ shortcutMode = false }) {
                         </td>
                         {canAddEmployee && (
                           <td
-                            className="px-6 py-4 text-center relative"
+                            className="relative px-4 py-3 text-center"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
@@ -435,7 +442,7 @@ export default function Employees({ shortcutMode = false }) {
                                   activeMenu === emp.emp_id ? null : emp.emp_id,
                                 )
                               }
-                              className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-0 bg-transparent cursor-pointer text-gray-500 dark:text-gray-400"
+                              className="rounded-full border-0 bg-transparent p-1.5 text-gray-500 transition-colors hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
                             >
                               <svg
                                 width="20"
@@ -521,13 +528,14 @@ export default function Employees({ shortcutMode = false }) {
                     ))
                   )}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white dark:bg-gray-900 px-4 py-3 border border-t-0 border-gray-200 dark:border-gray-800 rounded-b-xl">
+            <div className="flex items-center justify-between bg-white px-3 py-2.5 text-sm dark:bg-gray-900 border border-t-0 border-gray-200 dark:border-gray-800 rounded-b-xl">
               <div className="text-sm text-gray-700 dark:text-gray-300">
                 Showing{" "}
                 <span className="font-medium">
@@ -545,11 +553,11 @@ export default function Employees({ shortcutMode = false }) {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
+                  className="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   Previous
                 </button>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
+                <div className="px-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Page {currentPage} of {totalPages}
                 </div>
                 <button
@@ -557,7 +565,7 @@ export default function Employees({ shortcutMode = false }) {
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900 cursor-pointer"
+                  className="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   Next
                 </button>
@@ -877,11 +885,11 @@ function EmployeeDetailsModal({ employee, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-lg w-full shadow-2xl border border-gray-200 dark:border-gray-800">
-        <div className="flex items-start justify-between mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-3 flex items-start justify-between gap-4">
           <div>
-            <h2 className="m-0 text-xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="m-0 text-lg font-bold text-gray-900 dark:text-gray-100">
               Employee Details
             </h2>
             <p className="m-0 mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -891,17 +899,17 @@ function EmployeeDetailsModal({ employee, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 dark:text-gray-400 text-2xl bg-transparent border-0 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            className="cursor-pointer border-0 bg-transparent text-2xl text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             &times;
           </button>
         </div>
 
-        <div className="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
+          <div className="space-y-1.5 rounded-lg border border-gray-200 bg-gray-50 p-3.5 dark:border-gray-700 dark:bg-gray-800">
           {details.map((item) => (
             <div
               key={item.label}
-              className="flex items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-2 last:border-b-0 last:pb-0"
+                className="flex items-center justify-between gap-4 border-b border-gray-200 pb-1.5 last:border-b-0 last:pb-0 dark:border-gray-700"
             >
               <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {item.label}
@@ -913,10 +921,10 @@ function EmployeeDetailsModal({ employee, onClose }) {
           ))}
         </div>
 
-        <div className="flex justify-end mt-5">
+        <div className="mt-4 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             Close
           </button>
@@ -943,19 +951,19 @@ function EmployeeModal({
     employees.some((emp) => emp.emp_id === data.emp_id);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-200 dark:border-gray-800">
-        <div className="px-4 py-2.5 bg-gray-900 dark:bg-black flex justify-between items-center text-white">
-          <h2 className="text-base font-bold m-0">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200 dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex items-center justify-between bg-gray-900 px-4 py-2 text-white dark:bg-black">
+          <h2 className="m-0 text-sm font-bold tracking-wide">{title}</h2>
           <button
             onClick={onClose}
-            className="text-white text-2xl bg-transparent border-0 cursor-pointer"
+            className="cursor-pointer border-0 bg-transparent text-2xl text-white"
           >
             &times;
           </button>
         </div>
-        <form onSubmit={onSubmit} className="p-3.5 space-y-2.5">
-          <div className="grid grid-cols-2 gap-2.5">
+        <form onSubmit={onSubmit} className="space-y-3 p-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                 Employee ID<span className="text-red-500">*</span>
@@ -968,7 +976,7 @@ function EmployeeModal({
                 required
                 maxLength={20}
                 placeholder="EMP-001"
-                className={`border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
+                className={`rounded-lg border p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
                   isDuplicate
                     ? "border-red-500 ring-1 ring-red-500"
                     : "border-gray-300 dark:border-gray-700"
@@ -992,12 +1000,12 @@ function EmployeeModal({
                 required
                 maxLength={30}
                 placeholder="email@gmail.com"
-                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
 
-            <div className="flex flex-col gap-0.5 col-span-2">
-              <div className="grid grid-cols-3 gap-1.5">
+            <div className="col-span-1 flex flex-col gap-0.5 sm:col-span-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div className="col-span-1 flex flex-col gap-0.5">
                   <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
                     First Name<span className="text-red-500">*</span>
@@ -1009,7 +1017,7 @@ function EmployeeModal({
                     required
                     maxLength={30}
                     placeholder="JuWAHn"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
@@ -1022,7 +1030,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength="1"
                     placeholder="W"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div className="col-span-1 flex flex-col gap-0.5">
@@ -1051,7 +1059,7 @@ function EmployeeModal({
                 value={data.designation}
                 onChange={onChange}
                 required
-                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="">Select Designation</option>
                 {Object.keys(designationMap).map((d) => (
@@ -1071,7 +1079,7 @@ function EmployeeModal({
                 onChange={onChange}
                 required
                 disabled={!data.designation}
-                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50 dark:disabled:bg-gray-800"
+                className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 dark:disabled:bg-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="">Select Position</option>
                 {data.designation &&
@@ -1109,15 +1117,15 @@ function EmployeeModal({
                 value={data.hired_date?.split("T")[0]}
                 onChange={onChange}
                 required
-                className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
 
-            <div className="flex flex-col gap-0.5 col-span-2 mt-0.5">
+            <div className="col-span-1 mt-0.5 flex flex-col gap-0.5 sm:col-span-2">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Government Details
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[11px] font-semibold text-gray-500 uppercase">
                     PHILHEALTH No.
@@ -1128,7 +1136,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     placeholder="XX-XXXXXXXXX-X"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1142,7 +1150,7 @@ function EmployeeModal({
                     maxLength={20}
                     required
                     placeholder="XXX-XXX-XXX-XXX"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1156,7 +1164,7 @@ function EmployeeModal({
                     maxLength={20}
                     required
                     placeholder="XX - XXXXXXX - X"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1170,7 +1178,7 @@ function EmployeeModal({
                     maxLength={20}
                     required
                     placeholder="XXXX-XXXX-XXXX"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -1183,7 +1191,7 @@ function EmployeeModal({
                     onChange={onChange}
                     maxLength={20}
                     placeholder="XXXXXXXXXX"
-                    className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </div>
               </div>
@@ -1191,7 +1199,7 @@ function EmployeeModal({
           </div>
 
           {!isEdit && (
-            <div className="mt-3 rounded-lg border border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/20 p-2.5">
+            <div className="mt-2 rounded-lg border border-purple-100 bg-purple-50 p-2.5 dark:border-purple-900/50 dark:bg-purple-900/20">
               <p className="m-0 text-xs text-purple-700 dark:text-purple-400 font-semibold">
                 Auto-generated Password:{" "}
                 <span className="font-mono bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
@@ -1202,18 +1210,18 @@ function EmployeeModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending || isDuplicate}
-              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending
                 ? "Processing..."
