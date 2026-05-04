@@ -398,6 +398,7 @@ export default function Payroll({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-summary"] });
       queryClient.invalidateQueries({
         queryKey: ["salary-history", adjustmentModal?.emp_id],
       });
@@ -416,6 +417,7 @@ export default function Payroll({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-summary"] });
       queryClient.invalidateQueries({
         queryKey: ["salary-history", adjustmentModal?.emp_id],
       });
@@ -433,6 +435,7 @@ export default function Payroll({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-summary"] });
       queryClient.invalidateQueries({ queryKey: ["employees"] });
 
       showToast("Base salary updated for selected employee.");
@@ -453,6 +456,7 @@ export default function Payroll({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-summary"] });
     },
     onError: (err) =>
       console.error(err.message || "Failed to generate payroll."),
@@ -467,6 +471,7 @@ export default function Payroll({ shortcutMode = false }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-summary"] });
       setResetConfirmModal(false);
       showToast("All payroll data has been reset successfully.");
     },
@@ -617,6 +622,7 @@ export default function Payroll({ shortcutMode = false }) {
       }
 
       queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-summary"] });
       queryClient.invalidateQueries({
         queryKey: ["salary-history", adjustmentModal?.emp_id],
       });
