@@ -164,7 +164,8 @@ export default function Leave() {
 
   const scopedHistory = (() => {
     if (calendarScope === "own") return myRequestHistory;
-    if (calendarScope === "team") return teamRequestHistory || allRequestHistory;
+    if (calendarScope === "team")
+      return teamRequestHistory || allRequestHistory;
     return allRequestHistory;
   })();
 
