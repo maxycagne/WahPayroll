@@ -156,16 +156,18 @@ export default function Settings() {
           >
             <Lock className="w-4 h-4" /> Security
           </button>
-          <button
-            onClick={() => setActiveTab("credentials")}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === "credentials"
-                ? "bg-purple-600 text-white shadow-md"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
-          >
-            <CreditCard className="w-4 h-4" /> Credentials
-          </button>
+          {(currentUser.role !== "Admin" && currentUser.role !== "HR") && (
+            <button
+              onClick={() => setActiveTab("credentials")}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+                activeTab === "credentials"
+                  ? "bg-purple-600 text-white shadow-md"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <CreditCard className="w-4 h-4" /> Credentials
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("appearance")}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
@@ -374,119 +376,121 @@ export default function Settings() {
                 </form>
               </div>
             )}
-            {activeTab === "credentials" && (
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
-                  Government Credentials
-                </h3>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    updateProfileMutation.mutate(credentialsForm);
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        PHILHEALTH No.
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.philhealth_no}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            philhealth_no: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+            {activeTab === "credentials" &&
+              currentUser.role !== "Admin" &&
+              currentUser.role !== "HR" && (
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
+                    Government Credentials
+                  </h3>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      updateProfileMutation.mutate(credentialsForm);
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          PHILHEALTH No.
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="N/A"
+                          value={credentialsForm.philhealth_no}
+                          onChange={(e) =>
+                            setCredentialsForm({
+                              ...credentialsForm,
+                              philhealth_no: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          TIN
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="N/A"
+                          value={credentialsForm.tin}
+                          onChange={(e) =>
+                            setCredentialsForm({
+                              ...credentialsForm,
+                              tin: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          SSS No.
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="N/A"
+                          value={credentialsForm.sss_no}
+                          onChange={(e) =>
+                            setCredentialsForm({
+                              ...credentialsForm,
+                              sss_no: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          PAG-IBIG MID No.
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="N/A"
+                          value={credentialsForm.pag_ibig_mid_no}
+                          onChange={(e) =>
+                            setCredentialsForm({
+                              ...credentialsForm,
+                              pag_ibig_mid_no: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          GSIS No.
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="N/A"
+                          value={credentialsForm.gsis_no}
+                          onChange={(e) =>
+                            setCredentialsForm({
+                              ...credentialsForm,
+                              gsis_no: e.target.value,
+                            })
+                          }
+                          className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        TIN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.tin}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            tin: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                    <div className="pt-4 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={updateProfileMutation.isPending}
+                        className="px-5 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {updateProfileMutation.isPending
+                          ? "Saving..."
+                          : "Save Changes"}
+                      </button>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        SSS No.
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.sss_no}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            sss_no: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        PAG-IBIG MID No.
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.pag_ibig_mid_no}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            pag_ibig_mid_no: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        GSIS No.
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N/A"
-                        value={credentialsForm.gsis_no}
-                        onChange={(e) =>
-                          setCredentialsForm({
-                            ...credentialsForm,
-                            gsis_no: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="pt-4 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={updateProfileMutation.isPending}
-                      className="px-5 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {updateProfileMutation.isPending
-                        ? "Saving..."
-                        : "Save Changes"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+                  </form>
+                </div>
+              )}
             {activeTab === "appearance" && (
               <div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5 border-b border-gray-100 dark:border-gray-800 pb-3">
