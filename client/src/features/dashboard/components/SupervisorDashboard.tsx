@@ -35,6 +35,12 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   currentUser,
 }) => {
   const navigate = useNavigate();
+  const isPendingLeaveStatus = (status: unknown) => {
+    const normalized = String(status || "").trim().toLowerCase();
+    return ["pending", "pending approval", "pending review"].includes(
+      normalized,
+    );
+  };
 
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
@@ -85,7 +91,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       .filter(
         (row) =>
           String(row.emp_id) === String(currentUser.emp_id) &&
-          String(row.status || "").toLowerCase() === "pending"
+          isPendingLeaveStatus(row.status)
       )
       .map((row) => ({
         id: `leave-${row.id}`,

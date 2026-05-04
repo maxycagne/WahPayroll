@@ -134,6 +134,7 @@ export default function Leave() {
       requests: {
         rows: myRequestRows,
         history: myRequestHistory,
+        teamHistory: teamRequestHistory,
         allHistory: allRequestHistory,
       },
     },
@@ -161,10 +162,14 @@ export default function Leave() {
     currentUser,
   });
 
-  const sourceHistory = isAdminRole ? allRequestHistory : myRequestHistory;
+  const scopedHistory = (() => {
+    if (calendarScope === "own") return myRequestHistory;
+    if (calendarScope === "team") return teamRequestHistory || allRequestHistory;
+    return allRequestHistory;
+  })();
 
   const filteredHistory = useMemo(() => {
-    return sourceHistory.filter((entry) => {
+    return scopedHistory.filter((entry) => {
       if (!entry.filter_date) return false;
       const d = new Date(entry.filter_date);
       return (
@@ -172,7 +177,7 @@ export default function Leave() {
         d.getMonth() === activeMonth.month
       );
     });
-  }, [sourceHistory, activeMonth]);
+  }, [scopedHistory, activeMonth]);
 
   const {
     submitLeaveMutation,

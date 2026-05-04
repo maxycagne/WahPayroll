@@ -210,6 +210,7 @@ export const useComputedValues = ({
       [
         ...myLeaves.map((l) => ({
           id: `leave-${l.id}`,
+          emp_id: l.emp_id,
           request_type: l.leave_type,
           employee_name: `${l.first_name || ""} ${l.last_name || ""}`.trim(),
           schedule: `${formatLongDate(l.date_from)} - ${formatLongDate(l.date_to)}`,
@@ -221,6 +222,7 @@ export const useComputedValues = ({
         })),
         ...myOffsets.map((o) => ({
           id: `offset-${o.id}`,
+          emp_id: o.emp_id,
           request_type:
             Number(o.days_applied || 0) > 0
               ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
@@ -235,6 +237,7 @@ export const useComputedValues = ({
         })),
         ...myOwnResignations.map((r) => ({
           id: `resignation-${r.id}`,
+          emp_id: r.emp_id,
           request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
           employee_name: `${r.first_name || ""} ${r.last_name || ""}`.trim(),
           schedule: r.effective_date
@@ -260,6 +263,7 @@ export const useComputedValues = ({
       [
         ...leaves.map((l) => ({
           id: `leave-${l.id}`,
+          emp_id: l.emp_id,
           request_type: l.leave_type,
           employee_name: `${l.first_name || ""} ${l.last_name || ""}`.trim(),
           schedule: `${formatLongDate(l.date_from)} - ${formatLongDate(l.date_to)}`,
@@ -271,6 +275,7 @@ export const useComputedValues = ({
         })),
         ...offsetApplications.map((o) => ({
           id: `offset-${o.id}`,
+          emp_id: o.emp_id,
           request_type:
             Number(o.days_applied || 0) > 0
               ? `Offset (${Number(o.days_applied || 0).toFixed(2)} days)`
@@ -285,6 +290,7 @@ export const useComputedValues = ({
         })),
         ...myResignations.map((r) => ({
           id: `resignation-${r.id}`,
+          emp_id: r.emp_id,
           request_type: `Resignation - ${r.resignation_type || "Resignation"}`,
           employee_name: `${r.first_name || ""} ${r.last_name || ""}`.trim(),
           schedule: r.effective_date
@@ -302,6 +308,14 @@ export const useComputedValues = ({
           new Date(a.filed_at || 0).getTime(),
       ),
     [leaves, offsetApplications, myResignations],
+  );
+
+  const teamRequestHistory = useMemo(
+    () =>
+      allRequestHistory.filter((entry) =>
+        isSupervisorTeamMember(entry, currentUser?.emp_id),
+      ),
+    [allRequestHistory, currentUser?.emp_id],
   );
 
   const unifiedMyLeaves = useMemo(
@@ -500,6 +514,7 @@ export const useComputedValues = ({
         cancellationsPending: myCancellationRequestsPending,
         rows: myRequestRows,
         history: myRequestHistory,
+        teamHistory: teamRequestHistory,
         allHistory: allRequestHistory,
       },
     },

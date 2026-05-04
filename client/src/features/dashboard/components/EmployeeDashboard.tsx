@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
@@ -7,8 +7,11 @@ import {
   CalendarPlus2,
   Clock3,
   FolderClock,
+  FileText,
+  LogOut,
 } from "lucide-react";
 import { User } from "../types";
+import { AttendanceModal } from "./AttendanceModal";
 import {
   getDashboardSummary,
   getMyAttendance,
@@ -34,6 +37,14 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   currentUser,
 }) => {
   const navigate = useNavigate();
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  
+  const isPendingLeaveStatus = (status: unknown) => {
+    const normalized = String(status || "").trim().toLowerCase();
+    return ["pending", "pending approval", "pending review"].includes(
+      normalized,
+    );
+  };
 
   const { data: dashboardData, isLoading: dashLoading } = useQuery({
     queryKey: ["dashboardSummary"],
@@ -84,7 +95,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
   const pendingRequests = useMemo(() => [
     ...(myLeaves as any[])
-      .filter((l) => l.status === "Pending")
+      .filter((l) => isPendingLeaveStatus(l.status))
       .map((l) => ({
         id: `l-${l.id}`,
         type: "Leave",
@@ -168,30 +179,39 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => navigate("/payslips")}
+            className="group flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
+          >
+            <span className="rounded-md bg-blue-100 dark:bg-blue-900/30 p-1.5 text-blue-700 dark:text-blue-400">
+              <FileText className="h-4 w-4" />
+            </span>
+            <span className="text-xs font-semibold text-slate-800 dark:text-gray-200 text-center leading-tight">
+              View Payslip
+            </span>
+          </button>
           <button
             onClick={() => navigate("/leave")}
-            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
+            className="group flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
           >
             <span className="rounded-md bg-violet-100 dark:bg-violet-900/30 p-1.5 text-violet-700 dark:text-violet-400">
               <CalendarPlus2 className="h-4 w-4" />
             </span>
-            <span className="text-sm font-bold text-slate-800 dark:text-gray-200">
-              File a Leave Request
+            <span className="text-xs font-semibold text-slate-800 dark:text-gray-200 text-center leading-tight">
+              File Leave
             </span>
-            <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </button>
           <button
             onClick={() => navigate("/leave")}
-            className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
+            className="group flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm transition-colors hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer"
           >
-            <span className="rounded-md bg-indigo-100 dark:bg-indigo-900/30 p-1.5 text-indigo-700 dark:text-indigo-400">
-              <Clock3 className="h-4 w-4" />
+            <span className="rounded-md bg-red-100 dark:bg-red-900/30 p-1.5 text-red-700 dark:text-red-400">
+              <LogOut className="h-4 w-4" />
             </span>
-            <span className="text-sm font-bold text-slate-800 dark:text-gray-200">
-              File an Offset
+            <span className="text-xs font-semibold text-slate-800 dark:text-gray-200 text-center leading-tight">
+              File Resignation
             </span>
-            <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
       </div>
@@ -238,10 +258,10 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </div>
             )}
             <button
-              onClick={() => navigate("/attendance")}
+              onClick={() => setIsAttendanceModalOpen(true)}
               className="mt-4 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 py-2 text-xs font-bold text-slate-600 dark:text-gray-300 transition-colors hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer"
             >
-              View Full Calendar
+              View Full Attendance
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -302,6 +322,13 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      <AttendanceModal
+        isOpen={isAttendanceModalOpen}
+        onClose={() => setIsAttendanceModalOpen(false)}
+        attendance={myAttendance}
+        badgeClass={badgeClass}
+      />
     </div>
   );
 };
