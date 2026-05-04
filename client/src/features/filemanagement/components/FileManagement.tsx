@@ -231,7 +231,6 @@ export const FileManagement: React.FC = () => {
         isReplacingTemplate={isReplacingTemplate}
         onArchive={handleArchiveTemplate}
         isArchivingTemplate={isArchivingTemplate}
-        activityLog={activityLog}
       />
 
       <input
