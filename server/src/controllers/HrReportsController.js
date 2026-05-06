@@ -19,7 +19,7 @@ export const getHRReports = async (req, res) => {
           DATE_FORMAT(l.date_to, '%Y-%m-%d') AS dateTo
         FROM leave_requests l
         JOIN employees e ON l.emp_id = e.emp_id
-        WHERE e.role != 'Admin' /* <-- HIDES ADMIN */
+        WHERE e.role != 'Admin' AND e.registration_status = 'Approved' /* <-- HIDES ADMIN */
         ORDER BY l.date_from DESC
       `);
       reportData = rows;
@@ -33,7 +33,7 @@ export const getHRReports = async (req, res) => {
           SUM(CASE WHEN a.status = 'Late' THEN 1 ELSE 0 END) AS late
         FROM attendance a
         JOIN employees e ON a.emp_id = e.emp_id
-        WHERE e.role != 'Admin' /* <-- HIDES ADMIN */
+        WHERE e.role != 'Admin' AND e.registration_status = 'Approved' /* <-- HIDES ADMIN */
         GROUP BY a.date
         ORDER BY a.date DESC
         LIMIT 30
@@ -49,7 +49,7 @@ export const getHRReports = async (req, res) => {
           b.offset_credits AS offsetCredits
         FROM leave_balances b
         JOIN employees e ON b.emp_id = e.emp_id
-        WHERE e.role != 'Admin' /* <-- HIDES ADMIN */
+        WHERE e.role != 'Admin' AND e.registration_status = 'Approved' /* <-- HIDES ADMIN */
       `);
       reportData = rows;
     }

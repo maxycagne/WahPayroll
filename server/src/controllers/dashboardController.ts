@@ -69,6 +69,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           FROM leave_requests l
           JOIN employees e ON l.emp_id = e.emp_id
           WHERE l.status IN (?, ?, ?)
+            AND e.registration_status = 'Approved'
             AND e.emp_id <> ?
         `,
         [...pendingLeaveStatuses, currentUser.emp_id],
@@ -82,6 +83,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           JOIN employees e ON l.emp_id = e.emp_id
           WHERE l.status IN (?, ?, ?)
             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+            AND e.registration_status = 'Approved'
             AND e.designation = ?
             AND e.emp_id <> ?
         `,
@@ -97,6 +99,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          FROM employees e
          JOIN leave_requests l ON e.emp_id = l.emp_id
          WHERE CURDATE() BETWEEN l.date_from AND l.date_to
+           AND e.registration_status = 'Approved'
            AND l.status = 'Approved'`,
       );
       onLeave = rows;
@@ -108,6 +111,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          WHERE CURDATE() BETWEEN l.date_from AND l.date_to
            AND l.status = 'Approved'
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.registration_status = 'Approved'
            AND e.designation = ?
            AND e.emp_id <> ?`,
         [currentUser.designation || "", currentUser.emp_id],
@@ -119,6 +123,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          FROM employees e
          JOIN leave_requests l ON e.emp_id = l.emp_id
          WHERE e.emp_id = ?
+           AND e.registration_status = 'Approved'
            AND CURDATE() BETWEEN l.date_from AND l.date_to
            AND l.status = 'Approved'`,
         [currentUser.emp_id],
@@ -134,6 +139,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.status != 'Inactive'
            AND COALESCE(e.role, '') <> 'Admin'
+           AND e.registration_status = 'Approved'
            AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
            AND e.emp_id NOT IN (
              SELECT l.emp_id 
@@ -150,6 +156,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          LEFT JOIN attendance a ON e.emp_id = a.emp_id AND a.date = CURDATE()
          WHERE e.status != 'Inactive'
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.registration_status = 'Approved'
            AND e.designation = ?
            AND e.emp_id <> ?
            AND (a.emp_id IS NULL OR a.status = 'Absent' OR a.status2 = 'Absent')
@@ -185,7 +192,8 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
          FROM employees e
-         JOIN leave_balances lb ON e.emp_id = lb.emp_id`,
+         JOIN leave_balances lb ON e.emp_id = lb.emp_id
+         WHERE e.registration_status = 'Approved'`,
       );
       balances = rows;
     } else {
@@ -193,7 +201,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
          FROM employees e
          JOIN leave_balances lb ON e.emp_id = lb.emp_id
-         WHERE e.emp_id = ?`,
+         WHERE e.emp_id = ? AND e.registration_status = 'Approved'`,
         [currentUser.emp_id],
       );
       balances = rows;
@@ -220,6 +228,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
           JOIN employees e ON r.emp_id = e.emp_id
           WHERE r.status IN ('Pending Approval', 'Clearance Uploaded')
             AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+            AND e.registration_status = 'Approved'
             AND e.designation = ?
             AND e.emp_id <> ?
         `,
@@ -284,6 +293,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         `SELECT emp_id, first_name, last_name
          FROM employees
          WHERE COALESCE(role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND registration_status = 'Approved'
            AND designation = ?
            AND emp_id <> ?
            AND status != 'Inactive'`,
@@ -296,6 +306,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          JOIN employees e ON e.emp_id = a.emp_id
          WHERE a.date = CURDATE()
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.registration_status = 'Approved'
            AND e.designation = ?
            AND e.emp_id <> ?`,
         [currentUser.designation || "", currentUser.emp_id],
@@ -347,6 +358,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          JOIN employees e ON e.emp_id = oa.emp_id
          WHERE oa.status IN ('Pending', 'Pending Approval')
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.registration_status = 'Approved'
            AND e.designation = ?
            AND e.emp_id <> ?
          ORDER BY oa.created_at DESC
@@ -360,6 +372,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
          JOIN employees e ON e.emp_id = r.emp_id
          WHERE r.status IN ('Pending Approval', 'Clearance Uploaded')
            AND COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
+           AND e.registration_status = 'Approved'
            AND e.designation = ?
            AND e.emp_id <> ?
          ORDER BY r.created_at DESC
