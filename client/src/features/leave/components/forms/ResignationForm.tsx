@@ -730,11 +730,23 @@ export default function ResignationForm({
   }
 
   if (hasExistingResignation) {
+    const getStatusHeading = () => {
+      const status = String(existingResignation?.status || "").trim().toLowerCase();
+      if (status.includes("approved") || status.includes("awaiting clearance")) {
+        return "Resignation approved";
+      } else if (status.includes("rejected")) {
+        return "Resignation rejected";
+      } else if (status.includes("officially resigned")) {
+        return "Resignation finalized";
+      }
+      return "Resignation request already under review";
+    };
+
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 shadow-sm dark:border-yellow-700 dark:bg-yellow-900/20">
           <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
-            Resignation request already under review
+            {getStatusHeading()}
           </p>
           <p className="mt-2 text-sm text-yellow-800 dark:text-yellow-200">
             You have already submitted a resignation request.

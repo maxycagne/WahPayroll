@@ -66,7 +66,8 @@ export default function MyPendingRequestsTableRow({
               Upload Clearance
             </button>
           )}
-        {item.row_action === "cancel_pending" && (
+        {item.row_action === "cancel_pending" &&
+          item.row_status !== "Awaiting Clearance" && (
           <button
             type="button"
             disabled={cancelMyPendingRequestMutation.isPending}
