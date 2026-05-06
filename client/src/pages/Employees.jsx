@@ -344,7 +344,7 @@ export default function Employees({ shortcutMode = false }) {
 
           {/* Table */}
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            {isLoading || isFetching ? (
+            {isLoading ? (
               <div className="p-8 text-center">
                 <div
                   className="inline-block h-7 w-7 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"

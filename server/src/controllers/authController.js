@@ -145,6 +145,7 @@ export const login = async (req, res) => {
         tin: user.tin || "",
         sss_no: user.sss_no || "",
         pag_ibig_mid_no: user.pag_ibig_mid_no || "",
+
         gsis_no: user.gsis_no || "",
       },
     });

@@ -239,6 +239,8 @@ export default function Payroll({ shortcutMode = false }) {
         "Failed to fetch payroll",
       );
     },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const payrollData = responseData?.data || [];
@@ -261,6 +263,8 @@ export default function Payroll({ shortcutMode = false }) {
         "Failed to fetch payroll summary",
       );
     },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: employeesData = [], isLoading: isLoadingEmployees } = useQuery({
@@ -1126,7 +1130,7 @@ export default function Payroll({ shortcutMode = false }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {isLoadingPayroll || isFetchingPayroll ? (
+                  {isLoadingPayroll ? (
                     Array.from({ length: payrollSkeletonRows }).map((_, i) => (
                       <tr key={`skeleton-${i}`}>
                         {isAdmin && bulkAdjustmentMode && (
