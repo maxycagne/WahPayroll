@@ -20,6 +20,7 @@ export const getPayrollByEmployee = async (connection, emp_id, period) => {
     FROM payroll p
     JOIN employees e ON p.emp_id = e.emp_id
     WHERE p.emp_id = ? 
+      AND e.registration_status = 'Approved'
       AND p.period_start LIKE ? 
     LIMIT 1
     `,
@@ -41,6 +42,7 @@ export const getPayrollForBulk = async (connection, period) => {
     FROM payroll p
     JOIN employees e ON p.emp_id = e.emp_id
     WHERE p.period_start LIKE ?
+      AND e.registration_status = 'Approved'
     `,
     [`${period}%`],
   );
@@ -1156,6 +1158,7 @@ const getAccessibleEmployeesForFileManagement = async (connection, viewer) => {
   let whereClause = `
     WHERE LOWER(COALESCE(role, '')) <> 'admin'
       AND LOWER(TRIM(COALESCE(designation, ''))) <> 'admin system'
+      AND registration_status = 'Approved'
   `;
   const params = [];
 

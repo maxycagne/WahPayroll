@@ -13,7 +13,7 @@ export const getAttendance = async (req: Request, res: Response) => {
     const search = (req.query.search as string) || "";
     const offset = (page - 1) * limit;
 
-    let whereClause = "COALESCE(e.role, '') <> 'Admin'";
+    let whereClause = "e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'";
     const queryParams: any[] = [];
 
     if (search) {
@@ -143,7 +143,8 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
           AND status IN ('Approved', 'Partially Approved')
         GROUP BY emp_id
       ) lv ON e.emp_id = lv.emp_id
-      WHERE COALESCE(e.role, '') <> 'Admin'
+      WHERE e.registration_status = 'Approved'
+        AND COALESCE(e.role, '') <> 'Admin'
         AND e.status != 'Inactive'
       ORDER BY
         COALESCE(att.total_absences, 0) DESC,
@@ -174,7 +175,7 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
       SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
-      WHERE COALESCE(e.role, '') <> 'Admin'
+      WHERE e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'
     `,
       [date],
     );
@@ -196,7 +197,7 @@ export const saveBulkAttendance = async (req: Request, res: Response) => {
     await connection.query(
       `DELETE a FROM attendance a
        JOIN employees e ON a.emp_id = e.emp_id
-       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND COALESCE(e.role, '') <> 'Admin'`,
+       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'`,
       [date],
     );
 
