@@ -683,6 +683,7 @@ export default function Employees({ shortcutMode = false }) {
                   console.log(deleteConfirm.emp_id);
                   socket.emit("delete-user", deleteConfirm.emp_id);
                   queryClient.invalidateQueries(["employees"]);
+                  setDeleteConfirm(null);
                   // deleteMutation.mutate(deleteConfirm.emp_id);
                 }}
                 className="flex-1 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
