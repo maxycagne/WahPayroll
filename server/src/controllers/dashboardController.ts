@@ -452,6 +452,14 @@ export const getAllEmployees = async (req: Request, res: Response) => {
   try {
     await ensureEmployeeGovernmentColumns();
 
+    const currentUser: any = await getEmployeeProfile(
+      pool,
+      (req as any).user?.emp_id,
+    );
+    if (!currentUser) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const fetchAll = String(req.query.all || "").toLowerCase() === "true";
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 6;
@@ -463,6 +471,11 @@ export const getAllEmployees = async (req: Request, res: Response) => {
 
     let whereClause = "registration_status = 'Approved' AND emp_id NOT LIKE 'TEMP\\_%' AND COALESCE(role, '') <> 'Admin'";
     const queryParams: any[] = [];
+
+    if (currentUser.role === "Supervisor") {
+      whereClause += " AND COALESCE(role, '') IN ('RankAndFile', 'HR', 'Admin') AND designation = ? AND emp_id <> ?";
+      queryParams.push(currentUser.designation || "", currentUser.emp_id);
+    }
 
     if (search) {
       whereClause += " AND (first_name LIKE ? OR last_name LIKE ? OR emp_id LIKE ?)";

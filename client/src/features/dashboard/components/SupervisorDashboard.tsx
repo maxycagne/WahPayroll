@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,6 +9,7 @@ import {
   FolderClock,
 } from "lucide-react";
 import { User } from "../types";
+import { AttendanceModal } from "./AttendanceModal";
 import {
   getDashboardSummary,
   getMyAttendance,
@@ -35,6 +36,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   currentUser,
 }) => {
   const navigate = useNavigate();
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const isPendingLeaveStatus = (status: unknown) => {
     const normalized = String(status || "").trim().toLowerCase();
     return ["pending", "pending approval", "pending review"].includes(
@@ -406,6 +408,13 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               </p>
             )}
           </div>
+          <button
+            onClick={() => setIsAttendanceModalOpen(true)}
+            className="mt-4 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 py-2 text-xs font-bold text-slate-600 dark:text-gray-300 transition-colors hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer"
+          >
+            View Full Attendance
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </section>
 
         <section className="rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
@@ -445,6 +454,13 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           </div>
         </section>
       </div>
+
+      <AttendanceModal
+        isOpen={isAttendanceModalOpen}
+        onClose={() => setIsAttendanceModalOpen(false)}
+        attendance={myAttendance}
+        badgeClass={statusClass}
+      />
     </div>
   );
 };
