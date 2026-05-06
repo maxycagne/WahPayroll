@@ -688,20 +688,6 @@ export const ensureNotificationsTable = async (connection = pool) => {
   `);
 };
 
-export const ensureEmployeeMissingDocsTable = async (connection = pool) => {
-  const empIdColumn = await getEmpIdColumnDefinition(connection);
-
-  await connection.query(`
-    CREATE TABLE IF NOT EXISTS employee_missing_docs (
-      emp_id ${empIdColumn} PRIMARY KEY,
-      missing_docs TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE CASCADE
-    )
-  `);
-};
-
 export const ensureFileTemplatesTable = async (connection = pool) => {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS file_templates (
@@ -2697,35 +2683,6 @@ export const getAllResignations = async (req, res) => {
     console.error("DETAILED SQL ERROR:", error.message);
     // This will send the EXACT error to your browser console
     return res.status(500).json({ message: error.message });
-  }
-};
-
-// --- UPDATE MISSING DOCUMENTS ---
-export const updateMissingDocs = async (req, res) => {
-  const { emp_id, missing_docs } = req.body;
-
-  if (!emp_id)
-    return res.status(400).json({ message: "Employee ID is required" });
-
-  try {
-    await ensureEmployeeMissingDocsTable();
-
-    if (!missing_docs || missing_docs.trim() === "") {
-      // If the HR clears the text box, it means all docs are submitted! Delete the record.
-      await pool.query("DELETE FROM employee_missing_docs WHERE emp_id = ?", [
-        emp_id,
-      ]);
-    } else {
-      // Insert or Update the missing documents
-      await pool.query(
-        "INSERT INTO employee_missing_docs (emp_id, missing_docs) VALUES (?, ?) ON DUPLICATE KEY UPDATE missing_docs = VALUES(missing_docs)",
-        [emp_id, missing_docs],
-      );
-    }
-    res.json({ message: "Employee documents updated successfully" });
-  } catch (error) {
-    console.error("DB Error in updateMissingDocs:", error);
-    res.status(500).json({ message: "Error updating missing documents" });
   }
 };
 

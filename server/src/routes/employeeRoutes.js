@@ -17,7 +17,6 @@ import {
   fileOffsetApplication,
   updateOffsetApplicationStatus,
   getPayrollReports,
-  updateMissingDocs,
   getMyResignations,
   fileResignation,
   getResignationRecipient,
@@ -74,8 +73,6 @@ import fs from "fs";
 const router = express.Router();
 
 router.use(authenticateToken);
-
-router.post("/missing-docs", authorizeRoles("Admin", "HR"), updateMissingDocs);
 
 router.get("/all-resignations", authorizeRoles("Admin", "HR"), getAllResignations);
 router.get(

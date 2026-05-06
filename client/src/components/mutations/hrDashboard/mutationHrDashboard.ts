@@ -1,16 +1,5 @@
 import axiosInterceptor from "@/hooks/interceptor";
-import { mutationOptions, useQueryClient } from "@tanstack/react-query";
-
-export const updateMutationDoc = mutationOptions({
-  mutationFn: async (data: { emp_id: number; missing_docs: string[] }) => {
-    const res = await axiosInterceptor.post("/api/employees/missing-docs", {
-      emp_id: data.emp_id,
-      missing_docs: data.missing_docs.join(", "),
-    });
-
-    return res.data;
-  },
-});
+import { mutationOptions } from "@tanstack/react-query";
 
 export const updateResignationMutationOptions = mutationOptions({
   mutationFn: async ({
