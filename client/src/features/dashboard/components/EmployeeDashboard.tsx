@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertTriangle,
   ArrowRight,
   CalendarPlus2,
   Clock3,
@@ -77,13 +76,6 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
     [dashboardData?.balances, currentUser.emp_id]
   );
 
-  const myMissingDocsRecord = useMemo(() => 
-    dashboardData?.missingDocs?.find(
-      (d: any) => String(d.emp_id) === String(currentUser.emp_id)
-    ),
-    [dashboardData?.missingDocs, currentUser.emp_id]
-  );
-
   const personalSummary = useMemo(() => dashboardData?.personalSummary || {}, [dashboardData]);
 
   const displayedLeaveBalance = useMemo(() => 
@@ -150,26 +142,6 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           )}
         </div>
       </div>
-
-      {myMissingDocsRecord && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 p-4 shadow-sm">
-          <span className="mt-0.5 rounded-md bg-white dark:bg-gray-800 p-1 text-red-600 dark:text-red-400">
-            <AlertTriangle className="h-4 w-4" />
-          </span>
-          <div>
-            <h3 className="m-0 mb-1 text-sm font-bold text-red-800 dark:text-red-400">
-              Action Required: Missing Documents
-            </h3>
-            <p className="m-0 text-xs leading-5 text-red-700 dark:text-red-300">
-              HR has flagged your profile for missing requirements:{" "}
-              <span className="font-bold">
-                {myMissingDocsRecord.missing_docs}
-              </span>
-              . Please submit these as soon as possible.
-            </p>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col justify-between rounded-xl border border-emerald-200/70 dark:border-emerald-900/30 bg-white dark:bg-gray-900 p-5 shadow-sm">

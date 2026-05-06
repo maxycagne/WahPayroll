@@ -15,6 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import React from "react";
 
+const formatDateForInput = (dateStr?: string) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const designations = {
   Operations: [
     "Supervisor(Finance & Operations)",
@@ -121,13 +130,12 @@ export const RegistrationRequestsTable = () => {
                 <div className="flex justify-center gap-2">
                   <Button
                     onClick={() => {
-                      // Reset emp_id to empty when opening modal so admin can fill it
+                      // Open modal and preserve the original temp id while allowing admin to edit emp_id
                       setEditingRequest({
                         ...req,
                         emp_id: req.emp_id,
                         original_temp_id: req.emp_id,
                       } as any);
-                      // We actually need a way to track the original TEMP_ID while editing the new emp_id
                     }}
                     variant="outline"
                     className="h-8 px-2 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/50 hover:bg-purple-50 dark:hover:bg-purple-900/20"
@@ -169,23 +177,18 @@ export const RegistrationRequestsTable = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1 md:col-span-2">
                   <label className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase">
-                    ASSIGN EMPLOYEE ID (REQUIRED)
+                    Employee ID
                   </label>
                   <input
                     name="emp_id_new"
-                    value={
-                      editingRequest.emp_id.startsWith("TEMP_")
-                        ? ""
-                        : editingRequest.emp_id
-                    }
+                    value={editingRequest.emp_id || ""}
                     onChange={(e) =>
                       setEditingRequest({
                         ...editingRequest,
                         emp_id: e.target.value,
                       })
                     }
-                    placeholder="Enter permanent Employee ID"
-                    required
+                    placeholder="Enter or edit Employee ID"
                     className="border-2 border-purple-200 dark:border-purple-800 rounded-lg p-2.5 focus:border-purple-500 dark:bg-gray-800 dark:text-gray-100 outline-none font-bold placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
@@ -320,11 +323,7 @@ export const RegistrationRequestsTable = () => {
                   </label>
                   <input
                     type="date"
-                    value={
-                      editingRequest.hired_date
-                        ? editingRequest.hired_date.split("T")[0]
-                        : ""
-                    }
+                    value={formatDateForInput(editingRequest.hired_date)}
                     onChange={(e) =>
                       setEditingRequest({
                         ...editingRequest,
@@ -436,7 +435,8 @@ export const RegistrationRequestsTable = () => {
                   className="bg-purple-600 hover:bg-purple-700 text-white"
                   disabled={
                     approveMutation.isPending ||
-                    editingRequest.emp_id.startsWith("TEMP_")
+                    !editingRequest.emp_id ||
+                    editingRequest.emp_id === (editingRequest as any).original_temp_id
                   }
                 >
                   {approveMutation.isPending

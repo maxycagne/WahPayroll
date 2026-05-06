@@ -4,7 +4,6 @@ import { s3Client, s3BucketName } from "../config/s3";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import {
   ensureResignationsTable,
-  ensureEmployeeMissingDocsTable,
   getEmployeeProfile,
   recalculateLeaveBalanceForEmployee,
   ensureOffsetTables,
@@ -47,7 +46,6 @@ const deleteLeaveDocuments = async (documentsJson: any) => {
 export const getDashboardSummary = async (req: Request, res: Response) => {
   try {
     await ensureResignationsTable();
-    await ensureEmployeeMissingDocsTable();
 
     const currentUser: any = await getEmployeeProfile(pool, (req as any).user?.emp_id);
     if (!currentUser) {
@@ -230,36 +228,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       resignations = rows;
     }
 
-    let missingDocs = [];
-    if (isAdmin || isHR) {
-      const [rows]: any = await pool.query(
-        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
-         FROM employee_missing_docs m
-         JOIN employees e ON m.emp_id = e.emp_id`,
-      );
-      missingDocs = rows;
-    } else if (isSupervisor) {
-      const [rows]: any = await pool.query(
-        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
-         FROM employee_missing_docs m
-         JOIN employees e ON m.emp_id = e.emp_id
-         WHERE COALESCE(e.role, '') IN ('RankAndFile', 'HR', 'Admin')
-           AND e.designation = ?
-           AND e.emp_id <> ?`,
-        [currentUser.designation || "", currentUser.emp_id],
-      );
-      missingDocs = rows;
-    } else {
-      const [rows]: any = await pool.query(
-        `SELECT m.*, e.first_name, e.last_name, e.designation, e.hired_date
-         FROM employee_missing_docs m
-         JOIN employees e ON m.emp_id = e.emp_id
-         WHERE m.emp_id = ?`,
-        [currentUser.emp_id],
-      );
-      missingDocs = rows;
-    }
-
     const [todayAttendanceRows]: any = await pool.query(
       `SELECT status
        FROM attendance
@@ -305,7 +273,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         Number(myPendingResignations[0]?.total || 0),
       leaveBalance: Number(balances[0]?.leave_balance || 0),
       offsetCredits: Number(balances[0]?.offset_credits || 0),
-      hasMissingDocs: missingDocs.length > 0,
     };
 
     let teamSummary = null;
@@ -455,7 +422,6 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       absents,
       balances,
       resignations,
-      missingDocs,
       personalSummary,
       teamSummary,
       teamAttendanceStatus,

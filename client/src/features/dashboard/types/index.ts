@@ -13,7 +13,6 @@ export interface User {
 
 export interface DashboardSummary {
   balances?: any[];
-  missingDocs?: any[];
   personalSummary?: {
     leaveBalance?: number;
     employeeStatus?: string;

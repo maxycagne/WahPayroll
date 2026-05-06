@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Clock3 } from "lucide-react";
@@ -23,12 +23,9 @@ import {
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import axiosInterceptor from "@/hooks/interceptor";
 import {
-  updateMutationDoc,
   updateLeaveMutationOptions,
   updateResignationMutationOptions,
 } from "@/components/mutations/hrDashboard/mutationHrDashboard";
-
-import UpdateDocsModal from "@/components/hrDashboard/UpdateDocsModal";
 import {
   AbsentModal,
   OnLeaveModal,
@@ -109,17 +106,12 @@ export default function HRDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [showDocsModal, setShowDocsModal] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [period] = useState(new Date().toISOString().slice(0, 7));
   const [year, month] = period.split("-").map(Number);
 
   // Toast notification state
   const [toast, setToast] = useState(null);
-
-  // Form & Search state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [docForm, setDocForm] = useState({ emp_id: "", missing_docs: [] });
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -156,20 +148,6 @@ export default function HRDashboard() {
     },
   });
 
-  const updateDocsMutation = useMutation({
-    ...updateMutationDoc,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["dashboardSummary"]);
-      showToast("Employee documents updated successfully!", "success");
-
-      setDocForm({ emp_id: "", missing_docs: [] });
-      setSearchQuery("");
-      setShowDocsModal(false);
-    },
-    onError: (error) =>
-      showToast(error.message || "Error updating documents", "error"),
-  });
-
   const updateResignationMutation = useMutation({
     ...updateResignationMutationOptions,
     onSuccess: () => {
@@ -189,52 +167,6 @@ export default function HRDashboard() {
     onError: (error) =>
       showToast(error.message || "Error updating leave request", "error"),
   });
-
-  const filteredEmployees = employeesData.filter((emp) => {
-    if (emp.role === "Admin") return false;
-    return `${emp.emp_id} ${emp.first_name} ${emp.last_name}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-  });
-
-  const selectedEmployee = employeesData.find(
-    // FORCE STRING COMPARISON
-    (e) => String(e.emp_id) === String(docForm.emp_id),
-  );
-
-  useEffect(() => {
-    if (docForm.emp_id && dashboardData?.information?.missingDocs) {
-      const existing = dashboardData.information.missingDocs.find(
-        // FORCE STRING COMPARISON
-        (d) => String(d.emp_id) === String(docForm.emp_id),
-      );
-      setDocForm((prev) => ({
-        ...prev,
-        missing_docs: existing?.missing_docs
-          ? existing.missing_docs.split(", ")
-          : [],
-      }));
-    }
-  }, [docForm.emp_id, dashboardData]);
-
-  const handleCheckboxChange = (docName) => {
-    setDocForm((prev) => ({
-      ...prev,
-      missing_docs: prev.missing_docs.includes(docName)
-        ? prev.missing_docs.filter((d) => d !== docName)
-        : [...prev.missing_docs, docName],
-    }));
-  };
-
-  const handleSubmitDocs = (e) => {
-    e.preventDefault();
-    if (!docForm.emp_id)
-      return alert("Please select an employee from the list.");
-    updateDocsMutation.mutate({
-      emp_id: docForm.emp_id,
-      missing_docs: docForm.missing_docs,
-    });
-  };
 
   if (isLoadingDashboard || isLoadingEmployees) {
     return (
@@ -456,20 +388,6 @@ export default function HRDashboard() {
           </div>
         </section>
       </div>
-
-      <UpdateDocsModal
-        open={showDocsModal}
-        onClose={() => setShowDocsModal(false)}
-        docForm={docForm}
-        setDocForm={setDocForm}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        filteredEmployees={filteredEmployees}
-        selectedEmployee={selectedEmployee}
-        handleCheckboxChange={handleCheckboxChange}
-        handleSubmitDocs={handleSubmitDocs}
-        mutation={updateDocsMutation}
-      />
 
       <PendingLeaveModal
         open={activeModal === "pending-leave-approval"}
