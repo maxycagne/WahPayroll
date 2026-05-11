@@ -1,6 +1,9 @@
 import express, { Router } from "express";
 import { register, getPendingRequests, approveRequest, rejectRequest } from "../controllers/registerController.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/authMiddleware.js";
 
 const router: Router = express.Router();
 

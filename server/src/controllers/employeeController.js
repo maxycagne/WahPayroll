@@ -1868,8 +1868,9 @@ export const canApproverReviewRequester = async (connection, approver, requester
   if (!approver || !requester) return false;
   if (approver.emp_id === requester.emp_id) return false;
   
-  // Admin and HR have oversight of all leave requests
-  if (approver.role === "Admin" || approver.role === "HR") return true;
+  // Admin has oversight of all leave requests. 
+  // HR can only approve if no supervisor exists for the designation (handled below).
+  if (approver.role === "Admin") return true;
 
   // Policy: supervisor requests are reviewed by HR only.
   if (requester.role === "Supervisor") {
