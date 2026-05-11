@@ -1338,7 +1338,7 @@ export const getFileManagementInventory = async (req, res) => {
         position: employee.position || "-",
         designation: employee.designation || "-",
         role: employee.role || "RankAndFile",
-        source: "employee",
+        source: "generated",
         file_status: "generated",
         record_id: employee.emp_id,
         application_id: null,
@@ -1867,6 +1867,9 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
 export const canApproverReviewRequester = async (connection, approver, requester) => {
   if (!approver || !requester) return false;
   if (approver.emp_id === requester.emp_id) return false;
+  
+  // Admin and HR have oversight of all leave requests
+  if (approver.role === "Admin" || approver.role === "HR") return true;
 
   // Policy: supervisor requests are reviewed by HR only.
   if (requester.role === "Supervisor") {

@@ -17,8 +17,9 @@ export const upload = multer({
     key: (req: Request, file, cb) => {
       const folder = req.body.folder || "misc";
       const user = req.body.user || "misc_2";
-      // File convention
-      const fileName = file.fieldname + "_" + file.originalname;
+      // File convention: add timestamp to prevent collisions
+      const timestamp = Date.now();
+      const fileName = `${file.fieldname}_${timestamp}_${file.originalname}`;
       cb(null, `${user}/${folder}/${fileName}`);
     },
   }),

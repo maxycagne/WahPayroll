@@ -50,6 +50,7 @@ export const useFileManagement = () => {
   } = useQuery({
     queryKey: ["file-activity-log"],
     queryFn: getFileActivityLog,
+    enabled: ["Admin", "HR", "Supervisor"].includes(role),
   });
 
   const files = useMemo(
@@ -100,11 +101,12 @@ export const useFileManagement = () => {
     refetch,
     isRefreshing: isFetching || isFetchingHistory || fileTemplates.isLoadingTemplates,
     handleRefresh: async () => {
+      const isAuthorized = ["Admin", "HR", "Supervisor"].includes(role);
       await Promise.all([
         refetch(),
-        refetchFileActivityLog(),
+        isAuthorized ? refetchFileActivityLog() : Promise.resolve(),
         fileTemplates.refetchTemplates(),
-        fileTemplates.refetchActivityLog(),
+        isAuthorized ? fileTemplates.refetchActivityLog() : Promise.resolve(),
       ]);
     },
     counts,

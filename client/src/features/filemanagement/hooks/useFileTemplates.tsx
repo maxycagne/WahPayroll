@@ -32,6 +32,7 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
   } = useQuery({
     queryKey: ["template-activity-log"],
     queryFn: getTemplateActivityLog,
+    enabled: ["Admin", "HR", "Supervisor"].includes(role),
   });
 
   const downloadUploadedTemplate = async (template: FileTemplate) => {

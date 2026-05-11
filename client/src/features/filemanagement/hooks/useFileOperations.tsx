@@ -278,9 +278,9 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
     },
     isDeleting: isRemoving, // Reuse the loading state or add a new one
     handlePermanentDelete: async (file: FileDocument) => {
-      // Generated docs (resignation_letter, resignation_form, exit_interview, exit_clearance)
-      // all derive from the same resignation row — deleting any one of them would destroy ALL of them.
-      if (file.source === "generated") {
+      // Generated resignation docs derive from the same resignation row. 
+      // NDA is also 'generated' but is an employee-level record.
+      if (file.source === "generated" && file.template_type !== "nda") {
         const shouldProceed = window.confirm(
           "PERMANENTLY DELETE this entire resignation record and ALL its associated documents? This action is IRREVERSIBLE.",
         );
@@ -326,6 +326,9 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
 
       // Leave docs and employee-level files — safe to delete the record
       let source = file.source;
+      if (source === "generated" && file.template_type === "nda") {
+        source = "employee";
+      }
       const shouldProceed = window.confirm(
         "PERMANENTLY DELETE this record? This action is IRREVERSIBLE and will remove the data from the database.",
       );

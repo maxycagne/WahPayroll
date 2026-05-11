@@ -57,7 +57,7 @@ router.get(
 
 router.put(
   "/leaves/:id",
-  authorizeRoles("Supervisor", "HR"),
+  authorizeRoles("Admin", "Supervisor", "HR"),
   updateLeaveStatus,
 );
 
