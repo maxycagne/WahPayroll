@@ -163,5 +163,7 @@ export const useFileTemplates = (role: string, showToast: (msg: string, type?: s
       }
     },
     activityLog: activityLog as TemplateActivityEntry[],
+    refetchTemplates,
+    refetchActivityLog,
   };
 };

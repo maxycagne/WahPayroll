@@ -46,6 +46,8 @@ export const FileManagement: React.FC = () => {
     isLoading,
     isError,
     refetch,
+    handleRefresh,
+    isRefreshing,
     uploadedTemplates,
     isLoadingTemplates,
     designationOptions,
@@ -102,7 +104,8 @@ export const FileManagement: React.FC = () => {
         designationFilter={designationFilter}
         setDesignationFilter={setDesignationFilter}
         designationOptions={designationOptions}
-        onRefresh={() => refetch()}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
         onOpenTemplates={() => setIsTemplatesOpen(true)}
         viewMode={viewMode}
         setViewMode={setViewMode}

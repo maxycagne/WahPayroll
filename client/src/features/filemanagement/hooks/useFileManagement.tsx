@@ -35,6 +35,7 @@ export const useFileManagement = () => {
   const {
     data: inventory = { employees: [], files: [] },
     isLoading,
+    isFetching,
     isError,
     refetch,
   } = useQuery({
@@ -44,6 +45,7 @@ export const useFileManagement = () => {
 
   const {
     data: fileActivityLog = [],
+    isFetching: isFetchingHistory,
     refetch: refetchFileActivityLog,
   } = useQuery({
     queryKey: ["file-activity-log"],
@@ -96,6 +98,15 @@ export const useFileManagement = () => {
     isLoading,
     isError,
     refetch,
+    isRefreshing: isFetching || isFetchingHistory || fileTemplates.isLoadingTemplates,
+    handleRefresh: async () => {
+      await Promise.all([
+        refetch(),
+        refetchFileActivityLog(),
+        fileTemplates.refetchTemplates(),
+        fileTemplates.refetchActivityLog(),
+      ]);
+    },
     counts,
     fileActivityLog,
     refetchFileActivityLog,

@@ -117,7 +117,12 @@ export const useFileOperations = (showToast: (msg: string, type?: string) => voi
         return;
       }
 
-      if (file.download_url) window.open(file.download_url, "_blank", "noopener,noreferrer");
+      if (file.download_url) {
+        // Fetch as blob to include auth tokens, then open blob URL
+        const blob = await downloadFile(file.download_url);
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (error: any) {
       showToast(error.message || "Failed to preview file", "error");
     }

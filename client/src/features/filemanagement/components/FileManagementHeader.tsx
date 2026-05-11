@@ -16,6 +16,7 @@ interface FileManagementHeaderProps {
   setViewMode: (value: "active" | "archive" | "history") => void;
   counts: { active: number; archived: number };
   canArchive: boolean;
+  isRefreshing?: boolean;
 }
 
 export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
@@ -33,6 +34,7 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
   setViewMode,
   counts,
   canArchive,
+  isRefreshing,
 }) => {
   const visibleStats = stats.filter(s => canArchive || s.label !== "Archived Files");
 
@@ -164,10 +166,11 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
               <button
                 type="button"
                 onClick={onRefresh}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer disabled:opacity-50"
               >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                {isRefreshing ? "Refreshing..." : "Refresh"}
               </button>
               <button
                 type="button"
