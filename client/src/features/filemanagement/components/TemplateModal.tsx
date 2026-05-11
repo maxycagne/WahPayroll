@@ -95,9 +95,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                 <input
                   type="text"
                   value={templateCategory}
-                  onChange={(event) =>
-                    setTemplateCategory(event.target.value)
-                  }
+                  onChange={(event) => setTemplateCategory(event.target.value)}
                   placeholder="Category (optional)"
                   className="min-w-[220px] rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-sky-500"
                 />
@@ -124,7 +122,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
               Uploaded Templates
             </p>
             <p className="m-0 mt-1 text-sm text-slate-600 dark:text-gray-400">
-              Download shared templates uploaded by Admin/HR.
+              Download shared templates uploaded by HR.
             </p>
 
             {isLoadingTemplates ? (
@@ -184,7 +182,9 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                           }`}
                         >
                           <Archive className="h-3.5 w-3.5" />
-                          {(template as any).is_archived ? "Unarchive" : "Archive"}
+                          {(template as any).is_archived
+                            ? "Unarchive"
+                            : "Archive"}
                         </button>
                       )}
                       {canManageTemplates && (
