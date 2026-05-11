@@ -747,7 +747,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       leaveRequest.approved_days,
     );
 
-    if (!canApproverReviewRequester(approver, requester)) {
+    if (!(await canApproverReviewRequester(connection as any, approver, requester))) {
       await connection.rollback();
       return res.status(403).json({
         message: "You are not allowed to approve this leave request",

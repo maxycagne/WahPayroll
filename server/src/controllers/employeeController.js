@@ -1846,10 +1846,24 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
     [requester.designation, requester.emp_id],
   );
 
+  if (rows.length === 0) {
+    const [hrRows] = await connection.query(
+      `
+        SELECT emp_id, first_name, last_name, designation
+        FROM employees
+        WHERE LOWER(COALESCE(role, '')) = 'hr'
+          AND emp_id <> ?
+        ORDER BY first_name ASC, last_name ASC
+      `,
+      [requester.emp_id],
+    );
+    return hrRows;
+  }
+
   return rows;
 };
 
-export const canApproverReviewRequester = (approver, requester) => {
+export const canApproverReviewRequester = async (connection, approver, requester) => {
   if (!approver || !requester) return false;
   if (approver.emp_id === requester.emp_id) return false;
 
@@ -1858,17 +1872,33 @@ export const canApproverReviewRequester = (approver, requester) => {
     return approver.role === "HR";
   }
 
-  // Policy: rank-and-file and HR/Admin requests are reviewed by supervisor of same designation.
-  if (
-    requester.role === "RankAndFile" ||
-    requester.role === "HR" ||
-    requester.role === "Admin"
-  ) {
-    if (approver.role !== "Supervisor") return false;
+  // Policy: rank-and-file and other non-supervisor requests are reviewed by supervisor of same designation.
+  // Fallback to HR if no supervisor exists.
+  if (approver.role === "Supervisor") {
     return (
-      !!requester.designation && approver.designation === requester.designation
+      !!requester.designation &&
+      approver.designation === requester.designation
     );
   }
+
+  if (approver.role === "HR") {
+    const [supervisors] = await connection.query(
+      `
+          SELECT 1 FROM employees
+          WHERE (
+              LOWER(COALESCE(role, '')) = 'supervisor'
+              OR LOWER(COALESCE(position, '')) LIKE 'supervisor(%'
+            )
+            AND LOWER(TRIM(COALESCE(designation, ''))) = LOWER(TRIM(?))
+            AND emp_id <> ?
+          LIMIT 1
+        `,
+      [requester.designation || "", requester.emp_id],
+    );
+    return supervisors.length === 0;
+  }
+
+  return false;
 
   return false;
 };
@@ -2482,6 +2512,16 @@ export const updateResignationStatus = async (req, res) => {
       }
 
       const resignation = resignationRows[0];
+      const approver = await getEmployeeProfile(connection, req.user?.emp_id);
+      const requester = await getEmployeeProfile(connection, resignation.emp_id);
+
+      if (!(await canApproverReviewRequester(connection, approver, requester)) && approver.role !== 'Admin') {
+        await connection.rollback();
+        return res.status(403).json({
+          message: "You are not allowed to approve this resignation request",
+        });
+      }
+
       let finalStatus = status;
 
       // Logic for multi-step approval
@@ -3647,7 +3687,7 @@ export const updateOffsetApplicationStatus = async (req, res) => {
     // FIX: Explicitly allow HR and Admin to bypass the strict supervisor-only check for Offsets
     const isHRorAdmin = approver.role === "HR" || approver.role === "Admin";
 
-    if (!isHRorAdmin && !canApproverReviewRequester(approver, requester)) {
+    if (!isHRorAdmin && !(await canApproverReviewRequester(connection, approver, requester))) {
       await connection.rollback();
       return res.status(403).json({
         message: "You are not allowed to approve this offset request",
