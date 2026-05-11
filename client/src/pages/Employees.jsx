@@ -343,7 +343,7 @@ export default function Employees({ shortcutMode = false }) {
           </div>
 
           {/* Table */}
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             {isLoading ? (
               <div className="p-8 text-center">
                 <div
@@ -359,7 +359,7 @@ export default function Employees({ shortcutMode = false }) {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="min-w-full border-collapse text-left text-sm">
                   <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800">
                     <tr>
@@ -375,7 +375,7 @@ export default function Employees({ shortcutMode = false }) {
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                         Email Address
                       </th>
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                         Status
                       </th>
                       {canAddEmployee && (
@@ -431,13 +431,13 @@ export default function Employees({ shortcutMode = false }) {
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                             {emp.email}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-1.5">
-                              <span className="inline-block w-fit rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400">
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex flex-wrap justify-center gap-1.5">
+                              <span className="inline-block w-28 text-center rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400">
                                 {emp.status}
                               </span>
                               <span
-                                className={`inline-block w-fit rounded-full border px-2 py-0.5 text-xs font-bold ${
+                                className={`inline-block w-20 text-center rounded-full border px-2 py-0.5 text-xs font-bold ${
                                   emp.is_active
                                     ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/30"
                                     : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
