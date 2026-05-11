@@ -201,14 +201,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onClick: () => navigate("/employees"),
       },
       {
-        label: "Pending Approvals",
-        value: pendingLeaveCount + pendingResignationCount,
-        borderColor: "#7c3aed",
-        icon: <FileClock className="h-4 w-4" />,
-        clickable: true,
-        modalKey: "pending",
-      },
-      {
         label: "On leave today",
         value: onLeaveCount,
         borderColor: "#d4a017",
@@ -380,7 +372,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="m-0 text-[1.4rem] font-bold text-slate-900 dark:text-gray-100">
-              Welcome back, {currentUser?.first_name || currentUser?.name || "Admin"}!
+              Welcome back,{" "}
+              {currentUser?.first_name || currentUser?.name || "Admin"}!
             </h1>
             <div className="flex flex-wrap gap-2 mt-2">
               <p className="m-0 inline-flex items-center rounded-full border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
@@ -430,15 +423,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <span style={{ color: c.borderColor }}>{c.icon}</span>
                 {c.label}
               </p>
-              <p className="m-0 mb-1 text-[11px] font-medium text-slate-600 dark:text-gray-300">
-                {c.label === "Pending Approvals"
-                  ? `${pendingLeaveCount} leaves + ${pendingResignationCount} resignations`
-                  : c.label === "Absent Today"
-                    ? `Personnel with no time-in recorded today`
-                    : c.label === "On leave today"
-                      ? `${onLeaveCount} currently on leave today`
-                      : "Total active company profiles"}
-              </p>
+
               <p
                 className="m-0 text-2xl font-black"
                 style={{ color: c.borderColor }}
