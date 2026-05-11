@@ -201,6 +201,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onClick: () => navigate("/employees"),
       },
       {
+        label: "Pending Approvals",
+        value: pendingLeaveCount + pendingResignationCount,
+        borderColor: "#7c3aed",
+        icon: <FileClock className="h-4 w-4" />,
+        clickable: true,
+        modalKey: "pending",
+      },
+      {
         label: "On leave today",
         value: onLeaveCount,
         borderColor: "#d4a017",
@@ -633,6 +641,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           pendingLeaveCount={pendingLeaveCount}
           pendingResignationCount={pendingResignationCount}
           onLeaveCount={onLeaveCount}
+          isAdmin={true}
         />
       )}
 
@@ -643,6 +652,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           setReviewConfirm={setReviewConfirm}
           submitLeaveDecision={submitLeaveDecision}
           toggleApprovedDate={toggleApprovedDate}
+          isAdmin={true}
         />
       )}
     </div>

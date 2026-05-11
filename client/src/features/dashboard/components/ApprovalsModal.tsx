@@ -12,6 +12,7 @@ interface ApprovalsModalProps {
   pendingLeaveCount: number;
   pendingResignationCount: number;
   onLeaveCount: number;
+  isAdmin?: boolean;
 }
 
 export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
@@ -25,6 +26,7 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
   pendingLeaveCount,
   pendingResignationCount,
   onLeaveCount,
+  isAdmin,
 }) => {
   const priorityClass: Record<string, string> = {
     High: "bg-red-100 text-red-800",
@@ -89,11 +91,16 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
                         Dates: {formatLongDate(employee.date_from)} -{" "}
                         {formatLongDate(employee.date_to)}
                       </p>
-                      <p
-                        className={`m-0 mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priorityClass[employee.priority] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"}`}
-                      >
-                        Priority: {employee.priority}
-                      </p>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        <p
+                          className={`m-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priorityClass[employee.priority] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"}`}
+                        >
+                          Priority: {employee.priority}
+                        </p>
+                        <p className="m-0 inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-medium text-yellow-800 dark:text-yellow-400">
+                          Status: {employee.status || "Pending"}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       {!approvedLeaves.has(employee.id) ? (
@@ -102,7 +109,7 @@ export const ApprovalsModal: React.FC<ApprovalsModalProps> = ({
                           onClick={() => openLeaveDecisionConfirm(employee)}
                           className="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 hover:shadow active:translate-y-px"
                         >
-                          Review Application
+                          {isAdmin ? "View Application" : "Review Application"}
                         </button>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:text-gray-300 whitespace-nowrap">

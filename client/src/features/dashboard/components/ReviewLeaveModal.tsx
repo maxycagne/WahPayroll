@@ -10,6 +10,7 @@ interface ReviewLeaveModalProps {
   setReviewConfirm: (val: any) => void;
   submitLeaveDecision: () => void;
   toggleApprovedDate: (date: string) => void;
+  isAdmin?: boolean;
 }
 
 export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
@@ -18,6 +19,7 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
   setReviewConfirm,
   submitLeaveDecision,
   toggleApprovedDate,
+  isAdmin,
 }) => {
   const getReviewReason = (employee: LeaveRequest) =>
     employee?.reason || employee?.remarks || employee?.leave_reason || "";
@@ -134,11 +136,13 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
       >
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-gray-800 px-4 py-3">
           <h3 className="m-0 text-sm font-semibold text-slate-900 dark:text-gray-100">
-            {reviewConfirm.status
-              ? reviewConfirm.status === "Denied"
-                ? "Confirm Denial"
-                : "Confirm Approval"
-              : "Review Application"}
+            {isAdmin 
+              ? "View Application"
+              : reviewConfirm.status
+                ? reviewConfirm.status === "Denied"
+                  ? "Confirm Denial"
+                  : "Confirm Approval"
+                : "Review Application"}
           </h3>
           <button
             type="button"
@@ -150,15 +154,20 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
         </div>
 
         <div className="max-h-[56vh] space-y-3 overflow-y-auto px-4 py-3">
-          <p className="m-0 text-xs text-slate-700 dark:text-gray-300">
-            <span className="font-semibold text-slate-900 dark:text-gray-100">
-              {reviewConfirm.employee.first_name}{" "}
-              {reviewConfirm.employee.last_name}
-            </span>{" "}
-            requested {reviewConfirm.employee.leave_type} from{" "}
-            {formatLongDate(reviewConfirm.employee.date_from)} to{" "}
-            {formatLongDate(reviewConfirm.employee.date_to)}.
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="m-0 text-xs text-slate-700 dark:text-gray-300">
+              <span className="font-semibold text-slate-900 dark:text-gray-100">
+                {reviewConfirm.employee.first_name}{" "}
+                {reviewConfirm.employee.last_name}
+              </span>{" "}
+              requested {reviewConfirm.employee.leave_type} from{" "}
+              {formatLongDate(reviewConfirm.employee.date_from)} to{" "}
+              {formatLongDate(reviewConfirm.employee.date_to)}.
+            </p>
+            <span className="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-[10px] font-semibold text-yellow-800 dark:text-yellow-400 whitespace-nowrap">
+              {reviewConfirm.employee.status || "Pending"}
+            </span>
+          </div>
 
           {getReviewReason(reviewConfirm.employee) && (
             <div className="rounded-md border border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-800/50 px-3 py-2">
@@ -322,60 +331,64 @@ export const ReviewLeaveModal: React.FC<ReviewLeaveModalProps> = ({
             onClick={() => setReviewConfirm(null)}
             className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-gray-700 hover:shadow active:translate-y-px"
           >
-            Cancel
+            {isAdmin ? "Close" : "Cancel"}
           </button>
-          {!reviewConfirm.status ? (
+          {!isAdmin && (
             <>
-              <button
-                type="button"
-                onClick={() =>
-                  setReviewConfirm({
-                    ...reviewConfirm,
-                    status: "Denied",
-                    remarks: "",
-                  })
-                }
-                className="rounded-md border border-red-200 dark:border-red-900/30 bg-red-100 dark:bg-red-900/40 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400 transition-all duration-200 hover:bg-red-200 dark:hover:bg-red-900/60"
-              >
-                Deny
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setReviewConfirm({
-                    ...reviewConfirm,
-                    status: "Approved",
-                  })
-                }
-                className="rounded-md border border-green-200 dark:border-green-900/30 bg-green-100 dark:bg-green-900/40 px-3 py-1.5 text-xs font-semibold text-green-700 dark:text-green-400 transition-all duration-200 hover:bg-green-200 dark:hover:bg-green-900/60"
-              >
-                Approve
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  setReviewConfirm({
-                    ...reviewConfirm,
-                    status: undefined,
-                    remarks: "",
-                  })
-                }
-                className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-gray-700"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={submitLeaveDecision}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:shadow active:translate-y-px ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
-              >
-                {reviewConfirm.status === "Denied"
-                  ? "Confirm Denial"
-                  : "Confirm Approval"}
-              </button>
+              {!reviewConfirm.status ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        status: "Denied",
+                        remarks: "",
+                      })
+                    }
+                    className="rounded-md border border-red-200 dark:border-red-900/30 bg-red-100 dark:bg-red-900/40 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400 transition-all duration-200 hover:bg-red-200 dark:hover:bg-red-900/60"
+                  >
+                    Deny
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        status: "Approved",
+                      })
+                    }
+                    className="rounded-md border border-green-200 dark:border-green-900/30 bg-green-100 dark:bg-green-900/40 px-3 py-1.5 text-xs font-semibold text-green-700 dark:text-green-400 transition-all duration-200 hover:bg-green-200 dark:hover:bg-green-900/60"
+                  >
+                    Approve
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReviewConfirm({
+                        ...reviewConfirm,
+                        status: undefined,
+                        remarks: "",
+                      })
+                    }
+                    className="rounded-md border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-gray-700"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitLeaveDecision}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:shadow active:translate-y-px ${reviewConfirm.status === "Denied" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
+                  >
+                    {reviewConfirm.status === "Denied"
+                      ? "Confirm Denial"
+                      : "Confirm Approval"}
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
