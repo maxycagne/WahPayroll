@@ -16,10 +16,10 @@ export const getAttendance = (page: number, limit: number, search: string): Prom
   );
 };
 
-export const getAttendanceCalendarSummary = (year: number, month: number): Promise<AttendanceCalendarSummary[]> =>
+export const getAttendanceCalendarSummary = (year: number, month: number, scope?: string): Promise<AttendanceCalendarSummary[]> =>
   mutationHandler(
     axiosInterceptor.get(
-      `/api/employees/attendance-summary?year=${year}&month=${month + 1}`
+      `/api/employees/attendance-summary?year=${year}&month=${month + 1}${scope ? `&scope=${scope}` : ""}`
     ),
     "Failed to fetch attendance summary"
   );
@@ -36,9 +36,9 @@ export const getAttendanceStats = (params: URLSearchParams): Promise<AttendanceS
     "Failed to fetch attendance stats"
   );
 
-export const getDailyAttendance = (date: string): Promise<DailyAttendance[]> =>
+export const getDailyAttendance = (date: string, scope?: string): Promise<DailyAttendance[]> =>
   mutationHandler(
-    axiosInterceptor.get(`/api/employees/attendance-daily?date=${date}`),
+    axiosInterceptor.get(`/api/employees/attendance-daily?date=${date}${scope ? `&scope=${scope}` : ""}`),
     "Failed to fetch attendance daily list"
   );
 

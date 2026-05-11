@@ -4,6 +4,7 @@ import {
   ensureWorkweekConfigsTable,
   normalizeWorkweekType,
   WORKWEEK_DEFAULTS,
+  getEmployeeProfile,
 } from "./employeeController";
 
 export const getAttendance = async (req: Request, res: Response) => {
@@ -168,16 +169,32 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
 };
 
 export const getDailyAttendance = async (req: Request, res: Response) => {
-  const { date } = req.query;
+  const { date, scope } = req.query;
+  const currentUserEmpId = (req as any).user?.emp_id;
+
   try {
+    const currentUser: any = await getEmployeeProfile(pool, currentUserEmpId);
+    if (!currentUser) return res.status(401).json({ message: "Unauthorized" });
+
+    let whereClause = "e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'";
+    const queryParams: any[] = [];
+
+    if (scope === "own") {
+      whereClause += " AND e.emp_id = ?";
+      queryParams.push(currentUserEmpId);
+    } else if (scope === "team" && currentUser.role === "Supervisor") {
+      whereClause += " AND e.designation = ? AND e.emp_id <> ?";
+      queryParams.push(currentUser.designation || "", currentUserEmpId);
+    }
+
     const [rows] = await pool.query(
       `
-      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2
+      SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2, e.designation, e.position
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
-      WHERE e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'
+      WHERE ${whereClause}
     `,
-      [date],
+      [date, ...queryParams],
     );
     res.json(rows);
   } catch (error) {

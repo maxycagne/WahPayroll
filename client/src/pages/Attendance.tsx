@@ -32,6 +32,9 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
     month,
     selectedDate,
     setSelectedDate,
+    calendarScope,
+    setCalendarScope,
+    calendarScopeOptions,
     overviewStats,
     
     // Sub-hooks
@@ -70,6 +73,9 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
             workweekConfigs={workweek.configs}
             viewDate={viewDate}
             setViewDate={setViewDate}
+            activeScope={calendarScope}
+            scopeOptions={calendarScopeOptions}
+            onScopeChange={setCalendarScope}
             onDateClick={(dateStr) => {
               setSelectedDate(dateStr);
               details.setIsOpen(true);
@@ -112,7 +118,8 @@ const Attendance: React.FC<AttendanceProps> = ({ shortcutMode = false }) => {
         setPosition={details.setPosition}
         status={details.status}
         setStatus={details.setStatus}
-        canEdit={canEditAttendance}
+        canEdit={canEditAttendance && calendarScope !== "own"}
+        calendarScope={calendarScope}
         onEdit={() => {
           details.setIsOpen(false);
           daily.setIsOpen(true);

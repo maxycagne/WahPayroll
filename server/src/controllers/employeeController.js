@@ -1060,6 +1060,7 @@ export const recalculateLeaveBalanceForEmployee = async (connection, empId) => {
   return computedBalance;
 };
 
+
 export const getEmployeeProfile = async (connection, empId) => {
   const [rows] = await connection.query(
     `

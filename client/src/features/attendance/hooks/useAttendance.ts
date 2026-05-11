@@ -40,12 +40,28 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   const canEditAttendance = currentUser?.role === "Admin" || currentUser?.role === "HR";
   const canConfigureWorkweek = currentUser?.role === "Admin" || currentUser?.role === "HR";
 
+  const [calendarScope, setCalendarScope] = useState(
+    currentUser?.role === "Admin" || currentUser?.role === "HR" ? "overall" : 
+    currentUser?.role === "Supervisor" ? "team" : "own"
+  );
+
+  const calendarScopeOptions = useMemo(() => {
+    if (currentUser?.role === "Admin" || currentUser?.role === "HR") {
+      return [{ key: "overall", label: "Overall Attendance" }];
+    }
+    const options = [{ key: "own", label: "My Attendance" }];
+    if (currentUser?.role === "Supervisor") {
+      options.push({ key: "team", label: "Team Attendance" });
+    }
+    return options;
+  }, [currentUser]);
+
   // Specialized Hooks
   const stats = useAttendanceStats(canEditAttendance);
   const daily = useDailyAttendance(selectedDate, canEditAttendance, showToast);
   const workweek = useWorkweekConfig(showToast);
   const balance = useAdjustBalance(showToast);
-  const details = useDateDetails(selectedDate);
+  const details = useDateDetails(selectedDate, calendarScope);
 
   useEffect(() => {
     if (!shortcutMode && searchParams.get("open") !== "take-attendance") return;
@@ -71,8 +87,8 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   });
 
   const calendarSummaryQuery = useQuery({
-    queryKey: ["attendance-calendar", year, month],
-    queryFn: () => getAttendanceCalendarSummary(year, month),
+    queryKey: ["attendance-calendar", year, month, calendarScope],
+    queryFn: () => getAttendanceCalendarSummary(year, month, calendarScope),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -106,6 +122,9 @@ export const useAttendance = (shortcutMode: boolean = false) => {
     viewDate, setViewDate,
     year, month,
     selectedDate, setSelectedDate,
+    calendarScope,
+    setCalendarScope,
+    calendarScopeOptions,
     overviewStats,
     
     // Sub-hooks exposure

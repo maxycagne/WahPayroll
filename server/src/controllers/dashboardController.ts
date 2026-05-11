@@ -579,25 +579,44 @@ export const getResignations = async (req: Request, res: Response) => {
 
 // --- ATTENDANCE ---
 export const getAttendanceCalendarSummary = async (req: Request, res: Response) => {
-  const { month, year } = req.query;
+  const { month, year, scope } = req.query;
+  const currentUserEmpId = (req as any).user?.emp_id;
+
   try {
+    const currentUser: any = await getEmployeeProfile(pool, currentUserEmpId);
+    if (!currentUser) return res.status(401).json({ message: "Unauthorized" });
+
+    let whereClause = "MONTH(a.date) = ? AND YEAR(a.date) = ? AND COALESCE(e.role, '') <> 'Admin'";
+    const queryParams: any[] = [month, year];
+
+    if (scope === "own") {
+      whereClause += " AND a.emp_id = ?";
+      queryParams.push(currentUserEmpId);
+    } else if (scope === "team" && currentUser.role === "Supervisor") {
+      whereClause += " AND e.designation = ? AND e.emp_id <> ?";
+      queryParams.push(currentUser.designation || "", currentUserEmpId);
+    } else if (scope === "overall" && (currentUser.role === "Admin" || currentUser.role === "HR")) {
+      // No extra filters for overall
+    }
+
     const [rows] = await pool.query(
       `
-      SELECT DATE_FORMAT(date, '%Y-%m-%d') as date, 
-             DATE_FORMAT(date, '%Y-%m-%d') as formatted_date,
-             SUM(CASE WHEN status = 'Present' OR status2 = 'Present' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN status = 'Absent' OR status2 = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN status = 'Late' OR status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
-             SUM(CASE WHEN status = 'Undertime' OR status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
-             SUM(CASE WHEN status = 'Half-Day' OR status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
-             SUM(CASE WHEN status = 'On Leave' OR status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count,
-             SUM(CASE WHEN status2 = 'No-notice-via-text' THEN 1 ELSE 0 END) as no_notice_text_count,
-             SUM(CASE WHEN status2 = 'No-notice-email' THEN 1 ELSE 0 END) as no_notice_email_count
-      FROM attendance 
-      WHERE MONTH(date) = ? AND YEAR(date) = ?
-      GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
+      SELECT DATE_FORMAT(a.date, '%Y-%m-%d') as date, 
+             DATE_FORMAT(a.date, '%Y-%m-%d') as formatted_date,
+             SUM(CASE WHEN a.status = 'Present' OR a.status2 = 'Present' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN a.status = 'Absent' OR a.status2 = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN a.status = 'Late' OR a.status2 = 'Late' THEN 1 ELSE 0 END) as late_count,
+             SUM(CASE WHEN a.status = 'Undertime' OR a.status2 = 'Undertime' THEN 1 ELSE 0 END) as undertime_count,
+             SUM(CASE WHEN a.status = 'Half-Day' OR a.status2 = 'Half-Day' THEN 1 ELSE 0 END) as halfday_count,
+             SUM(CASE WHEN a.status = 'On Leave' OR a.status2 = 'On Leave' THEN 1 ELSE 0 END) as leave_count,
+             SUM(CASE WHEN a.status2 = 'No-notice-via-text' THEN 1 ELSE 0 END) as no_notice_text_count,
+             SUM(CASE WHEN a.status2 = 'No-notice-email' THEN 1 ELSE 0 END) as no_notice_email_count
+      FROM attendance a
+      JOIN employees e ON a.emp_id = e.emp_id
+      WHERE ${whereClause}
+      GROUP BY DATE_FORMAT(a.date, '%Y-%m-%d')
     `,
-      [month, year],
+      queryParams,
     );
     res.json(rows);
   } catch (error) {

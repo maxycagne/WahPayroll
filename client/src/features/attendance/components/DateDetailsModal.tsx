@@ -17,6 +17,7 @@ interface DateDetailsModalProps {
   status: string;
   setStatus: (val: string) => void;
   canEdit: boolean;
+  calendarScope?: string;
   onEdit: () => void;
 }
 
@@ -35,6 +36,7 @@ export const DateDetailsModal: React.FC<DateDetailsModalProps> = ({
   status,
   setStatus,
   canEdit,
+  calendarScope,
   onEdit,
 }) => {
   if (!isOpen || !date) return null;
@@ -67,66 +69,72 @@ export const DateDetailsModal: React.FC<DateDetailsModalProps> = ({
             Close
           </button>
         </div>
-        <div className="p-4 pb-2 space-y-2">
-          <input
-            type="text"
-            placeholder="Search employee..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={designation}
-              onChange={(e) => {
-                setDesignation(e.target.value);
-                setPosition("All");
-              }}
-              className="flex-1 min-w-[120px] rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="All">All Designations</option>
-              {Object.keys(designationMap).map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <select
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              className="flex-1 min-w-[120px] rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="All">All Positions</option>
-              {designation !== "All" && designationMap[designation]
-                ? designationMap[designation].map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))
-                : Object.values(designationMap)
-                    .flat()
-                    .map((p) => (
+        {calendarScope === "own" ? (
+          <div className="px-5 py-2 border-b border-slate-100 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-800/30">
+             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">My Attendance</h3>
+          </div>
+        ) : (
+          <div className="p-4 pb-2 space-y-2">
+            <input
+              type="text"
+              placeholder="Search employee..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={designation}
+                onChange={(e) => {
+                  setDesignation(e.target.value);
+                  setPosition("All");
+                }}
+                className="flex-1 min-w-[120px] rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="All">All Designations</option>
+                {Object.keys(designationMap).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                className="flex-1 min-w-[120px] rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="All">All Positions</option>
+                {designation !== "All" && designationMap[designation]
+                  ? designationMap[designation].map((p) => (
                       <option key={p} value={p}>
                         {p}
                       </option>
-                    ))}
-            </select>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="flex-1 min-w-[100px] rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="All">All Status</option>
-              <option value="Present">Present</option>
-              <option value="Absent">Absent</option>
-              <option value="On Leave">On Leave</option>
-              <option value="Late">Late</option>
-              <option value="Undertime">Undertime</option>
-              <option value="Half-Day">Half-Day</option>
-              <option value="No Status">No Status</option>
-            </select>
+                    ))
+                  : Object.values(designationMap)
+                      .flat()
+                      .map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+              </select>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="flex-1 min-w-[100px] rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="All">All Status</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Late">Late</option>
+                <option value="Undertime">Undertime</option>
+                <option value="Half-Day">Half-Day</option>
+                <option value="No Status">No Status</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
         <div className="max-h-[50vh] overflow-y-auto px-4 pb-4">
           {loading ? (
             <p className="py-6 text-center text-sm font-semibold text-slate-500 dark:text-gray-400">Loading attendance...</p>

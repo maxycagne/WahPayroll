@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getDailyAttendance } from "../api";
 import { designationMap } from "../utils";
 
-export const useDateDetails = (date: string | null) => {
+export const useDateDetails = (date: string | null, scope?: string) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [designation, setDesignation] = useState("All");
@@ -11,8 +11,8 @@ export const useDateDetails = (date: string | null) => {
   const [status, setStatus] = useState("All");
 
   const query = useQuery({
-    queryKey: ["attendance-daily", date],
-    queryFn: () => getDailyAttendance(date!),
+    queryKey: ["attendance-daily", date, scope],
+    queryFn: () => getDailyAttendance(date!, scope),
     enabled: !!date && isOpen,
   });
 

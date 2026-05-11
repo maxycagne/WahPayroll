@@ -11,6 +11,9 @@ interface AttendanceCalendarProps {
   viewDate: Date;
   setViewDate: (date: Date) => void;
   onDateClick: (date: string) => void;
+  activeScope: string;
+  scopeOptions: { key: string; label: string }[];
+  onScopeChange: (scope: string) => void;
 }
 
 export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
@@ -21,6 +24,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   viewDate,
   setViewDate,
   onDateClick,
+  activeScope,
+  scopeOptions,
+  onScopeChange,
 }) => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
@@ -37,9 +43,28 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
           <div>
             <h2 className="m-0 text-base font-bold">Attendance Calendar</h2>
             <p className="m-0 mt-1 text-xs text-white/90">
-              Select a date to review or record daily attendance.
+              {activeScope === "own" 
+                ? "Review your personal attendance records." 
+                : "Select a date to review or record daily attendance."}
             </p>
           </div>
+          {scopeOptions.length > 1 && (
+            <div className="flex gap-2">
+              {scopeOptions.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => onScopeChange(option.key)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    activeScope === option.key
+                      ? "bg-white text-indigo-700 shadow-md scale-105"
+                      : "bg-indigo-500/50 text-white hover:bg-indigo-500"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <div className="bg-slate-50 dark:bg-gray-800/50 p-4">
@@ -110,42 +135,42 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                   <div className="mt-auto flex w-full flex-col gap-1">
                     {dayData.present_count > 0 && (
                       <div className="w-full truncate rounded-md border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 text-[10px] font-bold text-green-700 dark:text-green-400">
-                        • {dayData.present_count} Present
+                        {activeScope === "own" ? "Present" : `• ${dayData.present_count} Present`}
                       </div>
                     )}
                     {dayData.late_count > 0 && (
                       <div className="w-full truncate rounded-md border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                        • {dayData.late_count} Late
+                        {activeScope === "own" ? "Late" : `• ${dayData.late_count} Late`}
                       </div>
                     )}
                     {dayData.undertime_count > 0 && (
                       <div className="w-full truncate rounded-md border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-400">
-                        • {dayData.undertime_count} Undertime
+                        {activeScope === "own" ? "Undertime" : `• ${dayData.undertime_count} Undertime`}
                       </div>
                     )}
                     {dayData.halfday_count > 0 && (
                       <div className="w-full truncate rounded-md border border-orange-200 dark:border-orange-900/30 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 text-[10px] font-bold text-orange-700 dark:text-orange-400">
-                        • {dayData.halfday_count} Half-Day
+                        {activeScope === "own" ? "Half-Day" : `• ${dayData.halfday_count} Half-Day`}
                       </div>
                     )}
                     {dayData.leave_count > 0 && (
                       <div className="w-full truncate rounded-md border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-400">
-                        • {dayData.leave_count} On Leave
+                        {activeScope === "own" ? "On Leave" : `• ${dayData.leave_count} On Leave`}
                       </div>
                     )}
                     {dayData.absent_count > 0 && (
                       <div className="w-full truncate rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400">
-                        • {dayData.absent_count} Absent
+                        {activeScope === "own" ? "Absent" : `• ${dayData.absent_count} Absent`}
                       </div>
                     )}
                     {dayData.no_notice_text_count > 0 && (
                       <div className="w-full truncate rounded-md border border-pink-200 dark:border-pink-900/30 bg-pink-50 dark:bg-pink-900/20 px-1.5 py-0.5 text-[10px] font-bold text-pink-700 dark:text-pink-400">
-                        • {dayData.no_notice_text_count} No notice (text)
+                        {activeScope === "own" ? "No notice (text)" : `• ${dayData.no_notice_text_count} No notice (text)`}
                       </div>
                     )}
                     {dayData.no_notice_email_count > 0 && (
                       <div className="w-full truncate rounded-md border border-fuchsia-200 dark:border-fuchsia-900/30 bg-fuchsia-50 dark:bg-fuchsia-900/20 px-1.5 py-0.5 text-[10px] font-bold text-fuchsia-700 dark:text-fuchsia-400">
-                        • {dayData.no_notice_email_count} No notice (email)
+                        {activeScope === "own" ? "No notice (email)" : `• ${dayData.no_notice_email_count} No notice (email)`}
                       </div>
                     )}
                   </div>
