@@ -14,9 +14,10 @@ export const useDailyAttendance = (selectedDate: string | null, canEdit: boolean
   const [bulkStatus, setBulkStatus] = useState("Present");
 
   const query = useQuery({
-    queryKey: ["attendance-daily", selectedDate],
+    queryKey: ["attendance-daily-edit", selectedDate],
     queryFn: async () => {
-      const data = await getDailyAttendance(selectedDate!);
+      // Always fetch "overall" scope — this modal is Admin/HR only
+      const data = await getDailyAttendance(selectedDate!, "overall");
       const initialForm: Record<string, AttendanceStatus> = {};
       const initialSecondary: Record<string, AttendanceStatus> = {};
       data.forEach((emp) => {
@@ -35,6 +36,8 @@ export const useDailyAttendance = (selectedDate: string | null, canEdit: boolean
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-daily-edit", selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-daily"] }); // still refresh DateDetails
       queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-attendance-summary"] });

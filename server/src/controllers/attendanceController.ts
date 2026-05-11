@@ -185,6 +185,12 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
     } else if (scope === "team" && currentUser.role === "Supervisor") {
       whereClause += " AND e.designation = ? AND e.emp_id <> ?";
       queryParams.push(currentUser.designation || "", currentUserEmpId);
+    } else if (scope === "overall" && (currentUser.role === "Admin" || currentUser.role === "HR")) {
+      // No extra filters for overall
+    } else {
+      // BUG 7 FIX: Unknown/unauthorized scope — default to own records only
+      whereClause += " AND e.emp_id = ?";
+      queryParams.push(currentUserEmpId);
     }
 
     const [rows] = await pool.query(

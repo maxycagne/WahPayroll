@@ -81,7 +81,13 @@ export const AttendanceStats: React.FC<AttendanceStatsProps> = ({
               <input
                 type="month"
                 value={rangeStart}
-                onChange={(e) => setRangeStart(e.target.value)}
+                onChange={(e) => {
+                  setRangeStart(e.target.value);
+                  // If new start is after current end, snap end to new start
+                  if (rangeEnd && e.target.value > rangeEnd) {
+                    setRangeEnd(e.target.value);
+                  }
+                }}
                 className="w-full rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
               />
             </label>
@@ -90,6 +96,7 @@ export const AttendanceStats: React.FC<AttendanceStatsProps> = ({
               <input
                 type="month"
                 value={rangeEnd}
+                min={rangeStart}
                 onChange={(e) => setRangeEnd(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
               />

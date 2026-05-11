@@ -66,6 +66,14 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   useEffect(() => {
     if (!shortcutMode && searchParams.get("open") !== "take-attendance") return;
 
+    // BUG 1 FIX: Only Admin/HR can open the attendance entry modal via URL shortcut
+    if (!canEditAttendance) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("open");
+      setSearchParams(nextParams, { replace: true });
+      return;
+    }
+
     const now = new Date();
     const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
@@ -84,6 +92,7 @@ export const useAttendance = (shortcutMode: boolean = false) => {
     queryKey: ["attendance", currentPage, itemsPerPage, search],
     queryFn: () => getAttendance(currentPage, itemsPerPage, search),
     staleTime: 5 * 60 * 1000,
+    enabled: canEditAttendance, // BUG 6 FIX: Only Admin/HR see the attendance table
   });
 
   const calendarSummaryQuery = useQuery({
@@ -109,7 +118,8 @@ export const useAttendance = (shortcutMode: boolean = false) => {
   }, [attendanceQuery.data]);
 
   return {
-    isLoading: attendanceQuery.isLoading,
+    // BUG B FIX: Use calendarSummary loading since attendanceQuery is disabled for non-Admin/HR
+    isLoading: canEditAttendance ? attendanceQuery.isLoading : calendarSummaryQuery.isLoading,
     attendance: attendanceQuery.data?.data || [],
     totalRecords: attendanceQuery.data?.total || 0,
     totalPages: attendanceQuery.data?.totalPages || 1,

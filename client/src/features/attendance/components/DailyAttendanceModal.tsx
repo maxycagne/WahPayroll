@@ -252,7 +252,7 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                           </p>
                         </td>
                         <td className="px-3 py-1.5 text-gray-600 dark:text-gray-400 text-xs">
-                          {emp.emp_status}
+                          {emp.designation || emp.position || "—"}
                         </td>
                         <td className="px-3 py-1.5">
                           <select
@@ -296,9 +296,10 @@ export const DailyAttendanceModal: React.FC<DailyAttendanceModalProps> = ({
                           >
                             <option value="">-- None --</option>
                             {attendanceForm[emp.emp_id] === "Absent" ? (
-                              <option value="No-notice-via-text">
-                                No notice via text/No notice via email
-                              </option>
+                              <>
+                                <option value="No-notice-via-text">No notice via text</option>
+                                <option value="No-notice-email">No notice via email</option>
+                              </>
                             ) : (
                               <>
                                 <option value="Late">Late</option>

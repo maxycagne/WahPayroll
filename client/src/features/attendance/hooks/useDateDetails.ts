@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDailyAttendance } from "../api";
 import { designationMap } from "../utils";
@@ -9,6 +9,14 @@ export const useDateDetails = (date: string | null, scope?: string) => {
   const [designation, setDesignation] = useState("All");
   const [position, setPosition] = useState("All");
   const [status, setStatus] = useState("All");
+
+  // BUG 5 FIX: Reset filters when scope changes to avoid stale filters
+  useEffect(() => {
+    setSearch("");
+    setDesignation("All");
+    setPosition("All");
+    setStatus("All");
+  }, [scope]);
 
   const query = useQuery({
     queryKey: ["attendance-daily", date, scope],

@@ -133,46 +133,60 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                 </div>
                 {dayData && (
                   <div className="mt-auto flex w-full flex-col gap-1">
-                    {dayData.present_count > 0 && (
+                    {parseInt(String(dayData.present_count || 0), 10) > 0 && (
                       <div className="w-full truncate rounded-md border border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 text-[10px] font-bold text-green-700 dark:text-green-400">
-                        {activeScope === "own" ? "Present" : `• ${dayData.present_count} Present`}
+                        {activeScope === "own" ? "Present" : `+ ${parseInt(String(dayData.present_count), 10)} Present`}
                       </div>
                     )}
-                    {dayData.late_count > 0 && (
+                    {parseInt(String(dayData.late_count || 0), 10) > 0 && (
                       <div className="w-full truncate rounded-md border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                        {activeScope === "own" ? "Late" : `• ${dayData.late_count} Late`}
+                        {activeScope === "own" ? "Late" : `+ ${parseInt(String(dayData.late_count), 10)} Late`}
                       </div>
                     )}
-                    {dayData.undertime_count > 0 && (
+                    {parseInt(String(dayData.undertime_count || 0), 10) > 0 && (
                       <div className="w-full truncate rounded-md border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-400">
-                        {activeScope === "own" ? "Undertime" : `• ${dayData.undertime_count} Undertime`}
+                        {activeScope === "own" ? "Undertime" : `+ ${parseInt(String(dayData.undertime_count), 10)} Undertime`}
                       </div>
                     )}
-                    {dayData.halfday_count > 0 && (
+                    {parseInt(String(dayData.halfday_count || 0), 10) > 0 && (
                       <div className="w-full truncate rounded-md border border-orange-200 dark:border-orange-900/30 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 text-[10px] font-bold text-orange-700 dark:text-orange-400">
-                        {activeScope === "own" ? "Half-Day" : `• ${dayData.halfday_count} Half-Day`}
+                        {activeScope === "own" ? "Half-Day" : `+ ${parseInt(String(dayData.halfday_count), 10)} Half-Day`}
                       </div>
                     )}
-                    {dayData.leave_count > 0 && (
+                    {parseInt(String(dayData.leave_count || 0), 10) > 0 && (
                       <div className="w-full truncate rounded-md border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-400">
-                        {activeScope === "own" ? "On Leave" : `• ${dayData.leave_count} On Leave`}
+                        {activeScope === "own" ? "On Leave" : `+ ${parseInt(String(dayData.leave_count), 10)} On Leave`}
                       </div>
                     )}
-                    {dayData.absent_count > 0 && (
-                      <div className="w-full truncate rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400">
-                        {activeScope === "own" ? "Absent" : `• ${dayData.absent_count} Absent`}
-                      </div>
-                    )}
-                    {dayData.no_notice_text_count > 0 && (
-                      <div className="w-full truncate rounded-md border border-pink-200 dark:border-pink-900/30 bg-pink-50 dark:bg-pink-900/20 px-1.5 py-0.5 text-[10px] font-bold text-pink-700 dark:text-pink-400">
-                        {activeScope === "own" ? "No notice (text)" : `• ${dayData.no_notice_text_count} No notice (text)`}
-                      </div>
-                    )}
-                    {dayData.no_notice_email_count > 0 && (
-                      <div className="w-full truncate rounded-md border border-fuchsia-200 dark:border-fuchsia-900/30 bg-fuchsia-50 dark:bg-fuchsia-900/20 px-1.5 py-0.5 text-[10px] font-bold text-fuchsia-700 dark:text-fuchsia-400">
-                        {activeScope === "own" ? "No notice (email)" : `• ${dayData.no_notice_email_count} No notice (email)`}
-                      </div>
-                    )}
+                    {(() => {
+                      // absent_count already includes employees with no-notice status
+                      // no_notice_text/email_count are sub-details of absent, not additional people
+                      const absentCount = parseInt(String(dayData.absent_count || 0), 10);
+                      const noTextCount = parseInt(String(dayData.no_notice_text_count || 0), 10);
+                      const noEmailCount = parseInt(String(dayData.no_notice_email_count || 0), 10);
+                      if (absentCount === 0) return null;
+
+                      const noticeSuffixes: string[] = [];
+                      if (noTextCount > 0) noticeSuffixes.push("text");
+                      if (noEmailCount > 0) noticeSuffixes.push("email");
+
+                      let label: string;
+                      if (activeScope === "own") {
+                        label = noticeSuffixes.length > 0
+                          ? `Absent (no notice via ${noticeSuffixes.join("/")})`
+                          : "Absent";
+                      } else {
+                        label = noticeSuffixes.length > 0
+                          ? `+ ${absentCount} Absent (no notice via ${noticeSuffixes.join("/")})`
+                          : `+ ${absentCount} Absent`;
+                      }
+
+                      return (
+                        <div className="w-full truncate rounded-md border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400">
+                          {label}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </button>
