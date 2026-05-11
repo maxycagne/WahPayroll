@@ -2546,7 +2546,6 @@ export const updateResignationStatus = async (req, res) => {
         [finalStatus, reviewRemarksValue, req.user?.emp_id, id]
       );
 
-      const approver = await getEmployeeProfile(connection, req.user?.emp_id);
       const approverName = approver
         ? `${approver.first_name} ${approver.last_name}`.trim()
         : "the approver";
