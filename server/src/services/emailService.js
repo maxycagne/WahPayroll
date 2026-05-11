@@ -25,10 +25,10 @@ const emailService = {
         html,
         attachments: attachments || [],
       });
-      console.log(`Email sent to ${to}: ${info.messageId}`);
+      console.log(`Email sent successfully: ${info.messageId}`);
       return true;
     } catch (error) {
-      console.error(`Email Service Error for ${to}:`, error.message);
+      console.error(`Email Service Error:`, error.message);
       // It is often better to THROW the error here so your controller knows exactly why it failed
       throw error;
     }

@@ -41,7 +41,6 @@ export const fileLeave: RequestHandler = async (
     supervisor_remarks,
   } = req.body;
 
-  console.log(req.body);
   let resolvedDateTo = date_to || date_from;
   const trimmedReason = String(supervisor_remarks || "").trim();
 

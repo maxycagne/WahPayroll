@@ -287,6 +287,11 @@ export const rejectRequest = async (req: Request, res: Response): Promise<any> =
   const { id } = req.params;
   const { remarks } = req.body;
   const reviewerId = (req as any).user?.emp_id;
+  const reviewerRole = (req as any).user?.role;
+
+  if (reviewerRole !== "Admin" && reviewerRole !== "HR") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
 
   try {
     await ensureEmployeeGovernmentColumns();

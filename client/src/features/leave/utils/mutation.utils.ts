@@ -73,7 +73,7 @@ export const useRequestMutation = ({
   // 2
   const fileOffsetMutation = createMutation({
     mutationFn: (offsetData: any) => {
-      console.log(offsetData);
+      // console.log(offsetData);
       return mutationHandler(
         axiosInterceptor.post("/api/employees/offset-applications", {
           emp_id: currentUser?.emp_id,

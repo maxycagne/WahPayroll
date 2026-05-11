@@ -378,6 +378,14 @@ router.put("/me/change-password", changeMyPassword);
 
 // TODO : PAYROLL
 // payrollRoutes.js
-router.post("/payroll/:emp_id/send-payslip", sendPayslip);
-router.post("/payroll/send-bulk-payslips", sendBulkPayslips);
+router.post(
+  "/payroll/:emp_id/send-payslip",
+  authorizeRoles("Admin", "HR"),
+  sendPayslip,
+);
+router.post(
+  "/payroll/send-bulk-payslips",
+  authorizeRoles("Admin", "HR"),
+  sendBulkPayslips,
+);
 export default router;

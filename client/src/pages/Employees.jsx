@@ -680,7 +680,7 @@ export default function Employees({ shortcutMode = false }) {
               </button>
               <button
                 onClick={() => {
-                  console.log(deleteConfirm.emp_id);
+                  // console.log(deleteConfirm.emp_id);
                   socket.emit("delete-user", deleteConfirm.emp_id);
                   queryClient.invalidateQueries(["employees"]);
                   setDeleteConfirm(null);

@@ -68,7 +68,6 @@ export const login = async (req, res) => {
 
   try {
     await ensureEmployeeGovernmentColumns();
-    console.log(req.userAgent);
 
     const [rows] = await pool.query(
       `SELECT *

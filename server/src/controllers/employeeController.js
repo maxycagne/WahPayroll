@@ -2726,9 +2726,8 @@ export const getAllResignations = async (req, res) => {
 
     return res.status(200).json(rows);
   } catch (error) {
-    console.error("DETAILED SQL ERROR:", error.message);
-    // This will send the EXACT error to your browser console
-    return res.status(500).json({ message: error.message });
+    console.error("DB Error in getAllResignations:", error);
+    return res.status(500).json({ message: "Error fetching resignations" });
   }
 };
 
@@ -4754,7 +4753,7 @@ export const resetPayrollData = async (req, res) => {
     console.error("DB Error in resetPayrollData:", error);
     res
       .status(500)
-      .json({ message: "Error resetting payroll data", error: error.message });
+      .json({ message: "Error resetting payroll data" });
   } finally {
     connection.release();
   }

@@ -36,7 +36,7 @@ const PublicProfile = ({
                 e.preventDefault();
                 if (!e.target.files) return;
 
-                console.log(e.target.files[0]);
+                // console.log(e.target.files[0]);
                 setProfileForm({
                   ...profileForm,
                   profile_photo: e.target.files[0],

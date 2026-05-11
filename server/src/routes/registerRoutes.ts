@@ -8,8 +8,8 @@ const router: Router = express.Router();
 router.post("/", register);
 
 // Protected approval endpoints
-router.get("/requests", authenticateToken, getPendingRequests);
-router.put("/approve/:id", authenticateToken, approveRequest);
-router.put("/reject/:id", authenticateToken, rejectRequest);
+router.get("/requests", authenticateToken, authorizeRoles("Admin", "HR"), getPendingRequests);
+router.put("/approve/:id", authenticateToken, authorizeRoles("Admin", "HR"), approveRequest);
+router.put("/reject/:id", authenticateToken, authorizeRoles("Admin", "HR"), rejectRequest);
 
 export default router;

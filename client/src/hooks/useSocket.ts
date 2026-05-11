@@ -8,7 +8,7 @@ const useSocket = ({ user }: { user: any }) => {
 
   useEffect(() => {
     if (!user) {
-      console.log("user not found");
+      // console.log("user not found");
       socket.disconnect();
       return;
     }
@@ -27,7 +27,7 @@ const useSocket = ({ user }: { user: any }) => {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("force-logout", (message) => {
-      console.log(message);
+      // console.log(message);
       logout();
     });
 

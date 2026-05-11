@@ -11,7 +11,7 @@ export default function MyPendingRequestsTableRow({
   setCancelApprovalConfirm,
   setUploadClearanceItem,
 }) {
-  console.log(item);
+  // console.log(item);
   return (
     <tr className="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
       <td className="px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200">

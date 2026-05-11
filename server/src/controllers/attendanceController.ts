@@ -211,6 +211,12 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
 
 export const saveBulkAttendance = async (req: Request, res: Response) => {
   const { date, records } = req.body;
+  const viewerRole = (req as any).user?.role;
+
+  if (viewerRole !== "Admin" && viewerRole !== "HR") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
   const connection = await pool.getConnection();
 
   try {
@@ -249,6 +255,11 @@ export const saveBulkAttendance = async (req: Request, res: Response) => {
 export const adjustLeaveBalance = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { adjustment } = req.body;
+  const viewerRole = (req as any).user?.role;
+
+  if (viewerRole !== "Admin" && viewerRole !== "HR") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
   try {
     await pool.query(
       "UPDATE leave_balances SET leave_balance = leave_balance + ? WHERE emp_id = ?",
@@ -290,6 +301,11 @@ export const getWorkweekConfigs = async (req: Request, res: Response) => {
 
 export const upsertWorkweekConfig = async (req: Request, res: Response) => {
   const { workweek_type, effective_from, effective_to } = req.body;
+  const viewerRole = (req as any).user?.role;
+
+  if (viewerRole !== "Admin") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
 
   const normalizedType = normalizeWorkweekType(workweek_type);
 
@@ -376,6 +392,11 @@ export const upsertWorkweekConfig = async (req: Request, res: Response) => {
 export const updateWorkweekConfigById = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { workweek_type, effective_from, effective_to } = req.body;
+  const viewerRole = (req as any).user?.role;
+
+  if (viewerRole !== "Admin") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
 
   const normalizedType = normalizeWorkweekType(workweek_type);
 
@@ -473,6 +494,11 @@ export const updateWorkweekConfigById = async (req: Request, res: Response) => {
 
 export const deleteWorkweekConfigById = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const viewerRole = (req as any).user?.role;
+
+  if (viewerRole !== "Admin") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
 
   try {
     await ensureWorkweekConfigsTable();

@@ -17,10 +17,8 @@ export const updateMyProfile = async (req: Request, res: Response) => {
 
   let keyItem = null;
   let signedUrl = null;
-  console.log(email);
   try {
     if (req.file) {
-      console.log("hasFile");
       keyItem = `Profile/${typedReq.user.emp_id}/picture`;
       await s3Client.send(
         new PutObjectCommand({

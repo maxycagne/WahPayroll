@@ -49,14 +49,7 @@ axiosInterceptor.interceptors.response.use(
         const newToken = refreshResponse.data.token;
 
         setAccessToken(newToken);
-        console.log("intercepted!");
-
-        console.log("New Token: ", newToken);
-        console.log(
-          "response error:",
-          error.response?.status,
-          originalRequest?.url,
-        );
+        
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
         return axiosInterceptor(originalRequest);
