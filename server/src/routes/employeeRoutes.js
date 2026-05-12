@@ -211,7 +211,7 @@ router.post(
   addHrNoteToPendingRequest,
 );
 
-router.post("/generate-payroll", authorizeRoles("Admin"), generatePayroll);
+router.post("/generate-payroll", authorizeRoles("Admin", "HR"), generatePayroll);
 router.post(
   "/salary-adjustment",
   authorizeRoles("Admin"),
