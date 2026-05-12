@@ -2,18 +2,22 @@ import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Use STARTTLS
-  // THIS IS THE KEY: Force IPv4
+  port: 465,
+  secure: true, // Use SSL/TLS
+  // Force IPv4 to prevent ENETUNREACH on cloud providers like Render
   family: 4,
-  pool: true,
-  maxConnections: 5,
-  maxMessages: 100,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // Add a timeout to prevent hanging connections
+  tls: {
+    // Extra security for hostname verification
+    servername: "smtp.gmail.com",
+    rejectUnauthorized: true,
+  },
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
   connectionTimeout: 20000,
   greetingTimeout: 20000,
 });
