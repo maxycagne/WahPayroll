@@ -116,7 +116,7 @@ export const fileLeave: RequestHandler = async (
 
   const connection = await pool.getConnection();
   try {
-    await ensureLeaveApprovalColumns(connection);
+    await ensureLeaveApprovalColumns(connection as any);
     await connection.beginTransaction();
 
     const requester = await getEmployeeProfile(connection, requesterEmpId);
