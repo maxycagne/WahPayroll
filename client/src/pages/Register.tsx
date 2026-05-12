@@ -1,8 +1,25 @@
 import { RegisterForm } from "@/features/Register";
 import { Link } from "react-router-dom";
-import React from "react";
+import React, { useEffect } from "react";
+import { useThemeStore } from "@/store/useThemeStore";
 
 const Register = () => {
+  const { theme } = useThemeStore();
+
+  useEffect(() => {
+    // Force light mode on register page
+    const html = document.documentElement;
+    const wasDark = html.classList.contains("dark");
+    html.classList.remove("dark");
+
+    return () => {
+      // Restore previous theme state when leaving
+      if (wasDark || theme === "dark") {
+        html.classList.add("dark");
+      }
+    };
+  }, [theme]);
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-8">
