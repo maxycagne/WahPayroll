@@ -1,17 +1,20 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL/TLS
   // --- BULK OPTIMIZATIONS ---
-  pool: true, // Use pooled connections instead of creating a new one every time
-  maxConnections: 5, // Do not open more than 5 connections at once (matches our Batch Size of 5!)
-  maxMessages: 100, // Send up to 100 messages per connection before recycling
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
   // --------------------------
   auth: {
     user: process.env.EMAIL_USER,
-    // Note: If using Gmail, this MUST be an App Password, not your normal password
     pass: process.env.EMAIL_PASS,
   },
+  // This helps skip some IPv6 lookup issues in some environments
+  connectionTimeout: 10000,
 });
 
 const emailService = {
