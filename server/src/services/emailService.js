@@ -1,9 +1,13 @@
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
+
+import nodemailer from "nodemailer";
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
-  secure: true, // Use SSL/TLS
+  secure: false,
   // --- BULK OPTIMIZATIONS ---
   pool: true,
   maxConnections: 5,
