@@ -1173,7 +1173,7 @@ export default function Payroll({ shortcutMode = false }) {
                         className="px-3 py-6 text-center text-gray-500 dark:text-gray-400"
                       >
                         No payroll records found for {period}. kindly contact
-                        Gregg if you have any concerns.
+                        Gregg your Senior Developer, if you have any concerns.
                       </td>
                     </tr>
                   ) : (
