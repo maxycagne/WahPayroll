@@ -4,7 +4,17 @@ import axiosInterceptor from "../hooks/interceptor";
 import { mutationHandler } from "@/features/leave/hooks/createMutationHandler";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-import { Camera, Lock, User, Eye, EyeOff, CreditCard, Moon, Sun, Palette } from "lucide-react"; // <-- Added Moon, Sun, Palette
+import {
+  Camera,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  CreditCard,
+  Moon,
+  Sun,
+  Palette,
+} from "lucide-react";
 import { useThemeStore } from "../store/useThemeStore";
 
 export default function Settings() {
@@ -156,7 +166,7 @@ export default function Settings() {
           >
             <Lock className="w-4 h-4" /> Security
           </button>
-          {(currentUser.role !== "Admin" && currentUser.role !== "HR") && (
+          {currentUser.role !== "Admin" && currentUser.role !== "HR" && (
             <button
               onClick={() => setActiveTab("credentials")}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
@@ -295,7 +305,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* --- New Password --- */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                       New Password<span className="text-red-500">*</span>
@@ -511,12 +520,20 @@ export default function Settings() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${theme === "light" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                          <div
+                            className={`p-2 rounded-lg ${theme === "light" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+                          >
                             <Sun className="w-5 h-5" />
                           </div>
                           <div className="text-left">
-                            <p className={`text-sm font-bold ${theme === "light" ? "text-purple-900 dark:text-purple-100" : "text-gray-900 dark:text-gray-100"}`}>Light Mode</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Classic bright look</p>
+                            <p
+                              className={`text-sm font-bold ${theme === "light" ? "text-purple-900 dark:text-purple-100" : "text-gray-900 dark:text-gray-100"}`}
+                            >
+                              Light Mode
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Classic bright look
+                            </p>
                           </div>
                         </div>
                         {theme === "light" && (
@@ -535,12 +552,20 @@ export default function Settings() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${theme === "dark" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                          <div
+                            className={`p-2 rounded-lg ${theme === "dark" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+                          >
                             <Moon className="w-5 h-5" />
                           </div>
                           <div className="text-left">
-                            <p className={`text-sm font-bold ${theme === "dark" ? "text-purple-900 dark:text-purple-100" : "text-gray-900 dark:text-gray-100"}`}>Dark Mode</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Easier on the eyes</p>
+                            <p
+                              className={`text-sm font-bold ${theme === "dark" ? "text-purple-900 dark:text-purple-100" : "text-gray-900 dark:text-gray-100"}`}
+                            >
+                              Dark Mode
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Easier on the eyes
+                            </p>
                           </div>
                         </div>
                         {theme === "dark" && (
