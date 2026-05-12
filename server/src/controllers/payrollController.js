@@ -46,32 +46,38 @@ const getBrowserInstance = async () => {
     // --- DYNAMIC PATH DETECTION FOR RENDER ---
     if (process.env.NODE_ENV === "production") {
       try {
-        // Look into the cache directory to find where 'npx puppeteer browsers install chrome' put it
         const cacheDir = process.env.PUPPETEER_CACHE_DIR || "/opt/render/project/src/.cache/puppeteer";
-        
-        // Find the actual executable by searching the directory structure
-        // Usually: [cacheDir]/chrome/linux-[version]/chrome-linux64/chrome
-        const findChrome = (dir) => {
-          const files = fs.readdirSync(dir);
-          for (const file of files) {
-            const fullPath = path.join(dir, file);
-            if (fs.lstatSync(fullPath).isDirectory()) {
-              const res = findChrome(fullPath);
-              if (res) return res;
-            } else if (file === "chrome" && fullPath.includes("chrome-linux64")) {
-              return fullPath;
-            }
-          }
-          return null;
-        };
+        console.log("Checking for Chrome in cache:", cacheDir);
 
-        const detectedPath = findChrome(cacheDir);
-        if (detectedPath) {
-          console.log("Detected Chrome at:", detectedPath);
-          options.executablePath = detectedPath;
+        if (fs.existsSync(cacheDir)) {
+          const findChrome = (dir) => {
+            try {
+              const files = fs.readdirSync(dir);
+              for (const file of files) {
+                const fullPath = path.join(dir, file);
+                if (fs.lstatSync(fullPath).isDirectory()) {
+                  const res = findChrome(fullPath);
+                  if (res) return res;
+                } else if (file === "chrome" && (fullPath.includes("chrome-linux64") || fullPath.includes("linux-"))) {
+                  return fullPath;
+                }
+              }
+            } catch (e) { return null; }
+            return null;
+          };
+
+          const detectedPath = findChrome(cacheDir);
+          if (detectedPath) {
+            console.log("SUCCESS: Detected Chrome at:", detectedPath);
+            options.executablePath = detectedPath;
+          } else {
+            console.error("CRITICAL: Chrome binary not found inside cacheDir!");
+          }
+        } else {
+          console.error("CRITICAL: cacheDir does not exist:", cacheDir);
         }
       } catch (err) {
-        console.error("Error detecting Chrome path:", err.message);
+        console.error("Error during Chrome detection:", err.stack);
       }
     }
 
