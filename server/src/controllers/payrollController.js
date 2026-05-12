@@ -43,9 +43,36 @@ const getBrowserInstance = async () => {
       ],
     };
 
-    // Use the executable path if provided (required for Render)
-    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-      options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    // --- DYNAMIC PATH DETECTION FOR RENDER ---
+    if (process.env.NODE_ENV === "production") {
+      try {
+        // Look into the cache directory to find where 'npx puppeteer browsers install chrome' put it
+        const cacheDir = process.env.PUPPETEER_CACHE_DIR || "/opt/render/project/src/.cache/puppeteer";
+        
+        // Find the actual executable by searching the directory structure
+        // Usually: [cacheDir]/chrome/linux-[version]/chrome-linux64/chrome
+        const findChrome = (dir) => {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            const fullPath = path.join(dir, file);
+            if (fs.lstatSync(fullPath).isDirectory()) {
+              const res = findChrome(fullPath);
+              if (res) return res;
+            } else if (file === "chrome" && fullPath.includes("chrome-linux64")) {
+              return fullPath;
+            }
+          }
+          return null;
+        };
+
+        const detectedPath = findChrome(cacheDir);
+        if (detectedPath) {
+          console.log("Detected Chrome at:", detectedPath);
+          options.executablePath = detectedPath;
+        }
+      } catch (err) {
+        console.error("Error detecting Chrome path:", err.message);
+      }
     }
 
     globalBrowser = await puppeteer.launch(options);
