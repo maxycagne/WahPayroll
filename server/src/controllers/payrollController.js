@@ -254,30 +254,23 @@ export const sendPayslip = async (req, res) => {
     const { period } = req.body;
     const payrollRecord = await getPayrollByEmployee(pool, emp_id, period);
 
-    if (!payrollRecord?.email)
-      return res.status(404).json({ message: "Not found" });
+    if (!payrollRecord?.email) {
+      return res.status(404).json({ message: "Employee email not found in database." });
+    }
 
-    // OPTIMIZATION 5: Return Early (Fire and Forget)
-    // Send success to frontend immediately
+    const browser = await getBrowserInstance();
+    await processSinglePayslip(payrollRecord, period, browser);
+    
+    console.log(`Successfully sent single payslip to ${payrollRecord.email}`);
+    
     res.status(200).json({
       success: true,
-      message:
-        "Payslip is being generated and sent. The employee will receive it shortly.",
+      message: `Payslip for ${payrollRecord.first_name} has been sent to ${payrollRecord.email}.`,
     });
-
-    // Run the heavy lifting in the background without making the user wait
-    try {
-      const browser = await getBrowserInstance();
-      await processSinglePayslip(payrollRecord, period, browser);
-      console.log(`Successfully sent single payslip to ${payrollRecord.email}`);
-    } catch (bgError) {
-      console.error("Background Single Send Error:", bgError);
-    }
   } catch (error) {
     console.error("Single Endpoint Error:", error);
-    // Only send a 500 error if the headers haven't already been sent
-    if (!res.headersSent) {
-      res.status(500).json({ message: "Internal Server Error" });
-    }
+    res.status(500).json({ 
+      message: error.message || "Internal Server Error during email dispatch." 
+    });
   }
 };

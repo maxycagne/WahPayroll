@@ -21,6 +21,7 @@ const transporter = nodemailer.createTransport({
 const emailService = {
   send: async ({ to, subject, html, attachments }) => {
     try {
+      console.log(`Attempting to send email to: ${to}`);
       const info = await transporter.sendMail({
         // TODO : CHANGE TO Finance email
         from: '"Finance WAH" <finance@wah.ph>',
@@ -29,10 +30,10 @@ const emailService = {
         html,
         attachments: attachments || [],
       });
-      console.log(`Email sent successfully: ${info.messageId}`);
+      console.log(`Email sent successfully to ${to}: ${info.messageId}`);
       return true;
     } catch (error) {
-      console.error(`Email Service Error:`, error.message);
+      console.error(`Email Service Error for ${to}:`, error.stack || error.message);
       // It is often better to THROW the error here so your controller knows exactly why it failed
       throw error;
     }
