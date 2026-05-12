@@ -1,11 +1,14 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
   secure: true, // Use SSL/TLS
-  // Force IPv4 to prevent ENETUNREACH on cloud providers like Render
-  family: 4,
+  // --- CRITICAL FIX FOR RENDER: Force IPv4 via custom lookup ---
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, callback);
+  },
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
