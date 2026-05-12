@@ -2,19 +2,20 @@ import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: false,
-  // --- BULK OPTIMIZATIONS ---
+  port: 587,
+  secure: false, // Use STARTTLS
+  // THIS IS THE KEY: Force IPv4
+  family: 4,
   pool: true,
   maxConnections: 5,
   maxMessages: 100,
-  // --------------------------
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // This helps skip some IPv6 lookup issues in some environments
-  connectionTimeout: 10000,
+  // Add a timeout to prevent hanging connections
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
 });
 
 const emailService = {
