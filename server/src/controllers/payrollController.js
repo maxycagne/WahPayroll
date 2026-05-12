@@ -31,17 +31,24 @@ const cachedLogos = {
 let globalBrowser = null;
 
 const getBrowserInstance = async () => {
-  // If no browser exists, or if it crashed/disconnected, launch a new one
   if (!globalBrowser || !globalBrowser.isConnected()) {
     console.log("Launching global Puppeteer browser...");
-    globalBrowser = await puppeteer.launch({
+    const options = {
       headless: "new",
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-gpu",
       ],
-    });
+    };
+
+    // Use the executable path if provided (required for Render)
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+
+    globalBrowser = await puppeteer.launch(options);
   }
   return globalBrowser;
 };
