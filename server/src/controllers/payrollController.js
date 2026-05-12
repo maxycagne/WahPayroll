@@ -298,19 +298,27 @@ export const sendPayslip = async (req, res) => {
       return res.status(404).json({ message: "Employee email not found in database." });
     }
 
-    const browser = await getBrowserInstance();
-    await processSinglePayslip(payrollRecord, period, browser);
-    
-    console.log(`Successfully sent single payslip to ${payrollRecord.email}`);
-    
+    // Return success immediately to avoid Render's 30s timeout
     res.status(200).json({
       success: true,
-      message: `Payslip for ${payrollRecord.first_name} has been sent to ${payrollRecord.email}.`,
+      message: `Payslip for ${payrollRecord.first_name} is being processed and will be sent to ${payrollRecord.email} shortly.`,
     });
+
+    // Run the heavy lifting in the background
+    (async () => {
+      try {
+        const browser = await getBrowserInstance();
+        await processSinglePayslip(payrollRecord, period, browser);
+        console.log(`Successfully sent single payslip to ${payrollRecord.email}`);
+      } catch (bgError) {
+        console.error("Background Email Error:", bgError.message);
+      }
+    })();
+    
   } catch (error) {
     console.error("Single Endpoint Error:", error);
-    res.status(500).json({ 
-      message: error.message || "Internal Server Error during email dispatch." 
-    });
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 };

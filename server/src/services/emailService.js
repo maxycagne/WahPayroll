@@ -3,8 +3,8 @@ import dns from "dns";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL/TLS
+  port: 587,
+  secure: false, // Use STARTTLS
   // --- CRITICAL FIX FOR RENDER: Force IPv4 via custom lookup ---
   lookup: (hostname, options, callback) => {
     dns.lookup(hostname, { family: 4 }, callback);
