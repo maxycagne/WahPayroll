@@ -1,5 +1,5 @@
 export type RegistrationRequest = {
-  emp_id: string; // This will be the TEMP_ ID from the server
+  emp_id: string; // The user-provided Employee ID (pending approval)
   first_name: string;
   middle_initial?: string;
   last_name: string;

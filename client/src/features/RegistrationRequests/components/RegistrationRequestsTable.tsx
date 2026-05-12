@@ -72,8 +72,8 @@ export const RegistrationRequestsTable = () => {
   const handleApprove = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingRequest) {
-      // Use the original TEMP_ ID for the URL parameter
-      const originalId = (editingRequest as any).original_temp_id;
+      // Use the original ID for the URL parameter
+      const originalId = (editingRequest as any).original_id;
 
       approveMutation.mutate(
         {
@@ -130,11 +130,11 @@ export const RegistrationRequestsTable = () => {
                 <div className="flex justify-center gap-2">
                   <Button
                     onClick={() => {
-                      // Open modal and preserve the original temp id while allowing admin to edit emp_id
+                      // Open modal and preserve the original id while allowing admin to edit emp_id
                       setEditingRequest({
                         ...req,
                         emp_id: req.emp_id,
-                        original_temp_id: req.emp_id,
+                        original_id: req.emp_id,
                       } as any);
                     }}
                     variant="outline"
@@ -435,8 +435,7 @@ export const RegistrationRequestsTable = () => {
                   className="bg-purple-600 hover:bg-purple-700 text-white"
                   disabled={
                     approveMutation.isPending ||
-                    !editingRequest.emp_id ||
-                    editingRequest.emp_id === (editingRequest as any).original_temp_id
+                    !editingRequest.emp_id
                   }
                 >
                   {approveMutation.isPending

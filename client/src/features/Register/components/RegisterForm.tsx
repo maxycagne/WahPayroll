@@ -77,9 +77,7 @@ export const RegisterForm = () => {
       showToast("Passwords do not match.", "error");
       return;
     }
-    // Remove emp_id from data before sending
-    const { emp_id, ...data } = state;
-    registerMutation.mutate(data as any);
+    registerMutation.mutate(state as any);
   };
 
   return (

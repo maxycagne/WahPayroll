@@ -135,6 +135,7 @@ export default function Payroll({ shortcutMode = false }) {
   }, []);
 
   const isAdmin = currentUser?.role === "Admin";
+  const isHR = currentUser?.role === "HR";
 
   // Modal & Form States
   const [adjustmentModal, setAdjustmentModal] = useState(null);
@@ -486,10 +487,10 @@ export default function Payroll({ shortcutMode = false }) {
 
   // Auto-generate payroll when period changes
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin || isHR) {
       generatePayrollMutation.mutate();
     }
-  }, [period]);
+  }, [period, isAdmin, isHR]);
 
   useEffect(() => {
     if (!shortcutMode && searchParams.get("open") !== "salary-settings") return;

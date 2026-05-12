@@ -14,18 +14,20 @@ export const getAttendance = async (req: Request, res: Response) => {
     const search = (req.query.search as string) || "";
     const offset = (page - 1) * limit;
 
-    let whereClause = "e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'";
+    let whereClause =
+      "e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin' AND e.is_active = TRUE";
     const queryParams: any[] = [];
 
     if (search) {
-      whereClause += " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.emp_id LIKE ?)";
+      whereClause +=
+        " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.emp_id LIKE ?)";
       const searchParam = `%${search}%`;
       queryParams.push(searchParam, searchParam, searchParam);
     }
 
     const [countResult]: any = await pool.query(
       `SELECT COUNT(*) as total FROM employees e WHERE ${whereClause}`,
-      queryParams
+      queryParams,
     );
     const totalCount = countResult[0].total;
 
@@ -45,14 +47,14 @@ export const getAttendance = async (req: Request, res: Response) => {
       WHERE ${whereClause}
       ORDER BY e.last_name ASC, e.first_name ASC
       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      [...queryParams, limit, offset],
     );
 
     res.json({
       data: rows,
       total: totalCount,
       page,
-      totalPages: Math.ceil(totalCount / limit)
+      totalPages: Math.ceil(totalCount / limit),
     });
   } catch (error) {
     console.error("DB Error in getAttendance:", error);
@@ -176,7 +178,8 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
     const currentUser: any = await getEmployeeProfile(pool, currentUserEmpId);
     if (!currentUser) return res.status(401).json({ message: "Unauthorized" });
 
-    let whereClause = "e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'";
+    let whereClause =
+      "e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'";
     const queryParams: any[] = [];
 
     if (scope === "own") {
@@ -185,7 +188,10 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
     } else if (scope === "team" && currentUser.role === "Supervisor") {
       whereClause += " AND e.designation = ? AND e.emp_id <> ?";
       queryParams.push(currentUser.designation || "", currentUserEmpId);
-    } else if (scope === "overall" && (currentUser.role === "Admin" || currentUser.role === "HR")) {
+    } else if (
+      scope === "overall" &&
+      (currentUser.role === "Admin" || currentUser.role === "HR")
+    ) {
       // No extra filters for overall
     } else {
       // BUG 7 FIX: Unknown/unauthorized scope — default to own records only
@@ -198,7 +204,7 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
       SELECT e.emp_id, e.first_name, e.last_name, e.status as emp_status, a.status as attendance_status, a.status2, e.designation, e.position
       FROM employees e
       LEFT JOIN attendance a ON e.emp_id = a.emp_id AND DATE_FORMAT(a.date, '%Y-%m-%d') = ?
-      WHERE ${whereClause}
+      WHERE e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin' AND e.is_active = TRUE
     `,
       [date, ...queryParams],
     );
@@ -226,7 +232,7 @@ export const saveBulkAttendance = async (req: Request, res: Response) => {
     await connection.query(
       `DELETE a FROM attendance a
        JOIN employees e ON a.emp_id = e.emp_id
-       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin'`,
+       WHERE DATE_FORMAT(a.date, '%Y-%m-%d') = ? AND e.registration_status = 'Approved' AND COALESCE(e.role, '') <> 'Admin' AND e.is_active = TRUE`,
       [date],
     );
 
@@ -332,7 +338,9 @@ export const upsertWorkweekConfig = async (req: Request, res: Response) => {
       .json({ message: "effective_to must be on or after effective_from" });
   }
 
-  const { hoursPerDay, absenceUnit } = (WORKWEEK_DEFAULTS as any)[normalizedType];
+  const { hoursPerDay, absenceUnit } = (WORKWEEK_DEFAULTS as any)[
+    normalizedType
+  ];
   const normalizedTo = effective_to || null;
   const overlapEndDate = normalizedTo || "9999-12-31";
 
@@ -423,7 +431,9 @@ export const updateWorkweekConfigById = async (req: Request, res: Response) => {
       .json({ message: "effective_to must be on or after effective_from" });
   }
 
-  const { hoursPerDay, absenceUnit } = (WORKWEEK_DEFAULTS as any)[normalizedType];
+  const { hoursPerDay, absenceUnit } = (WORKWEEK_DEFAULTS as any)[
+    normalizedType
+  ];
   const normalizedTo = effective_to || null;
   const overlapEndDate = normalizedTo || "9999-12-31";
 

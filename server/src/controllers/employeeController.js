@@ -874,12 +874,13 @@ export const ensureEmployeeGovernmentColumns = async (connection = pool) => {
     }
   }
 
-  // Keep existing non-temporary users eligible to login after introducing registration_status.
+  // Migration: Ensure existing users have a default registration_status and is_active value.
+  // We no longer auto-approve 'Pending' users here because they might be legitimate 
+  // new registrations that haven't been reviewed yet.
   await connection.query(
     `UPDATE employees
      SET registration_status = 'Approved'
-     WHERE (registration_status IS NULL OR registration_status = 'Pending')
-       AND emp_id NOT LIKE 'TEMP\\_%'`,
+     WHERE registration_status IS NULL`,
   );
 
   await connection.query(
@@ -4141,9 +4142,9 @@ export const generatePayroll = async (req, res) => {
       periodStart,
     ]);
 
-    // 2. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin)
+    // 2. Get all active rank-and-file, HR, and supervisor employees (Ignore Admin, Pending, and Inactive)
     const [employees] = await connection.query(
-      "SELECT emp_id, basic_pay FROM employees WHERE COALESCE(role, '') != 'Admin'",
+      "SELECT emp_id, basic_pay FROM employees WHERE COALESCE(role, '') != 'Admin' AND registration_status = 'Approved' AND is_active = TRUE",
     );
 
     // 3. Calculate and save the snapshot for each employee
@@ -4633,9 +4634,9 @@ export const requestMyLeaveCancellation = async (req, res) => {
 // --- REPORTS ---
 export const getPayrollReports = async (req, res) => {
   try {
-    // 1. Get total active employees (excluding Admin)
+    // 1. Get total active employees (excluding Admin and Pending)
     const [activeEmpRows] = await pool.query(
-      "SELECT COUNT(*) as active_count FROM employees WHERE status != 'Inactive' AND COALESCE(role, '') != 'Admin'",
+      "SELECT COUNT(*) as active_count FROM employees WHERE status != 'Inactive' AND COALESCE(role, '') != 'Admin' AND registration_status = 'Approved'",
     );
     const activeEmployees = activeEmpRows[0].active_count || 0;
 

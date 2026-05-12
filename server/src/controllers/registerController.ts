@@ -77,6 +77,7 @@ const recalculateLeaveBalanceForEmployee = async (connection: any, empId: string
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   const {
+    emp_id,
     first_name,
     last_name,
     middle_initial,
@@ -93,18 +94,22 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     password,
   } = req.body;
 
-  if (!first_name || !last_name || !email || !password || !tin || !sss_no || !pag_ibig_mid_no) {
+  if (!emp_id || !first_name || !last_name || !email || !password || !tin || !sss_no || !pag_ibig_mid_no) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
   try {
-    const [existingEmailRows]: any = await pool.query(
-      "SELECT email FROM employees WHERE email = ? LIMIT 1",
-      [email],
+    const [existingUserRows]: any = await pool.query(
+      "SELECT email, emp_id FROM employees WHERE email = ? OR emp_id = ? LIMIT 2",
+      [email, emp_id],
     );
 
-    if (existingEmailRows.length > 0) {
-      return res.status(400).json({ message: "Email already in use" });
+    if (existingUserRows.length > 0) {
+      const emailMatch = existingUserRows.some((row: any) => row.email === email);
+      const idMatch = existingUserRows.some((row: any) => row.emp_id === emp_id);
+      
+      if (emailMatch) return res.status(400).json({ message: "Email already in use" });
+      if (idMatch) return res.status(400).json({ message: "Employee ID already in use" });
     }
 
     const hashPass = await hashPassword(password);
@@ -112,9 +117,6 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     const normalizedHiredDate = normalizeDateInput(hired_date);
 
     await ensureEmployeeGovernmentColumns();
-
-    // Use a temporary ID for the registration request
-    const tempId = `TEMP_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     await pool.query(
       `INSERT INTO employees (
@@ -124,7 +126,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         password, role, registration_status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
       [
-        tempId,
+        emp_id,
         first_name,
         last_name,
         middle_initial || null,
