@@ -43,8 +43,13 @@ const emailService = {
         };
       }) : [];
 
+      // Use BREVO_SENDER_EMAIL if set (must be a verified sender in Brevo),
+      // otherwise fall back to EMAIL_USER. These can differ!
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || "finance@wah.ph";
+      console.log(`[Brevo] Using sender: ${senderEmail}`);
+
       const payload = {
-        sender: { name: "Finance WAH", email: process.env.EMAIL_USER || "finance@wah.ph" },
+        sender: { name: "Finance WAH", email: senderEmail },
         to: [{ email: to }],
         subject: subject,
         htmlContent: html,
@@ -65,12 +70,15 @@ const emailService = {
         body: JSON.stringify(payload),
       });
 
+      // Always read the response body for diagnosis
+      const responseBody = await response.json();
+      console.log(`[Brevo] Response status: ${response.status}, body: ${JSON.stringify(responseBody)}`);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Brevo API Error: ${JSON.stringify(errorData)}`);
+        throw new Error(`Brevo API Error (${response.status}): ${JSON.stringify(responseBody)}`);
       }
 
-      console.log(`Email sent successfully to ${to} via Brevo HTTP API`);
+      console.log(`Email sent successfully to ${to} via Brevo HTTP API (messageId: ${responseBody.messageId})`);
       return true;
     } catch (error) {
       console.error(`Email Service Error for ${to}:`, error.stack || error.message);
