@@ -25,16 +25,42 @@ const transporter = nodemailer.createTransport({
 const emailService = {
   send: async ({ to, subject, html, attachments }) => {
     try {
-      console.log(`Attempting to send email to: ${to}`);
-      const info = await transporter.sendMail({
-        // TODO : CHANGE TO Finance email
-        from: '"Finance WAH" <finance@wah.ph>',
-        to,
-        subject,
-        html,
-        attachments: attachments || [],
+      console.log(`Attempting to send email to: ${to} using Brevo API (HTTP)`);
+
+      // Convert Nodemailer attachments to Brevo API format
+      const brevoAttachments = attachments ? attachments.map(att => ({
+        name: att.filename,
+        content: att.content.toString('base64')
+      })) : [];
+
+      const payload = {
+        sender: { name: "Finance WAH", email: process.env.EMAIL_USER || "finance@wah.ph" },
+        to: [{ email: to }],
+        subject: subject,
+        htmlContent: html,
+      };
+
+      if (brevoAttachments.length > 0) {
+        payload.attachment = brevoAttachments;
+      }
+
+      // Use native fetch to bypass SMTP port blocking entirely
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+        },
+        body: JSON.stringify(payload),
       });
-      console.log(`Email sent successfully to ${to}: ${info.messageId}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Brevo API Error: ${JSON.stringify(errorData)}`);
+      }
+
+      console.log(`Email sent successfully to ${to} via Brevo HTTP API`);
       return true;
     } catch (error) {
       console.error(`Email Service Error for ${to}:`, error.stack || error.message);
