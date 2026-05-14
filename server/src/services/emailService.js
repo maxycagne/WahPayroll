@@ -28,10 +28,20 @@ const emailService = {
       console.log(`Attempting to send email to: ${to} using Brevo API (HTTP)`);
 
       // Convert Nodemailer attachments to Brevo API format
-      const brevoAttachments = attachments ? attachments.map(att => ({
-        name: att.filename,
-        content: att.content.toString('base64')
-      })) : [];
+      const brevoAttachments = attachments ? attachments.map(att => {
+        // Handle case where Buffer was serialized to JSON { type: "Buffer", data: [...] }
+        const rawContent = (att.content && att.content.type === "Buffer" && Array.isArray(att.content.data)) 
+            ? att.content.data 
+            : att.content;
+            
+        const b64String = Buffer.from(rawContent).toString('base64');
+        console.log(`Attachment [${att.filename}]: converted to base64, length = ${b64String.length}, preview = ${b64String.substring(0, 50)}`);
+        
+        return {
+          name: att.filename,
+          content: b64String
+        };
+      }) : [];
 
       const payload = {
         sender: { name: "Finance WAH", email: process.env.EMAIL_USER || "finance@wah.ph" },
