@@ -43,22 +43,40 @@ const getBrowserInstance = async () => {
       ],
     };
 
-    // --- DYNAMIC PATH DETECTION FOR RENDER ---
+    // --- DYNAMIC PATH DETECTION FOR RENDER & RAILWAY ---
     if (process.env.NODE_ENV === "production") {
       try {
-        const cacheDir = process.env.PUPPETEER_CACHE_DIR || "/opt/render/project/src/.cache/puppeteer";
-        console.log("Checking for Chrome in cache:", cacheDir);
+        const cacheDirs = [
+          process.env.PUPPETEER_EXECUTABLE_PATH, // User-defined executable
+          process.env.PUPPETEER_CACHE_DIR, // User-defined cache
+          "/opt/render/project/src/.cache/puppeteer", // Render
+          path.join(process.cwd(), ".cache", "puppeteer"), // Default local
+          process.env.HOME ? path.join(process.env.HOME, ".cache", "puppeteer") : null, // Railway standard
+          "/usr/bin/google-chrome",
+          "/usr/bin/chromium",
+          "/usr/bin/chromium-browser"
+        ].filter(Boolean);
 
-        if (fs.existsSync(cacheDir)) {
-          const findChrome = (dir) => {
+        let detectedPath = null;
+
+        for (const dir of cacheDirs) {
+          if (!fs.existsSync(dir)) continue;
+
+          // If it's directly an executable file (like /usr/bin/chromium)
+          if (fs.lstatSync(dir).isFile()) {
+            detectedPath = dir;
+            break;
+          }
+
+          const findChrome = (searchDir) => {
             try {
-              const files = fs.readdirSync(dir);
+              const files = fs.readdirSync(searchDir);
               for (const file of files) {
-                const fullPath = path.join(dir, file);
+                const fullPath = path.join(searchDir, file);
                 if (fs.lstatSync(fullPath).isDirectory()) {
                   const res = findChrome(fullPath);
                   if (res) return res;
-                } else if (file === "chrome" && (fullPath.includes("chrome-linux64") || fullPath.includes("linux-"))) {
+                } else if ((file === "chrome" || file === "chromium") && (fullPath.includes("chrome-linux64") || fullPath.includes("linux-"))) {
                   return fullPath;
                 }
               }
@@ -66,15 +84,24 @@ const getBrowserInstance = async () => {
             return null;
           };
 
-          const detectedPath = findChrome(cacheDir);
-          if (detectedPath) {
-            console.log("SUCCESS: Detected Chrome at:", detectedPath);
-            options.executablePath = detectedPath;
-          } else {
-            console.error("CRITICAL: Chrome binary not found inside cacheDir!");
+          detectedPath = findChrome(dir);
+          if (detectedPath) break;
+        }
+
+        // Fallback to Puppeteer's internal resolution if nothing else was found
+        if (!detectedPath) {
+          try {
+            detectedPath = puppeteer.executablePath();
+          } catch (e) {
+            console.log("Puppeteer native executablePath() resolution failed.");
           }
+        }
+
+        if (detectedPath) {
+          console.log("SUCCESS: Detected Chrome at:", detectedPath);
+          options.executablePath = detectedPath;
         } else {
-          console.error("CRITICAL: cacheDir does not exist:", cacheDir);
+          console.error("CRITICAL: Chrome binary not found in any standard cache directories!");
         }
       } catch (err) {
         console.error("Error during Chrome detection:", err.stack);
