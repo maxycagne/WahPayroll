@@ -1784,13 +1784,6 @@ export default function Payroll({ shortcutMode = false }) {
                       <p className="m-0 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
                         Adjustment Lines
                       </p>
-                      <button
-                        type="button"
-                        onClick={addCurrentAdjustmentLine}
-                        className="rounded-md border border-purple-300 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40"
-                      >
-                        Add Line
-                      </button>
                     </div>
 
                     {adjustmentLineItems.length === 0 ? (
