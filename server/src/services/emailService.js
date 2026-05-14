@@ -5,10 +5,7 @@ const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
   secure: false, // Use STARTTLS
-  // --- CRITICAL FIX FOR RENDER: Force IPv4 via custom lookup ---
-  lookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, callback);
-  },
+  family: 4, // CRITICAL FIX FOR RAILWAY/RENDER: Force IPv4 to prevent ENETUNREACH IPv6 errors
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,

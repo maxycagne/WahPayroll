@@ -91,17 +91,25 @@ const getBrowserInstance = async () => {
         // Fallback to Puppeteer's internal resolution if nothing else was found
         if (!detectedPath) {
           try {
-            detectedPath = puppeteer.executablePath();
+            const defaultPath = puppeteer.executablePath();
+            if (fs.existsSync(defaultPath)) {
+              detectedPath = defaultPath;
+            } else {
+              console.log(`Puppeteer native executablePath() returned ${defaultPath}, but it does not exist.`);
+            }
           } catch (e) {
             console.log("Puppeteer native executablePath() resolution failed.");
           }
         }
 
-        if (detectedPath) {
+        if (detectedPath && fs.existsSync(detectedPath)) {
           console.log("SUCCESS: Detected Chrome at:", detectedPath);
           options.executablePath = detectedPath;
         } else {
-          console.error("CRITICAL: Chrome binary not found in any standard cache directories!");
+          console.error("CRITICAL: Chrome binary not found!");
+          console.error("If you are on Railway, please add a nixpacks.toml file to your project root with:");
+          console.error('[providers.node]\n  nodeVersion = "18"\n[phases.setup]\n  nixPkgs = ["...", "chromium"]');
+          console.error("And REMOVE any PUPPETEER_CACHE_DIR or PUPPETEER_EXECUTABLE_PATH environment variables that point to Render.");
         }
       } catch (err) {
         console.error("Error during Chrome detection:", err.stack);
