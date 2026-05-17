@@ -588,14 +588,19 @@ export const getAttendanceCalendarSummary = async (req: Request, res: Response) 
 
     let whereClause = "MONTH(a.date) = ? AND YEAR(a.date) = ? AND COALESCE(e.role, '') <> 'Admin'";
     const queryParams: any[] = [month, year];
+    const normalizedScope = String(scope || "").toLowerCase();
+    const effectiveScope =
+      !normalizedScope && (currentUser.role === "Admin" || currentUser.role === "HR")
+        ? "overall"
+        : normalizedScope;
 
-    if (scope === "own") {
+    if (effectiveScope === "own") {
       whereClause += " AND a.emp_id = ?";
       queryParams.push(currentUserEmpId);
-    } else if (scope === "team" && currentUser.role === "Supervisor") {
+    } else if (effectiveScope === "team" && currentUser.role === "Supervisor") {
       whereClause += " AND e.designation = ? AND e.emp_id <> ?";
       queryParams.push(currentUser.designation || "", currentUserEmpId);
-    } else if (scope === "overall" && (currentUser.role === "Admin" || currentUser.role === "HR")) {
+    } else if (effectiveScope === "overall" && (currentUser.role === "Admin" || currentUser.role === "HR")) {
       // No extra filters for overall
     } else {
       // BUG 7 FIX: Unknown/unauthorized scope — default to own records only
