@@ -7,6 +7,7 @@ import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3BucketName, s3Client } from "../config/s3.ts";
 import { isDeductibleLeave } from "../constants/leavePolicy.ts";
+import { purgeEmployeeRelatedRecords } from "../services/employeeDeletion.js";
 
 // payrollModel.js
 export const getPayrollByEmployee = async (connection, emp_id, period) => {
@@ -2380,13 +2381,31 @@ export const resetEmployeePassword = async (req, res) => {
 
 export const deleteEmployee = async (req, res) => {
   const { id } = req.params;
+  const connection = await pool.getConnection();
+
   try {
-    // Because of 'ON DELETE CASCADE' in schema.sql, this safely removes their leaves, attendance, and payroll too
-    await pool.query("DELETE FROM employees WHERE emp_id = ?", [id]);
+    await connection.beginTransaction();
+
+    await purgeEmployeeRelatedRecords(connection, id);
+
+    const [result] = await connection.query(
+      "DELETE FROM employees WHERE emp_id = ?",
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    await connection.commit();
     res.json({ message: "Employee deleted successfully" });
   } catch (error) {
+    await connection.rollback();
     console.error("DB Error in deleteEmployee:", error);
     res.status(500).json({ message: "Error deleting employee" });
+  } finally {
+    connection.release();
   }
 };
 
