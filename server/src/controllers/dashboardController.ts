@@ -14,6 +14,7 @@ import {
   notifyRequesterForCancellationDecision,
   notifyRequesterForDecision,
   ensureLeaveApprovalColumns,
+  applyManagerDisplayOverride,
 } from "./employeeController";
 
 // Helper to delete leave documents from S3
@@ -61,7 +62,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 
     const pendingLeaveStatuses = ["Pending", "Pending Approval", "Pending Review"];
 
-    let pending = [];
+    let pending: any[] = [];
     if (isAdmin || isHR) {
       const [rows]: any = await pool.query(
         `
@@ -131,7 +132,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       onLeave = rows;
     }
 
-    let absents = [];
+    let absents: any[] = [];
     if (isAdmin || isHR) {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation
@@ -187,7 +188,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       absents = rows;
     }
 
-    let balances = [];
+    let balances: any[] = [];
     if (isAdmin || isHR) {
       const [rows]: any = await pool.query(
         `SELECT e.emp_id, e.first_name, e.last_name, e.designation, lb.leave_balance, lb.offset_credits
@@ -207,7 +208,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       balances = rows;
     }
 
-    let resignations = [];
+    let resignations: any[] = [];
     if (isAdmin || isHR) {
       const [rows]: any = await pool.query(
         `
@@ -284,9 +285,9 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       offsetCredits: Number(balances[0]?.offset_credits || 0),
     };
 
-    let teamSummary = null;
-    let teamAttendanceStatus = [];
-    let teamPendingRequests = [];
+    let teamSummary: any = null;
+    let teamAttendanceStatus: any[] = [];
+    let teamPendingRequests: any[] = [];
 
     if (isSupervisor) {
       const [teamMembers]: any = await pool.query(
@@ -298,6 +299,10 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
            AND emp_id <> ?
            AND status != 'Inactive'`,
         [currentUser.designation || "", currentUser.emp_id],
+      );
+
+      const normalizedTeamMembers = teamMembers.map((member: any) =>
+        applyManagerDisplayOverride(member),
       );
 
       const [teamAttendanceRows]: any = await pool.query(
@@ -317,7 +322,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         return acc;
       }, {});
 
-      teamAttendanceStatus = teamMembers.map((member: any) => {
+      teamAttendanceStatus = normalizedTeamMembers.map((member: any) => {
         const onLeaveMatch = onLeave.find(
           (item: any) => String(item.emp_id) === String(member.emp_id),
         );
@@ -431,9 +436,9 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 
     res.json({
       pendingLeaves: pending,
-      onLeave,
-      absents,
-      balances,
+      onLeave: onLeave.map((row: any) => applyManagerDisplayOverride(row)),
+      absents: absents.map((row: any) => applyManagerDisplayOverride(row)),
+      balances: balances.map((row: any) => applyManagerDisplayOverride(row)),
       resignations,
       personalSummary,
       teamSummary,
@@ -517,11 +522,15 @@ export const getAllEmployees = async (req: Request, res: Response) => {
       fetchAll ? queryParams : [...queryParams, limit, offset]
     );
 
+    const normalizedRows = Array.isArray(rows)
+      ? rows.map((row: any) => applyManagerDisplayOverride(row))
+      : [];
+
     res.json({
-      data: rows,
+      data: normalizedRows,
       total: totalCount,
       page: fetchAll ? 1 : page,
-      totalPages: fetchAll ? 1 : Math.ceil(totalCount / limit)
+      totalPages: fetchAll ? 1 : Math.ceil(totalCount / limit),
     });
   } catch (error) {
     console.error("DB Error in getAllEmployees:", error);
@@ -696,7 +705,11 @@ export const getAllLeaves = async (req: Request, res: Response) => {
     query += " ORDER BY l.id DESC";
 
     const [rows] = await pool.query(query, queryParams);
-    res.json(rows);
+    const normalizedRows = Array.isArray(rows)
+      ? rows.map((row: any) => applyManagerDisplayOverride(row))
+      : [];
+
+    res.json(normalizedRows);
   } catch (error) {
     console.error("DB Error in getAllLeaves:", error);
     res.status(500).json({ message: "Error fetching leaves" });
@@ -775,7 +788,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       leaveRequest.approved_days,
     );
 
-    if (!(await canApproverReviewRequester(connection as any, approver, requester))) {
+    if (!(await canApproverReviewRequester(connection as any, approver, requester, { moduleType: "leave" }))) {
       await connection.rollback();
       return res.status(403).json({
         message: "You are not allowed to approve this leave request",
@@ -1126,7 +1139,8 @@ export const getAllPayroll = async (req: Request, res: Response) => {
         : [periodStart, ...scopedParams, limit, offset],
     );
 
-    const enrichedRows = rows.map((row: any) => {
+    const enrichedRows = Array.isArray(rows)
+      ? rows.map((row: any) => {
       const basicPay = Number(row.basic_pay || 0);
       const incentives = Number(row.recalculated_incentives || 0);
       const totalDeductions = Number(row.recalculated_deductions || 0);
@@ -1135,7 +1149,7 @@ export const getAllPayroll = async (req: Request, res: Response) => {
       );
       const grossPay = Number((basicPay + incentives).toFixed(2));
 
-      return {
+      return applyManagerDisplayOverride({
         ...row,
         absences_count: 0,
         converted_absences: 0,
@@ -1145,8 +1159,9 @@ export const getAllPayroll = async (req: Request, res: Response) => {
         baseline_absence_deductions: 0,
         adjustment_deductions: totalDeductions,
         net_pay: netPay,
-      };
-    });
+      });
+      })
+      : [];
 
     res.json({
       data: enrichedRows,
@@ -1201,7 +1216,11 @@ export const getOffsetApplications = async (req: Request, res: Response) => {
     query += " ORDER BY oa.created_at DESC";
 
     const [rows] = await pool.query(query, queryParams);
-    res.json(rows);
+    const normalizedRows = Array.isArray(rows)
+      ? rows.map((row: any) => applyManagerDisplayOverride(row))
+      : [];
+
+    res.json(normalizedRows);
   } catch (error) {
     console.error("DB Error in getOffsetApplications:", error);
     res.status(500).json({ message: "Error fetching offset applications" });

@@ -4,6 +4,7 @@ import { SupervisorDashboard } from "../features/dashboard/components/Supervisor
 import { AdminDashboard } from "../features/dashboard/components/AdminDashboard";
 import { User } from "../features/dashboard/types";
 import useSocket from "@/hooks/useSocket";
+import { normalizeAccessRole } from "@/lib/role.utils";
 
 const Dashboard: React.FC = () => {
   const currentUser = useMemo(() => {
@@ -17,7 +18,7 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
-  if (currentUser?.role === "RankAndFile") {
+  if (normalizeAccessRole(currentUser?.role) === "RankAndFile") {
     return <EmployeeDashboard currentUser={currentUser} />;
   }
 

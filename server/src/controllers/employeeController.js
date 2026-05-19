@@ -73,6 +73,21 @@ export const resolveRoleFromProfile = ({ designation, position }) => {
   return "RankAndFile";
 };
 
+const MANAGER_EMP_ID = "15";
+
+export const applyManagerDisplayOverride = (employee) => {
+  if (!employee) return employee;
+
+  const empId = String(employee.emp_id || "").trim();
+  if (empId !== MANAGER_EMP_ID) return employee;
+
+  return {
+    ...employee,
+    position: "Manager",
+    designation: "Manager",
+  };
+};
+
 export const WORKWEEK_DEFAULTS = {
   "5-day": { hoursPerDay: 8, absenceUnit: 1 },
   "4-day": { hoursPerDay: 10, absenceUnit: 1.25 },
@@ -1076,12 +1091,12 @@ export const getEmployeeProfile = async (connection, empId) => {
 
   if (rows.length === 0) return null;
 
-  return {
+  return applyManagerDisplayOverride({
     ...rows[0],
     role: normalizeRole(rows[0].role),
     status: rows[0].status || null,
     designation: rows[0].designation || null,
-  };
+  });
 };
 
 const safeEmployeeDisplayName = (employee) => {
@@ -1209,7 +1224,7 @@ const getAccessibleEmployeesForFileManagement = async (connection, viewer) => {
   );
 
   return rows.map((row) => ({
-    ...row,
+    ...applyManagerDisplayOverride(row),
     role: normalizeRole(row.role),
   }));
 };
@@ -1807,8 +1822,31 @@ export const deleteFileTemplate = async (req, res) => {
   }
 };
 
-const getSupervisorApproversForRequester = async (connection, requester) => {
+const getSupervisorApproversForRequester = async (
+  connection,
+  requester,
+  options = {},
+) => {
   if (!requester) return [];
+
+  const moduleType = String(options.moduleType || "").trim().toLowerCase();
+  const isManagerRequester = String(requester.emp_id || "").trim() === "15";
+  const managerShouldRouteToHr =
+    isManagerRequester && (moduleType === "leave" || moduleType === "resignation");
+
+  if (managerShouldRouteToHr) {
+    const [hrRows] = await connection.query(
+      `
+        SELECT emp_id, first_name, last_name, designation
+        FROM employees
+        WHERE LOWER(COALESCE(role, '')) = 'hr'
+          AND emp_id <> ?
+        ORDER BY first_name ASC, last_name ASC
+      `,
+      [requester.emp_id],
+    );
+    return hrRows;
+  }
 
   if (requester.role === "Supervisor") {
     const [rows] = await connection.query(
@@ -1866,9 +1904,21 @@ const getSupervisorApproversForRequester = async (connection, requester) => {
   return rows;
 };
 
-export const canApproverReviewRequester = async (connection, approver, requester) => {
+export const canApproverReviewRequester = async (
+  connection,
+  approver,
+  requester,
+  options = {},
+) => {
   if (!approver || !requester) return false;
   if (approver.emp_id === requester.emp_id) return false;
+
+  const moduleType = String(options.moduleType || "").trim().toLowerCase();
+  const isManagerRequester = String(requester.emp_id || "").trim() === "15";
+
+  if (isManagerRequester && (moduleType === "leave" || moduleType === "resignation")) {
+    return approver.role === "HR";
+  }
   
   // Admin has oversight of all leave requests. 
   // HR can only approve if no supervisor exists for the designation (handled below).
@@ -1946,6 +1996,7 @@ export const notifyApproversForRequest = async (
   const approvers = await getSupervisorApproversForRequester(
     connection,
     requester,
+    { moduleType },
   );
 
   if (approvers.length === 0) return;
@@ -1971,6 +2022,7 @@ const notifySupervisorsForHrRoutingNote = async (
   const supervisors = await getSupervisorApproversForRequester(
     connection,
     requester,
+    { moduleType },
   );
 
   if (supervisors.length === 0) return;
@@ -2027,6 +2079,7 @@ export const notifyApproversForCancellationRequest = async (
   const approvers = await getSupervisorApproversForRequester(
     connection,
     requester,
+    { moduleType },
   );
 
   if (approvers.length === 0) return;
@@ -2540,7 +2593,7 @@ export const updateResignationStatus = async (req, res) => {
       const approver = await getEmployeeProfile(connection, req.user?.emp_id);
       const requester = await getEmployeeProfile(connection, resignation.emp_id);
 
-      if (!(await canApproverReviewRequester(connection, approver, requester)) && approver.role !== 'Admin') {
+      if (!(await canApproverReviewRequester(connection, approver, requester, { moduleType: "resignation" }))) {
         await connection.rollback();
         return res.status(403).json({
           message: "You are not allowed to approve this resignation request",
@@ -2778,10 +2831,9 @@ export const getResignationRecipient = async (req, res) => {
       return res.status(404).json({ message: "Requester not found" });
     }
 
-    const supervisors = await getSupervisorApproversForRequester(
-      pool,
-      requester,
-    );
+    const supervisors = await getSupervisorApproversForRequester(pool, requester, {
+      moduleType: "resignation",
+    });
     const primaryRecipient = supervisors[0] || null;
     const firstName = String(primaryRecipient?.first_name || "").trim();
     const lastName = String(primaryRecipient?.last_name || "").trim();
@@ -3113,10 +3165,9 @@ export const fileResignation = async (req, res) => {
         }
 
         // Also notify supervisor (if applicable)
-        const supervisors = await getSupervisorApproversForRequester(
-          connection,
-          requester,
-        );
+        const supervisors = await getSupervisorApproversForRequester(connection, requester, {
+          moduleType: "resignation",
+        });
         for (const supervisor of supervisors) {
           await createNotification(connection, {
             empId: supervisor.emp_id,
@@ -3205,6 +3256,7 @@ export const uploadResignationClearance = async (req, res) => {
         const approvers = await getSupervisorApproversForRequester(
           connection,
           requester,
+          { moduleType: "resignation" },
         );
         const requesterName = `${requester.first_name} ${requester.last_name}`.trim();
 

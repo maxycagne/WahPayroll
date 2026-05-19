@@ -11,6 +11,7 @@ import {
   Wallet,
   Settings,
 } from "lucide-react";
+import { getDisplayRoleLabel, normalizeAccessRole } from "@/lib/role.utils";
 
 const navItems = {
   Admin: [
@@ -56,7 +57,8 @@ const navItems = {
 };
 
 export default function Sidebar({ role, onLogout, isCollapsed = false }) {
-  const items = navItems[role] || navItems.RankAndFile;
+  const accessRole = normalizeAccessRole(role);
+  const items = navItems[accessRole] || navItems.RankAndFile;
 
   const currentUser = JSON.parse(localStorage.getItem("wah_user") || "{}");
   const displayName =
@@ -130,7 +132,7 @@ export default function Sidebar({ role, onLogout, isCollapsed = false }) {
                 {displayName}
               </span>
               <span className="truncate text-[10px] font-bold tracking-widest text-white/50 uppercase mt-0.5">
-                {role}
+                {getDisplayRoleLabel(role)}
               </span>
             </div>
           )}

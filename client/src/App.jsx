@@ -23,13 +23,16 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import useSocket from "./hooks/useSocket";
 import { useThemeStore } from "./store/useThemeStore";
+import { applyManagerDisplayOverride, normalizeAccessRole } from "./lib/role.utils";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";
 
 const safeParseUser = () => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_USER_KEY) || "null");
+    return applyManagerDisplayOverride(
+      JSON.parse(localStorage.getItem(STORAGE_USER_KEY) || "null"),
+    );
   } catch {
     return null;
   }
@@ -38,8 +41,10 @@ const safeParseUser = () => {
 function RoleProtectedRoute({ user, allowedRoles, children }) {
   if (!user) return <Navigate to="/login" replace />;
 
-  if (!allowedRoles.includes(user.role)) {
-    const defaultPath = user.role === "HR" ? "/hr-dashboard" : "/dashboard";
+  const accessRole = normalizeAccessRole(user.role);
+
+  if (!allowedRoles.includes(accessRole)) {
+    const defaultPath = accessRole === "HR" ? "/hr-dashboard" : "/dashboard";
     return <Navigate to={defaultPath} replace />;
   }
 

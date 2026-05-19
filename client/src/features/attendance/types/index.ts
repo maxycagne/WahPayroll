@@ -61,6 +61,6 @@ export interface User {
   emp_id: string;
   first_name: string;
   last_name: string;
-  role: "Admin" | "HR" | "Supervisor" | "RankAndFile";
+  role: "Admin" | "HR" | "Supervisor" | "RankAndFile" | "Manager";
   designation?: string;
 }

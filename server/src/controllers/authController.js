@@ -6,6 +6,7 @@ import { createAccessToken, createRefreshToken } from "../helper/jwt.js";
 import { ensureEmployeeGovernmentColumns } from "./employeeController.js";
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_wah_key";
 const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || "";
+const MANAGER_EMP_ID = "15";
 
 const normalizeRole = (role) => {
   const value = String(role || "")
@@ -18,6 +19,22 @@ const normalizeRole = (role) => {
   if (value === "rankandfile" || value === "rank & file") return "RankAndFile";
 
   return "RankAndFile";
+};
+
+const resolveSessionRole = (user) => {
+  const normalized = normalizeRole(user?.role);
+  if (String(user?.emp_id || "") === MANAGER_EMP_ID && normalized === "RankAndFile") {
+    return "Manager";
+  }
+  return normalized;
+};
+const applyManagerDisplayOverride = (user) => {
+  if (!user || String(user.emp_id || "") !== MANAGER_EMP_ID) return user;
+  return {
+    ...user,
+    position: "Manager",
+    designation: "Manager",
+  };
 };
 
 const buildDisplayName = (firstName, lastName) => {
@@ -102,7 +119,7 @@ export const login = async (req, res) => {
       });
     }
 
-    const role = normalizeRole(user.role);
+    const role = resolveSessionRole(user);
 
     // const session = crypto.randomUUID();
     const token = createAccessToken({
@@ -136,8 +153,8 @@ export const login = async (req, res) => {
         name: buildDisplayName(user.first_name, user.last_name),
         email: user.email,
         role,
-        position: user.position || "",
-        designation: user.designation || "",
+        position: applyManagerDisplayOverride(user).position || "",
+        designation: applyManagerDisplayOverride(user).designation || "",
         hired_date: user.hired_date || null,
         profile_photo: user.profile_photo || null,
         philhealth_no: user.philhealth_no || "",
@@ -188,9 +205,9 @@ export const getMe = async (req, res) => {
         last_name: user.last_name,
         name: buildDisplayName(user.first_name, user.last_name),
         email: user.email,
-        role: normalizeRole(user.role),
-        position: user.position || "",
-        designation: user.designation || "",
+        role: resolveSessionRole(user),
+        position: applyManagerDisplayOverride(user).position || "",
+        designation: applyManagerDisplayOverride(user).designation || "",
         hired_date: user.hired_date || null,
         profile_photo: user.profile_photo || null,
         philhealth_no: user.philhealth_no || "",

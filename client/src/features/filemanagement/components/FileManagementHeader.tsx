@@ -1,5 +1,6 @@
 import React from "react";
 import { Search, Users, RefreshCw, Shield, Archive } from "lucide-react";
+import { normalizeAccessRole } from "@/lib/role.utils";
 
 interface FileManagementHeaderProps {
   role: string;
@@ -130,7 +131,7 @@ export const FileManagementHeader: React.FC<FileManagementHeaderProps> = ({
                   type="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder={role === "RankAndFile" ? "Search file name..." : "Search employee, position, designation, or file name"}
+                  placeholder={normalizeAccessRole(role) === "RankAndFile" ? "Search file name..." : "Search employee, position, designation, or file name"}
                   className="w-full border-0 bg-transparent text-sm outline-none placeholder:text-slate-400 dark:text-gray-200"
                 />
               </div>

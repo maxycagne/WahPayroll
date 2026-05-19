@@ -201,7 +201,9 @@ export default function Leave() {
     const roleValue = String(item?.requester_role || "")
       .trim()
       .toLowerCase();
-    return roleValue === "supervisor";
+    const isManagerRequester = String(item?.emp_id || "").trim() === "15";
+
+    return roleValue === "supervisor" || isManagerRequester;
   };
 
   const { handleSubmitLeave } = useHandleSubmiisions({

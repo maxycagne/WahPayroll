@@ -7,11 +7,13 @@ import { FileTable } from "./FileTable";
 import { EmployeeFilesModal } from "./EmployeeFilesModal";
 import { TemplateModal } from "./TemplateModal";
 import { formatDateTime } from "../utils";
+import { getDisplayRoleLabel } from "@/lib/role.utils";
 
 const roleLabels = {
   Admin: "Admin Portal",
   HR: "HR Portal",
   Supervisor: "Supervisor Portal",
+  Manager: "Manager Portal",
   RankAndFile: "Employee Portal",
 };
 
@@ -115,7 +117,9 @@ export const FileManagement: React.FC = () => {
 
       {viewMode === "history" ? (
         <div className="rounded-3xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-gray-200">File Activity Log</h2>
+          <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-gray-200">
+            {getDisplayRoleLabel(role)} Activity Log
+          </h2>
           <div className="space-y-3">
             {fileActivityLog.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-gray-400">No activity recorded yet.</p>

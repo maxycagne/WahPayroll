@@ -1,4 +1,4 @@
-export type Role = "Admin" | "HR" | "Supervisor" | "RankAndFile";
+export type Role = "Admin" | "HR" | "Supervisor" | "RankAndFile" | "Manager";
 
 export interface User {
   emp_id: string | number;

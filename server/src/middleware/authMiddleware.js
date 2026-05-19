@@ -21,11 +21,14 @@ export const authenticateToken = (req, res, next) => {
 
 export const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user?.role) {
+    const role = req.user?.role;
+    const effectiveRole = role === "Manager" ? "RankAndFile" : role;
+
+    if (!effectiveRole) {
       return res.status(403).json({ message: "Forbidden: no role on token" });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(effectiveRole)) {
       return res.status(403).json({ message: "Forbidden: insufficient role" });
     }
 

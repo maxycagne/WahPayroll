@@ -5,6 +5,7 @@ import {
   normalizeWorkweekType,
   WORKWEEK_DEFAULTS,
   getEmployeeProfile,
+  applyManagerDisplayOverride,
 } from "./employeeController";
 
 export const getAttendance = async (req: Request, res: Response) => {
@@ -51,7 +52,7 @@ export const getAttendance = async (req: Request, res: Response) => {
     );
 
     res.json({
-      data: rows,
+      data: rows.map((row: any) => applyManagerDisplayOverride(row)),
       total: totalCount,
       page,
       totalPages: Math.ceil(totalCount / limit),
@@ -163,7 +164,7 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
       ],
     );
 
-    res.json(rows);
+    res.json(rows.map((row: any) => applyManagerDisplayOverride(row)));
   } catch (error) {
     console.error("DB Error in getAttendanceStats:", error);
     res.status(500).json({ message: "Error fetching attendance stats" });
@@ -208,7 +209,7 @@ export const getDailyAttendance = async (req: Request, res: Response) => {
     `,
       [date, ...queryParams],
     );
-    res.json(rows);
+    res.json(rows.map((row: any) => applyManagerDisplayOverride(row)));
   } catch (error) {
     console.error("DB Error in getDailyAttendance:", error);
     res.status(500).json({ message: "Error fetching daily attendance" });

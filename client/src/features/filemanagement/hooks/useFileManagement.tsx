@@ -8,6 +8,7 @@ import { useFileFilters } from "./useFileFilters";
 import { useFileTemplates } from "./useFileTemplates";
 import { useEmployeeFiles } from "./useEmployeeFiles";
 import { useFileOperations } from "./useFileOperations";
+import { normalizeAccessRole } from "@/lib/role.utils";
 
 export const useFileManagement = () => {
   const [toast, setToast] = useState<{ message: string; type: string; createdAt: number } | null>(null);
@@ -25,10 +26,11 @@ export const useFileManagement = () => {
   }, []);
 
   const role = currentUser?.role || "RankAndFile";
-  const isCardLayout = ["Admin", "HR", "Supervisor"].includes(role);
-  const canManageTemplates = role === "Admin" || role === "HR";
-  const canArchive = ["Admin", "HR", "Supervisor"].includes(role);
-  const isSupervisorRole = role === "Supervisor";
+  const accessRole = normalizeAccessRole(role);
+  const isCardLayout = ["Admin", "HR", "Supervisor"].includes(accessRole);
+  const canManageTemplates = accessRole === "Admin" || accessRole === "HR";
+  const canArchive = ["Admin", "HR", "Supervisor"].includes(accessRole);
+  const isSupervisorRole = accessRole === "Supervisor";
   const filterAttributeKey = isSupervisorRole ? "position" : ("designation" as keyof Employee);
   const filterAttributeLabel = isSupervisorRole ? "Position" : "Designation";
 
@@ -39,7 +41,7 @@ export const useFileManagement = () => {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["file-management", role],
+    queryKey: ["file-management", accessRole],
     queryFn: getFileInventory,
   });
 
@@ -50,7 +52,7 @@ export const useFileManagement = () => {
   } = useQuery({
     queryKey: ["file-activity-log"],
     queryFn: getFileActivityLog,
-    enabled: ["Admin", "HR", "Supervisor"].includes(role),
+    enabled: ["Admin", "HR", "Supervisor"].includes(accessRole),
   });
 
   const files = useMemo(

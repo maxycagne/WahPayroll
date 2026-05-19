@@ -14,6 +14,7 @@ const designationMap = {
     "Assistant Finance & Operations Partner",
     "Admin & Human Resources Partner",
   ],
+  Manager: ["Manager"],
   "Health Program Partners": [
     "Supervisor(Health Program Partner)",
     "Health Program Partner",
@@ -1105,7 +1106,7 @@ function EmployeeModal({
               >
                 <option value="">Select Position</option>
                 {data.designation &&
-                  designationMap[data.designation].map((p) => (
+                  designationMap[data.designation]?.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>

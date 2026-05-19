@@ -2,6 +2,7 @@ import React from "react";
 import { ArrowDownToLine, Upload, Trash2, Archive } from "lucide-react";
 import { FileDocument } from "../types";
 import { formatDate } from "../utils";
+import { normalizeAccessRole } from "@/lib/role.utils";
 
 interface FileTableProps {
   files: FileDocument[];
@@ -26,7 +27,7 @@ export const FileTable: React.FC<FileTableProps> = ({
   showArchived,
   role,
 }) => {
-  const isRankAndFile = role === "RankAndFile";
+  const isRankAndFile = normalizeAccessRole(role) === "RankAndFile";
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
