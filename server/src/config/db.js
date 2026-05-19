@@ -5,13 +5,15 @@ dotenv.config();
 
 const isProd = process.env.NODE_ENV === "production";
 
-const pool = isProd
-  ? mysql.createPool(process.env.MYSQL_PUBLIC_URL)
+const connectionString = process.env.MYSQL_URL || process.env.MYSQL_PUBLIC_URL;
+
+const pool = connectionString 
+  ? mysql.createPool(connectionString)
   : mysql.createPool({
-      host: process.env.DB_HOST || "localhost",
-      user: process.env.DB_USER || "root",
-      password: process.env.DB_PASSWORD || "",
-      database: process.env.DB_NAME || "wahpayroll",
+      host: process.env.MYSQLHOST || "localhost",
+      user: process.env.MYSQLUSER || "root",
+      password: process.env.MYSQLPASSWORD || "",
+      database: process.env.MYSQLDATABASE || "wahpayroll",
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,

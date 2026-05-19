@@ -31,17 +31,92 @@ const cachedLogos = {
 let globalBrowser = null;
 
 const getBrowserInstance = async () => {
-  // If no browser exists, or if it crashed/disconnected, launch a new one
   if (!globalBrowser || !globalBrowser.isConnected()) {
     console.log("Launching global Puppeteer browser...");
-    globalBrowser = await puppeteer.launch({
+    const options = {
       headless: "new",
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-gpu",
       ],
-    });
+    };
+
+    // --- DYNAMIC PATH DETECTION FOR RENDER & RAILWAY ---
+    if (process.env.NODE_ENV === "production") {
+      try {
+        const cacheDirs = [
+          process.env.PUPPETEER_EXECUTABLE_PATH, // User-defined executable
+          process.env.PUPPETEER_CACHE_DIR, // User-defined cache
+          "/opt/render/project/src/.cache/puppeteer", // Render
+          path.join(process.cwd(), ".cache", "puppeteer"), // Default local
+          process.env.HOME ? path.join(process.env.HOME, ".cache", "puppeteer") : null, // Railway standard
+          "/usr/bin/google-chrome",
+          "/usr/bin/chromium",
+          "/usr/bin/chromium-browser"
+        ].filter(Boolean);
+
+        let detectedPath = null;
+
+        for (const dir of cacheDirs) {
+          if (!fs.existsSync(dir)) continue;
+
+          // If it's directly an executable file (like /usr/bin/chromium)
+          if (fs.lstatSync(dir).isFile()) {
+            detectedPath = dir;
+            break;
+          }
+
+          const findChrome = (searchDir) => {
+            try {
+              const files = fs.readdirSync(searchDir);
+              for (const file of files) {
+                const fullPath = path.join(searchDir, file);
+                if (fs.lstatSync(fullPath).isDirectory()) {
+                  const res = findChrome(fullPath);
+                  if (res) return res;
+                } else if ((file === "chrome" || file === "chromium") && (fullPath.includes("chrome-linux64") || fullPath.includes("linux-"))) {
+                  return fullPath;
+                }
+              }
+            } catch (e) { return null; }
+            return null;
+          };
+
+          detectedPath = findChrome(dir);
+          if (detectedPath) break;
+        }
+
+        // Fallback to Puppeteer's internal resolution if nothing else was found
+        if (!detectedPath) {
+          try {
+            const defaultPath = puppeteer.executablePath();
+            if (fs.existsSync(defaultPath)) {
+              detectedPath = defaultPath;
+            } else {
+              console.log(`Puppeteer native executablePath() returned ${defaultPath}, but it does not exist.`);
+            }
+          } catch (e) {
+            console.log("Puppeteer native executablePath() resolution failed.");
+          }
+        }
+
+        if (detectedPath && fs.existsSync(detectedPath)) {
+          console.log("SUCCESS: Detected Chrome at:", detectedPath);
+          options.executablePath = detectedPath;
+        } else {
+          console.error("CRITICAL: Chrome binary not found!");
+          console.error("If you are on Railway, please add a nixpacks.toml file to your project root with:");
+          console.error('[providers.node]\n  nodeVersion = "18"\n[phases.setup]\n  nixPkgs = ["...", "chromium"]');
+          console.error("And REMOVE any PUPPETEER_CACHE_DIR or PUPPETEER_EXECUTABLE_PATH environment variables that point to Render.");
+        }
+      } catch (err) {
+        console.error("Error during Chrome detection:", err.stack);
+      }
+    }
+
+    globalBrowser = await puppeteer.launch(options);
   }
   return globalBrowser;
 };
@@ -254,28 +329,29 @@ export const sendPayslip = async (req, res) => {
     const { period } = req.body;
     const payrollRecord = await getPayrollByEmployee(pool, emp_id, period);
 
-    if (!payrollRecord?.email)
-      return res.status(404).json({ message: "Not found" });
+    if (!payrollRecord?.email) {
+      return res.status(404).json({ message: "Employee email not found in database." });
+    }
 
-    // OPTIMIZATION 5: Return Early (Fire and Forget)
-    // Send success to frontend immediately
+    // Return success immediately to avoid Render's 30s timeout
     res.status(200).json({
       success: true,
-      message:
-        "Payslip is being generated and sent. The employee will receive it shortly.",
+      message: `Payslip for ${payrollRecord.first_name} is being processed and will be sent to ${payrollRecord.email} shortly.`,
     });
 
-    // Run the heavy lifting in the background without making the user wait
-    try {
-      const browser = await getBrowserInstance();
-      await processSinglePayslip(payrollRecord, period, browser);
-      console.log(`Successfully sent single payslip to ${payrollRecord.email}`);
-    } catch (bgError) {
-      console.error("Background Single Send Error:", bgError);
-    }
+    // Run the heavy lifting in the background
+    (async () => {
+      try {
+        const browser = await getBrowserInstance();
+        await processSinglePayslip(payrollRecord, period, browser);
+        console.log(`Successfully sent single payslip to ${payrollRecord.email}`);
+      } catch (bgError) {
+        console.error("Background Email Error:", bgError.message);
+      }
+    })();
+    
   } catch (error) {
     console.error("Single Endpoint Error:", error);
-    // Only send a 500 error if the headers haven't already been sent
     if (!res.headersSent) {
       res.status(500).json({ message: "Internal Server Error" });
     }

@@ -49,7 +49,7 @@ axiosInterceptor.interceptors.response.use(
         const newToken = refreshResponse.data.token;
 
         setAccessToken(newToken);
-        
+
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
         return axiosInterceptor(originalRequest);
