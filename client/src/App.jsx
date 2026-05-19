@@ -23,7 +23,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import useSocket from "./hooks/useSocket";
 import { useThemeStore } from "./store/useThemeStore";
-import { applyManagerDisplayOverride, normalizeAccessRole } from "./lib/role.utils";
+import {
+  applyManagerDisplayOverride,
+  normalizeAccessRole,
+} from "./lib/role.utils";
 
 const STORAGE_TOKEN_KEY = "wah_token";
 const STORAGE_USER_KEY = "wah_user";

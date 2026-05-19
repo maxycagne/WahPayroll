@@ -17,7 +17,11 @@ const navItems = {
   Admin: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
-    { to: "/registration-requests", icon: UserPlus, label: "Registration Requests" },
+    {
+      to: "/registration-requests",
+      icon: UserPlus,
+      label: "Registration Requests",
+    },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
@@ -37,14 +41,18 @@ const navItems = {
   HR: [
     { to: "/hr-dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/employees", icon: Users, label: "Employees" },
-    { to: "/registration-requests", icon: UserPlus, label: "Registration Requests" },
+    {
+      to: "/registration-requests",
+      icon: UserPlus,
+      label: "Registration Requests",
+    },
     { to: "/attendance", icon: CalendarCheck2, label: "Attendance" },
     { to: "/leave", icon: FileSpreadsheet, label: "Applications" },
     { to: "/payroll", icon: Wallet, label: "Payroll" },
     { to: "/reports", icon: BarChart3, label: "Reports" },
     { to: "/payslips", icon: ReceiptText, label: "Payslips" },
     { to: "/file-management", icon: FileSpreadsheet, label: "File Management" },
-    { to: "/settings", icon: Settings, label: "Settings" } // <-- ADDED
+    { to: "/settings", icon: Settings, label: "Settings" }, // <-- ADDED
   ],
   RankAndFile: [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
